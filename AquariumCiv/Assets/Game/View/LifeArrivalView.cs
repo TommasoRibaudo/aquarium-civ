@@ -495,7 +495,7 @@ namespace AquariumCiv.View
             dir.Normalize();
             var p = at + dir * dist;
             p.x = Mathf.Clamp(p.x, -Land.HX + 0.15f, Land.HX - 0.15f);
-            p.z = Mathf.Clamp(p.z, -Land.HZ + 0.15f, Land.HZ - 0.15f);
+            p.z = Land.ClampZ(p.z, 0.15f);
             return box.land.OnGround(p.x, p.z);
         }
 

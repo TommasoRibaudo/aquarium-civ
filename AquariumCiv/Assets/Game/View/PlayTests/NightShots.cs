@@ -71,11 +71,11 @@ namespace AquariumCiv.View.PlayTests
             var box = Object.FindAnyObjectByType<BoxView>();
             var rig = Camera.main.GetComponent<BoxCamera>();
             var camLocal = box.transform.InverseTransformPoint(Camera.main.transform.position);
-            float nx = Mathf.Clamp(camLocal.x, -Land.HX + 0.5f, Land.HX - 0.5f), nz = Mathf.Clamp(camLocal.z, -Land.HZ + 0.5f, Land.HZ - 0.5f);
+            float nx = Mathf.Clamp(camLocal.x, -Land.HX + 0.5f, Land.HX - 0.5f), nz = Land.ClampZ(camLocal.z, 0.5f);
             // wet the ground along the two near panes
             for (float t = -1f; t <= 1f; t += 0.5f)
             {
-                EcoDebug.MistBig(nx, nz + t * 1.2f * -Mathf.Sign(nz));
+                EcoDebug.MistBig(nx, nz + t * 1.2f * -Mathf.Sign(nz - Land.CZ));
                 EcoDebug.MistBig(nx + t * 1.6f * -Mathf.Sign(nx), nz);
             }
             if (winter) EcoDebug.SkipSeasons(3);

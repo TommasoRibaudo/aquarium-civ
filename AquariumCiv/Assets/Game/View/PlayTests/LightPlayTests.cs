@@ -207,7 +207,7 @@ namespace AquariumCiv.View.PlayTests
                     spot = new Vector2(Screen.width * x, Screen.height * y);
                     if (UiInput.Over(spot) || !cards.PickDoll(spot).IsNone || !cards.PickPerson(spot).IsNone || cards.PickBuilding(spot) >= 0) continue;
                     if (!BoxCameraMath.GroundPoint(cam.ScreenPointToRay(spot), Land.G, out var g)) continue;
-                    if ((Mathf.Abs(g.x) < Land.HX - 0.2f && Mathf.Abs(g.z) < Land.HZ - 0.2f) == onLand) return true;
+                    if ((Mathf.Abs(g.x) < Land.HX - 0.2f && Land.InZ(g.z, 0.2f)) == onLand) return true;
                 }
             spot = default;
             return false;
@@ -231,7 +231,7 @@ namespace AquariumCiv.View.PlayTests
                         {
                             rig.CancelFlight();
                             rig.zoom = zoom; rig.yaw = yaw; rig.pitch = pitch;
-                            rig.target = new Vector3(b.x * off.x, Land.G, b.y * off.y);
+                            rig.target = new Vector3(b.x * off.x, Land.G, Land.CZ + b.y * off.y);
                             rig.Apply();
                             poses++;
                             yield return null;
@@ -270,7 +270,7 @@ namespace AquariumCiv.View.PlayTests
             foreach (float zoom in new[] { CameraReach.MinZoom, 0.3f, 0.5f })
                 foreach (var dir in new[] { new Vector2(1f, 1f), new Vector2(-1f, 1f), new Vector2(1f, -1f), new Vector2(-1f, -1f) })
                 {
-                    rig.EaseTo(Vector3.zero, 28f, 34f, zoom, 0.01f);
+                    rig.EaseTo(new Vector3(0f, 0f, Land.CZ), 28f, 34f, zoom, 0.01f); // #658: the box centre
                     yield return Wait(0.2f);
                     Vector2 a = new(Screen.width * 0.3f, Screen.height * 0.5f), b = new(Screen.width * 0.7f, Screen.height * 0.5f);
                     int ida = touchId++, idb = touchId++;
@@ -307,7 +307,7 @@ namespace AquariumCiv.View.PlayTests
         static bool CentreOnLand(Camera cam)
         {
             var ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-            return BoxCameraMath.GroundPoint(ray, Land.G, out var g) && Mathf.Abs(g.x) <= Land.HX && Mathf.Abs(g.z) <= Land.HZ;
+            return BoxCameraMath.GroundPoint(ray, Land.G, out var g) && Mathf.Abs(g.x) <= Land.HX && Land.InZ(g.z);
         }
 
         /// <summary>How much of the screen shows the land's top.</summary>
@@ -318,7 +318,7 @@ namespace AquariumCiv.View.PlayTests
                 for (float x = 0.05f; x < 1f; x += 0.1f)
                 {
                     n++;
-                    if (BoxCameraMath.GroundPoint(cam.ViewportPointToRay(new Vector3(x, y, 0f)), Land.G, out var g) && Mathf.Abs(g.x) <= Land.HX && Mathf.Abs(g.z) <= Land.HZ) on++;
+                    if (BoxCameraMath.GroundPoint(cam.ViewportPointToRay(new Vector3(x, y, 0f)), Land.G, out var g) && Mathf.Abs(g.x) <= Land.HX && Land.InZ(g.z)) on++;
                 }
             return on / (float)n;
         }
@@ -426,7 +426,7 @@ namespace AquariumCiv.View.PlayTests
             EraStills.DebugClear(Sim.State.seed);
             // As the game takes it (tester run 10): at the cheer the moment holds the camera, close in, with the rig off.
             Cam.enabled = false;
-            Cam.target = new Vector3(0f, 1f, 0f); Cam.zoom = 0.4f; Cam.yaw = 28f; Cam.pitch = 34f;
+            Cam.target = new Vector3(0f, 1f, Land.CZ); Cam.zoom = 0.4f; Cam.yaw = 28f; Cam.pitch = 34f;
             Cam.Apply();
             var info = EraStills.Take(Camera.main, Cam, Sim);
             Cam.enabled = true;

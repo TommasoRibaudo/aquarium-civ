@@ -21,7 +21,7 @@ namespace AquariumCiv.Sim
 
         public int EcoRabbitCount => EcologyOn ? (int)MathF.Round(State.eco.rabbits) : 0;
         /// <summary>How many rabbit dolls to show: the sim count, capped for the phone.</summary>
-        public int EcoRabbitsShown(int cap = RabbitHerd.DefaultCap) => EcologyOn ? RabbitHerd.Shown(State.eco.rabbits, cap) : 0;
+        public int EcoRabbitsShown(int cap = -1) => EcologyOn ? RabbitHerd.Shown(State.eco.rabbits, cap) : 0;
         public bool EcoRabbitTracksSeen => EcologyOn && State.eco.Reached(EcoMilestones.RabbitTracks);
 
         /// <summary>The cells where the tracks show (the meadow's edge), while they are there: from the tracks milestone until

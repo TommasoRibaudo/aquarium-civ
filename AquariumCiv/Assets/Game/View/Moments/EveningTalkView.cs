@@ -153,7 +153,7 @@ namespace AquariumCiv.View
 
         void FindFire(SimCore sim)
         {
-            fire = new Vector3(0f, 1f, 0f);
+            fire = new Vector3(0f, 1f, Land.CZ);
             var st = sim.Settlement;
             var box = FindAnyObjectByType<BoxView>();
             if (st != null && box != null) fire = box.transform.TransformPoint(new Vector3(st.Map.greenX, 0f, st.Map.greenZ));
@@ -229,7 +229,7 @@ namespace AquariumCiv.View
             if (step == CloseStep.Shelf)
             {
                 GlassMotion.Hide(speakerTag, GlassMotion.FadeOff, GlassMotion.FadeMs);
-                if (cam != null) cam.EaseTo(new Vector3(0f, 1f, 0f), ShelfYaw, ShelfPitch, cam.maxZoom, CloseRules.ShelfSeconds);
+                if (cam != null) cam.EaseTo(new Vector3(0f, 1f, Land.CZ), ShelfYaw, ShelfPitch, cam.maxZoom, CloseRules.ShelfSeconds);
                 AskIfFirst();
             }
         }

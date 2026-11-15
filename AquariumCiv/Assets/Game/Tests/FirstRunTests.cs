@@ -5,6 +5,7 @@ using AquariumCiv.Game;
 using AquariumCiv.Sim;
 using NUnit.Framework;
 using static AquariumCiv.Tests.SimCoreTests;
+using Terrain = AquariumCiv.Sim.Settle.Terrain;
 
 namespace AquariumCiv.Tests
 {
@@ -108,8 +109,8 @@ namespace AquariumCiv.Tests
                 Assert.GreaterOrEqual(sim.State.grime, FirstRun.StartGrime);
                 Assert.GreaterOrEqual(sim.State.overgrowth, FirstRun.StartOvergrowth);
                 var (px, pz) = run.PatchSpot; var (rx, rz) = run.SuggestedRainSpot;
-                Assert.LessOrEqual(Math.Abs(px), 3f); Assert.LessOrEqual(Math.Abs(pz), 2.2f);
-                Assert.LessOrEqual(Math.Abs(rx), 3f); Assert.LessOrEqual(Math.Abs(rz), 2.2f);
+                Assert.LessOrEqual(Math.Abs(px), 3f); Assert.IsTrue(Terrain.InZ(pz, 0f));
+                Assert.LessOrEqual(Math.Abs(rx), 3f); Assert.IsTrue(Terrain.InZ(rz, 0f));
                 Assert.Greater(Math.Sqrt((px - rx) * (px - rx) + (pz - rz) * (pz - rz)), 1f, "the rain does not fall on the patch");
                 Assert.IsTrue(SettlementNaming.IsValid(run.SuggestedName));
                 Assert.AreEqual("", run.PlateName, "blank brass plate until kept");

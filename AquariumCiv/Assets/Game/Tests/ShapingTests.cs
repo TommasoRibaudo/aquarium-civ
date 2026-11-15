@@ -33,7 +33,7 @@ namespace AquariumCiv.Tests
         {
             var t = TerrainSpec.Preset(sim.TerrainPreset);
             for (float x = -Terrain.HX; x < Terrain.HX; x += 0.2f)
-                for (float z = -Terrain.HZ; z < Terrain.HZ; z += 0.2f)
+                for (float z = Terrain.ZMin; z < Terrain.ZMax; z += 0.2f)
                     if (SimCore.WetSpot(t, x, z)) return (x, z);
             Assert.Fail("no water in the box");
             return (0, 0);

@@ -89,6 +89,8 @@ namespace AquariumCiv.Life
     public struct MomentGeometry
     {
         public float fireX, fireZ, glassX, glassZ, nx, nz, halfX, halfZ;
+        /// <summary>#658: the box's centre in z (<see cref="AquariumCiv.Sim.Settle.Terrain.CZ"/>); the land is not centred on z = 0. The box spans centreZ +- halfZ.</summary>
+        public float centreZ;
         /// <summary>t4-fixes: what hides people standing behind it (tents, buildings): x, z, radius triples in box units; null = none.</summary>
         public float[] blockers;
     }
@@ -190,7 +192,7 @@ namespace AquariumCiv.Life
             LastWhyNot = "";
             if (cast == null) { LastWhyNot = "no cast"; return null; }
             if (geo.halfX <= 0f) geo.halfX = 3f;
-            if (geo.halfZ <= 0f) geo.halfZ = 2.2f;
+            if (geo.halfZ <= 0f) { geo.halfZ = AquariumCiv.Sim.Settle.Terrain.HZ; geo.centreZ = AquariumCiv.Sim.Settle.Terrain.CZ; }
             float nl = (float)Math.Sqrt(geo.nx * geo.nx + geo.nz * geo.nz);
             if (nl < 1e-4f) { geo.nx = 0f; geo.nz = -1f; } else { geo.nx /= nl; geo.nz /= nl; }
             var plan = new MomentStagePlan(kind, seed, geo);
@@ -267,7 +269,7 @@ namespace AquariumCiv.Life
         {
             float mx = Math.Max(0.05f, geo.halfX - margin), mz = Math.Max(0.05f, geo.halfZ - margin);
             x = Math.Max(-mx, Math.Min(mx, x));
-            z = Math.Max(-mz, Math.Min(mz, z));
+            z = geo.centreZ + Math.Max(-mz, Math.Min(mz, z - geo.centreZ));
         }
 
         static float Dist(float ax, float az, float bx, float bz) => (float)Math.Sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz));

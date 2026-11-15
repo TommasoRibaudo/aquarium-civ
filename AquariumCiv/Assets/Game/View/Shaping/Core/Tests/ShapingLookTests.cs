@@ -279,7 +279,7 @@ namespace AquariumCiv.View.Shaping.Tests
             var f = Shaped(sim, SimCore.NudgeKind.Herd, x, z);
             Assert.AreEqual(HerdSpecies.Deer, f.Species, "on grass it's deer");
             Assert.AreEqual(T.HerdCount(HerdSpecies.Deer), ShapingLooks.Herd(f, Clock(0f)).animals.Count);
-            bool onEdge = Math.Abs(Math.Abs(f.entryX) - ShapingFootprint.MaxX) < 1e-4f || Math.Abs(Math.Abs(f.entryZ) - ShapingFootprint.MaxZ) < 1e-4f;
+            bool onEdge = Math.Abs(Math.Abs(f.entryX) - ShapingFootprint.MaxX) < 1e-4f || (Math.Abs(f.entryZ - ShapingFootprint.MaxZ) < 1e-4f || Math.Abs(f.entryZ - ShapingFootprint.MinZ) < 1e-4f);
             Assert.IsTrue(onEdge, "they come in from the box edge");
             var first = ShapingLooks.Herd(f, Clock(0.01f));
             Assert.Less(Terrain.Dist(first.animals[0].x, first.animals[0].z, f.entryX, f.entryZ), 0.15f, "the first starts at the edge");
@@ -296,7 +296,7 @@ namespace AquariumCiv.View.Shaping.Tests
                 foreach (var a in h.animals)
                 {
                     Assert.LessOrEqual(Math.Abs(a.x), ShapingFootprint.MaxX + 1e-4f, "inside the box");
-                    Assert.LessOrEqual(Math.Abs(a.z), ShapingFootprint.MaxZ + 1e-4f, "inside the box");
+                    Assert.That(a.z, Is.InRange(ShapingFootprint.MinZ - 1e-4f, ShapingFootprint.MaxZ + 1e-4f), "inside the box");
                     if (s < arrive) continue;
                     int c = SiteMap.CellAt(a.x, a.z);
                     Assert.IsFalse(map.Water(c), $"seed {seed} t {s:0.00}: a deer in the water at ({a.x:0.00}, {a.z:0.00})");
@@ -344,7 +344,7 @@ namespace AquariumCiv.View.Shaping.Tests
                         // Clamped to the box edge the gap can shrink; a herd at the edge of the box is not what this checks.
                         var a = h.animals[i]; var b = h.animals[j];
                         if (Math.Abs(a.x) > ShapingFootprint.MaxX - 0.01f || Math.Abs(b.x) > ShapingFootprint.MaxX - 0.01f ||
-                            Math.Abs(a.z) > ShapingFootprint.MaxZ - 0.01f || Math.Abs(b.z) > ShapingFootprint.MaxZ - 0.01f) continue;
+                            a.z < ShapingFootprint.MinZ + 0.01f || a.z > ShapingFootprint.MaxZ - 0.01f || b.z < ShapingFootprint.MinZ + 0.01f || b.z > ShapingFootprint.MaxZ - 0.01f) continue;
                         if (a.pose == AnimalPose.Graze && b.pose == AnimalPose.Graze) { closest = Math.Min(closest, Terrain.Dist(a.x, a.z, b.x, b.z)); grazingFrames++; }
                         widest = Math.Max(widest, Terrain.Dist(a.x, a.z, b.x, b.z));
                     }

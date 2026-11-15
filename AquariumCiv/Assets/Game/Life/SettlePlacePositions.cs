@@ -198,7 +198,7 @@ namespace AquariumCiv.Life
         int Walkable(float x, float z)
         {
             x = Math.Max(-Terrain.HX + 0.05f, Math.Min(Terrain.HX - 0.05f, x));
-            z = Math.Max(-Terrain.HZ + 0.05f, Math.Min(Terrain.HZ - 0.05f, z));
+            z = Terrain.ClampZ(z, 0.05f);
             int c = SiteMap.CellAt(x, z);
             if (c < 0) return -1;
             if (st.WalkCost(c) > 0) return c;
@@ -317,7 +317,7 @@ namespace AquariumCiv.Life
             for (int c = 0; c < SiteMap.N; c++)
             {
                 float x = SiteMap.CXc(c), z = SiteMap.CZc(c);
-                if (Math.Abs(x) > mx || Math.Abs(z) > mz) continue;
+                if (Math.Abs(x) > mx || Math.Abs(z - Terrain.CZ) > mz) continue;
                 float d = (x - gx) * (x - gx) + (z - gz) * (z - gz);
                 bool water = map.Water(c);
                 if (map.Forest(c))
@@ -362,7 +362,7 @@ namespace AquariumCiv.Life
             {
                 float dx = gx - px, dz = gz - pz, len = (float)Math.Sqrt(dx * dx + dz * dz);
                 if (len < 1e-4f) { dx = 1f; dz = 0f; len = 1f; }
-                midden = new Spot(Math.Max(-mx, Math.Min(mx, gx + dx / len * 1.4f)), Math.Max(-mz, Math.Min(mz, gz + dz / len * 1.4f)));
+                midden = new Spot(Math.Max(-mx, Math.Min(mx, gx + dx / len * 1.4f)), Terrain.CZ + Math.Max(-mz, Math.Min(mz, gz + dz / len * 1.4f - Terrain.CZ)));
             }
 
             Spot? commons = null;
@@ -485,10 +485,10 @@ namespace AquariumCiv.Life
             float tx, tz;
             switch (side & 3)
             {
-                case 0: tx = Clamp(gx, Terrain.HX - ends); tz = -Terrain.HZ + inset; break;
-                case 2: tx = Clamp(gx, Terrain.HX - ends); tz = Terrain.HZ - inset; break;
-                case 1: tx = Terrain.HX - inset; tz = Clamp(gz, Terrain.HZ - ends); break;
-                default: tx = -Terrain.HX + inset; tz = Clamp(gz, Terrain.HZ - ends); break;
+                case 0: tx = Clamp(gx, Terrain.HX - ends); tz = Terrain.ZMin + inset; break;
+                case 2: tx = Clamp(gx, Terrain.HX - ends); tz = Terrain.ZMax - inset; break;
+                case 1: tx = Terrain.HX - inset; tz = Terrain.ClampZ(gz, ends); break;
+                default: tx = -Terrain.HX + inset; tz = Terrain.ClampZ(gz, ends); break;
             }
             int c = Walkable(tx, tz);
             if (c < 0) return false;

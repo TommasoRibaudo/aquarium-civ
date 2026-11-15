@@ -149,7 +149,7 @@ namespace AquariumCiv.View
             }
             pv.StandingNow(who, xs, zs);
             for (int i = 0; i < who.Count; i++) dolls.Add(new CampFrame.Point(xs[i], zs[i]));
-            return CampFrame.Frame(camp, dolls, Land.HX, Land.HZ);
+            return CampFrame.Frame(camp, dolls, Land.HX, Land.HZ, Land.CZ);
         }
 
         /// <summary>Eases the camera to the camp frame now and makes it home. Returns what it did.</summary>

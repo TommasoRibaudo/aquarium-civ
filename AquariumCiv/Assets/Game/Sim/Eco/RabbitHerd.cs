@@ -26,7 +26,7 @@ namespace AquariumCiv.Sim.Eco
     /// </summary>
     public static class RabbitHerd
     {
-        public const int DefaultCap = 12;
+        public static int DefaultCap => AnimalBudget.Rabbits;
         public const float LegBase = 7f, LegSpread = 5f, HopLen = 0.12f, HopTime = 0.28f, HopArc = 0.045f;
         public const float HomeRadius = 0.6f;
         /// <summary>#333: how many green cells nearest the warren the rabbits' first homes are spread over (a wide meadow, not one blob).</summary>
@@ -51,7 +51,7 @@ namespace AquariumCiv.Sim.Eco
         public static float F(uint a, uint b, uint c) => (H(a, b, c) & 0xFFFFFFu) / 16777216f;
 
         /// <summary>How many rabbits to put on screen: the sim count (rounded), capped for the phone.</summary>
-        public static int Shown(float simRabbits, int cap = DefaultCap) => Math.Max(0, Math.Min(cap, (int)MathF.Round(simRabbits)));
+        public static int Shown(float simRabbits, int cap = -1) => Math.Max(0, Math.Min(cap < 0 ? DefaultCap : cap, (int)MathF.Round(simRabbits)));
 
         public static bool IsGreen(EcoCover c) => c == EcoCover.Grass || c == EcoCover.Tall;
 

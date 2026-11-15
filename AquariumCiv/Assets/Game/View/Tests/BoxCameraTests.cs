@@ -175,7 +175,7 @@ namespace AquariumCiv.View.Tests
             foreach (float dist in new[] { 8f, 12f, 16.5f, 24f, 41f, 53f, 90f })
                 foreach (float yaw in new[] { -55f, -30f, 0f, 28f, 55f })
                     foreach (float pitch in new[] { 5f, 14f, 24f, 34f, 50f, 68f })
-                        foreach (var at in new[] { new Vector3(0f, 1f, 0f), new Vector3(2.9f, 1f, 2.1f), new Vector3(-2.9f, 1f, -2.1f), new Vector3(-7.6f, 1f, 0.6f), new Vector3(7.6f, 1f, 0f) })
+                        foreach (var at in new[] { new Vector3(0f, 1f, Land.CZ), new Vector3(2.9f, 1f, 3.6f), new Vector3(-2.9f, 1f, -2.1f), new Vector3(-7.6f, 1f, 0.6f + Land.CZ), new Vector3(7.6f, 1f, Land.CZ) })
                         {
                             var rot = Quaternion.Euler(pitch, yaw, 0f);
                             Vector3 fwd = rot * Vector3.forward, up = rot * Vector3.up, pos = at - fwd * dist;
@@ -183,7 +183,7 @@ namespace AquariumCiv.View.Tests
                             Assert.GreaterOrEqual(near, BoxCameraMath.NearestPlane);
                             for (float x = -16f; x <= 16f; x += 0.8f)
                                 for (float y = -0.3f; y <= 3f; y += 0.55f)
-                                    for (float z = -4.2f; z <= 3.6f; z += 0.65f)
+                                    for (float z = -4.2f; z <= Land.ZMax + 1.4f; z += 0.65f) // #658: the shelf runs to the new back
                                     {
                                         var p = new Vector3(x, y, z) - pos;
                                         float depth = Vector3.Dot(p, fwd);
@@ -211,14 +211,14 @@ namespace AquariumCiv.View.Tests
                             // the camera's own range: the pivot is drawn in to where the pose allows
                             CameraGlass.PanBoundsFor(yaw, pitch, dist, 0f, Land.HX, Land.HZ, Land.HX + BoxCameraMath.HullSide, Land.HZ + BoxCameraMath.HullSide, BoxCameraMath.ShelfY, Land.GlassTop, out float bbx, out float bbz); // the glass-only range: the worst case
                             var b = new Vector2(bbx, bbz);
-                            var at = new Vector3(Mathf.Clamp(pivot.x, -b.x, b.x), 0f, Mathf.Clamp(pivot.z, -b.y, b.y));
+                            var at = new Vector3(Mathf.Clamp(pivot.x, -b.x, b.x), 0f, Land.CZ + Mathf.Clamp(pivot.z, -b.y, b.y)); // bounds are offsets from the centre (#658)
                             var rot = Quaternion.Euler(pitch, yaw, 0f);
                             Vector3 fwd = rot * Vector3.forward, up = rot * Vector3.up, pos = at - fwd * dist;
                             float near = BoxCameraMath.FitNear(pos, fwd, up, tan);
                             // every point of the four panes, sampled
                             for (float u = -1f; u <= 1.001f; u += 0.1f)
                                 for (float y = BoxCameraMath.ShelfY; y <= Land.GlassTop + 0.1f; y += 0.4f)
-                                    foreach (var w in new[] { new Vector3(u * hx, y, -hz), new Vector3(u * hx, y, hz), new Vector3(-hx, y, u * hz), new Vector3(hx, y, u * hz) })
+                                    foreach (var w in new[] { new Vector3(u * hx, y, Land.CZ - hz), new Vector3(u * hx, y, Land.CZ + hz), new Vector3(-hx, y, Land.CZ + u * hz), new Vector3(hx, y, Land.CZ + u * hz) })
                                     {
                                         var d = w - pos;
                                         float depth = Vector3.Dot(d, fwd);
@@ -235,7 +235,7 @@ namespace AquariumCiv.View.Tests
         public void Near_StaysTightAroundTheBoxAtTheHomeView()
         {
             var rot = Quaternion.Euler(34f, 28f, 0f);
-            Vector3 fwd = rot * Vector3.forward, pos = new Vector3(0f, 1f, 0f) - fwd * 41f;
+            Vector3 fwd = rot * Vector3.forward, pos = new Vector3(0f, 1f, Land.CZ) - fwd * 41f;
             float near = BoxCameraMath.FitNear(pos, fwd, rot * Vector3.up, Mathf.Tan(11f * Mathf.Deg2Rad));
             Assert.Greater(near, 32f, "#193: the shadow map isn't spread over the air in front of the box");
         }

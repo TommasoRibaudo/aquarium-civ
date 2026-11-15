@@ -209,7 +209,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < 8; i++)
             {
                 var f = world - fwd * s;
-                if (Mathf.Abs(f.x) <= b.x && Mathf.Abs(f.z) <= b.y) return f;
+                if (Mathf.Abs(f.x) <= b.x && Mathf.Abs(f.z - Land.CZ) <= b.y) return f;
                 s *= 0.6f;
             }
             return world;
@@ -220,7 +220,7 @@ namespace AquariumCiv.View
             if (box == null) return;
             flower = new GameObject("ShowMeFlower") { hideFlags = HideFlags.DontSave };
             flower.transform.SetParent(box.transform, false);
-            float y = box.GroundHeight(Mathf.Clamp(t.x, -Land.HX, Land.HX), Mathf.Clamp(t.z, -Land.HZ, Land.HZ));
+            float y = box.GroundHeight(Mathf.Clamp(t.x, -Land.HX, Land.HX), Land.ClampZ(t.z));
             flower.transform.localPosition = new Vector3(t.x + 0.06f, y, t.z - 0.05f);
             var stem = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             Destroy(stem.GetComponent<Collider>());

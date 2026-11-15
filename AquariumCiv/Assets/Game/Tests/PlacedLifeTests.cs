@@ -247,7 +247,7 @@ namespace AquariumCiv.Tests
             DeerHerd.Field a = new DeerHerd.Field(), b = new DeerHerd.Field();
             sim.EcoDeerRefresh(a); sim.EcoDeerRefresh(b);
             a.Sync(sim.EcoDeerShown()); b.Sync(sim.EcoDeerShown());
-            Assert.AreEqual(8, a.Alive.Count);
+            Assert.AreEqual(AnimalBudget.Deer, a.Alive.Count, "the herd drawn is the budget's deer, not the sim's 8");
             Assert.IsTrue(a.HasRange);
             Assert.IsFalse(a.HasPond);
             Assert.IsTrue(a.IsStag(0), "id 0 is the stag");
@@ -367,7 +367,7 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(cap, sim.EcoFishCap);
             Seasons(sim, 4);
             Assert.AreEqual(sim.EcoFishCap, sim.EcoFish, "full within a year");
-            Assert.AreEqual(Math.Min(8, sim.EcoFish), sim.EcoFishShown());
+            Assert.AreEqual(Math.Min(AnimalBudget.Fish, sim.EcoFish), sim.EcoFishShown());
             Assert.AreEqual(1f, sim.FishBiteRate, 1e-4f, "a full pond bites");
             int caught = 0;
             while (sim.FishCatch()) caught++;

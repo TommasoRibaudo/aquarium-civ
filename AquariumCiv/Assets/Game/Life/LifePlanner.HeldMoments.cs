@@ -129,7 +129,7 @@ namespace AquariumCiv.Life
             if (!positions.TryGetPosition(fire, out fx, out fz) && !positions.TryGetPosition(gather, out fx, out fz)) return NoHeld("no fire on the land");
             if (!positions.TryGetPosition(GlassPlace, out float gx, out float gz)) return NoHeld("no glass spot");
             var n = GlassNormalOf(glassSide);
-            var geo = new MomentGeometry { fireX = fx, fireZ = fz, glassX = gx, glassZ = gz, nx = n.x, nz = n.z, halfX = Terrain.HX, halfZ = Terrain.HZ, blockers = HeldBlockers(fx, fz) };
+            var geo = new MomentGeometry { fireX = fx, fireZ = fz, glassX = gx, glassZ = gz, nx = n.x, nz = n.z, halfX = Terrain.HX, halfZ = Terrain.HZ, centreZ = Terrain.CZ, blockers = HeldBlockers(fx, fz) };
 
             var cast = new MomentCast();
             var used = new HashSet<int>();

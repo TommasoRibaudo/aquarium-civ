@@ -27,7 +27,7 @@ namespace AquariumCiv.Sim.Eco
     public static class DeerHerd
     {
         /// <summary>The most deer the phone shows (the cap's top, spec §4.1).</summary>
-        public const int DefaultCap = 8;
+        public static int DefaultCap => AnimalBudget.Deer;
         public const float LegBase = 12f, LegSpread = 8f, WalkSpeed = 0.06f, GrazeNear = 0.3f, RangeRadius = 0.7f;
         /// <summary>The dawn drink, in view hours.</summary>
         public const float DawnFrom = 5f, DawnTo = 7f;
@@ -38,7 +38,7 @@ namespace AquariumCiv.Sim.Eco
         static float F(uint a, uint b, uint c) => RabbitHerd.F(a, b, c);
 
         /// <summary>How many deer to put on screen: the sim count, capped for the phone.</summary>
-        public static int Shown(int simDeer, int cap = DefaultCap) => Math.Max(0, Math.Min(cap, simDeer));
+        public static int Shown(int simDeer, int cap = -1) => Math.Max(0, Math.Min(cap < 0 ? DefaultCap : cap, simDeer));
 
         /// <summary>The herd's ground and its spots. The view (#425) calls <see cref="Refresh"/> each season and when the herd's home
         /// changes (a shy herd moves away), <see cref="Sync"/> when the count changes, then <see cref="Sample"/> per deer per frame.</summary>

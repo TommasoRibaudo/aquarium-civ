@@ -399,7 +399,7 @@ namespace AquariumCiv.View
         /// <summary>The panel's top limit for a word over the world.</summary>
         const float TopLimit = 190f;
         /// <summary>The plate on the plinth's front face, box units.</summary>
-        const float PlateY = -0.12f, PlateZ = -Land.HZ - 0.2f;
+        const float PlateY = -0.12f, PlateZ = Land.ZMin - 0.2f;
 
         void Build(VisualElement parent)
         {
@@ -726,7 +726,7 @@ namespace AquariumCiv.View
             bool show = false;
             if (reward)
             {
-                show = ToPanel(box.transform.TransformPoint(new Vector3(0f, 1.5f, Land.HZ)), out var p);
+                show = ToPanel(box.transform.TransformPoint(new Vector3(0f, 1.5f, Land.ZMax)), out var p);
                 if (show) { bubble.Set("", rewardLine); PlaceBubble(p); }
             }
             else
@@ -877,7 +877,7 @@ namespace AquariumCiv.View
             {
                 case HintAnchor.Glass:
                     labelBelow = false;
-                    return ToPanel(box.transform.TransformPoint(new Vector3(0f, 1.5f, Land.HZ)), out at);
+                    return ToPanel(box.transform.TransformPoint(new Vector3(0f, 1.5f, Land.ZMax)), out at);
                 case HintAnchor.Patch:
                 {
                     var (x, z) = run.PatchSpot;

@@ -84,7 +84,7 @@ namespace AquariumCiv.Tests
                     float a = Terrain.Hash3(e.seed * 31 + 101, e.season * 16 + k, tries) * MathF.PI * 2f;
                     float r = MathF.Sqrt(Terrain.Hash3(e.seed * 31 + 102, e.season * 16 + k, tries)) * reach;
                     float x = land.campX + MathF.Cos(a) * r, z = land.campZ + MathF.Sin(a) * r;
-                    if (MathF.Abs(x) > Terrain.HX - 0.2f || MathF.Abs(z) > Terrain.HZ - 0.2f) continue;
+                    if (MathF.Abs(x) > Terrain.HX - 0.2f || !Terrain.InZ(z, 0.2f)) continue;
                     int c = SiteMap.CellAt(x, z);
                     if (c < 0 || (EcoCover)e.cover[c] == EcoCover.Water) continue;
                     float score = e.moisture[c] + ((EcoCover)e.cover[c] == EcoCover.Bare ? 0f : 0.3f);
