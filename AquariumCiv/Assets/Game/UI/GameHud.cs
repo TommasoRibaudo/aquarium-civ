@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using AquariumCiv.Game;
 using UnityEngine;
@@ -693,7 +694,29 @@ namespace AquariumCiv.GameUI
                     lane = h - i.w + GameUiPanel.ToastAboveSheet + (float.IsNaN(lift) ? 0f : Mathf.Max(0f, lift - i.w));
                 }
             }
-            toastLabel.style.bottom = Mathf.Max(lane, toastClear > 0f ? GameUiPanel.Lane(toastClear, i.w) : 0f, barClear > 0f ? GameUiPanel.Lane(barClear, i.w) : 0f);
+            float measured = MeasuredBarClear();
+            toastLabel.style.bottom = Mathf.Max(lane, toastClear > 0f ? GameUiPanel.Lane(toastClear, i.w) : 0f, float.IsNaN(measured) ? (barClear > 0f ? GameUiPanel.Lane(barClear, i.w) : 0f) : measured);
+        }
+
+        readonly Dictionary<string, Func<float>> barProbes = new();
+
+        /// <summary>Tester run 2: a toast over a choice must clear the bar AND the "Let them decide" button above it. The probe returns the top edge
+        /// (panel y) of what the choice has up, or NaN when nothing is; null removes it. The toast sits 8 pt over the highest.</summary>
+        public void SetBarProbe(string key, Func<float> topY)
+        {
+            if (topY == null) barProbes.Remove(key); else barProbes[key] = topY;
+            PlaceToast();
+        }
+
+        /// <summary>The toast lane (style.bottom) that clears every probed element, or NaN when none is measurable yet.</summary>
+        float MeasuredBarClear()
+        {
+            if (barProbes.Count == 0 || safe == null) return float.NaN;
+            float top = float.NaN;
+            foreach (var p in barProbes.Values) { float t = p(); if (!float.IsNaN(t) && (float.IsNaN(top) || t < top)) top = t; }
+            float bottomEdge = safe.worldBound.yMax;
+            if (float.IsNaN(top) || float.IsNaN(bottomEdge) || bottomEdge <= 0f) return float.NaN;
+            return Mathf.Max(0f, bottomEdge - top + 8f);
         }
 
         float toastClear;
@@ -801,7 +824,7 @@ namespace AquariumCiv.GameUI
             UpdateBlockers();
             if (cameraMode) UpdateCameraMode();
             if (toastLabel != null) PumpToast();
-            if (outsideSheet != null) PlaceToast(); // it has no height until its first layout
+            if (outsideSheet != null || barProbes.Count > 0) PlaceToast(); // it has no height until its first layout; a choice's bar and button move
             FollowFirstRun();
             FollowKit();
             FollowInk();
