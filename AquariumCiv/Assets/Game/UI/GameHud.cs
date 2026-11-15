@@ -202,7 +202,7 @@ namespace AquariumCiv.GameUI
         /// <summary>#311: the tweezers pluck what overgrows; the cloth keeps the glass.</summary>
         public const string TweezersHint = "Tap or drag over weeds, vines and saplings to pluck them. Two fingers move, turn and zoom the view.";
         /// <summary>#518: the seed places like the life slot: a tap shows where it would go, a second tap on that plants it.</summary>
-        public const string SeedHint = "One seed: it grows into the box's tree. Tap the land to choose where it goes. Two fingers move, turn and zoom the view."; // #675
+        public const string SeedHint = "One seed: it grows into the box's tree, anywhere, even on bare sand. Tap the land to choose where it goes. Two fingers move, turn and zoom the view."; // #675
         const string MisterShownKey = "p8.misterHint.shown", MisterUsedKey = "p8.misterHint.used";
         public static bool MisterHintDue
         {
@@ -354,6 +354,16 @@ namespace AquariumCiv.GameUI
             {
                 lifeRowKey = key;
                 kitLifeRow.Clear();
+                if (kitSeedShown)
+                {
+                    // 2026-11-14: the seed is the first rung, so it comes first in the row. #558: the seed is a choice in the jar beside the species. #675 (playtest: a tree icon among the groups read as
+                    // "plant a forest"): a sprout in a mound, named "Seed", unlike the thicket's bushes
+                    var b = new GlassButton("", () => { SetLifeRow(false); SetHand(KitTool.Seed); }, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-life-seed" };
+                    b.AddToClassList("kit-life-choice");
+                    b.Add(new GlassIcon(SeedIcon));
+                    b.Add(ChoiceName("Seed"));
+                    kitLifeRow.Add(b);
+                }
                 foreach (var sp in readyJars)
                 {
                     var s = sp;
@@ -361,16 +371,6 @@ namespace AquariumCiv.GameUI
                     b.AddToClassList("kit-life-choice");
                     b.Add(new GlassIcon(LifeIcon(s)));
                     b.Add(ChoiceName(AquariumCiv.Sim.Eco.EcoModel.PlainName(s)));
-                    kitLifeRow.Add(b);
-                }
-                if (kitSeedShown)
-                {
-                    // #558: the seed is a choice in the jar beside the species. #675 (playtest: a tree icon among the groups read as
-                    // "plant a forest"): a sprout in a mound, named "Seed", unlike the thicket's bushes
-                    var b = new GlassButton("", () => { SetLifeRow(false); SetHand(KitTool.Seed); }, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-life-seed" };
-                    b.AddToClassList("kit-life-choice");
-                    b.Add(new GlassIcon(SeedIcon));
-                    b.Add(ChoiceName("Seed"));
                     kitLifeRow.Add(b);
                 }
                 // #570: the shut jars, greyed, after the ready ones; a tap picks one and its need shows in the note
@@ -486,13 +486,13 @@ namespace AquariumCiv.GameUI
             }
             if (sim != null) GuardFirstRun(sim); // #647: every box, the living land or not
             if (!eco || kitLife == null) return;
-            bool seed = sim.CanPlantTree;
+            bool seed = sim.CanPlantTree && !sim.State.firstRun.active; // 2026-11-14: the seed is the first rung, in the jar as the first run ends
             bool seedChanged = seed != kitSeedShown;
             kitSeedShown = seed;
             FollowLife(sim);
             if (seedChanged)
             {
-                if (seed && !sim.State.firstRun.active) { SetShapeNew(true); Toast("A seed has come. It's in the life jar, in your kit.", 4f); }
+                if (seed) { SetShapeNew(true); Toast("A seed waits in the life jar, in your kit: the box's one tree. Plant it anywhere, even on bare sand.", 5f); }
                 if (!seed && hand == KitTool.Seed) SetHand(KitTool.None);
             }
             if (kitNote != null)

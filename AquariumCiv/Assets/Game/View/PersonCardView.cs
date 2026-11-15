@@ -1253,7 +1253,8 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Selects a tab by hand, or by the debug panel.</summary>
-        public void ShowTab(CardTab tab) { if (IsOpen) tabs.Select((int)tab); }
+        /// <summary>Shows a tab; Recent and Best stand on the tall card only (#674), so they expand it first.</summary>
+        public void ShowTab(CardTab tab) { if (!IsOpen) return; if (tab != CardTab.About) SetExpanded(true); tabs.Select((int)tab); }
 
         /// <summary>Debug: the open card's next tab (About, Recent, Best).</summary>
         public static string DebugNextTab()

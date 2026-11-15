@@ -90,7 +90,7 @@ new prototype ships, the patch for fixes to the same one, and add a row here plu
 The first build of the vertical slice, for the user alone on their iPhone.
 
 - **Scenes:** Build Settings enable only `Assets/Game/Scenes/Slice.unity`. The prototype, perf and sample scenes stay in the
-  list but disabled. Set with the menu *AquariumCiv/Agent/Slice/Build Settings: slice build* (`SliceBuild.UseSliceBuildSettings`,
+  list but disabled. Set with the menu *Aquarium Civ/Agent tools/Slice/Build Settings: slice build* (`SliceBuild.UseSliceBuildSettings`,
   `Assets/Editor/Agent/SliceBuild.cs`). The iOS workflow uses GameCI's builder with no scene argument, so it builds exactly the
   enabled scenes: nothing in `ios-testflight.yml` needs to change. CI's EditMode/PlayMode tests open scenes by path and don't
   depend on the list.
@@ -125,7 +125,7 @@ The first build of the vertical slice, for the user alone on their iPhone.
 
 ### Perf build 0.4.x (issue #35)
 A one-off build to measure the style kit on a phone (60 fps / GPU ≤ 10 ms). It ships **only**
-`Assets/Spikes/Perf/PerfCheck.unity`; the prototypes are left out. Set with the menu *AquariumCiv/Agent/Perf Check/Build
+`Assets/Spikes/Perf/PerfCheck.unity`; the prototypes are left out. Set with the menu *Aquarium Civ/Agent tools/Perf Check/Build
 Settings: perf build* (`PerfSceneBuilder.UsePerfBuildSettings`); the scene comes from *Perf Check/Build Scene*.
 
 **What changed** (committed on `vs/35-perf-build` only; `vs/slice` and `main` keep the prototype settings):
@@ -135,7 +135,7 @@ Settings: perf build* (`PerfSceneBuilder.UsePerfBuildSettings`); the scene comes
 - `PlayerSettings.enableFrameTimingStats` 0 → **1** (Player → Other Settings → Frame Timing Stats). Without it,
   FrameTimingManager reports no CPU/GPU times in a release build. Harmless to leave on.
 
-**Restore the 0.3.x prototype build:** menu *AquariumCiv/Agent/Perf Check/Build Settings: prototype build*
+**Restore the 0.3.x prototype build:** menu *Aquarium Civ/Agent tools/Perf Check/Build Settings: prototype build*
 (`PerfSceneBuilder.UsePrototypeBuildSettings`: Hub first, all prototypes enabled, perf scene dropped), then set
 `bundleVersion` back to `0.3.x` by hand. Or don't merge this branch's `ProjectSettings/` changes.
 

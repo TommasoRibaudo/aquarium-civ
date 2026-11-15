@@ -37,6 +37,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(Sim.EcologyOn, "a living-land box");
             PeopleView.DebugSetHour(10f);
             if (mist) foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f), (0.8f, -0.9f) }) EcoDebug.MistBig(x, z);
+            // 2026-11-14: seed, then bushes: the thicket's jar opens only once the Keeper's tree is in the ground
+            if (mist && Sim.CanPlantTree) Assert.IsTrue(Sim.PlantTree(Sim.EcoGround.campX + 0.9f, Sim.EcoGround.campZ), "the seed goes in by the camp");
             yield return Frames(10);
         }
 
@@ -211,7 +213,7 @@ namespace AquariumCiv.View.PlayTests
         /// #570 what is missing, by touch on a portrait phone. A fresh living box: no jar is ready yet, but the Life slot is in the kit and its
         /// chooser lists every shut jar greyed, in the people's words; a tap on a shut jar says what it waits for (never nothing); the village
         /// line shows under it. Then the thicket opens: the ready jar comes first, the shut ones after. Shots go to Temp/agent/p570-*.png:
-        ///  1 (kit): the Kit sheet with the Life slot and "The camp waits for: a meadow · rabbits in the meadow" under its note;
+        ///  1 (kit): the Kit sheet with the Life slot (no waits-for list before the camp: 2026-11-14);
         ///  2 (chooser): six greyed icons (bushes, rabbits, deer, ducks, fish, wolves), the first one a little stronger, its need and the line below;
         ///  3 (picked): the deer's icon picked, "Deer need the rabbits first" in the note;
         ///  4 (ready): the thicket's icon bright and first, the five others greyed.
@@ -244,9 +246,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsNull(hud.Root.Q("kit-life-thicket"), "no live icon for a shut jar");
             Assert.AreEqual(LifeSpecies.Thicket, hud.LockedPick, "the first shut jar is picked");
             StringAssert.StartsWith(Sim.JarNeed(LifeSpecies.Thicket), hud.LifeNoteText, "the note says what it waits for");
-            Assert.IsNotEmpty(Sim.VillageWaitsLine, "a fresh box: the camp waits for something");
-            StringAssert.Contains(Sim.VillageWaitsLine, hud.LifeNoteText, "and what the camp waits for");
-            StringAssert.Contains("waits for:", hud.LifeNoteText);
+            Assert.IsEmpty(Sim.VillageWaitsLine, "a fresh box: no waits-for list before the camp (2026-11-14: only later upgrades get one)");
+            StringAssert.DoesNotContain("waits for:", hud.LifeNoteText);
             yield return Shot("p570-2-chooser");
             // a tap on a shut jar says its need, and picks it; it is never taken in hand
             var rung = Sim.JarNeed(LifeSpecies.Deer);
@@ -261,6 +262,8 @@ namespace AquariumCiv.View.PlayTests
             yield return Shot("p570-3-picked");
             // the land gets its meadow and the thicket opens: it comes first, bright; the rest stay greyed
             foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f), (0.8f, -0.9f) }) EcoDebug.MistBig(x, z);
+            StringAssert.Contains("seed in the ground", Sim.JarNeed(LifeSpecies.Thicket), "2026-11-14: the bushes wait for the seed");
+            Assert.IsTrue(Sim.PlantTree(Sim.EcoGround.campX + 0.9f, Sim.EcoGround.campZ), "the seed goes in first");
             for (int i = 0; i < 16 && !Sim.JarReady(LifeSpecies.Thicket); i++) EcoDebug.SkipSeasons(1);
             Assert.IsTrue(Sim.JarReady(LifeSpecies.Thicket), "the thicket's jar opened on a meadow");
             yield return new WaitForSecondsRealtime(0.6f);

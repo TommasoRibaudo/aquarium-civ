@@ -251,11 +251,39 @@ namespace AquariumCiv.View
         readonly List<long> liveSlots = new();
         readonly List<RabbitTrackLayout.Print> livePrints = new();
 
+        /// <summary>#665 (2026-11-14, "they appear all together"): a trail the view hasn't shown yet is pressed in hop by hop over
+        /// <see cref="TrailRevealSeconds"/> real seconds, and new trails wait their turn, <see cref="TrailStaggerSeconds"/> apart, so a skip,
+        /// an open or a new slot never pops several whole trails in at once.</summary>
+        public const float TrailRevealSeconds = 6f, TrailStaggerSeconds = 4f;
+        readonly Dictionary<long, float> trailShownAt = new();
+        readonly List<long> trailGone = new();
+        float lastTrailStart = float.NegativeInfinity;
+
+        /// <summary>#665: how many of a trail's <paramref name="prints"/> show <paramref name="secondsIn"/> after it began to appear (0 before).</summary>
+        public static int TrailPrintsShown(float secondsIn, int prints)
+        {
+            if (secondsIn < 0f || prints <= 0) return 0;
+            return Mathf.Clamp(Mathf.CeilToInt(secondsIn / TrailRevealSeconds * prints), 1, prints);
+        }
+
+        /// <summary>#665: when the view starts showing this slot's trail: now, or after the trail before it has had its stagger.</summary>
+        float TrailStart(long k, float now)
+        {
+            if (trailShownAt.TryGetValue(k, out float at)) return at;
+            // wait only behind a trail that is still appearing (a slot that went, or one long pressed in, holds nobody back)
+            float behind = float.NegativeInfinity;
+            foreach (var t in trailShownAt.Values) if (t + TrailRevealSeconds > now) behind = Mathf.Max(behind, t);
+            at = Mathf.Max(now, behind + TrailStaggerSeconds);
+            trailShownAt[k] = at; lastTrailStart = at;
+            return at;
+        }
+
         void DropLiveTracks()
         {
             if (liveTracks != null) Destroy(liveTracks);
             if (liveMesh != null) Destroy(liveMesh);
             liveTracks = null; liveMesh = null; liveKey = long.MinValue; LiveTrails = 0;
+            trailShownAt.Clear(); lastTrailStart = float.NegativeInfinity;
         }
 
         /// <summary>#665: while rabbits live, a few fresh trails where they hop: each slot takes one rabbit (hashed) and lays a short trail
@@ -273,11 +301,16 @@ namespace AquariumCiv.View
             uint seed = (uint)sim.State.eco.seed;
             double nowH = pv.Now.Absolute;
             LiveTrailSlots(nowH, seed, liveSlots);
+            float nowT = Time.unscaledTime;
+            trailGone.Clear();
+            foreach (var kv in trailShownAt) if (!liveSlots.Contains(kv.Key)) trailGone.Add(kv.Key);
+            foreach (long g in trailGone) trailShownAt.Remove(g);
             long key = 17 + Field.Alive.Count * 7919L + greenHash;
             foreach (long k in liveSlots)
             {
                 int step = Mathf.Clamp((int)((nowH - k * (double)LiveTrailEvery) / LiveTrailHours * 6.0), 0, 5);
-                key = key * 31 + k * 7 + step;
+                int reveal = trailShownAt.TryGetValue(k, out float st0) ? TrailPrintsShown(nowT - st0, 64) : -1; // the reveal's step, in 64ths; -1 not begun
+                key = key * 31 + k * 7 + step + reveal * 1031L;
             }
             if (liveTracks != null && key == liveKey) { liveTracks.SetActive(LiveTrails > 0); return; }
             liveKey = key;
@@ -302,7 +335,9 @@ namespace AquariumCiv.View
                 foreach (var pr in livePrints) if (!Field.IsGreenAt(pr.at.x, pr.at.y)) { fits = false; break; }
                 if (!fits) continue;
                 var col = Color.Lerp(fresh, worn, old);
-                foreach (var pr in livePrints) Print(mb, land, pr.at, pr.hind ? col : Color.Lerp(col, worn, 0.2f), pr.rx, pr.rz, pr.yaw);
+                int shown = TrailPrintsShown(nowT - TrailStart(k, nowT), livePrints.Count);
+                if (shown == 0) continue;
+                for (int pi = 0; pi < shown; pi++) { var pr = livePrints[pi]; Print(mb, land, pr.at, pr.hind ? col : Color.Lerp(col, worn, 0.2f), pr.rx, pr.rz, pr.yaw); }
                 LiveTrailSpots.Add(new Vector2(pose.x, pose.z));
                 drawn++;
             }

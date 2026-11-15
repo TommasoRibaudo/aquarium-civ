@@ -22,7 +22,7 @@ namespace AquariumCiv.View
 
         /// <summary>The hint while the ghost waits for its second tap (#516: the life slot's wording, naming what goes down).</summary>
         public const string TapAgainHint = "Tap again to plant the seed here.";
-        public const string NotThere = "Not there: the seed needs dry ground above the hollow.";
+        public const string NotThere = "Not there: the seed can't grow in the hollow or the water.";
 
         [Tooltip("A press that wanders further than this (share of screen height) is a drag, not a tap.")] public float slop = 0.02f;
         [Tooltip("A tap this near the ghost's middle (box units) plants it.")] public float ghostReach = 0.28f;

@@ -410,6 +410,7 @@ namespace AquariumCiv.Sim
             {
                 // A cheat line is a real chronicle line (the history shows it), recorded without the hook so it isn't queued twice.
                 var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = 0.6f, notableId = x, otherNotableId = y };
+                e.text = LandWords(e.text); // #656/#677
                 State.chronicle.Add(e);
                 Chronicled?.Invoke(e);
                 return e;

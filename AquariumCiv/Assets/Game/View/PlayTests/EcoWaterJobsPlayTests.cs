@@ -9,7 +9,7 @@ using UnityEngine.TestTools;
 
 namespace AquariumCiv.View.PlayTests
 {
-    /// <summary>P8 polish #285/#267 (view half): the cards say "root digger" and "of the tribe" before the camp gate; a bucket is muddy while the
+    /// <summary>P8 polish #285/#267 (view half): the cards say "of the tribe" before the camp gate (#656: the job's own name, no "root digger"); a bucket is muddy while the
     /// pond is dry and clean once it has water; with a puddle and no pond someone scoops at the puddle.</summary>
     [Category("EcoWaterJobs")]
     public class EcoWaterJobsPlayTests : PlayTestBase
@@ -66,11 +66,12 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(sim.BeforeCamp, "before the camp gate");
             var n = sim.State.notables.First(x => x.alive && x.age >= SimCore.AdultAge);
             n.job = JobType.Gatherer;
-            Assert.That(sim.CardRoleLine(n), Does.StartWith("root digger"));
-            Assert.AreEqual("root digger, chief of the tribe", sim.CardRoleLine(n, RoleType.Chief));
+            // #656: the root digger is gone (no root dig); the card says the job's own name
+            Assert.That(sim.CardRoleLine(n), Does.StartWith("gatherer"));
+            Assert.AreEqual("gatherer, chief of the tribe", sim.CardRoleLine(n, RoleType.Chief));
             Assert.That(PersonCardView.DebugOpen(n.id), Does.StartWith("card:"));
             yield return Frames(30);
-            Assert.That(PersonCardView.Instance.Card.roleLine, Does.StartWith("root digger"));
+            Assert.That(PersonCardView.Instance.Card.roleLine, Does.StartWith("gatherer"));
             if (PersonCardView.Instance.Card.roleLine.Contains("chief")) StringAssert.EndsWith("of the tribe", PersonCardView.Instance.Card.roleLine);
             System.IO.Directory.CreateDirectory(Shots + Dir);
             yield return Shot(Dir + "285_card");

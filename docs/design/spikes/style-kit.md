@@ -17,7 +17,7 @@ warriors and mages".) Research behind it: [07-art-direction.md](../../research/0
 | Master shader | `Shaders/Stylized.shader` (HLSL) | Wrapped diffuse into a soft two-band ramp, cool-tinted shadows, SH ambient × AO, height gradient, faint rim, vertex wind, emission. SRP Batcher compatible (all props in `UnityPerMaterial`) |
 | Glass v2 | `Shaders/GlassV2.shader` | The prototypes' `GlassGrime` plus a green-blue thickness edge, two soft reflection streaks and a faint condensation band at the soil line |
 | AO bake | `StyleBox.BakeAO` | 10 cosine-weighted rays per unique vertex against a temporary collider: ~300 ms per box in the Editor |
-| Rig | `Assets/Editor/Agent/StyleSpikeBuilder.cs` | Menu *AquariumCiv/Agent/Style Spike/Build Camp + Village*. Camp: low warm morning sun; Village: higher midday sun. Trilight ambient, SMAA, post = Neutral tonemap, contrast, split toning, vignette, bloom only above 1.35 (fire, windows). `SpikeOrbit`: drag to orbit, scroll/pinch to zoom |
+| Rig | `Assets/Editor/Agent/StyleSpikeBuilder.cs` | Menu *Aquarium Civ/Agent tools/Style Spike/Build Camp + Village*. Camp: low warm morning sun; Village: higher midday sun. Trilight ambient, SMAA, post = Neutral tonemap, contrast, split toning, vignette, bloom only above 1.35 (fire, windows). `SpikeOrbit`: drag to orbit, scroll/pinch to zoom |
 
 Scenes: `Assets/Spikes/StyleKit/StyleSpike_Camp.unity`, `StyleSpike_Village.unity`. The boxes generate on load (edit
 and play mode); nothing generated is saved, so a rebuild is just reopening the scene.

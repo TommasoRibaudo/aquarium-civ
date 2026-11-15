@@ -395,6 +395,7 @@ namespace AquariumCiv.Sim
                 id = s.termLineNextId++, month = s.month, kind = kind, text = text, salience = TermSalience,
                 notableId = notableId, otherNotableId = otherId, buildingId = buildingId,
             };
+            e.text = LandWords(e.text); // #656/#677
             s.chronicle.Add(e);
             Chronicled?.Invoke(e);
             return e;

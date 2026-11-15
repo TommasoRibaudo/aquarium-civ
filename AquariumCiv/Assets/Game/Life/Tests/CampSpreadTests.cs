@@ -5,9 +5,9 @@ using NUnit.Framework;
 
 namespace AquariumCiv.Life.Tests
 {
-    /// <summary>#521 (playtest #508): the first camp days showed the whole camp digging roots at one spot. Before bushes grow the
-    /// gatherer's work is roots in the dry stream bed; now at most two dig (each at their own patch) and the rest tend the fire,
-    /// fetch water or knap. Over the first ten view days, in the working day (07:30-17:00, before the evening fire where the
+    /// <summary>#521 (playtest #508): the first camp days showed the whole camp digging roots at one spot. #656 (the user, 2026-11-14):
+    /// the root dig is gone; before the land gives food the people live off the carried basket, and the camp's other work is shared
+    /// out (chores and water, a look over the land, a sit together, the toolmaker knapping). Over the first ten view days, in the working day (07:30-17:00, before the evening fire where the
     /// whole camp gathers by design; the dawn water walks before 07:30 and sitting out at the door, which is rest and at each own door, do not count) no moment has more than half the grown-ups on one activity, and the bed holds at most two.</summary>
     public class CampSpreadTests
     {
@@ -15,7 +15,7 @@ namespace AquariumCiv.Life.Tests
         {
             var cfg = new SimConfig { ecology = true };
             var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
-            if (gateOpen) sim.DebugOpenCampGate(); // the camp gate open, still no bush: roots are still the gatherer's work
+            if (gateOpen) sim.DebugOpenCampGate(); // the camp gate open, still no bush: nothing to gather yet
             return sim;
         }
 
@@ -62,14 +62,14 @@ namespace AquariumCiv.Life.Tests
                         count.TryGetValue(k.Value, out int n); count[k.Value] = n + 1;
                         kinds.Add(k.Value);
                     }
-                    Assert.LessOrEqual(atBed, 2, $"day {day} {h:0.00}: at most two at the root bed");
+                    Assert.AreEqual(0, atBed, $"day {day} {h:0.00}: #656, nobody at the root bed (was: at most two)");
                     foreach (var kv in count)
                         Assert.LessOrEqual(kv.Value * 2, grown.Count, $"day {day} {h:0.00}: {kv.Value} of {grown.Count} grown-ups all on {kv.Key}");
                 }
             }
             TestContext.WriteLine($"seed {seed} gate {gateOpen}: {grown.Count} grown-ups, activities {string.Join(",", kinds)}, dig spots {string.Join(",", spots)}");
             Assert.GreaterOrEqual(kinds.Count, 3, "at least three different things going on: " + string.Join(",", kinds));
-            Assert.Greater(spots.Count, 1, "more than one dig spot");
+            Assert.AreEqual(0, spots.Count, "#656: no dig spot at all (was: more than one)");
         }
     }
 }

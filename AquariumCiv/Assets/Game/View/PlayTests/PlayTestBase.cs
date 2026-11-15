@@ -89,6 +89,7 @@ namespace AquariumCiv.View.PlayTests
             }
             GameUiPanel.Toasts.ClearHolds(); // static: a prompt or peek an earlier test left up still holds the lane after its scene went
             if (seed != 0) GameClock.DebugNextSeed = seed;
+            NewStartView.AutoArrival = !skipFirstRun; // #656/#677: a test that skips the first run has the stock set down at once (no walk-in)
             CampFrameView.Auto = false; // t1-camera: a test that stands still keeps the camera where it opened; its own tests turn it on
             SetSize(w, h);
             float waited = 0f;
@@ -123,6 +124,7 @@ namespace AquariumCiv.View.PlayTests
             MomentPlayer.DebugHoldHurry = false;
             GameClock.DebugNextSeed = 0;
             CampFrameView.Auto = true;
+            NewStartView.AutoArrival = true;
             if (!opened) return;
             opened = false;
             GameSettings.Sound = soundWas;

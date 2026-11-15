@@ -263,12 +263,7 @@ namespace AquariumCiv.View
                 case PropKind.Log:
                     Pieces.Log(mb, Vector3.zero, 0.02f, 0.14f, 90f, Palette.Bark);
                     break;
-                case PropKind.Bundle:
-                    // A canvas roll (0.075 × 0.085 × 0.045) with two dark straps; a lighter colour than the tunics so it shows.
-                    mb.Box(Vector3.zero, new Vector3(0.075f, 0.085f, 0.045f), Palette.Canvas);
-                    mb.Box(new Vector3(0, 0.022f, 0), new Vector3(0.079f, 0.009f, 0.049f), Palette.Timber);
-                    mb.Box(new Vector3(0, -0.022f, 0), new Vector3(0.079f, 0.009f, 0.049f), Palette.Timber);
-                    break;
+                case PropKind.Bundle: Bedroll(mb); break; // 2026-11-14 (the user: "the bedroll assets look weird"): a real rolled bedroll, not a box
                 case PropKind.Pot:
                 {
                     // 0.075 tall: a straw head-ring (r 0.03, h 0.008), a narrow foot, a wide belly (r 0.04) with a plaster
@@ -336,6 +331,12 @@ namespace AquariumCiv.View
                     mb.Box(new Vector3(0, 0.045f, 0), new Vector3(0.012f, 0.17f, 0.012f), Palette.Bark);
                     mb.Box(new Vector3(0.012f, 0.06f, 0), new Vector3(0.022f, 0.008f, 0.008f), Palette.Bark);
                     break;
+                case PropKind.Tinder: Tinder(mb); break;
+                case PropKind.Scraper: Scraper(mb); break;
+                case PropKind.Pelt: Pelt(mb); break;
+                case PropKind.Branch: Branch(mb); break;
+                case PropKind.FoodBasket: FoodBasket(mb); break;
+                case PropKind.StickBundle: StickBundle(mb); break;
                 case PropKind.Stick:
                     // A plain staff or stirring paddle (0.24), flat at the low end.
                     mb.Box(new Vector3(0, 0.06f, 0), new Vector3(0.011f, 0.24f, 0.011f), Palette.Bark);
@@ -461,6 +462,146 @@ namespace AquariumCiv.View
 
         /// <summary>#185: the suit: a sun-faded beige. Not a stone's or a tunic's colour.</summary>
         public static readonly Color SuitBeige = new(0.78f, 0.69f, 0.52f);
+
+        /// <summary>#656/#677: dry grass, pale and a little grey-green, for the tinder and the grass fire's heap.</summary>
+        public static readonly Color DryGrass = new(0.80f, 0.72f, 0.46f), DryGrassDark = new(0.62f, 0.58f, 0.36f);
+
+        /// <summary>#656/#677: an armful of dry grass and thin twigs (hugged, Arms slot): a loose pale heap with a few dark twig ends
+        /// sticking out both sides, so it reads as grass and twigs, never a log.</summary>
+        /// <summary>The rolled bedroll carried across the back (2026-11-14, after references of camp bedrolls: a blanket rolled tight and
+        /// carried crosswise, the rolled layers showing as rings at both ends, two leather straps round it, a woven band of colour):
+        /// a lying roll 0.1 long and 0.05 thick, along the shoulders (local x), riding a little high on the back.</summary>
+        /// <summary>The bedroll's warm brown wool and its pale fur lining (2026-11-14: the first, canvas-pale one read as paper on the ground).</summary>
+        public static readonly Color BedrollWool = new Color(0.56f, 0.34f, 0.24f), BedrollFur = new Color(0.86f, 0.79f, 0.66f);
+
+        public static void Bedroll(MeshBuilder mb)
+        {
+            const float L = 0.1f, R = 0.025f, Y = 0.006f;
+            var lie = Quaternion.Euler(0f, 0f, -90f); // a prism's up along +x
+            var blanket = BedrollWool;
+            var layer = BedrollFur;
+            var deep = Color.Lerp(blanket, Palette.Bark, 0.45f);
+            mb.Prism(new Vector3(-L * 0.5f, Y, 0f), R, R, L, 10, blanket, lie, capTop: false, capBottom: false);
+            // the ends: the rolled layers as rings, each a hair proud of the last, so the roll reads as rolled from any side
+            foreach (int s in new[] { -1, 1 })
+            {
+                float x = s * L * 0.5f;
+                (float r, Color c)[] rings = { (R, blanket), (R * 0.8f, layer), (R * 0.6f, deep), (R * 0.4f, layer), (R * 0.2f, deep) };
+                for (int i = 0; i < rings.Length; i++)
+                {
+                    float x0 = x + s * i * 0.0012f - (s < 0 ? 0.0012f : 0f);
+                    mb.Prism(new Vector3(x0, Y, 0f), rings[i].r, rings[i].r, 0.0012f, 10, rings[i].c, lie, capTop: true, capBottom: true);
+                }
+            }
+            // a woven band of colour off the middle, and the two leather straps, a little proud of the roll
+            mb.Prism(new Vector3(-0.012f, Y, 0f), R + 0.0008f, R + 0.0008f, 0.01f, 10, Color.Lerp(Palette.Accents[0], blanket, 0.35f), lie, capTop: false, capBottom: false);
+            foreach (float sx in new[] { -0.032f, 0.026f })
+            {
+                mb.Prism(new Vector3(sx, Y, 0f), R + 0.003f, R + 0.003f, 0.007f, 10, Palette.Timber, lie, capTop: true, capBottom: true);
+                mb.Box(new Vector3(sx + 0.0035f, Y + R + 0.004f, 0f), new Vector3(0.009f, 0.004f, 0.012f), Palette.RockLight); // the buckle on top
+            }
+        }
+
+        /// <summary>Sign-off 2026-11-14: a mended bedroll laid out by the fire (CampBedrolls): the blanket spread flat, 0.2 long (a
+        /// doll lies on it), a paler fur lining showing at the edges, the woven band across its foot and the rolled pillow end away from
+        /// the fire (local -z; +z points at the fire).</summary>
+        public static void LaidBedroll(MeshBuilder mb)
+        {
+            var blanket = BedrollWool;
+            var fur = BedrollFur;
+            mb.Box(new Vector3(0f, 0.003f, 0.005f), new Vector3(0.1f, 0.006f, 0.2f), fur);
+            mb.Box(new Vector3(0f, 0.007f, 0.008f), new Vector3(0.088f, 0.005f, 0.186f), blanket);
+            mb.Box(new Vector3(0f, 0.0105f, 0.07f), new Vector3(0.089f, 0.002f, 0.016f), Color.Lerp(Palette.Accents[0], blanket, 0.35f)); // the band at the foot
+            mb.Box(new Vector3(0.02f, 0.0105f, 0.02f), new Vector3(0.04f, 0.002f, 0.06f), Color.Lerp(blanket, Palette.Plaster, 0.2f), Quaternion.Euler(0f, 8f, 0f)); // the blanket turned back
+            var lie = Quaternion.Euler(0f, 0f, -90f);
+            mb.Prism(new Vector3(-0.05f, 0.018f, -0.09f), 0.018f, 0.018f, 0.1f, 9, blanket, lie, capTop: true, capBottom: true, topCol: fur);
+            mb.Prism(new Vector3(-0.025f, 0.018f, -0.09f), 0.0195f, 0.0195f, 0.006f, 9, Palette.Timber, lie, capTop: true, capBottom: true);
+            mb.Prism(new Vector3(0.019f, 0.018f, -0.09f), 0.0195f, 0.0195f, 0.006f, 9, Palette.Timber, lie, capTop: true, capBottom: true);
+        }
+
+        /// <summary>A bedroll unrolled on the ground to be mended (Front slot, before someone seated): the pelt-shaped hide spread flat
+        /// (the rack's hide outline, darker rim), its far end still rolled up, a half-sewn seam across it and the bone awl lying on it.</summary>
+        public static void Pelt(MeshBuilder mb)
+        {
+            var skin = Color.Lerp(Palette.Hide, Palette.Canvas, 0.45f);
+            var rim = Color.Lerp(skin, Palette.Bark, 0.5f);
+            var fur = Color.Lerp(skin, Palette.Plaster, 0.35f);
+            const float W = 0.06f, D = 0.085f, Y = 0.003f; // half across, full length (toward the far end, local -z)
+            Vector3 P(Vector2 q, float sc, float y) => new Vector3(q.x * W * sc, y, 0.035f - (0.5f + (q.y - 0.5f) * sc) * D);
+            void Fan(float sc, float y, Color col)
+            {
+                var c = P(new Vector2(0f, 0.5f), sc, y);
+                var o = Pieces.HideOutline;
+                for (int i = 0; i < o.Length; i++)
+                {
+                    var a = P(o[i], sc, y); var b = P(o[(i + 1) % o.Length], sc, y);
+                    mb.Tri(c, a, b, col); mb.Tri(c, b, a, col); // both faces (it is seen from above, the winding never matters)
+                }
+            }
+            Fan(1f, Y, rim);
+            Fan(0.82f, Y + 0.0015f, fur);
+            // the far end still rolled (along x)
+            var lie = Quaternion.Euler(0f, 0f, -90f);
+            mb.Prism(new Vector3(-0.05f, 0.014f, -0.052f), 0.014f, 0.014f, 0.1f, 8, skin, lie, capTop: true, capBottom: true, topCol: fur);
+            mb.Prism(new Vector3(-0.01f, 0.014f, -0.052f), 0.0165f, 0.0165f, 0.006f, 8, Palette.Timber, lie, capTop: true, capBottom: true);
+            // the seam: dark stitches across the middle, half done; the bone awl beside them
+            for (int i = 0; i < 5; i++) mb.Box(new Vector3(-0.03f + i * 0.012f, Y + 0.003f, -0.006f + (i % 2) * 0.004f), new Vector3(0.007f, 0.002f, 0.002f), Palette.Timber, Quaternion.Euler(0f, 30f, 0f));
+            mb.Box(new Vector3(0.03f, Y + 0.004f, 0.012f), new Vector3(0.045f, 0.004f, 0.005f), Palette.Plaster, Quaternion.Euler(0f, 25f, 0f));
+        }
+
+        /// <summary>Sign-off 2026-11-14: the hide scraper: a flat grey stone with a pale worked edge, held in the fist, edge down the arm.</summary>
+        public static void Scraper(MeshBuilder mb)
+        {
+            mb.Ico(new Vector3(0f, -0.012f, 0f), 0.026f, new Vector3(1.35f, 0.55f, 0.9f), Palette.Rock, 0.12f, Palette.RockDark);
+            mb.Box(new Vector3(0f, -0.03f, 0f), new Vector3(0.05f, 0.006f, 0.018f), Palette.RockLight);
+        }
+
+        public static void Tinder(MeshBuilder mb)
+        {
+            mb.Ico(new Vector3(0f, 0.006f, 0f), 0.05f, new Vector3(1.7f, 0.85f, 1f), DryGrass, 0.2f, DryGrassDark);
+            mb.Ico(new Vector3(0.03f, 0.03f, 0.004f), 0.03f, new Vector3(1.4f, 0.8f, 1f), Color.Lerp(DryGrass, Palette.Straw, 0.5f), 0.22f);
+            mb.Ico(new Vector3(-0.04f, 0.026f, -0.004f), 0.024f, new Vector3(1.3f, 0.8f, 1f), Color.Lerp(DryGrass, PegDoll.DryGrassDark, 0.3f), 0.22f);
+            for (int i = 0; i < 4; i++)
+            {
+                float a = -18f + i * 12f;
+                var q = Quaternion.Euler(0f, i * 9f - 14f, -90f + a);
+                mb.Prism(new Vector3(-0.095f, 0f + i * 0.008f, -0.008f + i * 0.005f), 0.004f, 0.003f, 0.19f, 4, Palette.Bark, q);
+            }
+        }
+
+        /// <summary>#656/#677: a fallen branch (over the shoulder): a crooked bark limb with two side twigs and a leaf tuft at the thin end,
+        /// picked up off the ground. Not a cut log (no pale end face).</summary>
+        public static void Branch(MeshBuilder mb)
+        {
+            var q = Quaternion.Euler(0f, 0f, -90f);
+            mb.Prism(new Vector3(-0.08f, 0f, 0f), 0.011f, 0.007f, 0.17f, 5, Palette.Bark, q);
+            mb.Prism(new Vector3(0.02f, 0.002f, 0f), 0.005f, 0.002f, 0.06f, 4, Palette.Bark, Quaternion.Euler(0f, 0f, 45f));
+            mb.Prism(new Vector3(0.05f, 0.002f, 0f), 0.004f, 0.002f, 0.05f, 4, Palette.Bark, Quaternion.Euler(30f, 0f, 120f));
+            mb.Ico(new Vector3(0.095f, 0.004f, 0f), 0.016f, new Vector3(1.2f, 0.8f, 1f), new Color(0.47f, 0.56f, 0.3f), 0.2f);
+        }
+
+        /// <summary>#656/#677: the founders' carried basket of food (held in the hand): a deeper basket with a rim, dried food heaped in it.</summary>
+        public static void FoodBasket(MeshBuilder mb)
+        {
+            mb.Prism(new Vector3(0, -0.016f, 0), 0.034f, 0.046f, 0.046f, 8, Palette.Thatch, topCol: Color.Lerp(Palette.Thatch, Palette.Bark, 0.4f));
+            mb.Prism(new Vector3(0, 0.028f, 0), 0.047f, 0.047f, 0.006f, 8, Palette.Bark);
+            mb.Ico(new Vector3(-0.012f, 0.034f, 0.004f), 0.017f, new Vector3(1f, 0.7f, 1f), new Color(0.55f, 0.30f, 0.32f), 0.1f);
+            mb.Ico(new Vector3(0.014f, 0.034f, -0.006f), 0.015f, new Vector3(1f, 0.7f, 1f), new Color(0.72f, 0.52f, 0.30f), 0.1f);
+            mb.Ico(new Vector3(0.002f, 0.036f, 0.016f), 0.012f, new Vector3(1f, 0.7f, 1f), new Color(0.45f, 0.36f, 0.55f), 0.1f);
+        }
+
+        /// <summary>#656/#677: the founders' bundle of sticks (hugged, Arms slot), tied in two places: kept, never burned or built with.</summary>
+        public static void StickBundle(MeshBuilder mb)
+        {
+            var q = Quaternion.Euler(0f, 0f, -90f);
+            for (int i = 0; i < 5; i++)
+            {
+                float y = (i % 3) * 0.009f - 0.006f, z = (i / 3) * 0.01f - 0.004f + (i % 2) * 0.003f;
+                mb.Prism(new Vector3(-0.075f + (i % 2) * 0.008f, y, z), 0.0055f, 0.0045f, 0.15f, 5, i % 2 == 0 ? Palette.Bark : Color.Lerp(Palette.Bark, Palette.WoodLight, 0.35f), q);
+            }
+            mb.Prism(new Vector3(-0.035f, 0.003f, 0.001f), 0.016f, 0.017f, 0.008f, 6, Palette.Straw, q);
+            mb.Prism(new Vector3(0.03f, 0.003f, 0.001f), 0.016f, 0.017f, 0.008f, 6, Palette.Straw, q);
+        }
 
         /// <summary>Where a slot sits on an adult doll (scale 1), relative to the feet, and how the prop is turned there.</summary>
         public static (Vector3 pos, Quaternion rot) SlotPose(PropSlot slot)

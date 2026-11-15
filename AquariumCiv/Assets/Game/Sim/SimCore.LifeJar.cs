@@ -49,8 +49,9 @@ namespace AquariumCiv.Sim
         /// ready (it opens at the season's end).</summary>
         public string JarNeed(LifeSpecies s) => EcologyOn ? EcoM.JarNeed(s, State.month) : null;
 
-        /// <summary>#570 the line the kit shows: what the camp, then the village, still waits for ("The village waits for: more trees (3/8)
-        /// · fish in the pond"). Empty when the village stands, or every piece is there.</summary>
+        /// <summary>#570 the line the kit shows: what the village still waits for ("The village waits for: more trees (3/8)
+        /// · fish in the pond"). Empty before the camp stands (2026-11-14: the first upgrade gets no list, only later ones), when the village
+        /// stands, or every piece is there.</summary>
         public string VillageWaitsLine
         {
             get
@@ -58,7 +59,7 @@ namespace AquariumCiv.Sim
                 if (!EcologyOn) return "";
                 var pieces = new List<string>();
                 EcoM.WaitsFor(pieces, out bool village);
-                return pieces.Count == 0 ? "" : (village ? "The village waits for: " : "The camp waits for: ") + string.Join(" · ", pieces);
+                return pieces.Count == 0 || !village ? "" : "The village waits for: " + string.Join(" · ", pieces);
             }
         }
 

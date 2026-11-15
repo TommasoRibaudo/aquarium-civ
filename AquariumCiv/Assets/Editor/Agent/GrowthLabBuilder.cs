@@ -21,7 +21,7 @@ namespace AquariumCiv.EditorTools
         public const string ScenePath = "Assets/Spikes/Growth/GrowthLab.unity";
         const string KitDir = "Assets/Spikes/StyleKit";
 
-        [MenuItem("AquariumCiv/Agent/Growth Lab/Build Scene")]
+        [MenuItem("Aquarium Civ/Agent tools/Growth Lab/Build Scene")]
         public static string BuildScene()
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);

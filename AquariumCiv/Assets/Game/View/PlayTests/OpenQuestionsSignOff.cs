@@ -61,7 +61,7 @@ namespace AquariumCiv.View.PlayTests
             }
         }
 
-        IEnumerator Open(int w, int h, int seed)
+        IEnumerator Open(int w, int h, int seed, bool skipFirstRun = true)
         {
             LogAssert.ignoreFailingMessages = true;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
@@ -82,13 +82,22 @@ namespace AquariumCiv.View.PlayTests
             if (GameClock.Instance != null) Bootstraps.All();
             EveningTalkView.AutoStart = false;
             yield return null; yield return null;
-            if (FirstRunView.Instance != null && FirstRunView.Instance.Active) FirstRunView.DebugSkipAll();
+            if (skipFirstRun && FirstRunView.Instance != null && FirstRunView.Instance.Active) FirstRunView.DebugSkipAll(); // #647's stop keeps a box in its first run
             yield return null; yield return null;
         }
 
         // ---------------------------------------------------------------- small helpers
         static IEnumerator Frames(int n) { for (int i = 0; i < n; i++) yield return null; }
         static IEnumerator Wait(float s) { float t = 0f; while (t < s) { t += Time.unscaledDeltaTime; yield return null; } }
+
+        /// <summary>Auto runs: what a stop keeps on screen until its shot (a camera pose, a follow), run every frame of <see cref="HoldWait"/>.</summary>
+        Action hold;
+
+        IEnumerator HoldWait(float s)
+        {
+            float t = 0f;
+            while (t < s) { t += Time.unscaledDeltaTime; try { hold?.Invoke(); } catch (Exception e) { Log("hold: " + e.Message); hold = null; } yield return null; }
+        }
 
         static IEnumerator Until(Func<bool> done, float seconds)
         {
@@ -200,6 +209,10 @@ namespace AquariumCiv.View.PlayTests
         sealed class Stop
         {
             public string Section = "", Sub = "", Issue = "", Name = "", Slug = "", Judge = "", NotStaged;
+            /// <summary>The Game view size for this stop (playtest 1: most at 1179x2556, a few at 750x1334 or 1206x2622).</summary>
+            public int W = 1179, H = 2556;
+            /// <summary>"" = the played box; else the key of a box the stop's setup opens itself (it keeps that box while the next stop has the same key).</summary>
+            public string Box = "";
             public Kind Kind;
             public Func<IEnumerator> Setup;
             public (string label, Func<IEnumerator> run)[] Extras = new (string, Func<IEnumerator>)[0];
@@ -276,6 +289,12 @@ namespace AquariumCiv.View.PlayTests
             ["#249"] = new[] { P("#249", "the Kit button", "kit249", "default view: open the Kit") },
             ["#281"] = new[] { P("#281", "fresh green on return", "green281", "default view: the fresh green shows after you come back") },
             // feedback batch 5 (#569-#578): the stops are in OpenQuestionsSignOff.Fb5.cs
+            // playtest 1 (#643-#680) and the new start (#656, #677): the stops are in OpenQuestionsSignOff.Pt1.cs
+            ["#643"] = Pt1("#643"), ["#644"] = Pt1("#644"), ["#645"] = Pt1("#645"), ["#647"] = Pt1("#647"), ["#648"] = Pt1("#648"),
+            ["#649"] = Pt1("#649"), ["#650"] = Pt1("#650"), ["#651"] = Pt1("#651"), ["#652"] = Pt1("#652"), ["#654"] = Pt1("#654"),
+            ["#657"] = Pt1("#657"), ["#659"] = Pt1("#659"), ["#669"] = Pt1("#669"), ["#670"] = Pt1("#670"), ["#672"] = Pt1("#672"),
+            ["#673"] = Pt1("#673"), ["#674"] = Pt1("#674"), ["#680"] = Pt1("#680"), ["#675"] = Pt1("#675"), ["#676"] = Pt1("#676"),
+            ["#665"] = Pt1("#665"), ["#671"] = Pt1("#671"), ["#656"] = Pt1("#656"), ["#677"] = Pt1("#677"), ["#658"] = Pt1("#658"),
             ["#569"] = Fb5("#569"), ["#570"] = Fb5("#570"), ["#571"] = Fb5("#571"), ["#572"] = Fb5("#572"), ["#573"] = Fb5("#573"),
             ["#574"] = Fb5("#574"), ["#575"] = Fb5("#575"), ["#576"] = Fb5("#576"), ["#577"] = Fb5("#577"), ["#578"] = Fb5("#578"),
         };
@@ -419,7 +438,7 @@ namespace AquariumCiv.View.PlayTests
                         foreach (var it in sub.Items)
                             list.Add(new Stop
                             {
-                                Section = secShort, Sub = subShort, Kind = Kind.Decision, Name = (sub.Title.Length > 0 && !sub.Title.StartsWith("Decisions")) ? sub.Title : it.Title, Slug = Slug(it.Title), Judge = it.Text,
+                                Section = secShort, Sub = subShort, Kind = Kind.Decision, Name = it.Title, Slug = Slug(it.Title), Judge = it.Text,
                                 Options = OptionsOf(it.Text), Setup = NoSetup,
                             });
                 }
@@ -724,6 +743,7 @@ namespace AquariumCiv.View.PlayTests
                 panel.Note("Getting the box ready...");
                 Log("skipped seasons: " + EcoDebug.SkipSeasons(50));
                 if (Sim.State.era != Era.Camp) Log("camp gate: " + EcoDebug.CampGate());
+                yield return StagePlayedBox(); // the new start greens nothing by itself: a lived-in camp for the look stops
                 Hour(10f);
                 yield return Wait(2f);
                 DefaultView();
@@ -777,27 +797,31 @@ namespace AquariumCiv.View.PlayTests
                     string crumb = st.Section + (st.Sub.Length > 0 && st.Kind != Kind.Look ? " · " + st.Sub : "") + (st.Kind == Kind.Look ? "" : " · " + st.Kind.ToString().ToLowerInvariant());
                     panel.Show(i + 1, stops.Count, ModeOf(st.Kind), crumb, (st.Issue.Length > 0 ? st.Issue + " " : "") + st.Name, st.Judge, st.Extras.Select(x => x.label).ToArray(), st.Options, st.Bullets, st.BulletTitles, st.NotStaged);
                     if (pv != null) pv.timeScale = 1f; // a live stop may have sped the view clock up
-                    if (youngBox && !st.Slug.StartsWith("pacing_")) { yield return RebuildPlayedBox(); }
+                    panel.collapsed = false; // a stop before may have folded it (the HUD icons, the caption, the framings)
+                    if (st.Box.Length == 0 && ((youngBox && !st.Slug.StartsWith("pacing_")) || ownBox.Length > 0)) { yield return RebuildPlayedBox(); }
+                    if (Screen.width != st.W || Screen.height != st.H) { SetSize(st.W, st.H); yield return Until(() => Screen.width == st.W && Screen.height == st.H, 4f); yield return Frames(4); }
                     yield return CloseLooseUi();
                     if (!st.Slug.StartsWith("season_") && !st.Slug.StartsWith("pacing_")) yield return ResetSeason();
+                    hold = null; // a stop's camera hold (auto runs) never outlives it
                     yield return Steps(st.Setup(), st.Name);
                     if (auto && panel.verdict == SignOffPanel.V.None)
                     {
                         if (st.Kind == Kind.Calls && panel.ticks.Length > 1) panel.ticks[1] = false; // shows the unticked look in the shot
                         bool shoot = st.Kind == Kind.Look || textShots < 3;
-                        yield return Wait(st.Kind == Kind.Look ? 4f : 1f);
+                        yield return HoldWait(st.Kind == Kind.Look ? 4f : 1f);
                         if (shoot)
                         {
                             if (st.Kind != Kind.Look) textShots++;
                             if (st.Slug == "title_line") { panel.collapsed = true; yield return Frames(3); } // the title sits behind the panel: fold it for the shot
+                            if (st.Slug == "pt1_caption") { panel.hidden = true; yield return Frames(3); } // the caption plate: nothing over it
                             yield return Shot((i + 1).ToString("00") + "_" + st.Slug);
-                            panel.collapsed = false;
+                            panel.collapsed = false; panel.hidden = false;
                         }
                         for (int e = 0; e < st.Extras.Length; e++)
                         {
                             yield return Steps(st.Extras[e].run(), st.Extras[e].label);
-                            yield return Wait(3f);
-                            yield return Shot((i + 1).ToString("00") + "_" + st.Slug + "_extra");
+                            yield return HoldWait(3f);
+                            yield return Shot((i + 1).ToString("00") + "_" + st.Slug + "_x" + (e + 1) + "_" + Slug(st.Extras[e].label)); // one shot per extra
                         }
                         if (st.Kind == Kind.Decision) { if (st.Options.Length > 0) { panel.verdict = SignOffPanel.V.Option; panel.optionIndex = 0; } else panel.verdict = SignOffPanel.V.Other; }
                         else panel.verdict = SignOffPanel.V.Signed;
@@ -849,6 +873,7 @@ namespace AquariumCiv.View.PlayTests
             {
                 if (panelGo != null) UnityEngine.Object.Destroy(panelGo);
                 GameSettings.Sound = soundWas;
+                RestorePt1();
                 ShowMeDirector.BubblesOn = true;
                 var p = PeopleView.Find();
                 if (p != null) p.timeScale = 1f;
@@ -881,6 +906,8 @@ namespace AquariumCiv.View.PlayTests
         string[] secNames = new string[0]; int[] secFirst = new int[0], secCount = new int[0];
         int mode;
         internal bool collapsed;
+        /// <summary>Auto runs: no panel at all for a shot whose subject sits where even the folded bar would be.</summary>
+        internal bool hidden;
         bool typing, jumpOpen;
         Rect screenRect, pub, noteRect;
         float measuredH = 200f;
@@ -985,6 +1012,7 @@ namespace AquariumCiv.View.PlayTests
         void OnGUI()
         {
             if (box == null) Init();
+            if (hidden) { screenRect = Rect.zero; return; }
             float sc = Screen.width / UnitsWide;
             var old = GUI.matrix;
             GUI.matrix = Matrix4x4.Scale(new Vector3(sc, sc, 1f));
@@ -992,7 +1020,7 @@ namespace AquariumCiv.View.PlayTests
             const float X = 6f, W = UnitsWide - 12f, IW = W - 16f;
             float y = TopPx / sc;
             var e = Event.current;
-            if (collapsed) y += 70f / sc; // folded, the bar sits below the HUD title line (it hid it)
+            if (collapsed) y = (Screen.height - 470f) / sc; // folded, the bar sits low, above the bottom tools: the title, the top icons and the caption stay clear
             if (collapsed)
             {
                 var r = new Rect(X, y, W, 40f);

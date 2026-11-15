@@ -252,6 +252,7 @@ namespace AquariumCiv.Life
                     st.MarketCentre(out x, out z);
                     return true;
                 case PlaceKind.BushCell: // P8 #288
+                case PlaceKind.Deadfall: // #656/#677: the tree's foot
                     if (p.index < 0 || p.index >= SiteMap.N) return false;
                     x = SiteMap.CXc(p.index); z = SiteMap.CZc(p.index);
                     return true;
@@ -286,7 +287,7 @@ namespace AquariumCiv.Life
             }
             if (p.kind == PlaceKind.Green) { x = st.GreenX; z = st.GreenZ; return true; }
             if (!landReady) BuildLand();
-            int key = (int)p.kind * 4 + (p.kind is PlaceKind.Remembering or PlaceKind.Stash or PlaceKind.FishRack && p.index == 1 ? 1 : 0);
+            int key = (int)p.kind * 4 + (p.kind is PlaceKind.Remembering or PlaceKind.Stash or PlaceKind.FishRack or PlaceKind.HideRack && p.index == 1 ? 1 : 0);
             if (!land.TryGetValue(key, out var s)) return false;
             x = s.x; z = s.z;
             if (p.kind == PlaceKind.Woods && p.index > 0 && sim != null && sim.EcologyOn) // #573: the next grown wild tree (two choppers to a tree)
@@ -422,6 +423,14 @@ namespace AquariumCiv.Life
             land[(int)PlaceKind.FishRack * 4] = new Spot(wx, wz);
             FishRackSpot.At(fx, fz, sim.State.seed, FishRackSpot.Distance, out wx, out wz);
             land[(int)PlaceKind.FishRack * 4 + 1] = new Spot(wx, wz);
+            // sign-off 2026-11-14: the hide rack (LifePlanner.HideFrame's own sums): 1 = its middle, 0 = a step toward the fire, to scrape at
+            {
+                float a = (LifePlanner.Mix(sim.State.seed, 0, 0, 410) >> 8) * (1f / 16777216f) * 6.2831853f;
+                a = CampSpots.RackAngle(fx, fz, a, LifePlanner.HideFrameDistance);
+                float ux = (float)System.Math.Cos(a), uz = (float)System.Math.Sin(a);
+                land[(int)PlaceKind.HideRack * 4 + 1] = new Spot(fx + ux * LifePlanner.HideFrameDistance, fz + uz * LifePlanner.HideFrameDistance);
+                land[(int)PlaceKind.HideRack * 4] = new Spot(fx + ux * (LifePlanner.HideFrameDistance - 0.12f), fz + uz * (LifePlanner.HideFrameDistance - 0.12f));
+            }
         }
 
         /// <summary>P9 #424: a spot to stand and look at placed life (<see cref="PlaceKind.Arrival"/>: index = cell × 8 + slot). Slot 0 is

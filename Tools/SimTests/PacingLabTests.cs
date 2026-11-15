@@ -28,8 +28,10 @@ namespace AquariumCiv.Tests
         public int seed; public Habit habit; public bool before;
         /// <summary>Game years of each gate (-1 = not reached in the run) and the real hour it fell on.</summary>
         public float seedUnlocked = -1, planted = -1, firstWood = -1, camp = -1, pond20 = -1, trees8 = -1, village = -1, villageHours = -1, treeGrown = -1, lastYear;
+        /// <summary>#656/#677: the land's first food (the basket's first refill), the first logs from a wild tree, the village era ready, and the months the basket stood empty.</summary>
+        public float landFood = -1, firstLogs = -1, eraReady = -1; public int hungryMonths;
         public int visits, trees, pond;
-        public override string ToString() => $"{habit,-10} seed {seed,3}: camp {F(camp)} pond20 {F(pond20)} trees8 {F(trees8)} village {F(village)} (real h {F(villageHours)})  [seed unlocked {F(seedUnlocked)} planted {F(planted)} keeper tree grown {F(treeGrown)} first wild tree {F(firstWood)}]";
+        public override string ToString() => $"{habit,-10} seed {seed,3}: camp {F(camp)} pond20 {F(pond20)} trees8 {F(trees8)} village {F(village)} (real h {F(villageHours)})  [seed unlocked {F(seedUnlocked)} planted {F(planted)} keeper tree grown {F(treeGrown)} first wild tree {F(firstWood)}]  [land food {F(landFood)} first logs {F(firstLogs)} era ready {F(eraReady)} hungry months {hungryMonths}]";
         public static string F(float y) => y < 0 ? "  -  " : y.ToString("0.0").PadLeft(5);
     }
 
@@ -91,13 +93,16 @@ namespace AquariumCiv.Tests
                     if (res.trees8 < 0 && e.cTrees >= cfg.eco.villageTrees) res.trees8 = y;
                     if (res.treeGrown < 0 && e.treeStage >= 4) res.treeGrown = y;
                     if (res.village < 0 && e.villageGateMonth >= 0) { res.village = e.villageGateMonth / 12f; res.villageHours = (float)rt; }
+                    if (res.eraReady < 0 && sim.State.eraReady) res.eraReady = y;
+                    if (sim.Hungry) res.hungryMonths++;
                     perMonth?.Invoke(sim);
                 }
-                if (res.village >= 0 && perMonth == null) break; // a probe (#643) runs on to maxYears
+                if (res.village >= 0 && res.eraReady >= 0 && perMonth == null) break; // a probe (#643) runs on to maxYears; #656: on to the era too
             }
             long M(string k) { long m = sim.EcoMilestoneMonth(k); return m; }
             res.seedUnlocked = M(EcoMilestones.SeedUnlocked) / 12f; res.planted = M(EcoMilestones.TreePlanted) / 12f; res.firstWood = M(EcoMilestones.FirstWoodTree) / 12f;
             res.lastYear = sim.State.month / 12f; res.trees = sim.State.eco.cTrees; res.pond = sim.State.eco.cPond;
+            res.landFood = sim.LandFoodMonth / 12f; res.firstLogs = sim.FirstWildWoodMonth / 12f;
             return res;
         }
 

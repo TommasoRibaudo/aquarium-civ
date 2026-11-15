@@ -265,6 +265,9 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual(1.0, look.dirX * look.dirX + look.dirZ * look.dirZ, 1e-3);
 
             // "fill fish basket": six fish, someone walks them over and hangs them one by one
+            // #656: the day's own duties up to now are settled first: with the new start's jobs (one toolmaker, the others waiting for
+            // the land) a fisher's planned hang ends at 10:00 and, settled after the fill, took the cheat's whole basket at once
+            planner.ResolveFishChain(now);
             Assert.AreEqual(6, planner.DebugFillBasketNow(now));
             int seen = 0, last = 0;
             for (float h = 10f; h < 11.5f; h += 0.01f)

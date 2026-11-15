@@ -6,9 +6,9 @@ using NUnit.Framework;
 
 namespace AquariumCiv.Life.Tests
 {
-    /// <summary>P8, the tribe before the camp (keepers-hands §2.1, #246): on a barren box everyone who works digs roots in the
-    /// dry hollow (the stream bed) and brings them to the fire; no new tent goes up; once the camp gate opens the camp's
-    /// own jobs come back.</summary>
+    /// <summary>P8, the tribe before the camp (keepers-hands §2.1, #246): on a barren box nobody hunts, fishes or chops; no new tent
+    /// goes up; once the camp gate opens the camp's own jobs come back. #656 (the user, 2026-11-14): this used to pin the root dig in
+    /// the dry hollow; the root dig is gone (they live off the carried basket), so it now pins that nobody digs.</summary>
     public class EcoTribeTests
     {
         static SimCore Barren(int seed)
@@ -33,7 +33,7 @@ namespace AquariumCiv.Life.Tests
 
         [TestCase(1)]
         [TestCase(7)]
-        public void BeforeTheCampTheyDigRootsInTheDryHollow(int seed)
+        public void BeforeTheCampNobodyDigsRoots(int seed)
         {
             var sim = Barren(seed);
             for (int m = 0; m < 24; m++) sim.Step(); // two dead years, no Keeper
@@ -43,7 +43,7 @@ namespace AquariumCiv.Life.Tests
             Assert.IsNotEmpty(work, "they still work");
             var kinds = work.Select(a => a.kind).Distinct().ToList();
             TestContext.WriteLine("work: " + string.Join(", ", kinds));
-            Assert.IsTrue(work.Any(a => a.kind == ActivityKind.Gather && a.place.kind == PlaceKind.Stream), "digging in the stream bed");
+            Assert.IsFalse(work.Any(a => a.kind == ActivityKind.Gather && a.place.kind == PlaceKind.Stream), "#656: no root dig in the stream bed");
             Assert.IsFalse(work.Any(a => a.kind == ActivityKind.Stalk || a.kind == ActivityKind.Fish || a.kind == ActivityKind.Chop),
                 "no hunting, fishing or chopping on a dead land");
             Assert.AreEqual(lots, sim.State.buildings.Count);

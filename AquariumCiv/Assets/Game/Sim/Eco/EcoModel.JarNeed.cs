@@ -34,6 +34,7 @@ namespace AquariumCiv.Sim.Eco
             switch (s)
             {
                 case LifeSpecies.Thicket:
+                    if (st.treeCell < 0) return n + " need the seed in the ground first"; // 2026-11-14: seed, then bushes, then rabbits
                     return MeadowFrac >= t.jarThicketMeadow ? null : n + (anyMeadow ? " need a bigger meadow" : " need a meadow");
                 case LifeSpecies.Rabbits:
                     return MeadowFrac >= t.jarRabbitsMeadow ? null : n + (anyMeadow ? " need a bigger meadow" : " need a meadow");

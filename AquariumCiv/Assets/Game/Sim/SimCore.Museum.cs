@@ -108,6 +108,7 @@ namespace AquariumCiv.Sim
             };
             var core = new SimCore(config, s);
             if (config.ecology) core.StartEcology(); // the next box starts barren too (SimCore.Eco.cs)
+            core.BeginCarriedStock(); // #656/#677: and its people carry their basket in too (SimCore.NewStart.cs)
             core.AddBuilding(BuildingType.Camp);
             core.AddBuilding(BuildingType.Hut);
             var crossed = old.founderIds.Select(from.FindNotable).Where(n => n != null && n.alive).ToList();

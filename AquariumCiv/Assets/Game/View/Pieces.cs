@@ -40,7 +40,7 @@ namespace AquariumCiv.View
                         House(mb, Front(hd), hw, hd, wallH, roofH, Wall(p.seed), RoofColor(p.roof, p.seed, p.era), p.chimney, true, storeys, Phase(p.seed));
                     }
                     break;
-                case PieceKind.Fire: Firepit(mb, Vector3.zero, true, Phase(p.seed)); break;
+                case PieceKind.Fire: if (p.variant == SimLayout.GrassFireVariant) { GrassFire(mb, Vector3.zero, Phase(p.seed)); GrassHeap(mb, GrassHeapAt); } else { Firepit(mb, Vector3.zero, true, Phase(p.seed)); if (camp) LogStack(mb, GrassHeapAt); } break; // sign-off 2026-11-14: the logs it is fed from
                 case PieceKind.Well:
                     if (town) Fountain(mb, Vector3.zero, p.seed);
                     else Well(mb, Vector3.zero, !camp);
@@ -419,6 +419,83 @@ namespace AquariumCiv.View
             // #332: no log seats round the fire any more (the `seats` flag stays for callers): people sit on the ground.
         }
 
+        /// <summary>
+        /// #656/#677: the fire before the first wild wood: a small heap of dry grass and thin twigs in a scrape, with a few low, quick
+        /// flames (shorter and narrower than the log fire's, more of them, each on its own fast flicker phase) and a small ember bed.
+        /// No logs, no ring of stones: a handful of pebbles kicked round it. The view gives it a smaller light (BoxView.Glows).
+        /// </summary>
+        /// <summary>Sign-off 2026-11-14 (ChoreBeats.Feed): the heap of dry grass and twigs kept beside the grass fire, where the feeder
+        /// crouches to gather an armful: a low straw mound, a few loose tufts, thin twigs poking out.</summary>
+        /// <summary>Where the grass heap lies from the fire's middle (the fire piece is never turned, so this is box-local too): the
+        /// feeder kneels between the two (PeopleView, <see cref="PeopleView.FeedReach"/>), the heap behind them.</summary>
+        public static readonly Vector3 GrassHeapAt = new Vector3(0.24f, 0f, 0.07f);
+
+        public static void GrassHeap(MeshBuilder mb, Vector3 p)
+        {
+            var dry = PegDoll.DryGrass; var dark = PegDoll.DryGrassDark;
+            mb.Ico(p + new Vector3(0f, 0.012f, 0f), 0.055f, new Vector3(1.5f, 0.55f, 1.1f), dry, 0.2f, dark);
+            mb.Ico(p + new Vector3(0.035f, 0.022f, 0.015f), 0.032f, new Vector3(1.3f, 0.7f, 1f), Color.Lerp(dry, Palette.Straw, 0.5f), 0.22f);
+            mb.Ico(p + new Vector3(-0.05f, 0.008f, -0.02f), 0.026f, new Vector3(1.4f, 0.5f, 1f), Color.Lerp(dry, dark, 0.4f), 0.22f);
+            for (int i = 0; i < 4; i++)
+            {
+                var q = Quaternion.Euler(0f, i * 47f + 10f, -72f + i * 9f);
+                mb.Prism(p + new Vector3(-0.03f + i * 0.02f, 0.02f, -0.01f + (i % 2) * 0.02f), 0.0035f, 0.0028f, 0.11f, 4, Palette.Bark, q);
+            }
+        }
+
+        /// <summary>Sign-off 2026-11-14 (ChoreBeats.Feed at the log fire): a small stack of split logs beside the camp's fire, where the
+        /// grass heap lies for a grass fire: three logs below, two above, crosswise to the line from the fire.</summary>
+        public static void LogStack(MeshBuilder mb, Vector3 p)
+        {
+            float yaw = Mathf.Atan2(p.x, p.z) * Mathf.Rad2Deg + 90f;
+            var r = Quaternion.Euler(0f, yaw, 0f);
+            for (int row = 0; row < 2; row++)
+                for (int i = 0; i < 3 - row; i++)
+                {
+                    var c = p + r * new Vector3(0f, 0.016f + row * 0.026f, (i - (2 - row) * 0.5f) * 0.03f);
+                    Log(mb, c, 0.014f, 0.13f, yaw, (i + row) % 2 == 0 ? Palette.Bark : Palette.WoodLight);
+                }
+        }
+
+        public static void GrassFire(MeshBuilder mb, Vector3 p, float phase)
+        {
+            // the scrape and a few pebbles
+            mb.Prism(p + Vector3.up * 0.002f, 0.12f, 0.11f, 0.004f, 9, Color.Lerp(Palette.RockDark, Palette.Bark, 0.5f));
+            for (int i = 0; i < 5; i++)
+            {
+                float a = i / 5f * Mathf.PI * 2f + 0.4f;
+                mb.Ico(p + new Vector3(Mathf.Cos(a), 0.004f, Mathf.Sin(a)) * 0.115f, 0.016f, new Vector3(1f, 0.6f, 1f), i % 2 == 0 ? Palette.Rock : Palette.RockDark, 0.25f);
+            }
+            // the heap of dry grass round the flames (warmed where it burns)
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i / 6f * Mathf.PI * 2f + 0.2f;
+                var at = p + new Vector3(Mathf.Cos(a) * 0.055f, 0.01f, Mathf.Sin(a) * 0.055f);
+                mb.Ico(at, 0.03f, new Vector3(1.2f, 0.45f, 1f), Color.Lerp(PegDoll.DryGrass, Palette.Ember, 0.15f), 0.3f, PegDoll.DryGrassDark);
+            }
+            // thin twigs leaned in over the grass, crossing in the middle (sticks, never logs)
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i * 60f + 15f;
+                var rot = Quaternion.Euler(0, a, 0) * Quaternion.Euler(62f, 0, 0);
+                mb.Prism(p + Quaternion.Euler(0, a, 0) * new Vector3(0, 0.008f, -0.085f), 0.0045f, 0.003f, 0.1f, 4, Palette.Bark, rot);
+            }
+            mb.emission = 0.6f;
+            mb.Prism(p, 0.05f, 0.045f, 0.012f, 7, Palette.Ember);
+            Coals(mb, p, 0.05f, 0.025f, 0.02f, 6);
+            float y0 = 0.02f;
+            mb.flameBaseY = mb.M.MultiplyPoint3x4(p + Vector3.up * y0).y; mb.flameHeight = 0.12f; mb.sway = 0f; mb.emission = 1f;
+            float yaw0 = H01(phase * 91f + 3f) * 72f;
+            for (int i = 0; i < 5; i++)
+            {
+                var yaw = Quaternion.Euler(0, yaw0 + i * 72f, 0);
+                float h = Mathf.Lerp(0.07f, 0.105f, H01(phase * 29f + i * 5.3f));
+                mb.flamePhase = Mathf.Repeat(phase + i * 0.23f, 1f);
+                mb.Prism(p + yaw * new Vector3(0, y0, i == 0 ? 0f : 0.022f), 0.026f, 0f, h, 4, Hot(Palette.FlameCoreA, 1.1f), yaw * Quaternion.Euler(i == 0 ? 0f : 14f, 0, 0), topCol: Hot(Palette.FlameBodyA, 1f), ramp: true);
+            }
+            mb.emission = 0f; mb.flameHeight = 0f;
+        }
+
         /// <summary>The look's flame body, on top of the ember bed. Soft has only coals: its flames are glow quads
         /// (<see cref="BoxView"/>).</summary>
         public static void FireBody(MeshBuilder mb, Vector3 p, float phase, FireLook look)
@@ -585,6 +662,56 @@ namespace AquariumCiv.View
             mb.Prism(centre - rot * Vector3.up * (len / 2f), r, r, len, 6, col, rot, true, true, Palette.WoodLight);
         }
 
+        /// <summary>#677 (the user, 2026-11-14): a fallen branch lying under a wild tree near the Keeper's tree, the deadfall the people
+        /// gather by hand. Four shapes (<paramref name="variant"/> 0..3: a limb with side twigs, a fork, a bent limb with a dry leaf
+        /// tuft, a little heap of twigs), each one <paramref name="mirror"/>ed to the other side for more variety, sized by
+        /// <paramref name="len"/> and laid along <paramref name="yaw"/> (degrees). <paramref name="p"/> is the ground point at its middle.</summary>
+        public static void FallenBranch(MeshBuilder mb, Vector3 p, float len, float yaw, int variant, bool mirror, float dryness)
+        {
+            float side = mirror ? -1f : 1f;
+            var bark = Color.Lerp(Palette.Bark, new Color(0.56f, 0.52f, 0.47f), Mathf.Clamp01(dryness)); // weathered: browner to greyer
+            var light = Color.Lerp(bark, Palette.WoodLight, 0.45f);
+            var yawQ = Quaternion.Euler(0f, yaw, 0f);
+            // a limb lying flat from a (local x across, z along) point, turned by a (local) angle, thickness r0 -> r1
+            void Limb(float x, float z, float ang, float l, float r0, float r1, Color col)
+            {
+                var start = p + yawQ * new Vector3(x * side, 0f, z);
+                var rot = yawQ * Quaternion.Euler(0f, ang * side, 0f) * Quaternion.Euler(90f, 0f, 0f);
+                mb.Prism(start + Vector3.up * (r0 * 0.7f), r0, r1, l, 5, col, rot, true, true, light);
+            }
+            float h = len * 0.5f, r = Mathf.Max(0.006f, len * 0.08f);
+            switch (variant & 3)
+            {
+                case 0: // a straight limb, two twigs off one side, a stub off the other
+                    Limb(0f, -h, 0f, len, r, r * 0.55f, bark);
+                    Limb(0f, -h * 0.15f, 38f, len * 0.34f, r * 0.45f, r * 0.2f, bark);
+                    Limb(0f, h * 0.45f, 30f, len * 0.24f, r * 0.35f, r * 0.15f, bark);
+                    Limb(0f, -h * 0.55f, -55f, len * 0.12f, r * 0.5f, r * 0.4f, light);
+                    break;
+                case 1: // a fork: the limb splits two thirds along
+                    Limb(0f, -h, 0f, len * 0.6f, r, r * 0.7f, bark);
+                    Limb(0f, -h + len * 0.58f, 24f, len * 0.46f, r * 0.68f, r * 0.3f, bark);
+                    Limb(0f, -h + len * 0.58f, -20f, len * 0.4f, r * 0.62f, r * 0.25f, bark);
+                    break;
+                case 2: // a bent limb in two pieces, a tuft of dry leaves still on its end
+                    Limb(0f, -h, 0f, len * 0.55f, r, r * 0.8f, bark);
+                    Limb(0f, -h + len * 0.53f, 28f, len * 0.5f, r * 0.8f, r * 0.4f, bark);
+                    {
+                        var tip = p + yawQ * new Vector3(side * len * 0.24f, 0f, -h + len * 0.98f);
+                        mb.Ico(tip + Vector3.up * (r * 1.4f), len * 0.11f, new Vector3(1.2f, 0.55f, 1f), Color.Lerp(new Color(0.62f, 0.5f, 0.28f), new Color(0.47f, 0.52f, 0.3f), 1f - dryness), 0.25f);
+                    }
+                    break;
+                default: // a small heap of thin twigs, crossed
+                    for (int i = 0; i < 4; i++)
+                    {
+                        float a = -35f + i * 24f + (i % 2) * 9f;
+                        float l = len * (0.55f + 0.12f * (i % 3));
+                        Limb((i - 1.5f) * r * 1.6f, -l * 0.5f, a, l, r * 0.55f, r * 0.3f, i % 2 == 0 ? bark : light);
+                    }
+                    break;
+            }
+        }
+
         public static void Woodpile(MeshBuilder mb, Vector3 p, float yaw)
         {
             var r = Quaternion.Euler(0, yaw, 0);
@@ -606,7 +733,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>The hide outline (#332): a pelt with four legs and a neck, as (across -1..1, down 0..1).</summary>
-        static readonly Vector2[] HideOutline =
+        internal static readonly Vector2[] HideOutline =
         {
             new(-0.5f, 0f), new(0.5f, 0f), new(0.95f, 0.12f), new(0.7f, 0.30f), new(0.8f, 0.58f), new(1f, 0.84f), new(0.55f, 0.80f),
             new(0.28f, 1f), new(-0.28f, 1f), new(-0.55f, 0.80f), new(-1f, 0.84f), new(-0.8f, 0.58f), new(-0.7f, 0.30f), new(-0.95f, 0.12f),

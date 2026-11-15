@@ -103,3 +103,98 @@ Verdicts from the `OpenQuestionsSignOff` play test, one run per section.
 | 25. The lid's look (#577) | Feedback 5 / Decisions | ★ Keep it |  | 19:58:21 |
 | 26. Calls I made without you | Feedback 5 / Calls I made | accepted all |  | 19:58:23 |
 | 27. Being built now | Waiting on you | decide later |  | 19:58:41 |
+
+## Run 2026-11-14 14:00
+
+| Stop | Section | Verdict | Note | Time |
+|---|---|---|---|---|
+| 1. #643 the wolf jar from the chooser | Playtest 1 / Look | signed off |  | 14:01:16 |
+| 2. #644 fields through the seasons | Playtest 1 / Look | signed off |  | 14:01:42 |
+| 3. #645 name fields and the iPhone keyboard | Playtest 1 / Look | signed off |  | 14:02:03 |
+| 4. #647 the first run without the Photo button | Playtest 1 / Look | signed off |  | 14:02:18 |
+| 5. #648 quieter sound at the default view | Playtest 1 / Look | signed off |  | 14:02:31 |
+| 6. #649 the HUD icons: gear and Feedback | Playtest 1 / Look | signed off |  | 14:02:43 |
+| 7. #651 camp chores with no wild wood | Playtest 1 / Look | needs change | a guy stroke a fire that was not there, also they do not have much to do, needs redesign and polish | 14:04:06 |
+| 8. #652 the gatherers' place word | Playtest 1 / Look | signed off |  | 14:04:23 |
+| 9. #654 the Settings sliders | Playtest 1 / Look | signed off |  | 14:04:49 |
+| 10. #657 grass tufts up close | Playtest 1 / Look | signed off |  | 14:05:03 |
+| 11. #659 the caption under the title (iPhone 16 Pro) | Playtest 1 / Look | signed off |  | 14:05:28 |
+| 12. #669 History on the played box | Playtest 1 / Look | signed off |  | 14:05:40 |
+| 13. #670 History on a young box | Playtest 1 / Look | signed off |  | 14:05:51 |
+| 14. #672 the evening talk and your view | Playtest 1 / Look | signed off | good. signed off. on an unrelated note, what are those assets I see? A yelloy outer layer and pink center? there also ther things I d onot recognize | 14:07:17 |
+| 15. #673 photo mode with someone pinned | Playtest 1 / Look | signed off |  | 14:07:28 |
+| 16. #674 the person card's first view (750x1334) | Playtest 1 / Look | signed off | Signed off, but the about, recent and best should show up on the expanded view only mantaining the same position | 14:08:13 |
+| 17. #680 the hunter tries again | Playtest 1 / Look | signed off |  | 14:08:52 |
+| 18. #675 the seed first, on bare sand | Playtest 1 / Look | signed off |  | 14:09:05 |
+| 19. #676 the stew pot at dusk | Playtest 1 / Look | signed off |  | 14:09:28 |
+| 20. #665 rabbit tracks keep coming | Playtest 1 / Look | signed off | as they appear all together it does not lookr right | 14:10:21 |
+| 21. #671 faded near glass up close | Playtest 1 / Look | signed off |  | 14:10:34 |
+| 22. #656 the arrival with the basket and the bundle | Playtest 1 / Look | needs change | I like it but I see they already have tents and things built, they should build them after dropping the inventory | 14:11:25 |
+| 23. #677 the fire stages and the first wild wood | Playtest 1 / Look | signed off | As i mentioned elsewhere, people tend to the fire by stroking it | 14:12:14 |
+| 24. #677 fallen branches under the wild trees | Playtest 1 / Look | signed off |  | 14:12:22 |
+| 25. #658 three default framings | Playtest 1 / Look | signed off | Framing B | 14:13:16 |
+| 26. #677 the fire before the first wild wood | Playtest 1 / Decisions needed | ★ A grass-and-twig fire early, a log fire with the first wild wood |  | 14:13:34 |
+| 27. #656 the carried food | Playtest 1 / Decisions needed | ★ Keep 12 food in the basket (about a year) |  | 14:13:45 |
+| 28. #658 which framing becomes the default | Playtest 1 / Decisions needed | ★ The framing you liked best in the look stop (write its letter in the note) |  | 14:13:57 |
+| 29. #679 a notification when the Keeper's tree grows | Playtest 1 / Decisions needed | Keep the rule, no tree notification. |  | 14:14:59 |
+| 30. #656 a hungry camp before the first bushes | Playtest 1 / Decisions needed | ★ A hunger line once a visit and the jar's dot stay on, pointing at the life jar |  | 14:15:55 |
+| 31. #680 the hunter's retry | Playtest 1 / Decisions needed | ★ Keep one retry |  | 14:16:09 |
+| 32. Calls I made: the new start (#656, #677) | Playtest 1 / Calls I made: the new start (#656, #677) | accepted all |  | 14:16:11 |
+| 33. Polish noted, not fixed | Playtest 1 / Polish noted | accepted all |  | 14:16:12 |
+| 34. #249 Kit button and tool rail | Older items still labelled needs:user / Signed off, still open | Keep it open until #668 is built. |  | 14:16:59 |
+| 35. #279 Pond's first water moment | Older items still labelled needs:user / Signed off, still open | ★ Close it, signed off 2026-11-10 |  | 14:17:07 |
+| 36. #516 Placing life ghost and glow | Older items still labelled needs:user / Signed off, still open | ★ Close it, signed off 2026-11-10 |  | 14:17:14 |
+| 37. #518 Seed places like the life jar | Older items still labelled needs:user / Signed off, still open | ★ Close it and fold the seed jar into #668 |  | 14:17:21 |
+| 38. #520 Barren wind repeat | Older items still labelled needs:user / Signed off, still open | ★ Close it, signed off 2026-11-10 |  | 14:17:23 |
+| 39. #524 Wet ground at the glass | Older items still labelled needs:user / Signed off, still open | ★ Close it, signed off 2026-11-10 |  | 14:17:25 |
+| 40. #525 Keeper's tree night glow | Older items still labelled needs:user / Signed off, still open | ★ Close it, signed off 2026-11-10 |  | 14:17:27 |
+| 41. #526 Poles by the tents | Older items still labelled needs:user / Signed off, still open | ★ Close it, signed off 2026-11-10 and carried on in #566 |  | 14:17:30 |
+| 42. #538 Free camera pan | Older items still labelled needs:user / Signed off, still open | ★ Close it, signed off 2026-11-10 |  | 14:17:32 |
+| 43. #543 Fish basket, rack and food pile | Older items still labelled needs:user / Signed off, still open | ★ Keep it open until the bigger rack fish is seen |  | 14:17:48 |
+| 44. #587 One finger pans, two fingers turn | Older items still labelled needs:user / Signed off, still open | Close it as decided and built. |  | 14:17:58 |
+| 45. #99 Slice playthrough and phone check | Older items still labelled needs:user / Decisions needed | Close it and fold it into the playtest work. |  | 14:18:11 |
+| 46. #102 Week results and go or no-go | Older items still labelled needs:user / Decisions needed | Close it as replaced by the playtests. |  | 14:18:22 |
+| 47. #103 UI rework epic | Older items still labelled needs:user / Decisions needed | ★ Close it, the rework is done |  | 14:18:26 |
+| 48. #175 Lighting variants | Older items still labelled needs:user / Decisions needed | ★ Close it, Soft Blue Dusk stays the look |  | 14:18:28 |
+| 49. #178 Frosted sheet phone test | Older items still labelled needs:user / Decisions needed | Close it and use flat tinted sheets. |  | 14:18:40 |
+| 50. #228 Ecology Lab go, reshape or park | Older items still labelled needs:user / Decisions needed | ★ Close it, the answer was go and P8 is built |  | 14:18:45 |
+| 51. #366 Felling real trees | Older items still labelled needs:user / Decisions needed | Close it and open a bug for the axe. |  | 14:18:57 |
+| 52. #452 UI drawing board for expeditions | Older items still labelled needs:user / Decisions needed | ★ Keep it open, expeditions are parked |  | 14:19:06 |
+| 53. #453 Expeditions design spec | Older items still labelled needs:user / Decisions needed | ★ Keep it open, expeditions are parked |  | 14:19:07 |
+| 54. #668 Keeper's kit one design | Older items still labelled needs:user / Decisions needed | ★ Keep it open and ask for mock-ups |  | 14:19:13 |
+| 55. _#576 answered 2026-11-12 | Feedback 5 / Decisions | other | yes agreed, this should already be done | 14:19:37 |
+| 56. #573 close-up chopping | Feedback 5 / Tester polish (2026-11-11, no [real] findings) | other | ok | 14:19:43 |
+| 57. #576 winter at the default zoom | Feedback 5 / Tester polish (2026-11-11, no [real] findings) | other | dont change anything | 14:19:58 |
+| 58. #571 the title pill resizes with its text, so the sun but... | Feedback 5 / Tester polish (2026-11-11, no [real] findings) | other | ok no problem for now | 14:20:21 |
+| 59. #570 at year 0 the Kit already says "The camp waits for | Feedback 5 / Tester polish (2026-11-11, no [real] findings) | other | ok agreed, show only for later upgrades, not the first | 14:20:45 |
+| 60. #575 after a rename the card is scrolled so "Call them so... | Feedback 5 / Tester polish (2026-11-11, no [real] findings) | other | change the text to Rename | 14:20:57 |
+| 61. #570 a tapped locked seed looks darker (selected) and cou... | Feedback 5 / Tester polish (2026-11-11, no [real] findings) | other | ok fix cleanly and clearly, coherently withthe ui | 14:21:17 |
+| 62. Being built now | Waiting on you | other | agreed | 14:21:24 |
+
+## Run 2026-11-14 17:17
+
+| Stop | Section | Verdict | Note | Time |
+|---|---|---|---|---|
+| 7. #651 camp chores with no wild wood | Playtest 1 / Look | needs change | I like the feeding, why doesnt this happen for the wooden fire as well? mending a bedroll should happen near the fire only and an actual bedroll should appear, people resting on it. it should last until the end of current session | 17:27:15 |
+| 8. #652 the gatherers' place word | Playtest 1 / Look | skipped |  | 17:27:24 |
+| 9. #654 the Settings sliders | Playtest 1 / Look | skipped |  | 17:27:37 |
+| 10. #657 grass tufts up close | Playtest 1 / Look | skipped |  | 17:27:41 |
+| 11. #659 the caption under the title (iPhone 16 Pro) | Playtest 1 / Look | skipped |  | 17:27:46 |
+| 12. #669 History on the played box | Playtest 1 / Look | skipped |  | 17:27:48 |
+| 13. #670 History on a young box | Playtest 1 / Look | skipped |  | 17:27:51 |
+| 14. #672 the evening talk and your view | Playtest 1 / Look | skipped |  | 17:28:04 |
+| 15. #673 photo mode with someone pinned | Playtest 1 / Look | skipped |  | 17:28:09 |
+| 16. #674 the person card's first view (750x1334) | Playtest 1 / Look | signed off |  | 17:28:27 |
+| 17. #680 the hunter tries again | Playtest 1 / Look | skipped |  | 17:28:36 |
+| 18. #675 the seed first, on bare sand | Playtest 1 / Look | skipped |  | 17:28:38 |
+| 19. #676 the stew pot at dusk | Playtest 1 / Look | skipped |  | 17:28:52 |
+| 20. #665 rabbit tracks keep coming | Playtest 1 / Look | signed off |  | 17:29:51 |
+| 21. #671 faded near glass up close | Playtest 1 / Look | skipped |  | 17:29:57 |
+| 22. #656 the arrival with the basket and the bundle | Playtest 1 / Look | signed off |  | 17:30:09 |
+| 62. Being built now | Waiting on you | decide later |  | 17:30:32 |
+
+## Run 2026-11-14 18:31
+
+| Stop | Section | Verdict | Note | Time |
+|---|---|---|---|---|
+| 7. #651 camp chores with no wild wood | Playtest 1 / Look | signed off |  | 18:32:06 |

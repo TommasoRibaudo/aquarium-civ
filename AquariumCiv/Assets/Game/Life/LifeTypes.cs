@@ -41,6 +41,9 @@ namespace AquariumCiv.Life
         HangFish, TakeDownFish,
         /// <summary>fb4 #566: at the feather pole, hands together, a small bow. Appended so the older values keep their numbers.</summary>
         Pray,
+        /// <summary>Sign-off 2026-11-14 (#651/#677): at the grass fire, a crouch and an armful of dry grass dropped in (never a stir over
+        /// it, which read as stroking the fire); and at the hide rack, scraping a hide. Appended so the older values keep their numbers.</summary>
+        FeedFire, ScrapeHide,
     }
 
     /// <summary>Broad groups, for the busy share (rule 4) and the job report.</summary>
@@ -119,6 +122,11 @@ namespace AquariumCiv.Life
         Arrival,
         /// <summary>#543: the camp's fish rack by the fire (land; index -1 = where people stand to hang and take down fish, 1 = the rack itself, see <see cref="FishRackSpot"/>). Appended last.</summary>
         FishRack,
+        /// <summary>#656/#677: a grown wild tree near the Keeper's tree (index = the site cell): its fallen branches are gathered there, never chopped (#573). Appended last.</summary>
+        Deadfall,
+        /// <summary>Sign-off 2026-11-14: the camp's hide rack (index -1 = where someone stands to scrape, 1 = the rack's middle;
+        /// LifePlanner.HideFrame). Appended last.</summary>
+        HideRack,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
@@ -314,6 +322,7 @@ namespace AquariumCiv.Life
                 case ActivityKind.Carry: case ActivityKind.FetchWater: case ActivityKind.RollBarrel: case ActivityKind.TipLoad:
                     return ActivityGroup.Carry;
                 case ActivityKind.HangFish: case ActivityKind.TakeDownFish: // #543
+                case ActivityKind.FeedFire: case ActivityKind.ScrapeHide: // sign-off 2026-11-14
                     return ActivityGroup.Work;
                 case ActivityKind.Pray: // fb4 #566
                     return ActivityGroup.Social;
