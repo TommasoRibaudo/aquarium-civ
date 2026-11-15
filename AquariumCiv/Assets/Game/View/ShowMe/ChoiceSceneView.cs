@@ -95,6 +95,17 @@ namespace AquariumCiv.View
         /// them is within <see cref="SettleDistance"/> of their spot, or the scene has waited <see cref="SettleMaxSeconds"/>.</summary>
         public static bool SideSettled(float farthest, float seconds) => farthest <= SettleDistance || seconds >= SettleMaxSeconds;
 
+        /// <summary>#706: the words on an option's tag: what touching it does (1-3 words), else its label.</summary>
+        public static string TagWord(DilemmaOptionView o) => o == null ? "" : !string.IsNullOrEmpty(o.touch) ? o.touch : o.label ?? "";
+
+        /// <summary>#706: the question line in the bar names the options as their tags do: "Touch one: take them in, or camp apart."</summary>
+        public static string AskLineOf(DilemmaView v) =>
+            v?.options == null || v.options.Length < 2 ? CardStackView.ChoiceNote
+            : CardStackView.ChoiceNote.TrimEnd('.') + ": " + TagWord(v.options[0]) + ", or " + TagWord(v.options[1]) + ".";
+
+        /// <summary>#706: the bar's line for the choice staged now.</summary>
+        public string AskLine { get; private set; } = CardStackView.ChoiceNote;
+
         /// <summary>t4-fixes (tester item 6): a tag's mark means something: the option's own mark, else a person for a who-choice, else none.</summary>
         public static string TagMark(DilemmaOptionView o) =>
             o == null ? null : !string.IsNullOrEmpty(o.icon) ? o.icon : o.personId >= 0 ? "person" : null;
@@ -249,6 +260,7 @@ namespace AquariumCiv.View
             inBox = false; // the card's Show me (StageInBox sets it after)
             boxT = 0f;
             question = v.question ?? "";
+            AskLine = AskLineOf(v); // #706
             for (int i = 0; i < 2; i++) labels[i] = v.options != null && i < v.options.Length ? v.options[i].label ?? "" : "";
             said = false;
             Build(st, v);
@@ -272,7 +284,7 @@ namespace AquariumCiv.View
             if (!Offer(v)) return false;
             inBox = true;
             boxT = 0f;
-            boxBar?.Set(CardStackView.ChoiceNote, null);
+            boxBar?.Set(AskLine, null);
             Debug.Log($"[Choice] {Stage.defId} staged in the box by itself (held up to {BoxHoldSeconds:0}s while watched)");
             return true;
         }
@@ -537,7 +549,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < 2; i++)
             {
                 var o = v.options[i];
-                tags[i].Word = o.label;
+                tags[i].Word = TagWord(o); // #706: what touching it does
                 tags[i].Mark = TagMark(o); // t4-fixes: set every time (a reused tag kept the last scene's mark: a pot on "Agnes")
                 tags[i].style.display = DisplayStyle.None;
                 haloA[i] = 0f;

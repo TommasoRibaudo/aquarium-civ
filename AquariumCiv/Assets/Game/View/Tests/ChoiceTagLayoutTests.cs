@@ -98,5 +98,18 @@ namespace AquariumCiv.View.Tests
             Assert.IsNull(ChoiceSceneView.TagMark(new DilemmaOptionView { label = "full packs" }), "nothing that means anything: no mark");
             Assert.IsNull(ChoiceSceneView.TagMark(null));
         }
+
+        // #706
+        [Test]
+        public void ATagSaysWhatTouchingItDoesAndTheBarNamesBoth()
+        {
+            var v = new DilemmaView { options = new[] {
+                new DilemmaOptionView { label = "a place by the fire", touch = "take them in" },
+                new DilemmaOptionView { label = "full packs", touch = "camp apart" } } };
+            Assert.AreEqual("take them in", ChoiceSceneView.TagWord(v.options[0]));
+            Assert.AreEqual("Touch one: take them in, or camp apart.", ChoiceSceneView.AskLineOf(v));
+            Assert.AreEqual("a feast", ChoiceSceneView.TagWord(new DilemmaOptionView { label = "a feast" }), "no touch words: the label");
+            Assert.AreEqual("Touch one.", ChoiceSceneView.AskLineOf(null));
+        }
     }
 }
