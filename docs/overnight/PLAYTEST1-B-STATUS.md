@@ -6,8 +6,8 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [x] `p9/playtest1-b` from `origin/dev`; this prompt committed (already on dev via #712)
 - [ ] 1 · #697 → #696 cause written in both issues; merged
 - [x] 2 · #699 merged (lane A; Unity check pending)
-- [ ] 3 · #703 merged (call recorded)
-- [ ] 4 · #700 rule merged; take-down/rebuild beat specced, on its branch
+- [x] 3 · #703 merged (lane A; jar look in Unity pending) — call: jar shut while frozen
+- [~] 4 · #700 rule merged 969c8b2 (racks + Keeper's fire props); spec B27 written; beat not built (needs user sign-off)
 - [ ] 5 · #698 merged
 - [ ] 6 · #669 merged (buildings too)
 - [x] 7 · #702 merged (1ada892)
@@ -45,6 +45,8 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - 21:07 · #697/#696 round 2 (Editor play check) sent to the same worker on vs/697-696-play.
 - 21:35 · #699 round 1 accepted: ff303eb; my SimTests 1924/1924. Cause: DeerView walked a straight line to its goal. Fix: DeerHerd.Field.Steer (0.9 u shy ring round the fire, slides round lot/tent cells), every deer step through it. To check in Unity: smoke, DeerHunt/DeerScenes play tests, cheat "Deer at the camp" close shot (no jitter/stuck at the ring). Merged.
 - 21:35 · #700 round 1: rule + quiet-moment + spec B27 accepted; round 2 sent (wire ConsequenceProps path check; full SimTests count; dirt redraw?).
+- 22:10 · #700 round 2 accepted: ConsequenceProps path-aware, props move at night; SimTests 1927. Merged 969c8b2. Merged branch: SimTests 1930/1930, offline csc 0 errors (Sim, Life, Life.Tests, Game, Game.UI, View, View.Tests, View.PlayTests).
+- 22:15 · #703 round 1 accepted: c11423a+81aec5c, SimTests 1924. Call (recorded): ★ the duck jar is shut while the pond is ice; need line "The pond is ice. Ducks will come when it thaws."; a placing made before the freeze is kept (ducks leave for winter per #618, come back). Test change reviewed: EcoTests' once-a-year winter Keeper now places a thawed duck jar outside its visit (lab artifact); PlacedLifeTests accepts 'shut under ice'. Risk for the user: a winter-only player waits until spring for ducks (village gate up to 9 months later). Merged.
 
 ## Round logs
 ### #702
@@ -58,6 +60,9 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 
 ### #700
 - round 1: ConsequenceProps not wired, full SimTests not finished → round 2.
+
+### #703
+- round 1: accepted; Unity look of the shut jar in the chooser pending.
 
 ### #697/#696
 - round 1: all lane A boxes ticked; #696 guard tests didn't fail on base (noted). Lane B verification pending.
