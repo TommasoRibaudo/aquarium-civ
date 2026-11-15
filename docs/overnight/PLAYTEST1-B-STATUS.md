@@ -5,7 +5,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 ## Checklist
 - [x] `p9/playtest1-b` from `origin/dev`; this prompt committed (already on dev via #712)
 - [ ] 1 · #697 → #696 cause written in both issues; merged
-- [ ] 2 · #699 merged
+- [x] 2 · #699 merged (lane A; Unity check pending)
 - [ ] 3 · #703 merged (call recorded)
 - [ ] 4 · #700 rule merged; take-down/rebuild beat specced, on its branch
 - [ ] 5 · #698 merged
@@ -43,6 +43,8 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - 20:42 · lane A started in parallel: #699 (F:\GameDev-wt99), #703 (703; call ★ jar shut while frozen), #700 (700; rule + spec only).
 - 21:05 · #707 round 1 accepted: 0df81b6; HudTopRowPlay 1/1, UI 6/6, Settings 10/10, pill 1/1, Glass 14/14, smoke 2/2 on rerun (1st run failed 'rain button' FirstRun — flake? check in batched pass). Looked at day/night crops: one look, no backing, title ink. #649 gear already a gear (72c9a6c). Walkthrough stop: off-home readability of bare icons. Merged 2d1156e.
 - 21:07 · #697/#696 round 2 (Editor play check) sent to the same worker on vs/697-696-play.
+- 21:35 · #699 round 1 accepted: ff303eb; my SimTests 1924/1924. Cause: DeerView walked a straight line to its goal. Fix: DeerHerd.Field.Steer (0.9 u shy ring round the fire, slides round lot/tent cells), every deer step through it. To check in Unity: smoke, DeerHunt/DeerScenes play tests, cheat "Deer at the camp" close shot (no jitter/stuck at the ring). Merged.
+- 21:35 · #700 round 1: rule + quiet-moment + spec B27 accepted; round 2 sent (wire ConsequenceProps path check; full SimTests count; dirt redraw?).
 
 ## Round logs
 ### #702
@@ -50,6 +52,12 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 
 ### #707
 - round 1: accepted; look sign-off pending (off-home icon contrast to check).
+
+### #699
+- round 1: accepted (lane A). Unity checks in the batched pass.
+
+### #700
+- round 1: ConsequenceProps not wired, full SimTests not finished → round 2.
 
 ### #697/#696
 - round 1: all lane A boxes ticked; #696 guard tests didn't fail on base (noted). Lane B verification pending.
