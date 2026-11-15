@@ -154,10 +154,35 @@ namespace AquariumCiv.View
                     mb.Prism(new Vector3(0f, 0.04f, 0f), 0.055f, 0.07f, 0.07f, 8, Palette.Thatch, topCol: Palette.Straw);
                     mb.Ico(new Vector3(0f, 0.12f, 0f), 0.05f, new Vector3(1f, 0.5f, 1f), Palette.Accents[3], 0.08f);
                     break;
-                case ConsequenceKind.ShoreBoat: // #714 [est, Editor pass]: the pond family's boat, upside down by the fire (a placeholder hull)
-                    mb.Ico(new Vector3(0f, 0.035f, 0f), 0.1f, new Vector3(1.6f, 0.4f, 0.6f), Palette.Bark, 0.04f);
-                    mb.Box(new Vector3(0f, 0.075f, 0f), new Vector3(0.28f, 0.012f, 0.014f), Palette.Timber); // the keel, on top
+                case ConsequenceKind.ShoreBoat: // #714 [est; a placeholder awaiting the user's asset OK]: the pond family's boat, upside down by the fire
+                {
+                    // The Editor pass's close shot read the old squashed lump as a plank: now a planked hull upside down, widest in the middle and
+                    // pointed at both ends (a pale gunwale at the ground, darker planks to the keel), its stern propped on a log so the dark
+                    // hollow under it shows (the children's house), and its two oars laid beside it.
+                    var pivot = new Vector3(-0.16f, 0f, 0f);
+                    var tilt = Quaternion.Euler(0f, 0f, 9f);
+                    System.Func<Vector3, Vector3> P = v => pivot + tilt * (v - pivot);
+                    void Hull(float x, float len, float w, Quaternion? r = null)
+                    {
+                        var q = tilt * (r ?? Quaternion.identity);
+                        mb.Box(P(new Vector3(x, 0.016f, 0f)), new Vector3(len, 0.032f, w), Palette.WoodLight, q);          // the gunwale band
+                        mb.Box(P(new Vector3(x, 0.045f, 0f)), new Vector3(len * 0.95f, 0.028f, w * 0.8f), Palette.Timber, q); // the planks
+                        mb.Box(P(new Vector3(x, 0.066f, 0f)), new Vector3(len * 0.9f, 0.018f, w * 0.5f), Palette.Bark, q);    // the bottom, turned up
+                    }
+                    mb.Box(new Vector3(0.06f, 0.004f, 0f), new Vector3(0.2f, 0.008f, 0.1f), new Color(0.16f, 0.11f, 0.07f)); // the dark hollow under it
+                    Hull(0f, 0.15f, 0.13f);
+                    Hull(-0.1f, 0.07f, 0.1f); Hull(0.1f, 0.07f, 0.1f);
+                    Hull(-0.145f, 0.05f, 0.05f, Quaternion.Euler(0f, 45f, 0f)); Hull(0.145f, 0.05f, 0.05f, Quaternion.Euler(0f, 45f, 0f));
+                    mb.Box(P(new Vector3(0f, 0.08f, 0f)), new Vector3(0.32f, 0.012f, 0.014f), Palette.Timber, tilt);      // the keel, on top
+                    mb.Prism(new Vector3(0.13f, 0f, -0.07f), 0.016f, 0.016f, 0.14f, 6, Palette.Bark, Quaternion.Euler(90f, 0f, 0f), true, true, Palette.WoodLight); // the log under the stern
+                    foreach (float z in new[] { 0.1f, 0.125f })                                                         // the oars, laid beside it
+                    {
+                        var r = Quaternion.Euler(0f, z > 0.11f ? 6f : -4f, 0f);
+                        mb.Box(new Vector3(-0.02f, 0.006f, z), new Vector3(0.24f, 0.01f, 0.01f), Palette.WoodLight, r);
+                        mb.Box(new Vector3(0.11f, 0.004f, z), new Vector3(0.06f, 0.006f, 0.026f), Palette.WoodLight, r);
+                    }
                     break;
+                }
                 case ConsequenceKind.FishCrate: // a crate with fish on the near shore
                     mb.Box(new Vector3(0f, 0.035f, 0f), new Vector3(0.16f, 0.07f, 0.1f), Palette.WoodLight);
                     for (int i = 0; i < 3; i++)

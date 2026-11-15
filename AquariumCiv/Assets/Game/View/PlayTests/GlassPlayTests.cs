@@ -17,7 +17,7 @@ namespace AquariumCiv.View.PlayTests
     /// <summary>
     /// The people at the glass and the relic moments (#92) in the real Slice scene at a portrait phone size: each relic's
     /// moment plays without an error and gives its cast back to their day; the kids at the window in stage 2; a tap on the
-    /// glass in stage 3 with the Lens brings a scholar over to tap back as often. Screenshots go to Temp/agent. Run alone
+    /// glass in the town is a knock and nobody knocks back (#718: the Lens and the tap-back are gone). Screenshots go to Temp/agent. Run alone
     /// (one InputTestFixture class per run); it backs up and restores the slice's save file.
     /// </summary>
     [Category("GlassPlay")]
@@ -62,9 +62,9 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsNotNull(pv); Assert.IsNotNull(GlassVoice.Instance, "the glass layer is on the box");
                 yield return GrowInto(Era.Village);
                 EnsureScholar(sim);
-                foreach (var id in new[] { RelicId.SkyCrumb, RelicId.KeeperDoll, RelicId.LeftSandal, RelicId.FestivalMask, RelicId.Lens })
+                foreach (var id in new[] { RelicId.KeeperDoll, RelicId.LeftSandal, RelicId.FestivalMask })
                 {
-                    PeopleView.DebugSetHour(id == RelicId.Lens ? 18.4f : 10f);
+                    PeopleView.DebugSetHour(10f);
                     yield return null;
                     string r = GlassVoice.DebugPlayMoment(id);
                     var info = GlassVoice.Instance.LastMoment;
@@ -80,7 +80,7 @@ namespace AquariumCiv.View.PlayTests
                     float mid = (info.start + info.end) * 0.5f;
                     yield return Until(() => pv.Now.hour >= mid || pv.Now.day != info.day, 30f);
                     yield return Shot("relic_" + id);
-                    if (id is RelicId.SkyCrumb or RelicId.KeeperDoll or RelicId.Lens)
+                    if (id is RelicId.KeeperDoll)
                         Assert.IsTrue(GlassVoice.Instance.GetComponent<RelicProps>().Made.ContainsKey(id), $"{id}: its prop stands in the box");
                     int inScene = info.cast.Count(c => planner.Plan(c.who, pv.Now).source == ActivitySource.Scene);
                     Assert.Greater(inScene, 0, $"{id}: the cast is in the scene half way");
@@ -186,7 +186,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest]
-        public IEnumerator ATapOnTheGlassInTheTownWithTheLensIsTappedBack()
+        public IEnumerator ATapOnTheGlassInTheTownIsAKnockAndNobodyKnocksBack()
         {
             yield return Open();
             try
@@ -196,7 +196,6 @@ namespace AquariumCiv.View.PlayTests
                 var glass = GlassVoice.Instance;
                 yield return GrowInto(Era.Town);
                 EnsureScholar(sim);
-                Assert.IsNotNull(sim.DebugGiveRelic(RelicId.Lens));
                 sim.DebugSetBelief(3, true);
                 PeopleView.DebugSetHour(10f);
                 yield return null; yield return null;
@@ -217,18 +216,17 @@ namespace AquariumCiv.View.PlayTests
                 yield return Until(() => glass.Knocks > 0, 3f);
                 Assert.AreEqual(1, glass.Knocks, "the taps are one knock");
                 Assert.AreEqual(3, glass.LastTaps, "of three taps");
-                Assert.GreaterOrEqual(glass.LastTapBack, 0, "a scholar taps back");
-                var who = PersonRef.Notable(glass.LastTapBack);
-                // They walk over and knock as often.
+                // #718: nobody walks over to knock back.
                 pv.timeScale = 4f;
-                PersonActivity knock = default;
-                yield return Until(() => (knock = pv.Planner.Plan(who, pv.Now)).kind == ActivityKind.TapBack, 40f);
+                bool knocked = false;
+                for (float t = 0f; t < 8f; t += Time.unscaledDeltaTime)
+                {
+                    foreach (var n in sim.State.notables)
+                        if (n.alive && pv.Planner.Plan(PersonRef.Notable(n.id), pv.Now).kind == ActivityKind.TapBack) knocked = true;
+                    yield return null;
+                }
                 pv.timeScale = 1f;
-                Assert.AreEqual(ActivityKind.TapBack, knock.kind, "the scholar knocks back");
-                Assert.AreEqual(3, knock.count);
-                yield return Look(pv.Planner.GlassPlace, 0.25f);
-                for (int i = 0; i < 10; i++) yield return null;
-                yield return Shot("glass_tapback");
+                Assert.IsFalse(knocked, "nobody knocks back");
                 // Clean mode: a tap is a wipe, never a knock.
                 GameHud.Instance.SetCleanMode(true);
                 yield return null;

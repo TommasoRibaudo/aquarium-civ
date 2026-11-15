@@ -426,7 +426,7 @@ namespace AquariumCiv.View
             rainBtn.Ready = false;
             safe.Add(rainBtn);
 
-            // one bubble: the wish over the wisher, or the reward line over the glass
+            // one bubble: the reward line over the glass
             bubble = new GlassBubble("", "") { name = "firstrun-bubble" };
             bubble.AddToClassList("kg-bubble--world");
             bubble.style.display = DisplayStyle.None;
@@ -729,21 +729,6 @@ namespace AquariumCiv.View
                 show = ToPanel(box.transform.TransformPoint(new Vector3(0f, 1.5f, Land.ZMax)), out var p);
                 if (show) { bubble.Set("", rewardLine); PlaceBubble(p); }
             }
-            else
-            {
-                var w = step == FirstRunStep.Rain ? run.RainWish : null;
-                if (!quiet && w != null && w.state == WishState.Open)
-                {
-                    var pv = PeopleView.Find();
-                    var n = Sim?.FindNotable(w.notableId);
-                    if (pv != null && n != null && pv.TryGetDollTop(PersonRef.Notable(w.notableId), out var top) && ToPanel(top, out var p))
-                    {
-                        bubble.Set("", $"{n.name} hopes for rain.");
-                        PlaceBubble(p);
-                        show = true;
-                    }
-                }
-            }
             voice ??= GameUiPanel.Bubbles.Join(BubbleHost.Rank.Line);
             if (show) show = GameUiPanel.Bubbles.Ask(voice); // asked every frame, so it waits for whoever has the word
             else GameUiPanel.Bubbles.Done(voice);
@@ -755,7 +740,6 @@ namespace AquariumCiv.View
         void PlaceBubble(Vector2 p)
         {
             PlaceOver(bubble, p, 24f);
-            wishHead = p;
             bubble.TailTo(p - new Vector2(bubble.style.left.value.value, bubble.style.top.value.value)); // #204: on them, even pushed off by the edge
         }
 
@@ -846,29 +830,7 @@ namespace AquariumCiv.View
             float hw = float.IsNaN(hl.width) ? 0f : hl.width, hh = float.IsNaN(hl.height) ? 0f : hl.height;
             var spot = GameUiPanel.KeepOnScreen(hint, new Vector2(at.x - hw * 0.5f, labelBelow ? at.y + 96f : at.y - 90f - hh), TopLimit);
             hint.style.left = spot.x; hint.style.top = spot.y;
-            KeepWishOffTheFinger(at);
         }
-
-        /// <summary>Tester run 9: on "Tap a spot" the finger and its pill could sit on the wish's words. The wish steps up over the finger, and its tail still reaches the wisher.</summary>
-        void KeepWishOffTheFinger(Vector2 finger)
-        {
-            if (bubble.style.display != DisplayStyle.Flex || run.Hint.anchor != HintAnchor.RainSpot) return;
-            float w = bubble.resolvedStyle.width, h = bubble.resolvedStyle.height;
-            if (float.IsNaN(w) || float.IsNaN(h)) return;
-            var me = new Rect(bubble.style.left.value.value, bubble.style.top.value.value, w, h);
-            var hand = Rect.MinMaxRect(finger.x - GhostHalf, finger.y - GhostHalf, finger.x + GhostHalf, finger.y + GhostHalf + 96f);
-            if (!me.Overlaps(hand)) return;
-            var q = GameUiPanel.KeepOnScreen(bubble, new Vector2(me.x, hand.yMin - WishAir - h), TopLimit);
-            bubble.style.top = q.y; bubble.style.left = q.x;
-            if (wishHead.HasValue) bubble.TailTo(wishHead.Value - q);
-            WishSteps++;
-        }
-
-        /// <summary>Frames the wish had to step off the finger (tests).</summary>
-        public int WishSteps { get; private set; }
-
-        Vector2? wishHead;
-        const float WishAir = 18f;
 
         bool Anchor(FirstRunHint h, out Vector2 at, out bool labelBelow)
         {

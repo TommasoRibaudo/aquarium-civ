@@ -131,7 +131,7 @@ namespace AquariumCiv.View.PlayTests
             var who = Named();
             Assume.That(who.IsNone, Is.False, "a named person on view");
             Assert.IsTrue(Director.SayOrWait("Did you hear that? Up there.", who, 2f, LineKind.Relic));
-            Assert.IsFalse(Director.SayOrWait("Hush. Listen again.", who, 2f, LineKind.Crumb), "the second waits");
+            Assert.IsFalse(Director.SayOrWait("Hush. Listen again.", who, 2f, LineKind.Echo), "the second waits");
             Assert.AreEqual(1, Director.WaitingLines);
             yield return Frames(3);
             Assert.AreEqual("Did you hear that? Up there.", Director.ShownCaption, "the first isn't cut");
@@ -156,7 +156,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsFalse(GameUiPanel.Bubbles.Ask(firstRun), "a first-run line waits while the caption is up");
             yield return Until(() => !Director.CaptionUp, 4f);
             Assert.IsTrue(GameUiPanel.Bubbles.Ask(firstRun), "and gets the word when it's gone");
-            Assert.IsFalse(Director.SayOrWait("Did you hear that?", who, 1.5f, LineKind.Wish), "a wish's thanks waits while the first run speaks");
+            Assert.IsFalse(Director.SayOrWait("Did you hear that?", who, 1.5f, LineKind.Relic), "a relic's line waits while the first run speaks");
             yield return Frames(3);
             Assert.IsFalse(Director.CaptionUp, "no caption over the first run's line");
             Assert.AreEqual(1, Director.WaitingLines);

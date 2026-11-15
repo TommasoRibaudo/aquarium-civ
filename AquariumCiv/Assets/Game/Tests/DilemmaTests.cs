@@ -149,34 +149,6 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void ADueDilemmaNeverLapsAnOpenWishButWaitsForItsEnd()
-        {
-            for (int seed = 1; seed <= 12; seed++)
-            {
-                var sim = NewSim(seed, Cfg(true));
-                sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => StrangersDef("s" + i)).ToArray();
-                Years(sim, 1);
-                var w = sim.DebugForceWish();
-                Assert.IsNotNull(w);
-                sim.State.dilemmaNextHours = sim.State.clockHours + sim.Config.StepHours; // due while the wish is open
-                for (int m = 0; m < 20; m++)
-                {
-                    sim.Advance(1.0 / 12);
-                    if (w.state != WishState.Open) { Assert.IsTrue(sim.FindNotable(w.notableId)?.alive != true || sim.State.nudges.Any(), $"seed {seed}: the wish ended without cause"); break; }
-                    Assert.IsNull(sim.OpenDilemma, $"seed {seed}: raised beside the open wish");
-                }
-
-                if (w.state == WishState.Open) { w.state = WishState.Given; w.endMonth = sim.State.month; } // the player gives the gift
-                long ended = w.endMonth;
-                Years(sim, 2);
-                var first = sim.State.dilemmas.FirstOrDefault();
-                Assert.IsNotNull(first, $"seed {seed}");
-                Assert.GreaterOrEqual(first.month - ended, SimCore.DilemmaGapMonths, $"seed {seed}: the gap runs from the wish's end");
-                Assert.IsFalse(sim.State.wishes.Any(x => x.id != w.id && x.month >= ended && x.month < first.month), $"seed {seed}: no new wish jumps the queue");
-            }
-        }
-
-        [Test]
         public void NeverDuringTheFirstRun()
         {
             var sim = NewSim(3, Cfg(true));
@@ -524,23 +496,6 @@ namespace AquariumCiv.Tests
             var after = sim.ReturnCardsCapped(sim.State.month - 1, 5);
             Assert.AreEqual(0, after.cards.Count(c => c.kind == CardKind.Dilemma), "an answered dilemma stops being a card");
             Assert.IsTrue(after.cards.Any(c => c.kind == CardKind.Keeper), "its answer is a Keeper card");
-        }
-
-        [Test]
-        public void TheDilemmaCardComesAfterTheEraCardAndNeverWithAWish()
-        {
-            var sim = NewSim(5, Cfg());
-            sim.DilemmaCatalog = new[] { StrangersDef("s") };
-            Years(sim, 2);
-            sim.DebugForceWish();
-            Assert.IsNotNull(sim.OpenWish);
-            var d = sim.DebugRaiseDilemma("s"); // closes the wish
-            Assert.IsNull(sim.OpenWish);
-            sim.DebugForceWish();               // lapses the dilemma
-            Assert.IsNull(sim.OpenDilemma);
-            Assert.AreEqual(DilemmaState.Lapsed, d.state);
-            var stack = sim.ReturnCardsCapped(sim.State.month - 1, 7);
-            Assert.IsFalse(stack.cards.Any(c => c.kind == CardKind.Dilemma) && stack.cards.Any(c => c.kind == CardKind.Wish));
         }
 
         [Test]

@@ -6,14 +6,15 @@ using LifeProp = AquariumCiv.Life.Prop;
 namespace AquariumCiv.View.Tests
 {
     /// <summary>#92's pure view parts (EditMode): every glass and relic activity has its own move, the relic props are
-    /// drawn, the tap-back knocks exactly as often as the Keeper tapped, the front glass faces out of its wall.</summary>
+    /// drawn, the knock style knocks exactly as often as asked, the front glass faces out of its wall. (#718: the tap-back, the
+    /// Lens and the Sky Crumb are gone: their activities and props are no longer staged.)</summary>
     public class GlassViewTests
     {
         static readonly ActivityKind[] GlassKinds =
         {
             ActivityKind.GazeWary, ActivityKind.PressHands, ActivityKind.WaveWary, ActivityKind.Flinch, ActivityKind.Peek, ActivityKind.CreepUp,
-            ActivityKind.HopBack, ActivityKind.LaughPoint, ActivityKind.Measure, ActivityKind.TapBack, ActivityKind.WriteDown, ActivityKind.TurnLens,
-            ActivityKind.LookThroughLens, ActivityKind.Freeze, ActivityKind.StepBack, ActivityKind.Poke, ActivityKind.Taste, ActivityKind.Deliver,
+            ActivityKind.HopBack, ActivityKind.LaughPoint, ActivityKind.Measure, ActivityKind.WriteDown,
+            ActivityKind.Freeze, ActivityKind.StepBack, ActivityKind.Poke, ActivityKind.Taste, ActivityKind.Deliver,
             ActivityKind.SetUp, ActivityKind.Bow, ActivityKind.CopyPose, ActivityKind.PickUp, ActivityKind.HoldUp, ActivityKind.Give, ActivityKind.PutOn,
             ActivityKind.LopsidedDance, ActivityKind.Gaze,
         };
@@ -30,8 +31,8 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void TheRelicPropsAreDrawn()
         {
-            foreach (var (p, want) in new[] { (LifeProp.Crumb, PropKind.Crumb), (LifeProp.Mask, PropKind.Mask), (LifeProp.Doll, PropKind.Doll),
-                         (LifeProp.Sandal, PropKind.Sandal), (LifeProp.Tripod, PropKind.Tripod), (LifeProp.Lens, PropKind.Lens),
+            foreach (var (p, want) in new[] { (LifeProp.Mask, PropKind.Mask), (LifeProp.Doll, PropKind.Doll),
+                         (LifeProp.Sandal, PropKind.Sandal),
                          (LifeProp.Slate, PropKind.Slate), (LifeProp.MeasuringRod, PropKind.MeasuringRod) })
             {
                 var (kind, _) = PeopleView.PropOf(p, ActivityInfo.SlotOf(p, ActivityKind.Watch), ActivityKind.Watch);
@@ -49,7 +50,7 @@ namespace AquariumCiv.View.Tests
         [TestCase(1)]
         [TestCase(3)]
         [TestCase(5)]
-        public void TheTapBackKnocksExactlyAsOften(int count)
+        public void TheKnockStyleKnocksExactlyAsOften(int count)
         {
             int hits = 0;
             bool was = false;

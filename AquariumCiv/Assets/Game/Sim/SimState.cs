@@ -418,6 +418,9 @@ namespace AquariumCiv.Sim
         public WelcomeMemo welcomeMemo = new(); // t3-welcome: the box at the last watched step, to tell what is new at the next open
         /// <summary>#589: how supper was settled last (SupperPick: 0 none, 1 one big pot, 2 a basket each) and the month (the view day) it was.</summary>
         public int supperPick; public long supperMonth;
+        /// <summary>#717: the teller the Keeper picked (or "Let them decide" did) for tonight's story (-1 none), the month (the view day)
+        /// it was picked and how they tell it (StoryManner: 0 slow, with all the voices; 1 short, for a laugh).</summary>
+        public int storyTellerId = -1; public long storyTellerMonth = -1; public int storyTellerManner;
         public List<ConsequenceProp> consequenceProps = new(); // #371: the things the Keeper's choices left in the box
         public bool featherPoleSet; public float featherPoleX, featherPoleZ; // fb4 #566: the one feather pole's spot (SimCore.FeatherPole.cs); an old save has none until asked
         public List<ApartGroup> apartGroups = new(); // strangers who live apart in the box (#231): not the settlement's people

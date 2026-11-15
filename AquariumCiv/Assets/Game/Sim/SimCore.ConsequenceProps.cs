@@ -135,7 +135,7 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>The Keeper's tree stands grown.</summary>
-        bool KeeperTreeGrown
+        public bool KeeperTreeGrown
         {
             get
             {

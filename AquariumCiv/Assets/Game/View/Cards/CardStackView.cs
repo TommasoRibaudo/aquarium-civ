@@ -14,7 +14,7 @@ namespace AquariumCiv.View
     /// The chronicle cards on screen (#75, Keeper's Glass in #166; chronicle-and-history §2, §7, spec §4): the peek in its own lane and
     /// one <see cref="GlassSheet"/> at 30 %, holding a <see cref="GlassCard"/>. All the logic is <see cref="CardStackModel"/>; this file only
     /// draws <see cref="CardStackModel.Face"/> and passes touches on. Order in the row: Back, Next, Show me, then the one primary at the
-    /// right (Give, Watch, Remember; Done on Also…). A story has no filled button, its headline leads. Long cards scroll inside the sheet
+    /// right (Watch, Remember; Done on Also…). A story has no filled button, its headline leads. Long cards scroll inside the sheet
     /// in whole lines. During Show me the sheet slides off so the place stays clear, and a bar in the tools' lane brings it back: at a tap,
     /// or when the echo is over (board S33Return). Stable names for tests and the tester agent: <c>cards-peek</c>, <c>cards-sheet</c>,
     /// <c>cards-next</c>, <c>cards-back</c>, <c>cards-skip</c>, <c>cards-showme</c>, <c>cards-action</c>, <c>cards-portrait-0/1</c>,
@@ -298,8 +298,6 @@ namespace AquariumCiv.View
             var recall = RecallPromptView.Instance;
             if (recall != null && recall.IsOpen) return true;
             if (PulseQuestionView.Instance != null && PulseQuestionView.Instance.IsOpen) return true; // #636
-            var tool = ShapingView.Instance;
-            if (tool != null && tool.WishArmed) return true;
             var sm = ShowMeDirector.Instance;
             if (sm != null && sm.Busy) return true;
             var fr = FirstRunView.Instance;
@@ -693,11 +691,6 @@ namespace AquariumCiv.View
             if (face == null) return;
             switch (face.action)
             {
-                case CardAction.Give:
-                    var o = model.Give();
-                    if (!o.ok) { Sfx.Play(AquariumCiv.View.Shaping.ShapingShow.FailCue); break; } // the card says why
-                    ShapingView.Instance?.ArmWish(o.wish.id);
-                    break;
                 case CardAction.Remember:
                     int id = model.Remember();
                     // Their page in the book (#80), and until they have one, their card.
@@ -933,7 +926,6 @@ namespace AquariumCiv.View
             var who = sim.State.notables.Find(n => n.alive);
             switch (kind)
             {
-                case CardKind.Wish: sim.DebugForceWish(); break;
                 case CardKind.EraReady: sim.ForceEraReady(); break;
                 case CardKind.Relic: sim.DebugGiveRelic(RelicId.All[0]); break;
                 case CardKind.Legend: sim.DebugKillOldest(); break;

@@ -68,7 +68,7 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void GoodNewsFirstThenTheRestThenDeathsThenTheWish()
+        public void GoodNewsFirstThenTheRestThenDeaths_AndAWishIsNeverACard()
         {
             var sim = Quiet();
             var a = Adults(sim);
@@ -83,17 +83,16 @@ namespace AquariumCiv.Tests
             sim.State.eraReady = true;
 
             var r = sim.ReturnCardsCapped(0, 7);
-            CollectionAssert.AreEqual(new[] { "era-ready", "wedding", "rivalry", "storm", "rainbow", "death", "wish" }, r.cards.Select(c => c.lead.kind).ToArray());
+            CollectionAssert.AreEqual(new[] { "era-ready", "wedding", "rivalry", "storm", "rainbow", "death" }, r.cards.Select(c => c.lead.kind).ToArray());
             Assert.AreEqual(CardKind.EraReady, r.cards[0].kind);
             Assert.AreEqual(CardKind.Legend, r.cards[5].kind);
             Assert.AreEqual(CardTone.Sad, r.cards[5].tone);
-            Assert.AreEqual(CardKind.Wish, r.cards[6].kind);
             Assert.IsFalse(r.cards.Concat(r.also).Any(c => c.lead.kind == "coming_of_age"), "never a card");
+            Assert.IsFalse(r.cards.Concat(r.also).Any(c => c.lead.kind == "wish"), "#718: an old save's wish is never a card");
 
-            // Under an hour: era ready and the wish still come; the death outscores the wedding, but good news keeps its slot.
+            // Under an hour: era ready still comes; the death outscores the wedding, but good news keeps its slot.
             r = sim.ReturnCardsCapped(0, 3);
-            CollectionAssert.AreEqual(new[] { "era-ready", "wedding", "wish" }, r.cards.Select(c => c.lead.kind).ToArray());
-            Assert.IsTrue(r.also.Any(c => c.lead.kind == "death"));
+            CollectionAssert.AreEqual(new[] { "era-ready", "wedding", "death" }, r.cards.Select(c => c.lead.kind).ToArray());
 
             // Once the era is watched, era-ready is plain good news.
             sim.State.eraReady = false;
@@ -126,13 +125,13 @@ namespace AquariumCiv.Tests
             CollectionAssert.AreEqual(new[] { "rainbow", "death0.85" }, Kinds(2), "it replaces the lowest sad card");
             CollectionAssert.AreEqual(new[] { "rainbow", "rivalry", "death0.85" }, Kinds(3));
 
-            // Never in place of era ready or the wish: if they fill the cap, the good news comes on top.
+            // Never in place of era ready: if it fills the cap, the good news comes on top. (#718: an old wish is never a card.)
             Add(sim, 5, "wish", 0.6f, a[2].id);
             Add(sim, 6, "era-ready", 0.8f);
             sim.State.eraReady = true;
             CollectionAssert.AreEqual(new[] { "era-ready", "rainbow" }, Kinds(1));
-            CollectionAssert.AreEqual(new[] { "era-ready", "rainbow", "wish" }, Kinds(2));
-            CollectionAssert.AreEqual(new[] { "era-ready", "rainbow", "wish" }, Kinds(3));
+            CollectionAssert.AreEqual(new[] { "era-ready", "rainbow" }, Kinds(2));
+            CollectionAssert.AreEqual(new[] { "era-ready", "rainbow", "death0.85" }, Kinds(3));
 
             // No good news: nothing to protect.
             var sad = Quiet();

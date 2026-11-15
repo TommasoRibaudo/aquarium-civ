@@ -237,7 +237,7 @@ namespace AquariumCiv.Life
                 who = p.who, kind = kind, place = place, from = from, moving = s.Moving && from != place, partner = s.partner,
                 prop = s.prop, water = s.water, start = s.start, end = s.end, progress = Math.Min(1f, into / len),
                 step = steps <= 1 ? 0 : (int)(into / StepHours) % steps, source = s.src, trip = s.trip, pace = dayInfo.pace,
-                chronicleId = s.chronicleId, copiesPartner = s.copies, facesGlass = s.faces, count = s.count,
+                chronicleId = s.chronicleId, copiesPartner = s.copies, facesGlass = s.faces,
             };
         }
 

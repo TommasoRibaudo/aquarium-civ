@@ -15,7 +15,7 @@ using UnityEngine.UIElements;
 namespace AquariumCiv.View.PlayTests
 {
     /// <summary>P8 polish item 18, the old slice (living land off): #208 the dawn lane at 06:30 with staggered chores, and #209 the
-    /// leader lines on a person card going round the label stack. (#210 #211, the crumb bits, are in <see cref="CrumbPlayTests"/>.)</summary>
+    /// leader lines on a person card going round the label stack. (#718: the crumb bits' tests went with the Sky Crumb.)</summary>
     [Category("OldPolish")]
     public class OldPolishPlayTests : PlayTestBase
     {

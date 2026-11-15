@@ -59,7 +59,7 @@ namespace AquariumCiv.Tests
             var d = RaisedPup(sim);
             Assert.IsNotNull(d);
             Assert.AreEqual(finder, d.subjectId);
-            StringAssert.StartsWith(kid.name + " found a wolf pup alone by the den.", sim.QuestionOf(d));
+            StringAssert.StartsWith(kid.name + " found a lost wolf pup.", sim.QuestionOf(d)); // #723: the ask is 15 words at most
             Assert.AreEqual(0, sim.DogCount);
             Assert.IsTrue(sim.AnswerDilemma(d.id, 0, DilemmaPath.Card), "bring it home");
             Assert.AreEqual(1, sim.DogCount);

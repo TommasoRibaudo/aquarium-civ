@@ -41,7 +41,7 @@ namespace AquariumCiv.View.PlayTests
             Cam.EaseTo(w, Cam.yaw, 52f, zoom, 0.3f);
         }
 
-        /// <summary>#185: the doll carried to its post, and on it, at default zoom and close. #154: the stalls from above. Wish puffs, by day and asleep.</summary>
+        /// <summary>#185: the doll carried to its post, and on it, at default zoom and close. #154: the stalls from above. Gift puffs by day.</summary>
         [UnityTest, Timeout(240000)]
         public IEnumerator DollAndPuffs()
         {
@@ -84,13 +84,7 @@ namespace AquariumCiv.View.PlayTests
             var mp = MomentPlayer.Instance;
             mp.GiftPuffs(0.4f, 0.2f, 1.4f, 8);
             yield return Wait(0.5f);
-            yield return Shot("bundle2-191-puffs-day");
-            PeopleView.DebugSetHour(23f);
-            NightLamps.DebugSetLevel(1f);
-            yield return Wait(0.5f);
-            WishPayoffView.DebugGlow();
-            yield return Wait(1.6f);
-            yield return Shot("bundle2-191-glow-night");
+            yield return Shot("bundle2-191-puffs-day"); // #718: the wish's night glow is gone
             AssertNoErrors("doll and puffs");
         }
 

@@ -44,7 +44,25 @@ namespace AquariumCiv.Sim
         public static string RitualFirstKind(string kind) => "ritual_" + kind;
         public static string RitualYearKind(string kind) => "ritual_" + kind + "_year";
 
-        /// <summary>A ritual played this month: (kind, the one who led it, its chronicle entry). The view stages it if the Keeper watches.</summary>
+        /// <summary>The ritual a chronicle line plays ("ritual_feast" or "ritual_feast_year" → "feast"), or null (the empty basket too).</summary>
+        public static string RitualOfLine(string entryKind)
+        {
+            if (entryKind == null || !entryKind.StartsWith("ritual_")) return null;
+            foreach (var k in RitualKind.All)
+                if (entryKind == RitualFirstKind(k) || entryKind == RitualYearKind(k)) return k;
+            return null;
+        }
+
+        /// <summary>#721 (Editor pass): the ritual a held moment's line plays, or null.</summary>
+        public string RitualOfEntry(int entryId)
+        {
+            for (int i = State.chronicle.Count - 1; i >= 0; i--)
+                if (State.chronicle[i].id == entryId) return RitualOfLine(State.chronicle[i].kind);
+            return null;
+        }
+
+        /// <summary>A ritual played this month: (kind, the one who led it, its chronicle entry). Its line queues a held moment
+        /// (<see cref="MomentKind.Ritual"/>) while the Keeper watches; the view stages it with <see cref="RitualKind.Caption"/>.</summary>
         public event Action<string, Notable, ChronicleEntry> RitualPlayed;
 
         /// <summary>The rituals this box keeps (a custom answered or lapsed into), in the order of <see cref="RitualKind.All"/>.</summary>
@@ -129,11 +147,14 @@ namespace AquariumCiv.Sim
                         : $"The harvest table was one seat longer than last year. {who} sat at the end.";
                 case RitualKind.Offering:
                     if (State.era == Era.Town && lead != null && lead.id == HolderOf(RoleType.Priest)?.id)
-                        return "The priest carried the offering to the Keeper's tree, and the town walked behind.";
-                    return $"{who} carried the best basket to the Keeper's tree and set it down.";
+                        return $"The priest carried the offering to {OfferingPlace}, and the town walked behind.";
+                    return $"{who} carried the best basket to {OfferingPlace} and set it down.";
             }
             return "";
         }
+
+        /// <summary>#723: where the offering goes: the Keeper's tree once it stands, else the tallest tree [est] (the slice has none).</summary>
+        string OfferingPlace => KeeperTreeGrown ? "the Keeper's tree" : "the tallest tree";
 
         /// <summary>Plays the ritual now: its line (a card the first time, History after), the event for the view.</summary>
         ChronicleEntry PlayRitual(string kind)

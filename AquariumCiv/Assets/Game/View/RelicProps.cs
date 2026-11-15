@@ -1,8 +1,6 @@
 using System.Collections.Generic;
-using AquariumCiv.Audio;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
-using AquariumCiv.View.Shaping;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -11,47 +9,20 @@ namespace AquariumCiv.View
     /// <summary>
     /// The relics in the world (#92; relics-and-glass-voice.md §1), code-built in the box's palette:
     /// <list type="bullet">
-    /// <item><b>Sky Crumb:</b> a heel of bread the size of a hut. When its moment starts it drops from the top of the box, bounces off a
-    /// wall (<see cref="CrumbFall"/>: a thud and a smudge on the glass) and lands at its spot, then is eaten away over the next game
-    /// year; only then the last piece shows, on a flat stone by the fire, in the gap between the seat logs.</item>
     /// <item><b>Keeper Doll:</b> on a post by the shrine (or the green), facing the glass.</item>
-    /// <item><b>Lens:</b> a brass tube on a tripod; it slowly turns to follow the camera.</item>
     /// <item><b>Left Sandal:</b> on the remembering stone when an heir got it back (the owner wears it).</item>
     /// </list>
-    /// The Festival Mask has no place in the world (it's worn at the festival, then kept on the shelf).
+    /// The Festival Mask has no place in the world (it's worn at the festival, then kept on the shelf). #718: the Sky Crumb
+    /// and the Lens are gone (an old save that holds one shows it only in the book).
     /// </summary>
     public class RelicProps : MonoBehaviour
     {
-        /// <summary>Game months the crumb takes to be eaten down to its last piece.</summary>
-        public const int CrumbMonths = 12;
-        public const float DropSeconds = 0.6f;
         /// <summary>How much bigger than life the relics stand, so they read at default zoom (user 2026-10-30, #92).</summary>
-        public const float CrumbScale = 1.5f, DollScale = 2.2f, LensScale = 1.9f, SandalScale = 2.2f;
+        public const float DollScale = 2.2f, SandalScale = 2.2f;
 
         BoxView box;
         Transform root;
         readonly Dictionary<string, Transform> made = new();
-        Transform crumbPiece;
-        float crumbDrop = -1f, crumbArrival, lensYaw;
-        bool crumbPlanned, crumbHit;
-        CrumbFall.Plan crumbPlan;
-        // #210 #211: the bits knocked off at the glass: they fall off it, scatter, rest and go.
-        CrumbFall.Bit[] crumbBits;
-        Transform[] crumbBitParts;
-        float crumbBitsT = -1f, crumbBitGround;
-        static Mesh doughMesh, chipMesh;
-        /// <summary>Seconds since the lump hit the glass while its bits are out, or -1 (tests).</summary>
-        public float CrumbBitsSeconds => crumbBitsT;
-        /// <summary>The bits' plan and their transforms while they're out (tests).</summary>
-        public CrumbFall.Bit[] CrumbBits => crumbBits;
-        public Transform[] CrumbBitParts => crumbBitParts;
-        /// <summary>Tester-free clock of the drop: seconds in, or -1 when nothing's falling (tests, the debug panel).</summary>
-        public float CrumbDropSeconds => crumbDrop;
-        public CrumbFall.Plan CrumbPlan => crumbPlan;
-        /// <summary>#147: found, but its moment hasn't started: no lump yet. <see cref="GlassVoice"/> sets it.</summary>
-        public bool CrumbHeld { get; set; }
-        /// <summary>From the fire to the stone: the gap between the seat logs (angle 5.64 rad, <see cref="Pieces"/>), clear of them all.</summary>
-        const float StoneAngle = 5.64f, StoneReach = 0.42f;
 
         /// <summary>The relic props standing now (tests).</summary>
         public IReadOnlyDictionary<string, Transform> Made => made;
@@ -63,20 +34,12 @@ namespace AquariumCiv.View
             if (root != null) Kill(root.gameObject);
             root = null;
             made.Clear();
-            crumbPiece = null;
-            crumbBitParts = null; crumbBits = null; crumbBitsT = -1f;
         }
 
         static void Kill(Object o) { if (o == null) return; if (Application.isPlaying) Destroy(o); else DestroyImmediate(o); }
 
-        /// <summary>A relic's moment starts: the crumb drops in from the top of the box.</summary>
-        public void MomentStarted(string id, float arrivalSeconds = 0f)
-        {
-            if (id != RelicId.SkyCrumb) return;
-            crumbDrop = 0f;
-            crumbArrival = arrivalSeconds;
-            crumbPlanned = crumbHit = false;
-        }
+        /// <summary>A relic's moment starts (nothing to drop since #718: the Sky Crumb is gone).</summary>
+        public void MomentStarted(string id) { }
 
         public void Sync(SimCore sim, LifePlanner planner, float dt)
         {
@@ -88,33 +51,6 @@ namespace AquariumCiv.View
             }
             var pos = planner.Positions;
 
-            // Sky Crumb: the big lump where it fell, eaten away; the last piece by the fire.
-            var crumb = sim.FindRelic(RelicId.SkyCrumb);
-            if (!InReplay(RelicId.SkyCrumb, crumb) && crumbPiece != null) crumbPiece.gameObject.SetActive(false); // #669
-            if (crumb != null && crumb.Found && InReplay(RelicId.SkyCrumb, crumb) && pos.TryGetPosition(LifePlanner.RelicPlace(RelicId.SkyCrumb), out float cx, out float cz))
-            {
-                float left = CrumbFall.Left(crumb.foundMonth, sim.State.month);
-                var big = Ensure(RelicId.SkyCrumb, BuildCrumb);
-                big.gameObject.SetActive(left > 0.02f && !CrumbHeld);
-                float s = Mathf.Lerp(0.3f, 1f, left);
-                var at = box.land.OnGround(cx, cz);
-                bool falling = crumbDrop >= 0f;
-                if (falling) Fall(sim, crumb, cx, cz, dt, ref at);
-                Bits(dt);
-                big.localPosition = at;
-                big.localScale = new Vector3(s, s * (falling ? 1f : 0.92f), s) * CrumbScale;
-                if (crumbPiece == null) crumbPiece = Part("SkyCrumb_LastPiece", BuildCrumbPiece);
-                bool last = CrumbFall.ShowLastPiece(crumb.Found, crumb.foundMonth, sim.State.month); // #138: only once the big lump is eaten
-                crumbPiece.gameObject.SetActive(last);
-                var st = sim.Settlement;
-                if (st != null && last)
-                {
-                    st.Fire(out float fx, out float fz, out _);
-                    crumbPiece.localPosition = box.land.OnGround(fx + Mathf.Cos(StoneAngle) * StoneReach, fz + Mathf.Sin(StoneAngle) * StoneReach);
-                    crumbPiece.localScale = Vector3.one * CrumbScale;
-                }
-            }
-
             // Keeper Doll: on its post, facing the glass.
             if (sim.HasRelic(RelicId.KeeperDoll) && InReplay(RelicId.KeeperDoll, sim.FindRelic(RelicId.KeeperDoll)) && pos.TryGetPosition(LifePlanner.RelicPlace(RelicId.KeeperDoll), out float dx, out float dz))
             {
@@ -123,22 +59,6 @@ namespace AquariumCiv.View
                 doll.localPosition = box.land.OnGround(dx + n.x * 0.08f, dz + n.y * 0.08f);
                 doll.localScale = Vector3.one * DollScale;
                 doll.localRotation = Quaternion.Euler(0f, Mathf.Atan2(n.x, n.y) * Mathf.Rad2Deg + 180f, 0f); // its front (-z) faces out
-            }
-
-            // Lens: on its tripod, slowly following the camera.
-            if (sim.HasRelic(RelicId.Lens) && InReplay(RelicId.Lens, sim.FindRelic(RelicId.Lens)) && pos.TryGetPosition(LifePlanner.RelicPlace(RelicId.Lens), out float lx, out float lz))
-            {
-                var lens = Ensure(RelicId.Lens, BuildLens);
-                lens.localPosition = box.land.OnGround(lx + 0.12f, lz);
-                lens.localScale = Vector3.one * LensScale;
-                var cam = Camera.main;
-                if (cam != null)
-                {
-                    var c = transform.InverseTransformPoint(cam.transform.position);
-                    float want = Mathf.Atan2(c.x - lens.localPosition.x, c.z - lens.localPosition.z) * Mathf.Rad2Deg + 180f;
-                    lensYaw = Mathf.MoveTowardsAngle(lensYaw, want, 20f * dt);
-                }
-                lens.localRotation = Quaternion.Euler(0f, lensYaw, 0f);
             }
 
             // Left Sandal: an heir set it on the remembering stone.
@@ -155,107 +75,6 @@ namespace AquariumCiv.View
                 }
             }
             else if (made.TryGetValue(RelicId.LeftSandal, out var gone)) { Kill(gone.gameObject); made.Remove(RelicId.LeftSandal); }
-        }
-
-        /// <summary>#147: one frame of the drop: from the top of the box onto a wall (the thud and the smudge), back to the spot.</summary>
-        void Fall(SimCore sim, Relic crumb, float cx, float cz, float dt, ref Vector3 at)
-        {
-            var care = CareView.Instance;
-            float halfW = Land.HX, halfD = Land.HZ, top = 1.6f;
-            if (care != null) care.Walls(out halfW, out halfD, out top);
-            float ground = at.y;
-            if (!crumbPlanned)
-            {
-                crumbPlan = CrumbFall.For(crumb.cause, crumbArrival, cx, cz - Land.CZ, halfW, halfD, top - ground, sim.State.seed);
-                crumbPlanned = true;
-            }
-            crumbDrop += dt;
-            CrumbFall.At(crumbPlan, crumbDrop, out float x, out float y, out float z);
-            z += Land.CZ; // #658: the fall is planned round the box centre
-            // The lump is wide: its middle stops that far inside the glass, while the mark stays where the plan's point is.
-            at = new Vector3(Mathf.Clamp(x, -halfW + CrumbClear, halfW - CrumbClear), ground + y, Mathf.Clamp(z, Land.CZ - halfD + CrumbClear, Land.CZ + halfD - CrumbClear));
-            if (!crumbHit && crumbDrop >= crumbPlan.hitAt)
-            {
-                crumbHit = true;
-                Sfx.Play(CueLibrary.Thump);
-                care?.Smudge(crumbPlan.wall, new Vector3(crumbPlan.hitX, ground + crumbPlan.hitY, crumbPlan.hitZ + Land.CZ), crumbPlan.smudgeRadius, crumbPlan.smudgeStrength);
-                // #210: bits break off where it hit; they cling to the glass, fall off it and scatter.
-                crumbBits = CrumbFall.Bits(crumbPlan, sim.State.seed);
-                crumbBitsT = crumbDrop - crumbPlan.hitAt;
-                crumbBitGround = ground;
-                MakeBits();
-            }
-            if (crumbDrop >= crumbPlan.landAt)
-            {
-                crumbDrop = -1f;
-                Sfx.Play(CueLibrary.Thump);
-                GlassVoice.Instance?.CrumbLanded(sim); // tester run 7: the fall needed a voice
-            }
-        }
-
-        /// <summary>How far the falling lump's middle keeps from the glass.</summary>
-        const float CrumbClear = 0.3f;
-
-        void MakeBits()
-        {
-            if (crumbBitParts == null)
-            {
-                if (doughMesh == null) doughMesh = BitMesh("CrumbBit_Dough", BuildDoughBit);
-                if (chipMesh == null) chipMesh = BitMesh("CrumbBit_Chip", BuildChipBit);
-                crumbBitParts = new Transform[CrumbFall.BitCount];
-                for (int i = 0; i < crumbBitParts.Length; i++)
-                {
-                    var go = new GameObject("SkyCrumb_Bit" + i) { hideFlags = HideFlags.DontSave };
-                    go.transform.SetParent(root, false);
-                    go.AddComponent<MeshFilter>();
-                    var r = go.AddComponent<MeshRenderer>();
-                    r.sharedMaterial = box.SolidMaterial;
-                    r.shadowCastingMode = ShadowCastingMode.Off; // a few pixels: a shadow only adds noise
-                    crumbBitParts[i] = go.transform;
-                }
-            }
-            for (int i = 0; i < crumbBitParts.Length; i++)
-            {
-                crumbBitParts[i].GetComponent<MeshFilter>().sharedMesh = crumbBits[i].kind == CrumbFall.BitKind.Chip ? chipMesh : doughMesh;
-                crumbBitParts[i].gameObject.SetActive(true);
-            }
-        }
-
-        /// <summary>#210: one frame of the bits: off the glass with gravity, the scatter and the smear, the rest, the fade.</summary>
-        void Bits(float dt)
-        {
-            if (crumbBitsT < 0f || crumbBits == null || crumbBitParts == null) return;
-            crumbBitsT += dt;
-            float halfW = Land.HX, halfD = Land.HZ;
-            if (CareView.Instance != null) CareView.Instance.Walls(out halfW, out halfD, out _);
-            bool done = crumbBitsT >= CrumbFall.BitsDone(crumbBits);
-            for (int i = 0; i < crumbBitParts.Length; i++)
-            {
-                var t = crumbBitParts[i];
-                CrumbFall.BitAt(crumbBits[i], crumbBitsT, halfW, halfD, out float x, out float y, out float z, out float flat, out float scale, out float yaw);
-                z += Land.CZ; // #658
-                bool on = !done && scale > 0.01f;
-                if (t.gameObject.activeSelf != on) t.gameObject.SetActive(on);
-                if (!on) continue;
-                float s = crumbBits[i].size * scale;
-                bool down = crumbBitsT >= crumbBits[i].landAt;
-                // On the glass and falling it counts from the lump's ground; once down it sits on the ground where it is.
-                float here = box.land.OnGround(x, z).y;
-                float gy = down ? here : Mathf.Max(crumbBitGround, here);
-                t.localPosition = new Vector3(x, gy + y + s * flat * 0.5f, z);
-                t.localRotation = Quaternion.Euler(down ? 0f : yaw * 0.5f, yaw, 0f);
-                t.localScale = new Vector3(s, s * flat, s);
-            }
-            if (done) crumbBitsT = -1f;
-        }
-
-        static Mesh BitMesh(string name, System.Action<MeshBuilder> build)
-        {
-            var mb = new MeshBuilder(name.GetHashCode()) { jitter = 0.06f };
-            build(mb);
-            var mesh = mb.ToMesh(name);
-            mesh.hideFlags = HideFlags.DontSave;
-            return mesh;
         }
 
         /// <summary>#669: a relic stands in the box only from the month it was found, in a replay. Hides the part it had if it is too early.</summary>
@@ -290,69 +109,11 @@ namespace AquariumCiv.View
         }
 
         // ---------------- meshes ----------------
-        /// <summary>The bread's colours: a baked crust, its darker top, and the pale torn inside.</summary>
-        static readonly Color Crust = new(0.73f, 0.45f, 0.2f), CrustTop = new(0.58f, 0.33f, 0.14f);
-        /// <summary>#211: a cookie's dough and its choc chips.</summary>
-        static readonly Color Dough = new(0.86f, 0.64f, 0.36f), DoughLight = new(0.93f, 0.76f, 0.5f), Choc = new(0.23f, 0.13f, 0.08f);
-
-        /// <summary>#210 #211: a crumb of dough, a unit cube knocked a little out of square (a corner chipped off another way).</summary>
-        static void BuildDoughBit(MeshBuilder mb)
-        {
-            mb.Box(Vector3.zero, new Vector3(1f, 1f, 0.92f), Dough, null, true);
-            mb.Box(new Vector3(0.28f, 0.3f, -0.22f), new Vector3(0.5f, 0.42f, 0.5f), DoughLight, Quaternion.Euler(0f, 18f, 0f), true);
-        }
-
-        /// <summary>#211: a choc chip, a dark square chunk.</summary>
-        static void BuildChipBit(MeshBuilder mb)
-        {
-            mb.Box(Vector3.zero, new Vector3(1f, 0.9f, 1f), Choc, null, true);
-            mb.Box(new Vector3(0f, 0.45f, 0f), new Vector3(0.6f, 0.2f, 0.6f), Choc, Quaternion.Euler(0f, 45f, 0f), true);
-        }
-
-        /// <summary>A heel of bread the size of a hut (#147): a domed crust over a flat foot, three slashes in the top, and the torn pale end where it broke off, with loose crumbs round it.</summary>
-        static void BuildCrumb(MeshBuilder mb)
-        {
-            mb.Ico(new Vector3(0f, 0.095f, 0f), 0.16f, new Vector3(1.4f, 0.75f, 1f), CrustTop, 0.1f, Crust);
-            mb.Prism(new Vector3(-0.215f, 0f, 0f), 0.15f, 0.15f, 0.43f, 9, Crust, Quaternion.Euler(0f, 0f, -90f), true, true, Palette.Canvas); // the loaf's body, lying along x
-            mb.Prism(new Vector3(0.21f, 0.09f, 0f), 0.135f, 0.105f, 0.022f, 9, Palette.Canvas, Quaternion.Euler(0f, 0f, -90f), true, true, Palette.Canvas); // the torn end
-            var slash = Quaternion.Euler(0f, 24f, 0f);
-            foreach (float x in new[] { -0.12f, 0f, 0.12f })
-                mb.Box(new Vector3(x, 0.214f, 0f), new Vector3(0.022f, 0.012f, 0.17f), Palette.Canvas, slash, true);
-            // #211: choc chips set in the crust; the loose crumbs round it are square bits of dough and chip (#210)
-            foreach (var (x, z) in new[] { (-0.2f, 0.07f), (0.05f, -0.08f), (-0.05f, 0.1f), (0.14f, 0.06f) })
-                mb.Box(new Vector3(x, 0.205f - 0.6f * x * x, z), new Vector3(0.03f, 0.022f, 0.03f), Choc, Quaternion.Euler(0f, 370f * x, 0f));
-            mb.Box(new Vector3(0.3f, 0.012f, 0.08f), new Vector3(0.026f, 0.024f, 0.026f), Dough, Quaternion.Euler(0f, 20f, 0f), true);
-            mb.Box(new Vector3(-0.26f, 0.01f, -0.15f), new Vector3(0.022f, 0.02f, 0.022f), Dough, Quaternion.Euler(0f, 55f, 0f), true);
-            mb.Box(new Vector3(0.28f, 0.009f, -0.11f), new Vector3(0.018f, 0.018f, 0.018f), Choc, Quaternion.Euler(0f, 10f, 0f), true);
-        }
-
-        /// <summary>The last piece of sky bread on a flat stone by the fire.</summary>
-        static void BuildCrumbPiece(MeshBuilder mb)
-        {
-            mb.Prism(Vector3.zero, 0.075f, 0.065f, 0.022f, 7, Palette.Stone, topCol: Palette.RockLight);
-            mb.Ico(new Vector3(0f, 0.044f, 0f), 0.03f, new Vector3(1.25f, 0.8f, 1f), CrustTop, 0.2f, Palette.Canvas);
-        }
-
         /// <summary>The Keeper Doll on a post, about as tall as a person, facing -z.</summary>
         static void BuildDollPost(MeshBuilder mb)
         {
             mb.Box(new Vector3(0, 0.05f, 0), new Vector3(0.022f, 0.1f, 0.022f), Palette.Timber);
             PegDoll.KeeperDoll(mb, new Vector3(0, 0.1f, 0), 1.1f);
-        }
-
-        /// <summary>The Lens: three tripod legs and a brass tube on top, pointing -z.</summary>
-        static void BuildLens(MeshBuilder mb)
-        {
-            for (int i = 0; i < 3; i++)
-            {
-                float a = i * 120f;
-                var foot = Quaternion.Euler(0, a, 0) * new Vector3(0, 0, 0.06f);
-                var top = new Vector3(0, 0.16f, 0);
-                var mid = (foot + top) * 0.5f;
-                var dir = (top - foot).normalized;
-                mb.Box(mid, new Vector3(0.008f, (top - foot).magnitude, 0.008f), Palette.WoodLight, Quaternion.FromToRotation(Vector3.up, dir));
-            }
-            mb.Prism(new Vector3(0, 0.17f, 0.05f), 0.02f, 0.016f, 0.15f, 8, PegDoll.Brass, Quaternion.Euler(-80f, 0, 0), true, true, Palette.GlassEdge);
         }
 
         /// <summary>The remembering stone's sandal, on a cushion.</summary>

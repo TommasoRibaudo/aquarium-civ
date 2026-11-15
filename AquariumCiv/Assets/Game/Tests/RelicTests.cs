@@ -44,7 +44,6 @@ namespace AquariumCiv.Tests
             return n;
         }
 
-        // ---------- the Sky Crumb ----------
         // ---------- the Festival Mask ----------
         [Test]
         public void TheFirstEraFestivalLeavesTheMask()
@@ -272,8 +271,9 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(-1, sim.Quote(PeopleMoment.Tap).speakerId, "the crowd");
             var chief = sim.HolderOf(RoleType.Chief);
             var glass = sim.Quote(PeopleMoment.Glass);
-            Assert.AreEqual(3, glass.lineNo);
-            Assert.AreEqual(chief.id, glass.speakerId);
+            bool kid = sim.State.notables.Any(n => n.alive && n.age >= 4f && n.age < SimCore.AdultAge);
+            if (!kid) Assert.IsNull(glass, "#719: line 3 names a child: no child, no line");
+            else { Assert.AreEqual(3, glass.lineNo); Assert.AreEqual(chief.id, glass.speakerId); StringAssert.DoesNotContain("{kid}", glass.text); }
             Assert.IsNull(sim.Quote(PeopleMoment.Doll), "no doll lines in the camp");
             sim.ForceNextEra();
             StringAssert.Contains("window", sim.Quote(PeopleMoment.Return).text);
@@ -281,7 +281,6 @@ namespace AquariumCiv.Tests
             Assert.IsNull(sim.Quote(PeopleMoment.Return));
         }
 
-        // ---------- the tap-back ----------
         // ---------- debug, saves, era tags ----------
         [Test]
         public void TheDebugPanelCanGiveEveryRelic()

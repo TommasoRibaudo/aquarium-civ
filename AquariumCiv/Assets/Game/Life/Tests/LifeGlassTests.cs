@@ -42,9 +42,7 @@ namespace AquariumCiv.Life.Tests
             if (era == Era.Camp) for (int m = 0; m < 24; m++) sim.Step();
             if (stage == 3) EnsureScholar(sim);
             sim.DebugSetBelief(stage, later);
-            if (later && stage == 1) sim.DebugGiveRelic(RelicId.SkyCrumb);
             if (later && stage == 2) sim.DebugGiveRelic(RelicId.KeeperDoll);
-            if (later && stage == 3) sim.DebugGiveRelic(RelicId.Lens);
             Assert.AreEqual(stage, sim.BeliefStage);
             Assert.AreEqual(later ? BeliefHalf.Later : BeliefHalf.Early, sim.BeliefHalfNow);
             return sim;
@@ -93,11 +91,10 @@ namespace AquariumCiv.Life.Tests
         // ------------------------------------------------------------------ the day at the glass, per stage (§3 "Gathering")
 
         [TestCase(Era.Camp, 1, 1, false)]
-        [TestCase(Era.Camp, 1, 1, true)]
         [TestCase(Era.Village, 7, 2, false)]
         [TestCase(Era.Village, 7, 2, true)]
         [TestCase(Era.Town, 1234, 3, false)]
-        // #718: no Lens, so stage 3 has no later half in a real box (the debug belief case is gone)
+        // #718: no Sky Crumb and no Lens, so stages 1 and 3 have no later half in a real box (their cases are gone)
         public void ThePeopleAtTheGlassFollowTheirBelief(Era era, int seed, int stage, bool later)
         {
             var sim = Believing(era, seed, stage, later);
@@ -121,9 +118,6 @@ namespace AquariumCiv.Life.Tests
             Assert.Greater(at.reached, 0, "some of them get there (a stay too far to walk to is skipped)");
             switch (stage)
             {
-                case 1:
-                    Assert.IsTrue(visits.All(v => v.kind == ActivityKind.GazeWary && v.facesGlass), "stage 1: a step back, looking up");
-                    break;
                 case 2:
                     Assert.IsTrue(visits.Any(v => v.kind == ActivityKind.PressHands && planner.StageOf(v.who) == LifeStage.Kid), "kids press their hands to the window");
                     Assert.IsTrue(visits.Any(v => v.kind == ActivityKind.SitOut && v.facesGlass && v.start >= 18f), "a few adults sit facing it at dusk");
@@ -132,16 +126,8 @@ namespace AquariumCiv.Life.Tests
                     break;
                 case 3:
                     Assume.That(sim.Scholars.Count, Is.GreaterThan(0), "the town has a scholar");
-                    if (later)
-                    {
-                        Assert.IsTrue(visits.Any(v => v.kind == ActivityKind.Measure && v.prop == Prop.MeasuringRod && v.start < 12f), "a scholar measures along the glass most mornings");
-                        Assert.IsTrue(visits.Any(v => v.kind == ActivityKind.LookThroughLens && v.place == LifePlanner.RelicPlace(RelicId.Lens)), "the lens's scholar looks through it some evenings");
-                    }
-                    else
-                    {
-                        Assert.IsTrue(visits.Any(v => v.kind == ActivityKind.Argue || v.kind == ActivityKind.Study), "the clever argue about the wall");
-                        Assert.IsFalse(visits.Any(v => v.kind == ActivityKind.Measure), "no measuring before the Lens");
-                    }
+                    Assert.IsTrue(visits.Any(v => v.kind == ActivityKind.Argue || v.kind == ActivityKind.Study), "the clever argue about the wall");
+                    Assert.IsFalse(visits.Any(v => v.kind == ActivityKind.Measure || v.kind == ActivityKind.LookThroughLens), "no measuring, no Lens (#718)");
                     break;
             }
         }
@@ -260,9 +246,9 @@ namespace AquariumCiv.Life.Tests
         }
 
         [Test]
-        public void AFingerInTheTownIsMeasuredOnceTheLensIsUp()
+        public void AFingerInTheTownIsStudiedByTheScholars()
         {
-            foreach (bool later in new[] { false, true })
+            foreach (bool later in new[] { false }) // #718: no Lens, so no later half
             {
                 var sim = Believing(Era.Town, 1234, 3, later);
                 Assume.That(sim.Scholars.Count, Is.GreaterThan(0));
@@ -280,58 +266,6 @@ namespace AquariumCiv.Life.Tests
                 Assert.IsTrue(theirs.All(a => a.kind == want), $"later {later}: the scholars {want}");
                 Assert.IsFalse(acts.Any(a => a.source == ActivitySource.Reaction && !scholarIds.Contains(a.who.notableId) && (a.kind == ActivityKind.Measure || a.kind == ActivityKind.Study)), "only scholars study");
             }
-        }
-
-        // ------------------------------------------------------------------ the tap-back (Choice 9)
-
-        /// <summary>Tester batch 2: a knock right after the Lens moment, after the day's five relic moments, credited a tap-back
-        /// but the scholar stayed in the Lens moment (its later beats won). The scholar now really knocks back, and the
-        /// chronicle credit only comes when it plays; a knock too late to finish before midnight gets no answer and no card.</summary>
-        [TestCase(1234)]
-        [TestCase(7)]
-        public void ATapBackAfterTheDaysRelicMoments_Plays_AndOnlyThenIsCredited(int seed)
-        {
-            var sim = Believing(Era.Town, seed, 3, true);
-            Assume.That(sim.Scholars.Count, Is.GreaterThan(0));
-            foreach (var id in RelicId.All) if (sim.FindRelic(id) == null || !sim.FindRelic(id).Found) sim.DebugGiveRelic(id);
-            var planner = LifePlanner.Wired(sim);
-            long day = sim.State.month;
-            float h = 10f;
-            foreach (var id in new[] { RelicId.SkyCrumb, RelicId.KeeperDoll, RelicId.LeftSandal, RelicId.FestivalMask })
-            {
-                var m = planner.StartRelicMoment(id, new ViewTime(day, h));
-                if (m != null) h = Math.Max(h + 0.3f, m.end);
-            }
-            var lens = planner.StartRelicMoment(RelicId.Lens, new ViewTime(day, 18.4f));
-            Assume.That(lens, Is.Not.Null, "the Lens moment plays");
-
-            // Too late: it couldn't finish before the view day turns. Nobody answers, nothing is credited.
-            Assert.AreEqual(-1, planner.AnswerKnock(new ViewTime(day, 23.9f), 3), "no answer at midnight");
-            Assert.IsFalse(sim.State.storyFlags.Contains("tapback"), "no card for a tap-back nobody saw");
-
-            // Right after the knock in the Lens moment (the scholar is in it): the tap-back wins.
-            var at = new ViewTime(day, 18.6f);
-            int scholar = planner.AnswerKnock(at, 3);
-            Assert.GreaterOrEqual(scholar, 0, "a scholar answers");
-            Assert.IsTrue(sim.State.storyFlags.Contains("tapback"), "credited once it is staged");
-            var who = PersonRef.Notable(scholar);
-            PersonActivity knock = default;
-            var seen = new List<ActivityKind>();
-            for (float t = at.hour; t < 24f; t += 0.01f)
-            {
-                var a = planner.Plan(who, new ViewTime(day, t));
-                if (seen.Count == 0 || seen[seen.Count - 1] != a.kind) seen.Add(a.kind);
-                if (a.kind == ActivityKind.TapBack) { knock = a; break; }
-            }
-            TestContext.WriteLine($"seed {seed}: {string.Join(" > ", seen)}");
-            Assert.AreEqual(ActivityKind.TapBack, knock.kind, "the scholar walks over and knocks back");
-            Assert.AreEqual(3, knock.count);
-            // The whole knock plays: the Lens moment's later beats (set up, look) don't cut into it.
-            for (float t = knock.start + 0.002f; t < knock.end - 0.002f; t += 0.005f)
-                Assert.AreEqual(ActivityKind.TapBack, planner.Plan(who, new ViewTime(day, t)).kind, $"still knocking at {t:0.000}h ({knock.start:0.000}-{knock.end:0.000})");
-            Assert.IsTrue(planner.Positions.TryGetPosition(planner.GlassPlace, out float gx, out float gz));
-            Assert.IsTrue(planner.PositionAt(who, new ViewTime(day, (knock.start + knock.end) * 0.5f), out float x, out float z));
-            Assert.Less(Math.Sqrt((x - gx) * (x - gx) + (z - gz) * (z - gz)), 0.05, "knocking at the glass");
         }
 
         // ------------------------------------------------------------------ the relic moments (§1)
@@ -354,11 +288,9 @@ namespace AquariumCiv.Life.Tests
 
         static readonly Dictionary<string, (ActivityKind kind, RelicCast role)> Signature = new Dictionary<string, (ActivityKind, RelicCast)>
         {
-            [RelicId.SkyCrumb] = (ActivityKind.Taste, RelicCast.Owner),
             [RelicId.FestivalMask] = (ActivityKind.Dance, RelicCast.Owner),
             [RelicId.KeeperDoll] = (ActivityKind.SetUp, RelicCast.Owner),
             [RelicId.LeftSandal] = (ActivityKind.HoldUp, RelicCast.Second),
-            [RelicId.Lens] = (ActivityKind.LookThroughLens, RelicCast.Queue),
         };
 
         [TestCase(RelicId.FestivalMask)]
@@ -414,14 +346,8 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual(0, planner.ActiveRelicMoments(new ViewTime(day, info.end + 0.01f), moments), "then it's over");
             switch (relic)
             {
-                case RelicId.SkyCrumb:
-                    Assert.IsTrue(kinds.Contains(ActivityKind.Freeze) && kinds.Contains(ActivityKind.Cheer), "freeze at the thud, then a cheer");
-                    break;
                 case RelicId.FestivalMask:
                     Assert.IsTrue(kinds.Contains(ActivityKind.Speech), "the leader speaks first");
-                    break;
-                case RelicId.Lens:
-                    Assert.IsTrue(kinds.Contains(ActivityKind.SetUp) && kinds.Contains(ActivityKind.Queue), "set up, then a queue");
                     break;
             }
         }
@@ -443,7 +369,7 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual(ActivityKind.Dance, a.kind, "the mask's wearer dances again"); // #718: was the Sky Crumb's taster
         }
 
-        /// <summary>Every walk in a relic moment, a gathering or a tap-back keeps the walking pace (≤ 2x, as the day's walks,
+        /// <summary>Every walk in a relic moment or a gathering keeps the walking pace (≤ 2x, as the day's walks,
         /// #30/#109): sampled from where the planner has each person, frame by frame.</summary>
         [Test]
         public void LiveGlassAndRelicWalksKeepThePace()
@@ -467,7 +393,6 @@ namespace AquariumCiv.Life.Tests
                         if (info == null) continue;
                         moments++;
                         float end = info.end;
-                        if (m.stage == 3) { int s = sim.Scholars.FirstOrDefault()?.id ?? -1; if (s >= 0 && planner.TapBack(at, s, 2)) end = Math.Max(end, hour + 0.5f); }
                         planner.GatherAtGlass(at, true);
                         var who = planner.People.ToList();
                         // The plain day's own walks are the day sweeps' (NoWalkRushes_*; a cross-box walk capped at MaxWalk

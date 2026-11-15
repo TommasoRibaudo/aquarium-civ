@@ -266,33 +266,14 @@ namespace AquariumCiv.Life
                 float wait = r.late == null ? 0f : r.late.TryGetValue(p.key, out float late) ? late : r.lateRest; // #161: the mark first
                 pieces.Add(new Piece { t0 = Math.Min(r.start + wait, r.end), t1 = r.end, reaction = true, index = i, target = to, order = pieces.Count });
             }
-            // A tap-back (Choice 9) overrides the scholar's other live scenes while it plays: a beat of a relic moment that
-            // starts inside its window (the Lens moment's later beats) would otherwise win and the knock never be seen.
-            float tbStart = float.MaxValue, tbEnd = float.MinValue;
-            // The same for a wish's cheer (#191): the gift's own reaction scene mustn't take the wisher away from it.
-            float wishStart = float.MaxValue, wishEnd = float.MinValue;
-            for (int i = 0; i < reactions.Count; i++)
-                if (reactions[i].gesture == KeeperGesture.WishAnswered && reactions[i].day == day && reactions[i].target == p.who)
-                {
-                    wishStart = Math.Min(wishStart, reactions[i].start); wishEnd = Math.Max(wishEnd, reactions[i].end);
-                }
-            for (int i = 0; i < live.Count; i++)
-            {
-                var sc = live[i];
-                if (sc.day != day || sc.kind != SceneKind.TapBack || sc.a != p.key) continue;
-                tbStart = Math.Min(tbStart, sc.start); tbEnd = Math.Max(tbEnd, sc.end);
-            }
             for (int i = 0; i < live.Count; i++)
             {
                 var sc = live[i];
                 if (sc.day != day) continue;
                 liveScratch.Clear();
                 SceneLayer(sc, p, dayInfo, liveScratch, true);
-                bool tapBack = sc.kind == SceneKind.TapBack && sc.a == p.key;
                 foreach (var s in liveScratch)
                 {
-                    if (!tapBack && s.start >= tbStart && s.start < tbEnd) continue;
-                    if (s.start >= wishStart && s.start < wishEnd) continue;
                     pieces.Add(new Piece { t0 = s.start, t1 = s.end, index = i, target = s.place, seg = s, order = pieces.Count });
                 }
             }

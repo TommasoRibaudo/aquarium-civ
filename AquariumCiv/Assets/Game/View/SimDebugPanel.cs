@@ -15,8 +15,8 @@ namespace AquariumCiv.View
     /// TEMPORARY sim cheats panel (#40): every sim debug hook in collapsible sections, so a tester or the user can reach any
     /// state without waiting. A "sim" button (top right, inside the safe area) opens it; <see cref="SliceDebugPanel"/> keeps
     /// the camp/era/box/music tools. IMGUI, drawn on the safe area, scrollable by drag. Every action also goes through the
-    /// static <c>Do*</c> methods, so `script eval` can call them (SimDebugPanel.DoRelic("lens")).
-    /// Sections: Time, Dilemmas (P7, <see cref="DilemmaCheats"/>), Fire, Era and box, Notables (selected one), Roles, Buildings, Shaping, Wishes, Relics and belief, Care.
+    /// static <c>Do*</c> methods, so `script eval` can call them (SimDebugPanel.DoRelic("keeper_doll")).
+    /// Sections: Time, Dilemmas (P7, <see cref="DilemmaCheats"/>), Fire, Era and box, Notables (selected one), Roles, Buildings, Shaping, Relics and belief, Care.
     /// </summary>
     [AddComponentMenu("AquariumCiv/TEMPORARY Sim Debug Panel")]
     public class SimDebugPanel : MonoBehaviour
@@ -89,7 +89,6 @@ namespace AquariumCiv.View
         public static string DoLoseSandal() { var e = Need(out var s); if (e != null) return e; return Done(s.DebugLoseSandal() != null ? "sandal lost" : "nobody to lose it"); }
         public static string DoSandalYears() { var e = Need(out var s); if (e != null) return e; return Done(s.DebugSkipSandalYears(20) ? "sandal lost 20 years longer" : "no lost sandal"); }
         public static string DoBelief(int stage, bool later) { var e = Need(out var s); if (e != null) return e; s.DebugSetBelief(stage, later); return Done($"belief stage {stage} {(later ? "later" : "early")}"); }
-        public static string DoTapBack() { var e = Need(out var s); if (e != null) return e; int id = s.DebugTapBack(3); return Done(id < 0 ? "nobody tapped back" : "tapped back: " + Name(s, id)); }
         public static string DoShape(string kind, float x, float z)
         {
             var e = Need(out var s); if (e != null) return e;
@@ -101,12 +100,6 @@ namespace AquariumCiv.View
             var e = Need(out var s); if (e != null) return e;
             var n = s.State.nudges.LastOrDefault(x => !x.credited);
             return Done(n != null && s.DebugSkipToAnswer(n.id) ? $"people answered {n.kind} #{n.id}" : "nothing waiting for an answer");
-        }
-        public static string DoWish(string kind, int notableId)
-        {
-            var e = Need(out var s); if (e != null) return e;
-            var w = s.DebugForceWish(kind, notableId);
-            return Done(w == null ? "nobody can wish" : $"{Name(s, w.notableId)} wishes for {w.kind}");
         }
 
         static BoxCamera Cam => Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : FindAnyObjectByType<BoxCamera>();
@@ -315,10 +308,13 @@ namespace AquariumCiv.View
             // ---- #721: the yearly rituals (a choice's tradition, replayed every year) ----
             if (Section("Rituals (#721)"))
             {
-                GUILayout.BeginHorizontal();
-                foreach (var k in RitualKind.All)
-                    if (GUILayout.Button("Play " + k + " now")) { var e = Sim?.DebugPlayRitual(k); last = e == null ? "no box" : e.text; }
-                GUILayout.EndHorizontal();
+                for (int i = 0; i < RitualKind.All.Length; i += 2) // two a row: four did not fit the panel's width
+                {
+                    GUILayout.BeginHorizontal();
+                    for (int j = i; j < i + 2 && j < RitualKind.All.Length; j++)
+                        if (GUILayout.Button("Play " + RitualKind.All[j] + " now")) last = StagedMoments.DebugPlayRitualNow(RitualKind.All[j]); // the held moment, staged now
+                    GUILayout.EndHorizontal();
+                }
             }
             // ---- end #721 ----
             // ---- fb4 #540: camp props ----
@@ -774,19 +770,6 @@ namespace AquariumCiv.View
                 if (GUILayout.Button($"People answer the last one ({waiting} waiting)")) last = sv != null ? ShapingView.DebugSkip() : DoSkipToAnswer();
             }
 
-            if (Section("Wishes"))
-            {
-                var ow = sim.OpenWish;
-                GUILayout.Label(ow == null ? "no open wish" : $"{Name(sim, ow.notableId)} wishes for {ow.kind}");
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Wish (selected)")) last = DoWish(null, sel);
-                if (GUILayout.Button("Wish (anyone)")) last = DoWish(null, -1);
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal();
-                foreach (var k in SimCore.SliceTools) if (GUILayout.Button(k)) last = DoWish(k, sel);
-                GUILayout.EndHorizontal();
-            }
-
             if (Section("Relics and belief"))
             {
                 GUILayout.Label("relics: " + (sim.State.relics.Count == 0 ? "none" : string.Join(", ", sim.State.relics.Select(r => r.id + (r.Found ? "" : " (lost)")))));
@@ -809,7 +792,6 @@ namespace AquariumCiv.View
                     if (GUILayout.Button("later")) last = DoBelief(stage, true);
                     GUILayout.EndHorizontal();
                 }
-                if (GUILayout.Button("Glass: tap back x3 (sim only)")) last = DoTapBack();
                 // #92: the moments and the people at the glass, as the view plays them.
                 GUILayout.Label(GlassVoice.Status());
                 for (int i = 0; i < RelicId.All.Length; i += 2)
@@ -823,7 +805,6 @@ namespace AquariumCiv.View
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Gather at glass")) last = GlassVoice.DebugGather();
                 if (GUILayout.Button("Knock x3")) last = GlassVoice.DebugKnock(3);
-                if (GUILayout.Button("Tap back x3")) last = GlassVoice.DebugTapBack(3);
                 GUILayout.EndHorizontal();
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Front: camera")) last = GlassVoice.DebugGlassSide(-1);

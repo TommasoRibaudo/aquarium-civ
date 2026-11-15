@@ -38,22 +38,22 @@ namespace AquariumCiv.Sim
         };
 
         public static readonly DilemmaDef ThiefDef = Def(Thief,
-            "{who} saw a wolf take meat from the rack again. Chase them off, or leave the scraps?", "The wolves at the meat rack.",
+            "{who} saw a wolf steal from the rack. Chase it off, or let it eat?", "The wolves at the meat rack.", // #723 [est]: 15 words at most
             "to chase them off", "Thorns round the rack and a torch at night. The wolves keep to the far wood.",
             "to leave them the scraps", "A pile of bones at the camp's edge. One of them may come closer.");
 
         public static readonly DilemmaDef PupDef = Def(Pup,
-            "{child} found a wolf pup alone by the den. Bring it home, or leave it with its mother?", "A lost wolf pup.",
+            "{child} found a lost wolf pup. Bring it home, or leave it for its mother?", "A lost wolf pup.", // #723 [est]
             "to bring it home", "{child} carries it to the fire. It will grow up with the people.",
             "to leave it with its mother", "{child} sets it down, and it runs back to the den.");
 
         public static readonly DilemmaDef KillDef = Def(Kill,
-            "{who} found the wolves' kill in the wood, under the ravens. Take the meat, or leave it?", "The wolves' kill.",
+            "{who} found the wolves' kill in the wood. Take the meat, or leave it?", "The wolves' kill.", // #723 [est]
             "to take their meat", "The hunters shout them off it. Meat for the camp, and the wolves keep away a while.",
             "to leave it to them", "The hunters walk home. The wolves eat, and grow a little bolder.");
 
         public static readonly DilemmaDef PenDef = Def(Pen,
-            "The wolves circled the duck pen last night. A thorn fence, or let the dogs keep watch?", "Wolves at the duck pen.",
+            "Wolves circled the duck pen last night. A thorn fence, or the dogs on watch?", "Wolves at the duck pen.", // #723 [est]
             "a thorn fence", "A ring of thorny branches round the pen, and a torch at night.",
             "the dogs keeping watch", "A dog sleeps by the pen gate, and barks when the wolves come.");
 

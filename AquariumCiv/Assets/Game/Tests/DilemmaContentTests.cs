@@ -18,7 +18,7 @@ namespace AquariumCiv.Tests
 
         static IEnumerable<DilemmaDef> Defs => DilemmaDefs.All;
 
-        static string Fill(string t) => (t ?? "").Replace("{seats}", "12").Replace("{t1}", Name).Replace("{t2}", Name).Replace("{y1}", Name).Replace("{y2}", Name).Replace("{a}", Name).Replace("{b}", Name).Replace("{p}", Name).Replace("{q}", Name).Replace("{place}", Place).Replace("{land}", "the meadow").Replace("{camp}", "out in the meadow") // #578: the longest of the three lands
+        internal static string Fill(string t) => (t ?? "").Replace("{seats}", "12").Replace("{t1}", Name).Replace("{t2}", Name).Replace("{y1}", Name).Replace("{y2}", Name).Replace("{a}", Name).Replace("{b}", Name).Replace("{p}", Name).Replace("{q}", Name).Replace("{place}", Place).Replace("{land}", "the meadow").Replace("{camp}", "out in the meadow") // #578: the longest of the three lands
             .Replace("{dead}", Name).Replace("{tree}", "a pole till a tree grows"); // #635: the longest tree words
 
         static IEnumerable<string> Questions(DilemmaDef d) => new[] { d.question }.Concat(d.askedBy?.Values ?? Enumerable.Empty<string>());
@@ -28,7 +28,7 @@ namespace AquariumCiv.Tests
         /// <summary>Everything the people say: questions, labels, hints.</summary>
         static IEnumerable<string> PeoplesWords(DilemmaDef d) => Questions(d).Concat(Hints(d)).Concat(d.options.Select(o => o.label));
 
-        static IEnumerable<string> AllText(DilemmaDef d) => PeoplesWords(d).Concat(d.options.Select(o => o.done))
+        internal static IEnumerable<string> AllText(DilemmaDef d) => PeoplesWords(d).Concat(d.options.Select(o => o.done))
             .Concat(d.options.SelectMany(o => o.callbacks ?? new DilemmaCallbackDef[0]).SelectMany(c => new[] { c.text, c.fallback }));
 
         // ---------- the set ----------

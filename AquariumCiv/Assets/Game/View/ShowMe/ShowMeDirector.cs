@@ -605,9 +605,18 @@ namespace AquariumCiv.View
             var now = pv.Now;
             string moment = now.hour >= 18f && now.hour < 21f ? PeopleMoment.Evening : null;
             bubbles.HeldNow = StagedMoments.PlayingMoment(Sim); // t1-moments: a staged moment's own words, not the stories
+            bubbles.TellerNow = TellerNow(pv, now); // #717: the Keeper's pick telling tonight's story
             var b = bubbles.Next(Time.unscaledTime, moment, visibleNotables);
             if (b == null) return;
             ShowBubble(b);
+        }
+
+        /// <summary>#717: the notable telling the Keeper's picked story at this moment (-1 = none).</summary>
+        int TellerNow(PeopleView pv, ViewTime now)
+        {
+            var sim = Sim;
+            if (sim == null || pv.Planner == null || !sim.StoryTellerOn(now.day, out int id, out _)) return -1;
+            return pv.Planner.Plan(PersonRef.Notable(id), now).kind == ActivityKind.StoryTell ? id : -1;
         }
 
         void Visible(PeopleView pv, Camera cam)

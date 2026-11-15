@@ -72,6 +72,12 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Supper: baskets")) last = DebugSupper(AquariumCiv.Sim.SupperPick.Baskets);
             GUILayout.EndHorizontal();
             // ---- end #588 / #589
+            // ---- #717: tonight's story, told by the Keeper's pick (the choice itself: DilemmaCheats "Small: who tells the story")
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Story tonight: slow")) last = DebugStoryTonight(0);
+            if (GUILayout.Button("Story tonight: short")) last = DebugStoryTonight(1);
+            GUILayout.EndHorizontal();
+            // ---- end #717
             var rig = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
             if (rig == null) return;
             GUILayout.BeginHorizontal();
@@ -105,6 +111,17 @@ namespace AquariumCiv.View
             if (sim == null) return "no sim";
             sim.DebugSupper(pick);
             return (pick == AquariumCiv.Sim.SupperPick.Pot ? "one big pot" : "a basket each") + ": " + PeopleView.DebugSetHour(17.6f);
+        }
+
+        /// <summary>#717: the story choice raised and answered now (0: slow, with all the voices; 1: short, for a laugh), then the evening:
+        /// the picked teller tells it at the fire.</summary>
+        public static string DebugStoryTonight(int option)
+        {
+            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
+            if (sim == null) return "no sim";
+            if (sim.DebugTellStoryTonight(option) == null) return "fewer than two adults";
+            PeopleView.Find()?.Planner?.Invalidate();
+            return $"{sim.FindNotable(sim.State.storyTellerId)?.name} tells it {(option == 0 ? "slow" : "short")}: " + PeopleView.DebugSetHour(18.2f);
         }
 
         /// <summary>#274: digs a canal across the path nearest the green; a bridge is drawn where they cross.</summary>
@@ -436,7 +453,7 @@ namespace AquariumCiv.View
             if (Btn("Earn every book page")) last = BookView.DebugEarnAll();
             if (Btn("Open book")) { last = BookView.DebugOpen(); DebugDock.Active = DebugDock.None; }
             EndRow();
-            // What the town wants (#181), the said list (#120), a wish granted (#191), a baby (#192), a gathering (#190).
+            // What the town wants (#181), the said list (#120), a baby (#192), a gathering (#190).
             Row();
             foreach (AquariumCiv.View.ShowMe.WantCase want in System.Enum.GetValues(typeof(AquariumCiv.View.ShowMe.WantCase)))
                 if (Btn(want.ToString())) last = ShowMeDirector.DebugWant(want);
@@ -451,10 +468,6 @@ namespace AquariumCiv.View
             if (Btn("Stalls")) last = StallProps.DebugStock();
             if (Btn("Keeper Doll")) last = GlassVoice.DebugPlayMoment(AquariumCiv.Sim.RelicId.KeeperDoll);
             if (Btn("Start a ritual now")) last = GlassVoice.DebugStartRitual();
-            if (Btn("Drop crumb")) last = GlassVoice.DebugDropCrumb();
-            if (Btn("Crumb eaten")) last = GlassVoice.DebugCrumbEaten();
-            if (Btn("Grant a wish")) last = WishPayoffView.DebugGrant();
-            if (Btn("Gift glow")) last = WishPayoffView.DebugGlow();
             if (Btn("Baby")) last = PeopleView.DebugBaby();
             if (Btn("Bicker")) last = PeopleView.DebugRunIn(true);
             if (Btn("Chat")) last = PeopleView.DebugRunIn(false);

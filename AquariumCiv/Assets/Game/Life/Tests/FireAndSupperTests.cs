@@ -124,5 +124,39 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual(SupperPick.None, sim.SupperOn(m + 2));
             Assert.AreEqual(SupperPick.None, sim.SupperOn(m - 1));
         }
+
+        /// <summary>#717: the Keeper's pick of tonight's storyteller tells the story at the fire that evening (slow: it ends late; short:
+        /// the listeners laugh at the end), and the planner's own rule picks the teller on the other nights.</summary>
+        [TestCase(0)]
+        [TestCase(1)]
+        public void TheKeepersPickTellsTonightsStory_AndTheRuleHoldsOnOtherNights(int option)
+        {
+            var cfg = new SimConfig { dilemmas = true };
+            var sim = new SimCore(cfg, SimCore.NewWorld(3, cfg));
+            for (int m = 0; m < 30; m++) sim.Step();
+            var d = sim.DebugTellStoryTonight(option);
+            Assume.That(d, Is.Not.Null, "two adults to ask about");
+            int teller = option == 0 ? d.personA : d.personB;
+            Assert.AreEqual(teller, sim.State.storyTellerId, "the one picked tells it");
+            long day = sim.State.month;
+            var planner = LifePlanner.Wired(sim);
+            var who = PersonRef.Notable(teller);
+            float end = option == 0 ? LifePlanner.TellSlowUntil : LifePlanner.TellShortUntil;
+            var tellingAt = planner.Plan(who, new ViewTime(day, (LifePlanner.TellFrom + end) * 0.5f));
+            Assert.AreEqual(ActivityKind.StoryTell, tellingAt.kind, "they tell the story at the fire this evening");
+            Assert.AreEqual(planner.GatherPlace, tellingAt.place);
+            var acts = new List<PersonActivity>();
+            planner.PlanAll(new ViewTime(day, (LifePlanner.TellFrom + end) * 0.5f), acts);
+            Assert.Greater(acts.Count(a => a.kind == ActivityKind.ListenStory && a.partner == who), 0, "the others listen to them");
+            if (option == 1)
+            {
+                planner.PlanAll(new ViewTime(day, end + LifePlanner.LaughHours * 0.5f), acts);
+                Assert.Greater(acts.Count(a => a.kind == ActivityKind.LaughPoint), 0, "a short one ends on a laugh");
+            }
+            else Assert.AreEqual(ActivityKind.StoryTell, planner.Plan(who, new ViewTime(day, 19.5f)).kind, "a slow one ends late");
+            if (planner.StageOf(who) != LifeStage.Elder) // an elder may be the rule's teller by turns
+                Assert.AreNotEqual(ActivityKind.StoryTell, planner.Plan(who, new ViewTime(day + 1, (LifePlanner.TellFrom + end) * 0.5f)).kind,
+                "the next evening the planner's own rule picks the teller (an elder by turns, or nobody)");
+        }
     }
 }

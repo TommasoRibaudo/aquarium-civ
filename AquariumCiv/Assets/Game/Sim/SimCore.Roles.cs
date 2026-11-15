@@ -566,7 +566,7 @@ namespace AquariumCiv.Sim
                 Vacate(seat);
                 Assign(seat, rival);
                 seat.lastChallengeMonth = State.month;
-                RoleLine("role_challenge", $"{rival.FullName} challenged old rival {chief.FullName} at the fire, and won. {rival.FullName} is chief now; {chief.FullName} sulks by the woodpile.", 0.85f, rival, chief, seat);
+                RoleLine("role_challenge", $"{rival.FullName} challenged old rival {chief.FullName} at the fire, and won. {rival.FullName} is chief now; {chief.FullName} sulks by {(LandHasWood ? "the woodpile" : State.era == Era.Camp ? "the tents" : "the huts")}.", 0.85f, rival, chief, seat);
             }
             else
                 RoleLine("role_challenge", $"{rival.FullName} challenged {chief.FullName} for the chief's seat at the fire, and lost. {chief.FullName} is still chief.", 0.7f, chief, rival, seat);

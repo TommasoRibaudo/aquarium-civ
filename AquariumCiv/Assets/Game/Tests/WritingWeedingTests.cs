@@ -321,7 +321,7 @@ namespace AquariumCiv.Tests
         {
             var sim = WithChoice("village_harvest", 1);
             for (int m = 0; m < 2 * SimConfig.MonthsPerYear; m++) sim.Step();
-            Assert.IsTrue(sim.State.chronicle.Any(e => e.text.Contains("Keeper's tree") && e.kind.StartsWith("ritual_offering")));
+            Assert.IsTrue(sim.State.chronicle.Any(e => e.text.Contains(sim.KeeperTreeGrown ? "Keeper's tree" : "tallest tree") && e.kind.StartsWith("ritual_offering")), "#723: the Keeper's tree once it stands, else the tallest tree");
             Assert.IsTrue(sim.State.chronicle.Any(e => e.kind == "ritual_offering_empty"), "the basket is empty in spring");
             Assert.AreEqual("hidden", SimCore.GroupOf("ritual_offering_empty"));
         }
@@ -340,6 +340,43 @@ namespace AquariumCiv.Tests
             Assert.IsNull(sim.DebugPlayRitual("nope"));
         }
 
+        /// <summary>#721 Editor pass: a ritual played while the Keeper watches is a held moment (no card), named by its line; away, it is
+        /// its line only (a card the first time); a held ritual not staged within its season is History.</summary>
+        [Test]
+        public void AWatchedRitualIsAHeldMoment_AwayItIsItsLine()
+        {
+            var sim = NewSim(3, new SimConfig { dilemmas = true, moments = true });
+            for (int m = 0; m < 12; m++) sim.Advance(1.0 / 12);
+            foreach (var k in RitualKind.All)
+            {
+                var e = sim.DebugPlayRitual(k);
+                var held = sim.MomentOfEntry(e.id);
+                Assert.IsNotNull(held, k + ": held for the Keeper");
+                Assert.AreEqual(MomentKind.Ritual, held.kind);
+                Assert.AreEqual(k, sim.RitualOfEntry(e.id));
+                Assert.AreEqual(e.notableId, held.personA, "led by its named person");
+                Assert.IsTrue(sim.MomentHidesCard(e), "watched live, not a card");
+            }
+            Assert.IsNull(SimCore.RitualOfLine("ritual_offering_empty"), "the empty basket is a line, not a moment");
+            Assert.AreEqual(RitualKind.Feast, SimCore.RitualOfLine(SimCore.RitualYearKind(RitualKind.Feast)));
+
+            var away = NewSim(4, new SimConfig { dilemmas = true, moments = true });
+            for (int m = 0; m < 12; m++) away.Advance(1.0 / 12);
+            away.State.customs ??= new List<string>();
+            away.State.customs.Add(RitualKind.CustomOf(RitualKind.Woodpile));
+            away.CatchUp(2.0);
+            var line = away.State.chronicle.LastOrDefault(x => SimCore.RitualOfLine(x.kind) == RitualKind.Woodpile);
+            Assume.That(line, Is.Not.Null, "autumn came while away");
+            Assert.IsNull(away.MomentOfEntry(line.id), "away: no held moment");
+
+            var stale = NewSim(5, new SimConfig { dilemmas = true, moments = true });
+            for (int m = 0; m < 12; m++) stale.Advance(1.0 / 12);
+            var se = stale.DebugPlayRitual(RitualKind.Feast);
+            var sm = stale.MomentOfEntry(se.id);
+            for (int m = 0; m <= MomentRules.RitualHoldMonths; m++) stale.Step();
+            Assert.AreEqual(HeldMomentState.Carded, sm.state, "its season is over: History");
+        }
+
         [Test]
         public void TheFeastCallbackCountsTheSeats()
         {
@@ -349,6 +386,34 @@ namespace AquariumCiv.Tests
             while ((e = sim.DebugFireCallbackNow()) != null) told.Add(e.text);
             Assert.IsTrue(told.All(t => !t.Contains("{")), string.Join(" / ", told));
             Assert.IsTrue(told.Any(t => t.Contains("seats now")), string.Join(" / ", told));
+        }
+
+        // ---------- #720: LandWords keeps the era's nouns, no phrase swaps ----------
+
+        /// <summary>#720: every choice, callback and chronicle line, rendered on both lands over years and eras, never says the old
+        /// misfires ("the warmest spot", "chose the camp") or a thing no box has (goat, hens, kitten); LandWords only turns the camp's
+        /// huts into tents.</summary>
+        [Test]
+        public void NoLineOnEitherLandSaysAGoatOrAPatchedPhrase()
+        {
+            string[] bad = { "the warmest spot", "chose the camp", "goat", "hens", "kitten" };
+            var defs = DilemmaDefs.All.Concat(SmallChoices.All).Concat(LifeChoices.All).ToList();
+            foreach (bool living in new[] { false, true })
+                foreach (int seed in new[] { 1, 2 })
+                {
+                    var cfg = new SimConfig { dilemmas = true, ecology = living };
+                    var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+                    var told = new List<string>();
+                    sim.Chronicled += e => told.Add(e.text);
+                    for (int y = 0; y < 50; y++) { sim.Advance(1); if (sim.State.eraReady) sim.AdvanceEra(); if (y % 12 == 0) foreach (var d in defs) told.AddRange(DilemmaContentTests.AllText(d).Select(t => sim.LandWords(DilemmaContentTests.Fill(t)))); }
+                    foreach (var t in told.Where(x => !string.IsNullOrEmpty(x)))
+                        foreach (var w in bad) StringAssert.DoesNotContain(w, t.ToLowerInvariant(), $"{(living ? "living land" : "slice")} seed {seed}: \"{t}\"");
+                }
+            var camp = new SimCore(new SimConfig { ecology = true }, SimCore.NewWorld(3, new SimConfig { ecology = true }));
+            Assume.That(camp.State.era == Era.Camp && camp.EcologyOn);
+            Assert.AreEqual("The Keeper chose the woodpile.", camp.LandWords("The Keeper chose the woodpile."), "no phrase swaps");
+            Assert.AreEqual("the tent across the pond", camp.LandWords("the hut across the pond"), "the camp's tents stay (era nouns)");
+            Assert.AreEqual("They moved in with a goat.", camp.LandWords("They moved in with a goat."), "a bad line is fixed at its source, not patched");
         }
 
         // ---------- #718: the shaping-only text is gone ----------
@@ -365,8 +430,9 @@ namespace AquariumCiv.Tests
             var n = old.State.notables.First(x => x.alive);
             old.State.wishes.Add(new Wish { id = 1, notableId = n.id, kind = SimCore.NudgeKind.Rain, month = old.State.month, state = WishState.Open });
             var back = new SimCore(new SimConfig(), JsonUtility.FromJson<SimState>(JsonUtility.ToJson(old.State)));
-            for (int m = 0; m < SimCore.WishLapseMonths + 1; m++) back.Step();
-            Assert.AreNotEqual(WishState.Open, back.State.wishes.Single().state, "an old open wish closes quietly");
+            back.Step();
+            Assert.AreNotEqual(WishState.Open, back.State.wishes.Single().state, "an old open wish closes quietly, at once (#718 Editor pass)");
+            Assert.IsFalse(back.ReturnCardsCapped(0, 7).cards.Any(c => c.lead.kind == "wish"), "and is never a card");
         }
 
         [Test]
@@ -383,7 +449,8 @@ namespace AquariumCiv.Tests
             Assert.IsNull(sim.FindRelic(RelicId.SkyCrumb)); Assert.IsNull(sim.FindRelic(RelicId.Lens));
             Assert.IsNull(sim.DebugGiveRelic(RelicId.SkyCrumb)); Assert.IsNull(sim.DebugGiveRelic(RelicId.Lens));
             CollectionAssert.AreEquivalent(new[] { RelicId.FestivalMask, RelicId.KeeperDoll, RelicId.LeftSandal }, RelicId.All, "the book's three");
-            Assert.IsEmpty(sim.TapBackCandidates(3)); Assert.AreEqual(-1, sim.KeeperTapped(3));
+            Assert.IsNull(typeof(SimCore).GetMethod("KeeperTapped"), "#718: the tap-back is gone");
+            Assert.IsNull(typeof(SimCore).GetMethod("DebugForceWish"), "#718: no wish can be made");
             Assert.IsFalse(sim.State.threads.Any(t => t.source == ThreadSource.Gift), "no gift teaser");
             Assert.AreEqual("cloth", sim.DollProp);
             foreach (int no in new[] { 9, 10, 13, 19, 20, 32, 33, 34, 39 }) Assert.IsFalse(SimCore.LineBank.Any(l => l.no == no), $"bank line {no}");

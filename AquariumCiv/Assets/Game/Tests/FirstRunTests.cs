@@ -152,26 +152,23 @@ namespace AquariumCiv.Tests
                 var n = sim.State.nudges.Single(x => x.id == sim.State.firstRun.rainNudgeId);
                 Assert.IsTrue(n.credited);
                 Assert.LessOrEqual(n.answerMonth - n.month, SimCore.FirstRainAnswerMonths + 1, $"seed {seed}");
-                Assert.AreEqual(sim.State.firstRun.rainNotableId, sim.State.chronicle.Last(e => e.keeper).notableId, "credited to the wisher");
-                Assert.AreEqual(WishState.Given, run.RainWish.state);
+                Assert.AreEqual(sim.State.firstRun.rainNotableId, sim.State.chronicle.Last(e => e.keeper).notableId, "credited to the one the rain was for");
             }
         }
 
         [Test]
-        public void RainStepRaisesARealRainWish()
+        public void RainStepPicksWhoTheRainIsFor_AndRaisesNoWish()
         {
             var (sim, run) = Fresh();
             TickTo(run, 3);
             sim.CleanGrime(1f); run.Tick(0.1f, true);
             sim.Prune(1f); run.Tick(0.1f, true);
-            Assert.IsNull(run.RainWish);
+            Assert.AreEqual(-1, sim.State.firstRun.rainNotableId);
             run.KeepName(null);
             Assert.AreEqual(FirstRunStep.Rain, run.Step);
-            var w = run.RainWish;
-            Assert.IsNotNull(w);
-            Assert.AreEqual(WishState.Open, w.state);
-            Assert.AreEqual(SimCore.NudgeKind.Rain, w.kind);
-            Assert.AreSame(w, sim.OpenWish);
+            Assert.GreaterOrEqual(sim.State.firstRun.rainNotableId, 0, "a grown-up the rain is credited to");
+            Assert.IsEmpty(sim.State.wishes, "#718: no wish");
+            Assert.IsFalse(sim.State.chronicle.Any(e => e.kind == "wish"));
         }
 
         [Test]

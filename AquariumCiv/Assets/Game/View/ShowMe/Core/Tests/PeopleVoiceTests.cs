@@ -10,7 +10,7 @@ using UnityEngine;
 namespace AquariumCiv.View.ShowMe.Tests
 {
     /// <summary>#120, #181, #191, #122 phase 1: more lines in the people's voice (no repeats, not even in the next session),
-    /// talk about what the town wants and lacks (true, from the sim's own choice, read-only), the wish payoff's plan, and the
+    /// talk about what the town wants and lacks (true, from the sim's own choice, read-only), and the
     /// notification question's words.</summary>
     public class PeopleVoiceTests
     {
@@ -170,7 +170,7 @@ namespace AquariumCiv.View.ShowMe.Tests
             var got = new List<WorldBubble>();
             for (int i = 0; i < 9; i++) { var b = wb.Next(1000 + i * 25); if (b != null) got.Add(b); } // as fast as the rate limit lets them
             int wants = got.Count(b => b.source == BubbleSource.Want);
-            Assert.GreaterOrEqual(got.Count, 8);
+            Assert.GreaterOrEqual(got.Count, 5); // #719: a carded story is told only by its quote now, so there is a little less to say
             Assert.Greater(wants, 0, "the town's wants are in the mix");
             Assert.LessOrEqual(wants * 3, got.Count + 2, "about one in three at most while there is other talk");
             Assert.IsNotNull(wb.ForceWant(WantCase.Content, 1) ?? wb.ForceWant(WantCase.Wood, 1) ?? wb.ForceWant(WantCase.People, 1) ?? wb.ForceWant(WantCase.Crowded, 1) ?? wb.ForceWant(WantCase.FoodLow, 1));
@@ -237,7 +237,9 @@ namespace AquariumCiv.View.ShowMe.Tests
         {
             var sim = ShowMeTests.SimIn(Era.Village, 7);
             sim.DebugSetBelief(2, true);
-            var kinds = new[] { "invention", "giant_turnip", "prank", "song", "brave", "kind", "dreamer", "lazy", "loud", "lost", "found", "elder", "newcomer", "keeper" };
+            var kinds = new[] { "elder", "newcomer", "keeper" }; // #719: the kinds #715 dropped have no story voice
+            foreach (var gone in new[] { "invention", "giant_turnip", "prank", "song", "brave", "kind", "dreamer", "lazy", "loud", "lost", "found" })
+                Assert.IsNull(PeopleVoice.StoryLine(sim, new ChronicleEntry { id = 1, kind = gone, notableId = sim.State.notables.First(n => n.alive).id, salience = 0.8f }), gone);
             var who = sim.State.notables.First(n => n.alive);
             foreach (var kind in kinds)
             {
@@ -273,7 +275,7 @@ namespace AquariumCiv.View.ShowMe.Tests
             {
                 var sim = stage == 1 ? ShowMeTests.NewSim(4) : ShowMeTests.SimIn(stage == 2 ? Era.Village : Era.Town, stage == 2 ? 7 : 1234);
                 if (stage == 1) for (int m = 0; m < 24; m++) sim.Step();
-                sim.DebugSetBelief(stage, false); // the early half: no "glass" yet
+                sim.DebugSetBelief(stage, false); // the early half (#718: stage 3 has no later half now; "glass" is said from stage 3, #723)
                 var now = PeopleVoice.TraitLinesNow(sim).ToList();
                 Assert.IsNotEmpty(now, $"stage {stage}");
                 foreach (var (l, who) in now)
@@ -286,76 +288,10 @@ namespace AquariumCiv.View.ShowMe.Tests
             foreach (var l in PeopleVoice.TraitLines)
             {
                 var low = l.text.ToLowerInvariant();
-                foreach (var banned in new[] { "aquarium", "box", "player", "phone", "game", "screen", "terrarium", "glass" }) StringAssert.DoesNotContain(banned, low, l.text);
+                foreach (var banned in new[] { "aquarium", "box", "player", "phone", "game", "screen", "terrarium" }) StringAssert.DoesNotContain(banned, low, l.text);
+                if (l.stage < 3) StringAssert.DoesNotContain("glass", low, l.text); // #723: the people say "glass" from stage 3
                 if (l.stage == 1) { StringAssert.DoesNotContain("keeper", low, l.text); StringAssert.DoesNotContain("window", low, l.text); StringAssert.DoesNotContain("scholar", low, l.text); }
                 if (l.stage == 2) StringAssert.DoesNotContain("scholar", low, l.text);
-            }
-        }
-
-        // ----------------------------------------------------------------------------------------------- #191: a wish given
-
-        static (SimCore sim, Wish wish) WithWish()
-        {
-            var sim = ShowMeTests.SimIn(Era.Village, 7);
-            sim.DebugSetBelief(2, true);
-            var w = sim.DebugForceWish(SimCore.NudgeKind.Rain);
-            Assert.IsNotNull(w);
-            return (sim, w);
-        }
-
-        [Test]
-        public void ADayWishPlaysTheSoundAndTheWisherAnswersAtOnce()
-        {
-            var (sim, w) = WithWish();
-            var plan = WishPayoff.Plan(sim, w, WishBeat.Given, night: false, isAwake: null, awakeIds: null, wisherOnScreen: false);
-            Assert.AreEqual(CueLibrary.WishGiven, plan.cue);
-            Assert.IsNotNull(CueLibrary.Get(plan.cue));
-            Assert.IsTrue(plan.effectNow);
-            Assert.IsTrue(plan.wisherSaysNow);
-            Assert.AreEqual(w.notableId, plan.wisherLine.speakerId);
-            Assert.IsTrue(plan.flyToWisher, "off screen: fly to them");
-            Assert.IsFalse(WishPayoff.Plan(sim, w, WishBeat.Given, false, null, null, true).flyToWisher);
-            var met = WishPayoff.Plan(sim, w, WishBeat.Met, false, null, null, true);
-            Assert.AreEqual(CueLibrary.CheerSmall, met.cue, "the second beat is smaller");
-        }
-
-        [Test]
-        public void AtNightSomeoneAwakeSpeaksOrTheWisherOnWaking()
-        {
-            var (sim, w) = WithWish();
-            var other = sim.State.notables.First(n => n.alive && n.id != w.notableId).id;
-            var plan = WishPayoff.Plan(sim, w, WishBeat.Given, true, id => id == other, new[] { other }, true);
-            Assert.IsTrue(plan.quiet);
-            Assert.IsTrue(plan.effectNow, "the gift lands either way");
-            Assert.IsFalse(plan.wisherSaysNow, "the wisher is asleep");
-            Assert.IsNotNull(plan.wisherLine, "...and says it on waking");
-            Assert.AreEqual(other, plan.witnessLine.speakerId);
-            var awake = WishPayoff.Plan(sim, w, WishBeat.Given, true, id => id == w.notableId, new[] { w.notableId }, true);
-            Assert.IsTrue(awake.wisherSaysNow);
-            Assert.IsNull(awake.witnessLine);
-            var nobody = WishPayoff.Plan(sim, w, WishBeat.Given, true, id => false, new int[0], true);
-            Assert.IsNull(nobody.witnessLine);
-            Assert.IsNotNull(nobody.wisherLine);
-        }
-
-        [Test]
-        public void WishReactionsAreAllowedForEveryToolAndStage()
-        {
-            foreach (int stage in new[] { 1, 2, 3 })
-            {
-                var sim = stage == 1 ? ShowMeTests.NewSim(4) : ShowMeTests.SimIn(stage == 2 ? Era.Village : Era.Town, stage == 2 ? 7 : 1234);
-                if (stage == 1) for (int m = 0; m < 24; m++) sim.Step();
-                sim.DebugSetBelief(stage, false);
-                var who = sim.State.notables.First(n => n.alive);
-                foreach (var kind in new[] { SimCore.NudgeKind.Rain, SimCore.NudgeKind.Grove, SimCore.NudgeKind.Herd, SimCore.NudgeKind.Channel })
-                    for (int id = 0; id < 4; id++)
-                        foreach (bool met in new[] { false, true })
-                        {
-                            var q = PeopleVoice.WishReaction(sim, new Wish { id = id, notableId = who.id, kind = kind, state = met ? WishState.Met : WishState.Given }, met);
-                            Assert.IsNotNull(q, $"{kind} stage {stage}");
-                            Assert.IsTrue(PeopleVoice.Allowed(q.text, sim), q.text);
-                            if (stage == 1) StringAssert.DoesNotContain("Keeper", q.text);
-                        }
             }
         }
 
@@ -398,7 +334,7 @@ namespace AquariumCiv.View.ShowMe.Tests
             {
                 HeldNow = new HeldMoment { id = 77, kind = MomentKind.Festival, personA = -1, personB = -1 },
             };
-            var texts = PeopleVoice.MomentLines(MomentKind.Festival, -1, -1).Select(l => l.text).ToList();
+            var texts = PeopleVoice.MomentLines(MomentKind.Festival, -1, -1, era: sim.State.era).Select(l => l.text).ToList();
             var got = new List<WorldBubble>();
             for (int i = 0; i < 12; i++) { var b = wb.Next(100 + i * 10); if (b != null) got.Add(b); }
             Assert.GreaterOrEqual(got.Count, 3);

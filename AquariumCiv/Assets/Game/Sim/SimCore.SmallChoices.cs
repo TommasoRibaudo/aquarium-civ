@@ -27,6 +27,9 @@ namespace AquariumCiv.Sim
         /// <summary>t4-fixes: a story or supper choice is asked at most this many times in a box (each leaves its thing).</summary>
         public const int RepeatMax = 2;
 
+        /// <summary>#717: how the picked teller tells tonight's story (the option's hint): slow, with all the voices; or short, for a laugh.</summary>
+        public const int MannerSlow = 0, MannerShort = 1;
+
         /// <summary>A newborn can be named by the Keeper until this age (game years).</summary>
         public const float NewbornNameAge = 4f;
 
@@ -112,6 +115,28 @@ namespace AquariumCiv.Sim
         /// <summary>#589: how supper goes on a view day (<see cref="SupperPick"/>): the evening the choice ended and the one after.
         /// <see cref="SupperPick.None"/> on every other day.</summary>
         public int SupperOn(long day) => State.supperPick != SupperPick.None && (day == State.supperMonth || day == State.supperMonth + 1) ? State.supperPick : SupperPick.None;
+
+        /// <summary>#717: the story the Keeper picked a teller for is told at the fire the evening it was picked (the view day of that
+        /// month): who tells it and how (<see cref="SmallChoices.MannerSlow"/>, <see cref="SmallChoices.MannerShort"/>). False on every
+        /// other evening (the planner's own rule picks the teller), or if the teller has died.</summary>
+        public bool StoryTellerOn(long day, out int tellerId, out int manner)
+        {
+            tellerId = State.storyTellerId; manner = State.storyTellerManner;
+            return tellerId >= 0 && day == State.storyTellerMonth && Alive(tellerId) != null;
+        }
+
+        /// <summary>#717: the camp's woodpile stands (a living land's first wild wood is in; the slice always has one).</summary>
+        public bool WoodpileStands => !NewStartOn || FirstWildWoodReached;
+
+        /// <summary>Debug (#717): the story choice raised and answered now (option 0: slow, 1: short); its teller tells it tonight.
+        /// Null if there are not two adults.</summary>
+        public Dilemma DebugTellStoryTonight(int option)
+        {
+            var d = DebugRaiseSmall(SmallChoices.Story);
+            if (d == null) return null;
+            AnswerDilemma(d.id, option == 1 ? 1 : 0, DilemmaPath.Card);
+            return d;
+        }
 
         /// <summary>Debug (#589): settle supper now, as if the Keeper had picked.</summary>
         public void DebugSupper(int pick) { if (FestivalOn) State.festivalUntilMonth = State.month; State.supperPick = pick; State.supperMonth = State.month; } // the cheat ends a festival year so the supper is seen
@@ -222,6 +247,15 @@ namespace AquariumCiv.Sim
         void ApplySmall(Dilemma d, DilemmaDef def, int option)
         {
             if (LifeChoices.Is(def)) { ApplyLife(d, def, option); return; } // #437/#438
+            if (def.smallKind == SmallChoices.Story)
+            {
+                // #717: the one picked (by the Keeper, by "Let them decide" or by the people on a lapse) tells it at the fire tonight,
+                // in the manner of their option's hint.
+                State.storyTellerId = option == 0 ? d.personA : d.personB;
+                State.storyTellerMonth = State.month;
+                State.storyTellerManner = option == 0 ? SmallChoices.MannerSlow : SmallChoices.MannerShort;
+                return;
+            }
             if (def.smallKind == SmallChoices.Supper)
             {
                 // #589: the pick is played out that evening (and the next): one pot at the fire, or a basket each at home.

@@ -150,7 +150,7 @@ namespace AquariumCiv.Sim
                 stories = new[]
                 {
                     new TermStory("term_meeting", 2f, "{0} the {1} kept the meeting at the {2} going until everyone agreed with them. It took two days.",
-                        "{0}, the {5}'s {1}, refused to move the woodpile. The path now goes around it."),
+                        "@wood|{0}, the {5}'s {1}, refused to move the woodpile. The path now goes around it."), // #720: only where there is wood
                     new TermStory("term_row", 1f, "{0} the {1} and {3} argued about {6} at the {2} until {7}.",
                         "{3} and {4} shouted each other hoarse over {6} at the meeting. {0} the {1} would not let anyone go home."),
                 },
@@ -400,6 +400,7 @@ namespace AquariumCiv.Sim
                 "pond" => OpenWater, // the slice always has its pond; a living land once it holds water (never the placement map)
                 "ducks" => EcoDucks > 0,
                 "tree" => KeeperTreeGrown,
+                "wood" => LandHasWood, // #720
                 _ => false,
             };
             return has != not;

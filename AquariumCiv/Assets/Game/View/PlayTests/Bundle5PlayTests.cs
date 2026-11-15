@@ -484,7 +484,7 @@ namespace AquariumCiv.View.PlayTests
                     views++;
                     if (bubble.resolvedStyle.display == DisplayStyle.Flex && ghost.resolvedStyle.display == DisplayStyle.Flex && bubble.worldBound.Overlaps(ghost.worldBound)) clashes++;
                 }
-            Debug.Log($"[bundle5] seed {seed}: {views} views, wish stepped off the finger on {fr.WishSteps} frames, clashes left {clashes}");
+            Debug.Log($"[bundle5] seed {seed}: {views} views, clashes left {clashes}");
             Assert.AreEqual(0, clashes, "the wish is off the finger");
             AssertNoErrors("first run words");
         }

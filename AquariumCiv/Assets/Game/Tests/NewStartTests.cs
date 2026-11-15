@@ -304,9 +304,9 @@ namespace AquariumCiv.Tests
         public void TheLandWords_SwapOnlyOnALivingLand()
         {
             var sim = NewBox();
-            Assert.AreEqual("A rainbow arched over the glass. Nobody worked that afternoon.", sim.LandWords("A rainbow arched over the pond. Nobody worked that afternoon."));
-            Assert.AreEqual("A and B fell out over the warmest spot in the tent. They no longer share a bench.", sim.LandWords("A and B fell out over a goat. They no longer share a bench."));
-            StringAssert.Contains("sulks by the tents", sim.LandWords("B sulks by the woodpile."));
+            // #720: no phrase swaps any more (each line is written for the land at its source); only the camp's tents
+            Assert.AreEqual("A rainbow arched over the pond. Nobody worked that afternoon.", sim.LandWords("A rainbow arched over the pond. Nobody worked that afternoon."));
+            Assert.AreEqual("They slept in the tent.", sim.LandWords("They slept in the hut."));
             var old = new SimCore(new SimConfig(), SimCore.NewWorld(7, new SimConfig()));
             Assert.AreEqual("A rainbow arched over the pond.", old.LandWords("A rainbow arched over the pond."), "the old slice keeps its words");
         }

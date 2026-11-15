@@ -452,7 +452,7 @@ namespace AquariumCiv.Sim
         {
             Q(1, 1, 'E', "crowd", PeopleMoment.Wipe, "Not too close. Nobody knows what the sky does when it's poked."),
             Q(2, 1, 'E', "kid", PeopleMoment.Finger, "It's pointing at me! Is it pointing at me?"),
-            Q(3, 1, 'E', "chief", PeopleMoment.Glass, "Nobody touches the edge of the sky. Not you, Pip. Especially not you."),
+            Q(3, 1, 'E', "chief", PeopleMoment.Glass, "Nobody touches the edge of the sky. Not you, {kid}. Especially not you."), // #719 [est]: a living child, else not said
             C(4, 1, 'E', "the worrier", PeopleMoment.Any, "{0} moved the tents back from the edge of the sky. Just a little. Just in case."),
             Q(5, 1, 'E', "crowd", PeopleMoment.Tap, "The sky knocked!"),
             C(6, 1, 'E', "the brave", PeopleMoment.Any, "{0} walked right up to the edge of the sky and touched it. It was cold. {0} is a hero now."),
@@ -463,7 +463,7 @@ namespace AquariumCiv.Sim
             Q(14, 0, '-', "leader", PeopleMoment.Festival, "Dance facing the sky tonight. Let it see us."),
             Q(15, 2, 'E', "kid", PeopleMoment.Finger, "Catch the finger! It went that way!"),
             Q(16, 2, 'E', "crowd", PeopleMoment.Return, "Everyone to the window! The Keeper's looking in."),
-            Q(17, 2, 'E', "priest", PeopleMoment.Glass, "Hats off at the window. Not you, goat."),
+            Q(17, 2, 'E', "priest", PeopleMoment.Glass, "Hats off at the window. Yes, you too."), // #719 [est]
             Q(18, 2, 'E', "headman", PeopleMoment.Evening, "We'll put the new field where the Keeper can see it."),
             C(21, 2, 'E', "the grump", PeopleMoment.Any, "{0} says the Keeper looks in at all hours and it isn't polite. {0} combed their hair anyway."),
             Q(22, 2, 'L', "kid", PeopleMoment.Glass, "I waved and the Keeper waved back. They did, I saw it."),
@@ -471,7 +471,7 @@ namespace AquariumCiv.Sim
             Q(24, 2, 'L', "kid", PeopleMoment.Play, "Hide! See if the Keeper finds us."),
             C(25, 2, 'L', "the gossip", PeopleMoment.Any, "{0} says the Keeper hums while working. Nobody can prove otherwise."),
             C(26, 2, 'L', "the dreamer", PeopleMoment.Evening, "{0} sat at the window all evening, practising a wink for the Keeper."),
-            Q(27, 2, 'L', "kid", PeopleMoment.Away, "We played Keeper all week. Pip was the hand."),
+            Q(27, 2, 'L', "kid", PeopleMoment.Away, "We played Keeper all week. {kid} was the hand."), // #719 [est]: a living child, else not said
             Q(28, 0, '-', "owner", PeopleMoment.Found, "Lost something? Ask the window."),
             Q(29, 3, 'E', "scholar", PeopleMoment.Glass, "The wall is not sky. It is a thing. Things can be measured."),
             Q(30, 3, 'E', "priest", PeopleMoment.Evening, "The scholars want to measure the Keeper. The priest wants them to ask first."),
@@ -479,7 +479,6 @@ namespace AquariumCiv.Sim
             C(35, 3, 'L', "the clever", PeopleMoment.Any, "{0} invented a mirror for signalling the Keeper."),
             C(36, 3, 'L', "the clever", PeopleMoment.Any, "{0} worked out how to tell the time from the glass's shadow."),
             C(37, 3, 'L', "the dreamer", PeopleMoment.Any, "{0} dreamt of a city beyond the glass and drew a map of it."),
-            C(38, 3, 'L', "the gossip", PeopleMoment.Any, "{0} spread a rumour that the Keeper has a cat. It caused quite a stir."),
             Q(40, 3, 'L', "priest", PeopleMoment.Any, "The scholars say the Keeper is just very large. I've been saying that for years."),
             Q(41, 3, 'L', "scholar", PeopleMoment.Away, "The room's been dark. We lit a candle in our window, in case the Keeper's looking for the way back."),
             Q(42, 3, 'L', "the dreamer", PeopleMoment.Evening, "The Keeper's room has a window too. So who keeps the Keeper?"),
@@ -493,8 +492,15 @@ namespace AquariumCiv.Sim
         {
             int stage = BeliefStage;
             bool later = BeliefHalfNow == BeliefHalf.Later;
-            return LineBank.Where(l => (!quotesOnly || l.quote) && (l.stage == 0 || (l.stage == stage && (l.half != 'L' || later))));
+            bool kid = BankKid() != null; // #719: a line that names a child is said only when there is one
+            return LineBank.Where(l => (!quotesOnly || l.quote) && (l.stage == 0 || (l.stage == stage && (l.half != 'L' || later)))
+                                       && (kid || !l.text.Contains("{kid}")));
         }
+
+        /// <summary>#719: the child a bank line names ("Not you, {kid}"): the youngest living child of 4 or more (as the "kid" speaker
+        /// picks), not the speaker; null when there is none.</summary>
+        Notable BankKid(int notSpeaker = -1) => State.notables.Where(x => x.alive && x.age < AdultAge && x.age >= 4f && x.id != notSpeaker)
+            .OrderBy(x => x.age).ThenBy(x => x.id).FirstOrDefault();
 
         /// <summary>
         /// A quote for a moment (§5 "When"; <see cref="PeopleMoment"/>) in the people's words for their stage and half, and who
@@ -518,7 +524,8 @@ namespace AquariumCiv.Sim
         }
 
         PeopleQuote Say(BankLine l, int speakerId) =>
-            new PeopleQuote { lineNo = l.no, speakerId = speakerId, text = l.text.Replace("{0}", speakerId >= 0 ? Named(speakerId) : "Someone") };
+            new PeopleQuote { lineNo = l.no, speakerId = speakerId, text = l.text.Replace("{0}", speakerId >= 0 ? Named(speakerId) : "Someone")
+                .Replace("{kid}", (BankKid(speakerId) ?? BankKid())?.name ?? "the little one") };
 
         static void SetQuote(ChronicleEntry e, PeopleQuote q)
         {
@@ -561,23 +568,7 @@ namespace AquariumCiv.Sim
             return true;
         }
 
-        // ---------- the tap-back (Choice 9 ★) ----------
-
-        /// <summary>
-        /// The Keeper tapped the glass <paramref name="taps"/> times. In stage 3's later half (the Lens is up) a scholar taps
-        /// back the same number of times: returns their id (the view plays it), or -1. The first tap-back makes a card.
-        /// </summary>
-        public int KeeperTapped(int taps) => TapBack(taps, false);
-
-        // #718 (user 2026-11-14: shaping-only text is deleted): the tap-back is gone. It needed the Lens (stage 3's later half),
-        // which no box makes now. These stay as no-ops until the Editor pass removes their callers (LifePlanner.Glass, GlassVoice).
-        int TapBack(int taps, bool force) => -1;
-
-        /// <summary>#718: always empty (the tap-back is gone).</summary>
-        public List<int> TapBackCandidates(int taps) => new List<int>();
-
-        /// <summary>#718: does nothing (the tap-back is gone).</summary>
-        public void CreditTapBack(int scholarId, int taps) { }
+        // #718 (the user, 2026-11-14: the text only shaping makes is deleted): the tap-back (Choice 9) is gone with the Lens.
 
         // ---------- the era moment's pick ----------
         /// <summary>Carry a found relic to the next box (the era moment's pick of 3; #86's CompleteBox calls this). False if
@@ -673,8 +664,5 @@ namespace AquariumCiv.Sim
             if (later) GlassRelicFound(relic);
             else State.storyFlags.Remove("relic:" + relic);
         }
-
-        /// <summary>Debug: a scholar (or any adult) taps back now, whatever the stage. Returns who, or -1.</summary>
-        public int DebugTapBack(int taps = 3) => TapBack(taps, true);
     }
 }
