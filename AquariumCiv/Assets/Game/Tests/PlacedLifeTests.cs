@@ -714,7 +714,7 @@ namespace AquariumCiv.Tests
             Assert.GreaterOrEqual(sim.EcoPondCells, sim.Config.eco.pondGateCells, "the pond is there");
             Assert.GreaterOrEqual(sim.EcoGrownTrees, sim.Config.eco.villageTrees, "the wood is there");
             Assert.IsFalse(sim.VillageGateOpen, "but no village without the ducks and the fish");
-            Assert.AreEqual(JarState.Ready, sim.JarStateOf(LifeSpecies.Ducks), "the jar waits");
+            Assert.IsTrue(sim.JarStateOf(LifeSpecies.Ducks) == JarState.Ready || sim.JarNeed(LifeSpecies.Ducks) == EcoModel.IceNeedLine, "the jar waits (shut under the ice in winter, #703)");
             Assert.AreEqual(Era.Camp, sim.State.era);
             // #519: the old "a family of ducks moved into the pond" story never comes by itself on a living-land box
             Assert.AreEqual(0, sim.State.chronicle.Count(x => x.kind == "ducks"), "no duck story without placed ducks");
