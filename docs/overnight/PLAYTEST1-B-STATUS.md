@@ -10,7 +10,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [ ] 4 · #700 rule merged; take-down/rebuild beat specced, on its branch
 - [ ] 5 · #698 merged
 - [ ] 6 · #669 merged (buildings too)
-- [ ] 7 · #702 merged
+- [x] 7 · #702 merged (1ada892)
 - [ ] 8 · #707 merged (open for look sign-off)
 - [ ] 9 · #704 merged (open for look sign-off)
 - [ ] 10 · #701 merged (open for look sign-off)
@@ -37,8 +37,13 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - 19:20 · #697→#696 Sonnet worker started (lane A, F:\GameDev-wt97, vs/697-696-replans).
 - 19:28 · pt1b Editor ready (warnings only). Layout: **integration merges in F:\GameDev-wt\pt1b-int** (p9/playtest1-b); **F:\GameDev-wt\pt1b is the Editor folder**, switched to each lane B worker's vs/<n> branch (from p9/playtest1-b). Editor-worker addendum: scratchpad editor-worker-rules.md.
 - 19:28 · Lane B started early with #702 (UI, no Life overlap) while #697 is in lane A; order otherwise as the prompt. Stall watcher running.
+- 20:05 · #702 round 1 accepted: pill in FeedbackUI's own doc (sort 100); FeedbackPillPlayTests 1/1 (7 panels, real touch), smoke 2/2, UI 6/6, Settings 10/10, Glass 14/14, Pulse 5/5. Looked at card.png + moment.png: pill on top. Open: BoxCompletePlayTests 2/3 (clockHours string) not run on base → check in the batched pass; pill has no backing in the card shot → passed to #707. Merged 1ada892. Tooling: run-tests.sh exports UNITY_PROJECT_PATH (8d79379).
+- 20:08 · #707 (+#649 gear) worker started in the Editor folder, vs/707-hud-top.
 
 ## Round logs
+### #702
+- round 1: all boxes ticked with evidence; accepted.
+
 ### #697/#696
 - round 1: started 19:20.
 
