@@ -154,10 +154,11 @@ namespace AquariumCiv.Sim.Eco
         public float rabbitThicketMargin = 0.12f; // tester 2026-11-08: the rabbits' ground stays this far outside the thicket's widest edge
         public int thicketBushes = 22, thicketFounders = 3;
         // #724 landscaping (landscaping.md section 8, decision 2026-11-14; every number here is [est], the user confirms):
-        // #726 the pouch: one seed and one bush per civ step (a new era, and each +landscapePeopleStep people at the peak, counted from landscapeStartPeople),
+        // #726 the pouch (round 2, what actually grows in the camp years): one seed and one bush per civ step: the camp gate opening, each +landscapePeopleStep
+        // people at the peak over landscapeStartPeople, each kind of building past landscapeStartKinds, each landscapeTreesPerStep grown trees at the peak, and each new era,
         // at most landscapePouchCap of each waiting. #728 up to thicketMax thickets. #729 with n thickets each holds thicketBushes / n^thicketCrowdExp
         // bushes (a disc radius x n^-thicketRadiusExp, never under thicketFounders), and one above its target loses thicketShrinkPerSeason a season.
-        public int landscapePouchCap = 3, landscapeStartPeople = 5, landscapePeopleStep = 5;
+        public int landscapePouchCap = 3, landscapeStartPeople = 5, landscapePeopleStep = 2, landscapeTreesPerStep = 8, landscapeStartKinds = 2;
         public int thicketMax = 12, thicketShrinkPerSeason = 1;
         public float thicketCrowdExp = 0.5f, thicketRadiusExp = 0.25f;
         /// <summary>#730: the landscaping tool may also pluck a grown forest tree (never the Keeper's). OFF until the user decides (open question in #724).</summary>

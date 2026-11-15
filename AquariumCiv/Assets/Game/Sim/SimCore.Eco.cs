@@ -79,7 +79,7 @@ namespace AquariumCiv.Sim
             int cal = CalendarMonth; // the land steps by the calendar, not the raw month (#603)
             int season = (cal / 3 + 3) % 4;
             EcoM.Month(season, s.month); // the surface, every month: the wet area dries, shoots grow (#266, #271)
-            if (EcoM.EarnLandscape((int)s.era, s.population) > 0) // #726: the civ grew a step: more seed and bushes to plant
+            if (EcoM.EarnLandscape((int)s.era, s.population, BuildingKinds()) > 0) // #726: the civ grew a step: more seed and bushes to plant
                 Chronicle("eco_pouch", "More seed came down from the sky, and a few young bushes with it. The people were glad.", 0.5f);
             if (cal % 3 == 0)
             {
@@ -199,7 +199,15 @@ namespace AquariumCiv.Sim
         /// <summary>Test hook: seeds and bushes leave the pouch (as planting would).</summary>
         public void DebugTakeFromPouch(int seeds, int bushes) { if (EcologyOn) { EcoM.DebugGiveSeeds(-seeds); EcoM.DebugGiveBushes(-bushes); } }
         /// <summary>Debug ("next civ step"): the peak people rise one step and the pouch is paid at once. Seeds and bushes added.</summary>
-        public int DebugNextCivStep() => EcologyOn ? EcoM.DebugNextCivStep((int)State.era, State.population) : 0;
+        public int DebugNextCivStep() => EcologyOn ? EcoM.DebugNextCivStep((int)State.era, State.population, BuildingKinds()) : 0;
+
+        /// <summary>How many kinds of building stand (the fire, the tent, a hut, a farm ...): a civ step when a new kind comes.</summary>
+        int BuildingKinds()
+        {
+            var seen = new System.Collections.Generic.HashSet<string>();
+            foreach (var b in State.buildings) seen.Add(b.type);
+            return seen.Count;
+        }
 
         void EcoWipe(float amount) { if (EcologyOn) EcoM.Wipe(amount); }
         void EcoSnip(float amount) { if (EcologyOn) EcoM.Snip(amount); }
