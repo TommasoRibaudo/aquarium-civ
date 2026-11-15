@@ -278,7 +278,7 @@ namespace AquariumCiv.Sim
             {
                 if ((EcoCover)e.cover[c] != EcoCover.Tree || c == e.treeCell) continue;
                 float x = Settle.SiteMap.CXc(c), z = Settle.SiteMap.CZc(c);
-                if (Math.Abs(x) > mx || Math.Abs(z) > mz) continue;
+                if (Math.Abs(x) > mx || Math.Abs(z - Settle.Terrain.CZ) > mz) continue;
                 if (kt && Settle.Terrain.Dist(x, z, kx, kz) < cfg.woodsClearRadius) continue;
                 float d = (x - nearX) * (x - nearX) + (z - nearZ) * (z - nearZ);
                 found.Add((d, c));
@@ -404,7 +404,7 @@ namespace AquariumCiv.Sim
                     float x = Settle.SiteMap.CXc(c), z = Settle.SiteMap.CZc(c);
                     var cv = (EcoCover)e.cover[c];
                     if (c == e.treeCell || c == skip || (cv != EcoCover.Bare && cv != EcoCover.Grass && cv != EcoCover.Tall)) continue;
-                    if (g.InBasin(c) || g.yard[c] || Math.Abs(x) > mx || Math.Abs(z) > mz) continue; // (even cells only: the view draws a grown crown per 2 x 2 block, so a tree on an odd cell would stand in the sim and not on screen)
+                    if (g.InBasin(c) || g.yard[c] || Math.Abs(x) > mx || Math.Abs(z - Settle.Terrain.CZ) > mz) continue; // (even cells only: the view draws a grown crown per 2 x 2 block, so a tree on an odd cell would stand in the sim and not on screen)
                     if (evenOnly && ((Settle.SiteMap.I(c) & 1) != 0 || (Settle.SiteMap.J(c) & 1) != 0)) continue;
                     if (from >= 0 && Settle.Terrain.Dist(x, z, Settle.SiteMap.CXc(from), Settle.SiteMap.CZc(from)) < near) continue;
                     float dk = Settle.Terrain.Dist(x, z, kx, kz);

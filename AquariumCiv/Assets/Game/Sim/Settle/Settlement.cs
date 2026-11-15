@@ -462,7 +462,7 @@ namespace AquariumCiv.Sim.Settle
         public void ApplyShaping(Nudge n)
         {
             n.x = Terrain.Clamp(n.x, -Terrain.HX + 0.1f, Terrain.HX - 0.1f);
-            n.z = Terrain.Clamp(n.z, -Terrain.HZ + 0.1f, Terrain.HZ - 0.1f);
+            n.z = Terrain.ClampZ(n.z, 0.1f);
             byte[] before = n.shapeCells == null ? (byte[])Map.flags.Clone() : null; // #82: what to put back on a take-back
             ApplyShapingToLand(n);
             if (before == null) return;
@@ -625,7 +625,7 @@ namespace AquariumCiv.Sim.Settle
             for (int c = 0; c < SiteMap.N; c++)
             {
                 float cx = SiteMap.CXc(c), cz = SiteMap.CZc(c);
-                if (MathF.Abs(cx) > mx || MathF.Abs(cz) > mz || Map.Water(c) || Map.slope[c] > 0.4f) continue;
+                if (MathF.Abs(cx) > mx || MathF.Abs(cz - Terrain.CZ) > mz || Map.Water(c) || Map.slope[c] > 0.4f) continue;
                 float d = Terrain.Dist(cx, cz, x, z);
                 if (d >= bd) continue;
                 bool clear = true;
@@ -660,7 +660,7 @@ namespace AquariumCiv.Sim.Settle
                 for (int col = -12; col <= 12; col++)
                 {
                     float px = Map.greenX + col * spacing + (row & 1) * spacing * 0.5f, pz = Map.greenZ + row * rowH;
-                    if (MathF.Abs(px) > mx || MathF.Abs(pz) > mz) continue;
+                    if (MathF.Abs(px) > mx || MathF.Abs(pz - Terrain.CZ) > mz) continue;
                     int c = SiteMap.CellAt(px, pz);
                     if (c < 0 || Map.waterDist[c] < 0.25f || Map.slope[c] > 0.5f) continue;
                     list.Add((px, pz, Terrain.Dist(px, pz, Map.greenX, Map.greenZ)));

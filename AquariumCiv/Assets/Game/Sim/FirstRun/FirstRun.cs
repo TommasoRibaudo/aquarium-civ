@@ -129,7 +129,7 @@ namespace AquariumCiv.Sim
         }
 
         static float ClampX(float x) => Math.Clamp(x, -Terrain.HX + 0.7f, Terrain.HX - 0.7f);
-        static float ClampZ(float z) => Math.Clamp(z, -Terrain.HZ + 0.7f, Terrain.HZ - 0.7f);
+        static float ClampZ(float z) => Terrain.ClampZ(z, 0.7f);
 
         // ---------- state ----------
         public bool Active => F.active;

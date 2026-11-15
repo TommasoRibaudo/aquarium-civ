@@ -149,7 +149,7 @@ namespace AquariumCiv.Sim
             {
                 if ((Eco.EcoCover)e.cover[c] != Eco.EcoCover.Tree || c == e.treeCell) continue;
                 float x = Settle.SiteMap.CXc(c), z = Settle.SiteMap.CZc(c);
-                if (Math.Abs(x) > mx || Math.Abs(z) > mz) continue;
+                if (Math.Abs(x) > mx || Math.Abs(z - Settle.Terrain.CZ) > mz) continue;
                 if (Settle.Terrain.Dist(x, z, kx, kz) >= cfg.woodsClearRadius) continue; // out there it is the woods (WoodsTreeCell)
                 found.Add(((x - nearX) * (x - nearX) + (z - nearZ) * (z - nearZ), c));
             }

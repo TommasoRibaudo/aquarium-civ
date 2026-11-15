@@ -126,10 +126,11 @@ namespace AquariumCiv.Life
 
         /// <summary>How far one can go from <paramref name="p"/> along <paramref name="dir"/> before the walls (half extents
         /// <paramref name="hx"/>, <paramref name="hz"/>, less the margin).</summary>
-        public static float RoomAlong((float x, float z) p, (float x, float z) dir, float hx, float hz, float margin)
+        public static float RoomAlong((float x, float z) p, (float x, float z) dir, float hx, float hz, float margin, float cz = AquariumCiv.Sim.Settle.Terrain.CZ)
         {
             float best = float.MaxValue;
             float lx = hx - margin, lz = hz - margin;
+            p.z -= cz; // the box spans cz +- hz in z (#658: the land is not centred on 0)
             if (dir.x > 1e-5f) best = Math.Min(best, (lx - p.x) / dir.x);
             if (dir.x < -1e-5f) best = Math.Min(best, (-lx - p.x) / dir.x);
             if (dir.z > 1e-5f) best = Math.Min(best, (lz - p.z) / dir.z);
@@ -140,9 +141,9 @@ namespace AquariumCiv.Life
         /// <summary>Where the strangers wait: out from the fire towards the box's edge on the Keeper's right (the chief left of them),
         /// else on the left when the right has no room; at most <see cref="EdgeMax"/> off, so both fit one look.
         /// <paramref name="onRight"/> says which side they ended up on.</summary>
-        public static (float x, float z) EdgePoint((float x, float z) fire, (float x, float z) r, float hx, float hz, out bool onRight)
+        public static (float x, float z) EdgePoint((float x, float z) fire, (float x, float z) r, float hx, float hz, out bool onRight, float cz = AquariumCiv.Sim.Settle.Terrain.CZ)
         {
-            float right = RoomAlong(fire, r, hx, hz, EdgeMargin), left = RoomAlong(fire, (-r.x, -r.z), hx, hz, EdgeMargin);
+            float right = RoomAlong(fire, r, hx, hz, EdgeMargin, cz), left = RoomAlong(fire, (-r.x, -r.z), hx, hz, EdgeMargin, cz);
             onRight = right >= EdgeMin || right >= left;
             float room = onRight ? right : left;
             float d = Math.Min(EdgeMax, Math.Max(Math.Min(room, EdgeMin), room * 0.85f));
@@ -153,12 +154,12 @@ namespace AquariumCiv.Life
         /// shore): out from the fire towards that home, so "full packs" points where they would live; at most <see cref="EdgeMax"/> off (both
         /// sides in one look), at least <see cref="EdgeMin"/> unless the home is nearer, and inside the walls. <paramref name="ok"/> is false
         /// when that leaves them too close to the fire to read as apart (then the caller uses <see cref="EdgePoint"/>).</summary>
-        public static (float x, float z) HomeWard((float x, float z) fire, (float x, float z) home, float hx, float hz, out bool ok)
+        public static (float x, float z) HomeWard((float x, float z) fire, (float x, float z) home, float hx, float hz, out bool ok, float cz = AquariumCiv.Sim.Settle.Terrain.CZ)
         {
             float dx = home.x - fire.x, dz = home.z - fire.z;
             float dist = (float)Math.Sqrt(dx * dx + dz * dz);
             var dir = Unit(dx, dz);
-            float room = RoomAlong(fire, dir, hx, hz, EdgeMargin);
+            float room = RoomAlong(fire, dir, hx, hz, EdgeMargin, cz);
             float d = Math.Min(Math.Min(dist, room), Math.Min(EdgeMax, Math.Max(EdgeMin, dist * 0.8f)));
             ok = d >= HomeWardMin;
             return Along(fire, dir, d);

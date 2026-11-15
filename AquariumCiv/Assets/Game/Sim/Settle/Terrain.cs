@@ -91,8 +91,20 @@ namespace AquariumCiv.Sim.Settle
     /// uses instead of dice. Ported from Growth Lab's GrowthTerrain unchanged.</summary>
     public static class Terrain
     {
-        /// <summary>Half sizes of the box's land, ground height, water level.</summary>
-        public const float HX = 3f, HZ = 2.2f, G = 1f, WaterY = G - 0.08f;
+        /// <summary>Half sizes of the box's land, ground height, water level. #658: every box is 6 x 6. The land runs
+        /// z = <see cref="ZMin"/> (the front, the camera side) to <see cref="ZMax"/> (the back, north, the hills), so it is
+        /// NOT centred on z = 0: its centre is <see cref="CZ"/>. Use <see cref="InZ"/> / <see cref="ClampZ"/> for the glass test
+        /// and <c>CZ + HZ * k</c> for positions scaled to the land, never a bare <c>|z| &gt; HZ</c>.</summary>
+        public const float HX = 3f, HZ = 3f, G = 1f, WaterY = G - 0.08f;
+        /// <summary>The front and back of the land in z (row 0's near edge, and the far glass), and the centre between them.
+        /// The deeper box added its 16 rows at the BACK, so ZMin is the old -2.2 and every old coordinate and cell id still holds.</summary>
+        public const float ZMin = -2.2f, ZMax = 3.8f, CZ = 0.8f;
+        /// <summary>True when <paramref name="z"/> is at least <paramref name="margin"/> inside both the front and the back glass.</summary>
+        public static bool InZ(float z, float margin) => z >= ZMin + margin && z <= ZMax - margin;
+        /// <summary>Clamps <paramref name="z"/> to [ZMin + margin, ZMax - margin].</summary>
+        public static float ClampZ(float z, float margin) => z < ZMin + margin ? ZMin + margin : z > ZMax - margin ? ZMax - margin : z;
+        /// <summary>True when (x, z) is at least <paramref name="margin"/> inside the glass on all four sides.</summary>
+        public static bool InBox(float x, float z, float margin) => x >= -HX + margin && x <= HX - margin && InZ(z, margin);
         /// <summary>No lot within this distance of the glass (readability, research 08 §3.3).</summary>
         public const float GlassMargin = 0.25f;
 
