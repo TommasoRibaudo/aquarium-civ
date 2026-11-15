@@ -15,7 +15,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [x] 9 · #704 merged (open for look sign-off)
 - [x] 10 · #701 merged (open for look sign-off) — short: small/grown pond shots unreachable on seed 4242 (pond floods to 424 cells); rule asserted on the mesh
 - [ ] 11 · #676 stew by kind merged (open for look sign-off)
-- [ ] 12 · #706 merged (open for look sign-off)
+- [x] 12 · #706 merged (open for look sign-off)
 - [ ] 13 · #705 specced, built and clipped, on its branch
 - [ ] 15 · #655 numbers in the issue (if time)
 - [~] Design proposals for #708, #709, #710 + #658, #687 written (open-questions.md + issue comments)
@@ -67,6 +67,9 @@ Skipped: #560/#672 (built in #678, waiting for a phone check), #660–#662 (insi
 - 2026-11-14 23:15 · #698 merged (760c9d3) after 3 rounds
 
 ## Round logs
+
+### #706
+- round 1: tags existed but carried opaque labels and the bar said only "Touch one."; new option `touch` words, bar "Touch one: A, or B." for 8 dilemmas + 3 small choices. ChoiceScene 10/10, ChoiceTagLayout 9/9, DilemmaTests 35/35, smoke 2/2. Newcomers shot looked at. Village choices and naming not shot (unreachable at year 9). Accepted.
 
 ### #690
 - round 1 (lane A): WoodTrees (grown tree with 4+ others within 3 cells); jar at 12. 8-seed lab: deer jar ~8 game years later (y23–29), wolf jar same year. SimTests 1947/1947. Accepted. Call for the user: numbers [est], deer scenes arrive later.
