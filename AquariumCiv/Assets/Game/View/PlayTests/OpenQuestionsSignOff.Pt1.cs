@@ -375,7 +375,7 @@ namespace AquariumCiv.View.PlayTests
             DefaultView(0f);
             yield return Frames(10);
             panel.collapsed = true;
-            bool fb = hud.Root != null && hud.Root.Q("hud-feedback") != null;
+            bool fb = FeedbackUI.Instance != null && FeedbackUI.Instance.Pill != null;
             Say(fb ? "top row: the title, Feedback, Photo, Settings" : "no Feedback button in this build (it shows in test builds only)");
         }
 

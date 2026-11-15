@@ -43,7 +43,7 @@ namespace AquariumCiv.View.PlayTests
                 var fb = FeedbackUI.Instance;
                 Assert.IsNotNull(fb);
 
-                yield return Tap(hud.Root, "hud-feedback");
+                yield return Tap(fb.PillRoot, "hud-feedback");
                 yield return Until(() => fb.IsOpen, 3f);
                 Assert.IsTrue(fb.IsOpen, "the HUD button opens the sheet");
                 yield return Shot("feedback_sheet_open");
@@ -75,7 +75,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return Frames(5);
                 Assert.IsTrue(hud.CleanMode, "Clean still starts");
                 yield return Shot("feedback_clean_mode");
-                var fbBtn = hud.Root.Q("hud-feedback");
+                var fbBtn = fb.PillRoot.Q("hud-feedback");
                 var glass = new Rect(Screen.width * 0.1f, Screen.height * 0.25f, Screen.width * 0.8f, Screen.height * 0.5f);
                 Assert.IsFalse(glass.Contains(GameUiPanel.ScreenCenter(fbBtn)), "the Feedback button is not on the glass");
                 AssertNoErrors("feedback sheet");

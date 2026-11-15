@@ -103,7 +103,7 @@ namespace AquariumCiv.View.PlayTests
             var fb = FeedbackUI.Instance;
             foreach (float gap in Gaps)
             {
-                yield return TapAt(GameUiPanel.ScreenCenter(Hud.Root, "hud-feedback"));
+                yield return TapAt(GameUiPanel.ScreenCenter(FeedbackUI.Instance.PillRoot, "hud-feedback"));
                 yield return Until(() => fb.IsOpen, 3f);
                 Assert.IsTrue(fb.IsOpen);
                 yield return Wait(0.5f);

@@ -337,7 +337,7 @@ namespace AquariumCiv.View.PlayTests
             var title = root.Q<GlassButton>("hud-title");
             Assert.AreEqual(ColorOf("#00000000"), title.resolvedStyle.backgroundColor, "no pill");
             Assert.IsNotNull(root.Q("hud-settings").Q<GlassIcon>(), "a settings mark, beside the name");
-            Assert.Less(root.Q("hud-feedback").resolvedStyle.opacity, 1f, "Feedback is quieter");
+            Assert.IsNotNull(FeedbackUI.Instance?.Pill, "the Feedback pill is drawn by FeedbackUI, over every panel (#702)");
 
             // Rule 7: Clean's state shows, and clean mode ends with the word back
             hud.SetCleanMode(true);

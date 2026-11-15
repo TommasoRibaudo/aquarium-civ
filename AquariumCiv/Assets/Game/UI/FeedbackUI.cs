@@ -40,6 +40,10 @@ namespace AquariumCiv.GameUI
         VisualElement root;
         GlassSheet sheet;
         GlassScrim scrim;
+        GlassButton pill;
+        VisualElement pillSlot;
+        Vector2Int pillScreen;
+        Rect pillSafe;
         TextField text;
         Label count;
         GlassButton send;
@@ -57,6 +61,10 @@ namespace AquariumCiv.GameUI
 
         public bool IsOpen => sheet != null && sheet.IsOpen;
         public VisualElement Root => root;
+        /// <summary>#702: the Feedback pill, in this document (over every panel but the sheet itself) so nothing can cover it.</summary>
+        public GlassButton Pill => pill;
+        /// <summary>The document's root: what the pill and the sheet live in (tests tap the pill by name here).</summary>
+        public VisualElement PillRoot => doc != null ? doc.rootVisualElement : null;
         /// <summary>The box's screenshot goes with the note.</summary>
         public bool ShotOn => shotOn;
         /// <summary>The last capture (tests).</summary>
@@ -82,7 +90,7 @@ namespace AquariumCiv.GameUI
             FeedbackSender.Ensure();
             doc = gameObject.AddComponent<UIDocument>();
             doc.panelSettings = GameUiPanel.Settings;
-            doc.sortingOrder = 100; // over the HUD shell
+            doc.sortingOrder = 100; // over the HUD shell and every panel (#702: the Feedback pill lives here)
         }
 
         void OnEnable()
@@ -108,11 +116,12 @@ namespace AquariumCiv.GameUI
             if (shotPreview != null) Destroy(shotPreview);
         }
 
-        bool IsOverUi(Vector2 screenPos) => GameUiPanel.Over(root, screenPos);
+        bool IsOverUi(Vector2 screenPos) => GameUiPanel.Over(PillRoot, screenPos);
 
         void Update()
         {
             if (sheet == null) return;
+            if (pillSlot != null && (Screen.safeArea != pillSafe || Screen.width != pillScreen.x || Screen.height != pillScreen.y)) PlacePill();
             Ride();
             if (IsOpen && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) Close();
         }
@@ -121,6 +130,20 @@ namespace AquariumCiv.GameUI
         void Build(VisualElement parent)
         {
             parent.Clear();
+            // #702: the pill sits first, so the sheet's scrim (a modal sheet) is over it and nothing else is. It keeps the HUD's place,
+            // just left of Photo, whatever the HUD or a moment has put away.
+            pill = null; pillSlot = null;
+            if (InTestBuild)
+            {
+                pillSlot = new VisualElement { name = "fb-pill-slot", pickingMode = PickingMode.Ignore };
+                pillSlot.AddToClassList("hud-fill");
+                pill = GameHud.IconButton("hud-feedback", "feedback", () => GameHud.OpenFeedbackFrom(this), UiRole.Tap);
+                pill.style.position = Position.Absolute;
+                pillSlot.Add(pill);
+                parent.Add(pillSlot);
+                PlacePill();
+                if (GameHud.Instance != null) SetBacked(GameHud.Instance.OffHome);
+            }
             root = new VisualElement { name = "fb-root", pickingMode = PickingMode.Ignore };
             root.AddToClassList("hud-fill");
             parent.Add(root);
@@ -185,6 +208,19 @@ namespace AquariumCiv.GameUI
             return l;
         }
 
+        /// <summary>The same quiet backing the HUD's icons get off the home view.</summary>
+        public void SetBacked(bool on) => pillSlot?.EnableInClassList("hud-top--backed", on);
+
+        /// <summary>The HUD's top row: 44 in from the safe edge, 110 down (or under the notch); Photo is 144 wide, the pill is left of it.</summary>
+        void PlacePill()
+        {
+            pillSafe = Screen.safeArea;
+            pillScreen = new Vector2Int(Screen.width, Screen.height);
+            var i = GameUiPanel.SafeInsets(pillSafe, Screen.width, Screen.height);
+            pill.style.top = Mathf.Max(i.y, 110f);
+            pill.style.right = i.z + 44f + 144f;
+        }
+
         // ---------------- behaviour ----------------
         /// <summary>Open the sheet (the HUD's Settings page calls this too). The screenshot is taken first, without the HUD on it.</summary>
         public void Open()
@@ -209,12 +245,12 @@ namespace AquariumCiv.GameUI
             capturing = true;
             root.style.display = DisplayStyle.None; // only the sheet leaves the picture: the HUD and the bubbles are what a UI note is about (#153)
             var hud = GameHud.Instance;
-            hud?.Root.Q("hud-feedback")?.AddToClassList(ShotClass); // the finger just left it: the shot shows it at rest
+            pill?.AddToClassList(ShotClass); // the finger just left it: the shot shows it at rest
             yield return null;
             yield return null; // a style change lands the frame after
             yield return new WaitForEndOfFrame();
             shot = ScreenShot.Jpg(ScreenCapture.CaptureScreenshotAsTexture());
-            hud?.Root.Q("hud-feedback")?.RemoveFromClassList(ShotClass);
+            pill?.RemoveFromClassList(ShotClass);
             root.style.display = DisplayStyle.Flex;
             capturing = false;
 
