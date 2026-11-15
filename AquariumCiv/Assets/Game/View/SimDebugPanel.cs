@@ -139,7 +139,7 @@ namespace AquariumCiv.View
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(tl.Clock.Playing ? "pause" : "play")) tl.Clock.Toggle();
             for (int i = 0; i < ReplayClock.Speeds.Length; i++)
-                if (GUILayout.Toggle(tl.Clock.SpeedIndex == i, ReplayClock.Speeds[i] + "x", GUI.skin.button)) tl.SetSpeed(i);
+                if (GUILayout.Toggle(tl.Clock.SpeedIndex == i, ReplayClock.Speeds[i] + "x", GUI.skin.button)) tl.SetSpeed(i); // steps scale with a short history (#670)
             GUILayout.EndHorizontal();
             if (GUILayout.Button("Back to now")) last = TimeLapseView.DebugClose();
         }

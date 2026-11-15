@@ -245,6 +245,8 @@ namespace AquariumCiv.View
             Era now = replay != null ? replay.era : S.era;
             Era EraOf(Lot l) => eraOf != null ? eraOf(l) : now;
             int year = replay != null ? replay.year : (int)(S.month / SimConfig.MonthsPerYear);
+            // #644 (playtest): a sown field follows the land's season (a replay keeps its year's rotation)
+            AquariumCiv.Life.Season? season = replay != null ? null : AquariumCiv.Life.LifeClock.SeasonOf(S.month);
             var map = st.Map;
             // P8: the living land. A replay of a box with land records draws each year's land (#287); one without keeps the old look.
             bool eco = sim.EcologyOn && (replay == null || replay.land != null);
@@ -349,7 +351,9 @@ namespace AquariumCiv.View
                         {
                             // Crops rotate every few years: ripe wheat, green shoots or fallow (Growth Lab).
                             float c = STerrain.Hash3(l.id, year / 3, 4);
-                            var f = L.Field(Corners(l, 0.03f), c < 0.5f ? CropKind.Wheat : c < 0.85f ? CropKind.Sprout : CropKind.Fallow, l.yaw, true, 0);
+                            var crop = c < 0.5f ? CropKind.Wheat : c < 0.85f ? CropKind.Sprout : CropKind.Fallow;
+                            if (season.HasValue) crop = FieldCrop.InSeason(crop, season.Value);
+                            var f = L.Field(Corners(l, 0.03f), crop, l.yaw, true, 0);
                             f.seed = s;
                         }
                         break;
@@ -743,6 +747,22 @@ namespace AquariumCiv.View
                 if (byWell) continue;
                 V(p, STerrain.Hash3(sim.State.seed, i, 83) * 360f, greenEra, 9000 + i, kid: i % 3 == 1, prop: i % 5 == 2 ? PropKind.Bundle : PropKind.None, slot: PropSlot.Back);
             }
+        }
+    }
+
+    /// <summary>#644 (playtest, the user 2026-11-13): what a sown field shows in each season. Spring: green shoots; summer and autumn:
+    /// the wheat; winter: bare brown furrows. A field resting this rotation stays fallow all year.</summary>
+    public static class FieldCrop
+    {
+        public static CropKind InSeason(CropKind rotation, AquariumCiv.Life.Season s)
+        {
+            if (rotation != CropKind.Wheat && rotation != CropKind.Sprout) return rotation;
+            return s switch
+            {
+                AquariumCiv.Life.Season.Winter => CropKind.Fallow,
+                AquariumCiv.Life.Season.Spring => CropKind.Sprout,
+                _ => CropKind.Wheat,
+            };
         }
     }
 }

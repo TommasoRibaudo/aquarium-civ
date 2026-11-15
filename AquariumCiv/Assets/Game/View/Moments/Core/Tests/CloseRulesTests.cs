@@ -26,6 +26,14 @@ namespace AquariumCiv.View.Moments.Tests
         }
 
         [Test]
+        public void ZoomedInAndQuietIsWatchingNotLeaving()
+        {
+            // #672 (playtest): the player zoomed in and set the phone down to watch; the close never flew them out
+            Assert.IsFalse(CloseRules.ShouldStart(Long(idle: 600f, zoom: 0.4f)));
+            Assert.IsTrue(CloseRules.ShouldStart(Long(idle: 20f, zoom: CloseRules.WatchingZoom)));
+        }
+
+        [Test]
         public void AfterALongSittingSteppingBackStartsIt()
         {
             Assert.IsFalse(CloseRules.ShouldStart(Long(zoom: 1.1f)));

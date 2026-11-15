@@ -149,6 +149,17 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void AShortHistoryPlaysForAboutTwelveSecondsALongOneKeepsItsPace()
+        {
+            // #670 (playtest): a box at year 0.3 replayed in under a tenth of a second
+            var young = new ReplayClock(0.3f); young.FitTo(0.3f); young.Play();
+            float t = 0f; while (young.Playing && t < 100f) { young.Tick(0.1f); t += 0.1f; }
+            Assert.That(t, Is.InRange(11f, 13f), "the default plays a young box over about 12 s");
+            var old = new ReplayClock(120f); old.FitTo(120f);
+            Assert.AreEqual(1f, old.Scale); Assert.AreEqual(4f, old.Speed, 1e-4f, "a long history keeps 4 years a second");
+        }
+
+        [Test]
         public void TheClockPlaysPausesSeeksAndStopsAtTheEnd()
         {
             var c = new ReplayClock(100f);

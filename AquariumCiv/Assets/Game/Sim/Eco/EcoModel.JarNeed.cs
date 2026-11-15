@@ -52,6 +52,7 @@ namespace AquariumCiv.Sim.Eco
                     if (st.deerFiveSince < 0) return $"{n} need a herd of {t.wolvesDeer} deer";
                     if (st.cTrees < t.wolvesTrees) return $"{n} need a deeper wood ({st.cTrees}/{t.wolvesTrees} trees)";
                     if (!AnyDen()) return n + " need a hidden den spot in the wood";
+                    if (!DenRoom()) return n + " need a bigger wood to hide a den in"; // #643
                     if (month - st.deerFiveSince < t.wolvesDeerMonths) return n + " wait for the herd to hold its numbers";
                     return null;
             }

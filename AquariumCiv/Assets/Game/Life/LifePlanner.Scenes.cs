@@ -653,6 +653,8 @@ namespace AquariumCiv.Life
             PlaceKind.Fire => "the fire",
             PlaceKind.Green => "the green",
             PlaceKind.Market => "the market",
+            // #652 (playtest): the living land has no stream; the gatherers' ground is the low hollow (dry, or the pond's edge once water stands)
+            PlaceKind.Stream => OnLiving ? (sim.OpenWater ? "the water's edge" : "the dry hollow") : "the stream",
             PlaceKind.Field => era == Era.Camp ? "the gathering grounds" : "the field",
             PlaceKind.LumberMill => era == Era.Camp ? "the woodpile" : "the lumber mill",
             PlaceKind.Windmill => "the windmill",

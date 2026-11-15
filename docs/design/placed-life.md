@@ -82,7 +82,7 @@ B12 (#424).
 | **Deer** | rabbits placed (the camp) | ≥ **5 grown trees** (the Keeper's tree counts) | Earlier than the village's 8 (Q2) |
 | **Ducks** | rabbits placed (the camp) | pond ≥ **12 cells** | Earlier than the village's 20 (Q2) |
 | **Fish** | ducks placed ≥ **6 months** ago | reeds ≥ **6 cells** (`cReeds`) | The reeds the ducks bring are the fish's shelter |
-| **Wolves** | deer placed | deer ≥ **5** for a full game year, wood ≥ **20 grown-tree cells**, and a den spot ≥ **1.5 u** from the fire (§5.6) | Predators come after their prey |
+| **Wolves** | deer placed | deer ≥ **5** for a full game year, wood ≥ **20 grown-tree cells**, and **12 den spots** ≥ **1.5 u** from the fire (§5.6; #643, 2026-11-13: one spot made a glow too small to find) | Predators come after their prey |
 
 ### 3.1 The gates that change
 

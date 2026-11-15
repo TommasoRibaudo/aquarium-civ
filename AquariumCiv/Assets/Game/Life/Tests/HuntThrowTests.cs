@@ -150,7 +150,10 @@ namespace AquariumCiv.Life.Tests
                 else
                 {
                     sawMiss = true;
-                    CollectionAssert.AreEqual(new[] { HuntPhase.Bolt, HuntPhase.FetchSpear, HuntPhase.PullSpear, HuntPhase.WalkBack }, ph.Skip(strike + 1).Take(4).ToList());
+                    if (p.retry != null)   // #680: a missed throw that tries again ends at the pulled spear; the try walks home
+                        CollectionAssert.AreEqual(new[] { HuntPhase.Bolt, HuntPhase.FetchSpear, HuntPhase.PullSpear }, ph.Skip(strike + 1).ToList());
+                    else
+                        CollectionAssert.AreEqual(new[] { HuntPhase.Bolt, HuntPhase.FetchSpear, HuntPhase.PullSpear, HuntPhase.WalkBack }, ph.Skip(strike + 1).Take(4).ToList());
                     var pull = p.steps.First(x => x.phase == HuntPhase.PullSpear);
                     Assert.IsTrue(pull.faceSpear, "he faces the spear");
                     Assert.Less(p.takeHour, pull.end);
@@ -163,6 +166,63 @@ namespace AquariumCiv.Life.Tests
                 }
             }
             Assert.IsTrue(sawCatch && sawMiss);
+        }
+
+        /// <summary>#680: a hunter who misses tries once more before walking home: the miss is followed by a second walk-out, stalk and
+        /// strike from where the spear was pulled out, before any walk back; the second try never tries a third time; the catches still
+        /// keep to the day's allowance (half the surplus), and the kid who followed stays through the try.</summary>
+        [Test]
+        public void AMissedHunt_TriesOnceMore_BeforeWalkingHome_NeverAThirdTime()
+        {
+            var s = Herd(7, 12);
+            int retries = 0, withKid = 0;
+            for (int i = 0; i < 60; i++)
+            {
+                long day = s.sim.State.month + i;
+                var plans = s.planner.HuntsOn(day);
+                int allowed = (s.sim.HuntSurplus + 1) / 2;
+                Assert.LessOrEqual(plans.Count(p => p.catches && !p.forced), Math.Max(allowed, 0) + 0, $"day {day}: the try counts against the day's catches");
+                foreach (var p in plans)
+                {
+                    if (p.IsRetry)
+                    {
+                        Assert.IsNull(p.retry, "never a third throw");
+                        Assert.AreSame(p, p.retryOf.retry);
+                        Assert.IsFalse(p.retryOf.catches, "only after a miss");
+                        continue;
+                    }
+                    if (p.retry == null) continue;
+                    retries++;
+                    var r = p.retry;
+                    // the whole outing, the first throw then the try, in order
+                    var all = p.steps.Concat(r.steps).Select(x => x.phase).ToList();
+                    int s1 = all.IndexOf(HuntPhase.Strike), s2 = all.LastIndexOf(HuntPhase.Strike), back = all.IndexOf(HuntPhase.WalkBack);
+                    Assert.AreEqual(2, all.Count(x => x == HuntPhase.Strike), "two throws, not three");
+                    Assert.AreEqual(2, all.Count(x => x == HuntPhase.Stalk), "a second stalk");
+                    Assert.Less(s1, s2);
+                    Assert.Less(all.IndexOf(HuntPhase.PullSpear), all.LastIndexOf(HuntPhase.Stalk), "the spear is pulled out before the second stalk");
+                    if (!r.catches) Assert.Greater(back, s2, "the walk home comes after the second throw"); else Assert.AreEqual(-1, back, "a catch is carried home");
+                    Assert.IsFalse(p.steps.Any(x => x.phase is HuntPhase.WalkBack or HuntPhase.Return), "the first throw has no walk home");
+                    Assert.AreEqual(p.end, r.start, 1e-4f, "the try follows the pulled spear without a gap");
+                    Assert.AreEqual(HuntPhase.WalkOut, r.steps[0].phase, "the try starts with the spear in hand, from where it was pulled out");
+                    Assert.AreEqual(p.standX, r.steps[0].x0, 1e-4f); Assert.AreEqual(p.standZ, r.steps[0].z0, 1e-4f);
+                    Assert.AreEqual(Prop.Spear, r.steps[0].prop);
+                    Assert.AreNotEqual(p.rabbitId, r.rabbitId, "after another rabbit (the first one bolted)");
+                    Assert.Greater(r.resolveHour, p.resolveHour);
+                    Assert.LessOrEqual(r.end, LifeClock.AfternoonEnd(LifeClock.SeasonOf(day)) + 0.5f + 1e-3f, "the afternoon had time");
+                    if (p.HasKid)
+                    {
+                        withKid++;
+                        Assert.AreEqual(p.kid, r.kid, "the kid stays with them");
+                        Assert.IsFalse(p.kidSteps.Any(x => x.phase == HuntPhase.KidBack), "the kid doesn't go home after the miss");
+                        Assert.AreEqual(p.end, p.kidSteps[p.kidSteps.Count - 1].end, 1e-4f, "the kid waits for the spear");
+                        Assert.AreEqual(r.start, r.kidSteps[0].start, 1e-4f, "and goes on with the try");
+                        Assert.IsTrue(r.kidSteps[0].hasXZ, "from where they stood");
+                    }
+                }
+            }
+            Assert.Greater(retries, 0, "some misses try again");
+            TestContext.WriteLine($"retries {retries}, with a kid {withKid}");
         }
 
         static float Dist(float ax, float az, float bx, float bz) { float dx = ax - bx, dz = az - bz; return (float)Math.Sqrt(dx * dx + dz * dz); }

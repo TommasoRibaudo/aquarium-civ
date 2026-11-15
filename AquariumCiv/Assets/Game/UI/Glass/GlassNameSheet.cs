@@ -26,6 +26,21 @@ namespace AquariumCiv.GameUI
             if (!TouchScreenKeyboard.isSupported || !TouchScreenKeyboard.visible) return 0f;
             return TouchScreenKeyboard.area.height * GameUiPanel.ReferenceWidth / Mathf.Max(1f, Screen.width);
         }
+
+        /// <summary>#645 (playtest): no second text box over the phone's keyboard (iOS draws one with its own ✓ and ✕, a second way to
+        /// change a name the game's Save already set). The game's own field is the one typed in.</summary>
+        public static TextField Tame(TextField f)
+        {
+            if (f != null) f.hideMobileInput = true;
+            return f;
+        }
+
+        /// <summary>#645: the keyboard goes down with the field (Save, Never mind, a closed sheet). Blur before the field leaves the panel:
+        /// a focused field dropped from the tree left the keyboard up.</summary>
+        public static void Down(TextField f)
+        {
+            if (f != null && f.panel != null) f.Blur();
+        }
     }
 
     /// <summary>
@@ -54,6 +69,14 @@ namespace AquariumCiv.GameUI
             // #637 tester (1640x2360): at 30 % of a tablet's shorter panel, Another and Keep rode up over the field; as tall as it needs instead
             Sheet = new GlassSheet(SheetHeight.Content);
             Scrim = new GlassScrim(id, Sheet);
+            Action keepNow = keep, closeNow = close; // #645: the keyboard goes down with Keep and the close
+            close = () => { GlassKeyboard.Down(Field); closeNow?.Invoke(); };
+            keep = () =>
+            {
+                GlassKeyboard.Down(Field);
+                keepNow?.Invoke();
+                if (IsOpen && !string.IsNullOrEmpty(Problem)) Field.Focus(); // refused: the field again, to fix the name
+            };
             Scrim.TappedOutside += close;
             var head = GlassSheet.Head(title, closeWord == null ? id + "-close" : null, closeWord == null ? close : null);
             if (closeWord != null) head.Add(new GlassButton(closeWord, close, ButtonKind.Quiet, UiRole.Close) { name = id + "-close" });
@@ -74,7 +97,7 @@ namespace AquariumCiv.GameUI
             row.Add(problem);
             Sheet.Add(row);
 
-            Field = new TextField { name = id + "-field", maxLength = SettlementNaming.MaxLength + 4 };
+            Field = GlassKeyboard.Tame(new TextField { name = id + "-field", maxLength = SettlementNaming.MaxLength + 4 });
             Field.AddToClassList("kg-field");
             Field.RegisterValueChangedCallback(_ => Say(""));
             Sheet.Add(Field);

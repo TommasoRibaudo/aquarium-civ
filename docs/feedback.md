@@ -28,6 +28,9 @@ Offline or with no token, reports wait in `persistentDataPath/feedback_outbox/` 
   - *Recent log events* (the last 40 JSONL lines, in a collapsed `<details>`)
   - A machine-readable footer: `<!-- aquarium-civ-feedback v1 kind=… proto=… variant=… tester=… build=… -->`
 
+**Praise (`fb:praise`)** makes no work issue either: triage adds a row to
+[results/praise-and-pulse.md](design/results/praise-and-pulse.md) in our own words, links the note, labels it `fb:triaged`.
+
 Reading it as an agent:
 `gh issue list -R TommasoRibaudo/aquarium-civ-feedback --label feedback --state open --json number,title,labels,body`.
 Filter with `--label fb:survey`, `--label proto:P1`, and so on. Issue #2 is a closed format sample.
@@ -78,7 +81,8 @@ While it runs, the old day-2/3 recall question stays quiet (its words are in `na
 - Report: `bash Tools/pulse-report.sh [tester-id]`, one table per tester (day, session, question, answer, issue).
 - Debug panel (telemetry block): "Ask <id>", "Reset questions", "Questions: on/off". PlayMode tests run with the questions off
   (`SaveSandbox`); `PulseQuestionPlayTests` asks on purpose.
-- `fb:pulse` issues need no triage: read them with the report.
+- `fb:pulse` answers make no work issue: triage adds each one to [results/praise-and-pulse.md](design/results/praise-and-pulse.md)
+  (checked against "the box now") and labels it `fb:triaged`.
 - Timing (tester 2026-11-13): no question until the player has had the box to themselves for 60 s after the first run
   (`PulseQuestionView.SettleSeconds`) and 5 s without a touch (`CalmSeconds`). A question asked with "Ask <id>" goes out
   as `[Slice] [debug] Pulse ...` and the report skips it.

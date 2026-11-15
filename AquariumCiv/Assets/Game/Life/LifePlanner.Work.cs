@@ -209,6 +209,8 @@ namespace AquariumCiv.Life
                         case Season.Summer: return Alt(W(field, ActivityKind.Weed, Prop.Hoe, Prop.None, field, 0f), field, ActivityKind.Hoe, Prop.Hoe, 0.3f);
                         case Season.Autumn: return W(field, ActivityKind.Harvest, Prop.Scythe, Prop.Sheaf, Store(Prop.Sheaf), 0.4f);
                         default: // winter: wood. #201: no hammer at a finished house, nothing here has a site under way to hammer at.
+                            // #651 (tester): no wood on the land yet, no logs to fetch nor kindling to chop: the field's winter hoeing instead
+                            if (!WoodsStand) return W(field, ActivityKind.Hoe, Prop.Hoe, Prop.None, field, 0f);
                             return Fetch(Alt(W(p.home, ActivityKind.StackWood, Prop.Log, Prop.Log, fire, 0.25f), p.home, ActivityKind.ChopKindling, Prop.Axe, 0.4f), Woods); // tester run 9: the axe is for chopping: stacking is logs
                     }
                 }

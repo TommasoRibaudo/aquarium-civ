@@ -39,13 +39,13 @@ namespace AquariumCiv.GameUI
         /// SFX and Ambience groups follow them (AquariumCiv.Audio.MixLevels). The sliders write these at every step of a drag, so the disk waits for <see cref="Commit"/>.</summary>
         public static float SfxVolume
         {
-            get => PlayerPrefs.GetFloat("set_sfx_vol", 1f);
+            get => PlayerPrefs.GetFloat("set_sfx_vol", 0.6f);
             set { PlayerPrefs.SetFloat("set_sfx_vol", Mathf.Clamp01(value)); }
         }
 
         public static float AmbienceVolume
         {
-            get => PlayerPrefs.GetFloat("set_amb_vol", 0.8f);
+            get => PlayerPrefs.GetFloat("set_amb_vol", 0.6f);
             set { PlayerPrefs.SetFloat("set_amb_vol", Mathf.Clamp01(value)); }
         }
 

@@ -104,6 +104,9 @@ namespace AquariumCiv.View.PlayTests
         IEnumerator TapEl(VisualElement e)
         {
             Assert.IsNotNull(e, "element exists");
+            // #674: the rename row sits under the chips: scroll it into the card's view first, as a player would
+            var view = e.GetFirstAncestorOfType<ScrollView>();
+            if (view != null) { view.ScrollTo(e); yield return null; yield return null; }
             var c = e.worldBound.center;
             float k = Screen.width / GameUiPanel.ReferenceWidth;
             yield return TapAt(new Vector2(c.x * k, Screen.height - c.y * k));
@@ -221,7 +224,7 @@ namespace AquariumCiv.View.PlayTests
             yield return CalmHud();
             var year = hud.Root.panel.visualTree.Q<Label>(className: "hud-title-year");
             Check("c", year != null, "the title has a year line");
-            string want = GameHud.TitleLine(Mathf.FloorToInt(Sim.State.Year), GameHud.SeasonWord(Sim.State), Sim.State.population);
+            string want = GameHud.TitleLine(AquariumCiv.Sim.SimCore.YearNo(Sim.State.month), GameHud.SeasonWord(Sim.State), Sim.State.population);
             Log($"c title '{year?.text}' (expected '{want}')");
             Check("c", year != null && year.text == want, "the title reads Year N · Season · P people");
             Check("c", year != null && year.text.Contains("Year") && (year.text.Contains("people") || year.text.Contains("person")), "year, season and people are all there");

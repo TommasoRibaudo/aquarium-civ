@@ -9,7 +9,7 @@ namespace AquariumCiv.Sim
     {
         public int buildingId;
         public string type, title, whatItIs;
-        public int year;                 // the game year it was founded (Year 0 = the first month)
+        public int year;                 // the game year it was founded (Year 1 = the first year, as History and the book count)
         public string yearLine;          // "Built in year 12."
         public int builderId = -1;       // the notable who built it, -1 = "together"
         public string builderName = "";
@@ -45,7 +45,7 @@ namespace AquariumCiv.Sim
             var c = new BuildingCardInfo
             {
                 buildingId = b.id, type = b.type, title = BuildingTitle(b.type, State.era), whatItIs = BuildingBlurb(b.type, State.era),
-                year = (int)(b.foundedMonth / SimConfig.MonthsPerYear),
+                year = YearNo(b.foundedMonth),
             };
             c.yearLine = $"Built in year {c.year}.";
             var by = b.builderId > 0 ? FindNotable(b.builderId) : null;

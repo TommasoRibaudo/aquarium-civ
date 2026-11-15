@@ -920,13 +920,17 @@ namespace AquariumCiv.Life
             return PlaceOf(p.jobBuilding);
         }
 
-        ActivityKind Chore(Person p, DayInfo d, int salt) => ChoreIndex(p, d, salt) switch
+        ActivityKind Chore(Person p, DayInfo d, int salt) => WithWood(ChoreIndex(p, d, salt) switch
         {
             0 => ActivityKind.SweepStep,
             1 => ActivityKind.HangWashing,
             2 => ActivityKind.ChopKindling,
             _ => ActivityKind.SitOut,
-        };
+        });
+
+        /// <summary>#651 (playtest): no kindling to chop before the land has wood (a grown wild wood, the woodcutter's own rule, #285/#573):
+        /// that chore turns into sitting out, so nobody swings an axe at nothing.</summary>
+        ActivityKind WithWood(ActivityKind k) => k == ActivityKind.ChopKindling && !WoodsStand ? ActivityKind.SitOut : k;
 
         /// <summary>The chore index (0-3). #521: a small first camp deals them out by rank, so the grown-ups never do the same chore
         /// at once (three chopping kindling at the one tent); everywhere else it stays the person's own hash.</summary>
@@ -968,7 +972,7 @@ namespace AquariumCiv.Life
             dawnHouse.Sort((a, b) => { uint ha = H(a.key, day, 132 + salt), hb = H(b.key, day, 132 + salt); return ha != hb ? ha.CompareTo(hb) : a.key.CompareTo(b.key); });
             int rank = Math.Max(0, dawnHouse.IndexOf(p));
             int first = (int)(H(dawnHouse[0].key, day, 600 + salt) % (uint)DawnChores.Length);
-            return (rank, dawnHouse.Count, DawnChores[(first + rank) % DawnChores.Length]);
+            return (rank, dawnHouse.Count, WithWood(DawnChores[(first + rank) % DawnChores.Length]));
         }
 
         /// <summary>#208: the home's morning chore by turns, between <paramref name="from"/> and <paramref name="end"/>: in until this person's

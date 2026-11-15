@@ -117,6 +117,37 @@ namespace AquariumCiv.Life.Tests
         }
 
         [Test]
+        public void NoKindlingChoppedBeforeTheLandHasWood()
+        {
+            // #651 (playtest): the dawn and home chores never hand out kindling while no wild wood stands
+            var sim = KeeperOnly(out _);
+            var planner = LifePlanner.Wired(sim);
+            var day = new List<PersonActivity>();
+            foreach (var season in new[] { Season.Spring, Season.Summer, Season.Autumn, Season.Winter })
+            {
+                planner.ForcedSeason = season;
+                for (int d = 1; d <= 20; d++)
+                    foreach (var who in planner.People)
+                    {
+                        planner.DaySchedule(who, d, day);
+                        Assert.IsFalse(day.Any(a => a.kind == ActivityKind.ChopKindling), $"{season} day {d}: no kindling without wood");
+                    }
+            }
+        }
+
+        [Test]
+        public void TheGatherersGroundIsNeverCalledAStreamOnTheLivingLand()
+        {
+            // #652 (playtest): the living land has no stream; the root-dig ground is named for what is there
+            var sim = KeeperOnly(out _);
+            var planner = LifePlanner.Wired(sim);
+            var dig = new PersonActivity { kind = ActivityKind.Gather, place = Place.Land(PlaceKind.Stream) };
+            string line = planner.Describe(dig);
+            StringAssert.DoesNotContain("stream", line);
+            StringAssert.Contains(sim.OpenWater ? "the water's edge" : "the dry hollow", line);
+        }
+
+        [Test]
         public void OnceAWildTreeGrowsChoppingGoesThereNeverToTheKeepersTree()
         {
             var sim = KeeperOnly(out int cell);

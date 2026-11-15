@@ -124,6 +124,8 @@ namespace AquariumCiv.Sim.Eco
         // wolfChase (x wolfWinter in winter), one in 1/wolfCatch ends in a kill; kills stay at least wolfKillFromFire from the fire.
         // The white wolf: once, in a winter after the first pups, with whiteWolfChance a winter.
         public int wolvesDeer = 5, wolvesDeerMonths = 12, wolvesTrees = 20, denTrees = 3, wolfCap = 6, wolfPupsMin = 2, wolfPupsMax = 4;
+        // #643 (playtest, the user 2026-11-13): the jar also waits for wolvesDenCells den spots, so placing the pack has room to find.
+        public int wolvesDenCells = 12;
         public float denFromFire = 1.5f, wolfChase = 0.35f, wolfWinter = 1.8f, wolfCatch = 0.25f, wolfKillFromFire = 1.2f, whiteWolfChance = 0.35f;
         // Boldness (0..1): its start, and what moves it. Scraps and a kill left raise it; a chase or a kill taken lower it; the first guard
         // bark lowers it; each month scraps wear it up and a grown dog on guard wears it down.

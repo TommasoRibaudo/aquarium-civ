@@ -86,5 +86,51 @@ namespace AquariumCiv.View.Tests
             for (float t = 0f; t < 16f; t += 1f / 30f) if (d.StirBegan(7, t, 1f)) began++;
             Assert.That(began, Is.InRange(6, 8), "16 s: 1.6 s stirs, four to a taste (1.9 s): seven new ones");
         }
+
+        [Test]
+        public void StewBubbles_StayOnTheStew_SwellPopAndRest()
+        {
+            // #676: each bubble sits on the stew inside the lip, never grows much past full size, and rests (size 0) part of each cycle
+            for (int i = 0; i < 3; i++)
+            {
+                int resting = 0, n = 0;
+                for (float t = 0f; t < 30f; t += 1f / 30f, n++)
+                {
+                    float k = MealDirector.BubbleAt(t, i, out Vector3 at);
+                    Assert.That(k, Is.InRange(0f, 1.31f));
+                    Assert.Less(new Vector2(at.x, at.z).magnitude, 0.052f * 0.92f, "inside the pot's lip");
+                    if (k == 0f) resting++;
+                }
+                Assert.That(resting / (float)n, Is.InRange(0.3f, 0.5f), "popped and resting about 40 % of the time");
+            }
+        }
+
+        [Test]
+        public void Steam_IsSoftSmallAndSpread_NeverAColumn()
+        {
+            // #676 (tester): crisp white discs stacked over the pot read as a lid. Steam is translucent, small, widens as it fades, and the
+            // puffs start apart and out of step
+            Assert.Less(MealDirector.SteamAlpha, 0.5f, "well under half opaque (the shader fades it to 0 at the top)");
+            Assert.Greater(MealDirector.SteamSizeTo, MealDirector.SteamSizeFrom * 2f, "widens as it rises");
+            Assert.Less(MealDirector.SteamSizeTo, 0.052f, "a puff stays smaller than the pot's mouth");
+            Assert.Greater(MealDirector.SteamDrift, 0f, "drifts aside");
+            foreach (int n in new[] { MealDirector.SteamPuffs, MealDirector.SteamPuffsWinter })
+            {
+                var spots = new List<Vector3>(); var phases = new List<float>();
+                for (int i = 0; i < n; i++) { spots.Add(MealDirector.SteamStart(i, n, out float ph)); phases.Add(ph); }
+                for (int i = 0; i < n; i++)
+                {
+                    Assert.Less(new Vector2(spots[i].x, spots[i].z).magnitude, 0.052f * 0.92f, "starts over the stew");
+                    for (int j = i + 1; j < n; j++)
+                    {
+                        bool samePlace = Vector2.Distance(new Vector2(spots[i].x, spots[i].z), new Vector2(spots[j].x, spots[j].z)) < 0.006f;
+                        float dp = Mathf.Abs(Mathf.Repeat(phases[i] - phases[j] + 0.5f, 1f) - 0.5f);
+                        Assert.IsFalse(samePlace && dp < 0.25f, $"puffs {i} and {j} would stack");
+                        Assert.Greater(dp, 0.02f, $"puffs {i} and {j} rise out of step");
+                    }
+                }
+            }
+            Assert.Greater(MealDirector.SteamPuffsWinter, MealDirector.SteamPuffs, "more in winter");
+        }
     }
 }

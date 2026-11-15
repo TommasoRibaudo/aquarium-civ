@@ -109,6 +109,15 @@ namespace AquariumCiv.View
         public static string PuddleVisit() { var p = PuddleLife.Instance; return p != null ? p.VisitNow() : "no puddle life"; }
 
         /// <summary>"Rabbit tracks now": the tracks show at the meadow's edge at once (#282).</summary>
+        /// <summary>"Rabbit trails: count" (#665): the living trails drawn now (fresh prints while rabbits live), and the season's share.</summary>
+        public static string LiveTrailsNow()
+        {
+            var rv = RabbitView.Instance; var pv = PeopleView.Find();
+            if (rv == null || pv == null) return "no rabbit view";
+            var season = AquariumCiv.Life.LifeClock.SeasonOf(pv.Now.day);
+            return $"{rv.LiveTrails} living trails (at most {RabbitView.LiveTrailsMax}; {season}: {RabbitView.LiveTrailShare(season):0%} of slots), a new slot every {RabbitView.LiveTrailEvery:0} view hours";
+        }
+
         public static string RabbitTracksNow()
         {
             var s = Sim;
@@ -210,6 +219,20 @@ namespace AquariumCiv.View
             if (pv == null || pv.Planner == null) return "no people";
             if (!pv.Planner.DebugStartHunt(pv.Now, out var plan)) return "no hunt: no rabbit shown, or nobody free";
             return $"hunt started: rabbit {plan.rabbitId}, {(plan.catches ? "will catch" : "will miss")}, strike in {(plan.strikeStart - pv.Now.hour):0.0} h";
+        }
+
+        /// <summary>"Hunt: miss, then try again" (#680): a hunt starts now, misses, and the hunter tries once more (that try misses too, so
+        /// the walk home after it shows), even late in the day.</summary>
+        public static string HuntMissThenRetry()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no people";
+            pv.Planner.DebugRetryNext = true;
+            if (!pv.Planner.DebugStartHunt(pv.Now, out var plan)) { pv.Planner.DebugRetryNext = false; return "no hunt: no rabbit shown, or nobody free"; }
+            return plan.retry != null ? $"hunt started: misses rabbit {plan.rabbitId}, then tries rabbit {plan.retry.rabbitId}; first strike in {(plan.strikeStart - pv.Now.hour):0.0} h"
+                                      : "hunt started, but no second try: no other rabbit, or no time left today";
         }
 
         /// <summary>"Next hunt succeeds / misses" (#283): fixes how the next hunt that has not struck yet ends.</summary>

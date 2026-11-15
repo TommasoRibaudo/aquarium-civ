@@ -103,7 +103,7 @@ namespace AquariumCiv.Sim
         public string CardFooter(ChronicleCard c)
         {
             if (c == null) return "";
-            string year = $"Year {c.month / SimConfig.MonthsPerYear}";
+            string year = $"Year {YearNo(c.month)}"; // counts from Year 1 like History and the book
             var b = c.buildingId < 0 ? null : State.buildings.FirstOrDefault(x => x.id == c.buildingId);
             return b == null ? year : $"{year} · by the {Label(b)}";
         }
