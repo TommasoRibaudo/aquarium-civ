@@ -8,7 +8,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [x] 2 · #699 merged (lane A; Unity check pending)
 - [x] 3 · #703 merged (lane A; jar look in Unity pending) — call: jar shut while frozen
 - [~] 4 · #700 rule merged 969c8b2 (racks + Keeper's fire props); spec B27 written; beat not built (needs user sign-off)
-- [ ] 5 · #698 merged
+- [x] 5 · #698 merged 760c9d3 (cause: tent-bound doll drawn Hidden short of its slot when the way was blocked; original tester vanish not reproduced directly)
 - [ ] 6 · #669 merged (buildings too)
 - [x] 7 · #702 merged (1ada892)
 - [x] 8 · #707 merged 2d1156e (open for look sign-off)
@@ -53,7 +53,14 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - 23:42 · Editor restart before #698 (3 tickets since start: #702, #707, #697; a recompile returned 400).
 - 23:55 · #698 Editor worker started (after an Editor restart). #705 spec B28 written on vs/705-laundry (a53f2df → round 2 977f0f4: cloths 0.11×0.13 u ≈ 14–16 px at the default camera, oversized vs dolls on purpose; rain dash dropped (polish phase)). Not built yet; the build + AnimLab clip go on the same branch in the Editor; user signs off spec then clip. Design-proposal comments posted on #708 #709 #710 #687.
 
+- 2026-11-14 23:15 · #698 merged (760c9d3) after 3 rounds
+
 ## Round logs
+
+### #698
+- round 1: inTent snap (from #696) fixed with TentArrived guard; ChaseEndPlayTests 2/2. Original cause not found.
+- round 2: ruled out several paths; nothing caught.
+- round 3: ChaseLong (8 natural chases, ~42.8k frames, 6–18 h) caught kids drawn Hidden 0.14–0.75 u short of the slot (blocked way → goal fell back to the place middle). Fixed: walk until there. ChaseEnd 2/2, ReplanKeepsPlans 22/22, smoke 2/2. Accepted.
 ### #702
 - round 1: all boxes ticked with evidence; accepted.
 
