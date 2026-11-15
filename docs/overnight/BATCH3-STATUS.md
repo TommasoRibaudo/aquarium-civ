@@ -16,9 +16,9 @@ sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Wo
 ## Plan
 - [ ] Lane A: landscaping sim #726–#730 (vs/724-landscaping-sim, F:\GameDev-wt\b3-724, Sonnet)
 - [ ] Lane A: writing #713–#716 (+ sim parts of #718, #721) (vs/713-writing, b3-713, Opus)
-- [ ] Lane A: specs #692–#695, #708, #709 (vs/692-people-things-specs, b3-692, Opus)
-- [ ] Lane A: kit inventory, mock-ups, words #668 (vs/668-kit-mockups, b3-668, Opus)
-- [ ] Approvals page for the user (specs, mock-ups, words)
+- [x] Lane A: specs #692–#695, #708, #709 (vs/692-people-things-specs, b3-692, Opus) — merged d53de79
+- [x] Lane A: kit inventory, mock-ups, words #668 (vs/668-kit-mockups, b3-668, Opus) — merged e0e9d3c
+- [x] Approvals page for the user: https://claude.ai/artifact/DJ8y9LKcqkKctRhsWjT7U9 (186 specs/assets, Q1–Q13, kit K1–K6; answers come back pasted)
 - [ ] Lane A: #709 nest sim (after landscaping merges)
 - [ ] Editor (after handover from Implement, F:\GameDev-wt\pt1b Editor or F:\GameDev): landscaping view/UI #726/#730/#731/#732
 - [ ] Editor: AnimLab clips for approved specs; #708 fish; #709 nest view
