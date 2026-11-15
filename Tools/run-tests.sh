@@ -26,6 +26,7 @@ set -u
 export UNITY_NO_PAGER=1 UNITY_NO_BANNER=1
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROJ="${PROJ:-F:/GameDev/AquariumCiv}"
+export UNITY_PROJECT_PATH="${UNITY_PROJECT_PATH:-$PROJ}"  # two Editors open: every unity call targets PROJ
 OUT="${OUT:-$PROJ/Temp/agent/test-runs}"
 READY_WAIT_S="${READY_WAIT_S:-300}"
 RUN_LIMIT_S="${RUN_LIMIT_S:-2400}"
