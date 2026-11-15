@@ -87,6 +87,7 @@ namespace AquariumCiv.Sim
                 if (Config.settle) Settlement.SyncEco(); // flags and pond into the land, before the month's placing
                 EcoTell();
             }
+            NestMonthStep(cal); // #709: the nest's month (the parent, the eggs, the chicks; its own hash dice)
             PullTroddenVine(); // #523: vine on trodden ground is pulled the same step it grows there (SimCore.Trodden.cs)
             WolvesMonth(season); // #437/#438: the pack's month (a chase, the thief, the pen) and the dogs' (hash dice only)
         }
@@ -97,6 +98,7 @@ namespace AquariumCiv.Sim
             var m = EcoM;
             JarsTell(); // #417: the jars that opened
             PlacedLifeTell(); // #420-#422: the white stag, the fletched arrows, the rulings
+            NestTell(); // #709: what happened at the nest (a plucked bush, a shrunk thicket)
             if (m.newMilestones.Count == 0 && m.newGates.Count == 0) return;
             var keys = m.newMilestones.ToArray(); var gates = m.newGates.ToArray();
             m.newMilestones.Clear(); m.newGates.Clear();
@@ -260,6 +262,7 @@ namespace AquariumCiv.Sim
             if (c < 0) return -1;
             kind = EcoM.Pluck(c);
             if (kind == PluckKind.None) return -1;
+            NestTell(); // #709: a plucked nest bush moved the nest, or the thicket took it
             CountKeeperAction(KeeperAction.Prune, true);
             if (kind != PluckKind.Sapling && Config.settle) Settlement.SyncEco(); // a thicket that lost its last bush gives its ground back to the planner
             if (State.eco.clearedLineMonth != State.month)
@@ -276,6 +279,7 @@ namespace AquariumCiv.Sim
         {
             if (!EcologyOn) return (0, 0, 0);
             var r = EcoM.DebugPluckArea(x, z, radius);
+            NestTell();
             if (r.saplings + r.bushes + r.trees > 0 && Config.settle) Settlement.SyncEco();
             return r;
         }

@@ -500,6 +500,23 @@ namespace AquariumCiv.View
                 }
             }
             // ---- end #724 ----
+            // ---- #709: the nest in the thicket (B71): every stage reachable without waiting for spring ----
+            if (sim.EcologyOn && Section("Nest (#709)"))
+            {
+                GUILayout.Label($"nest {(sim.NestStands ? "at bush " + sim.NestCell + " in thicket " + sim.NestThicketCell : "none")} · {sim.NestPhaseNow} · eggs {sim.NestEggs} (spare {sim.NestEggsSpare}, taken {sim.NestEggsTakenThisSpring}) · chicks {sim.NestChicks} · parent {(sim.NestParentPresent ? "on" : "off")} · looks {sim.NestLooks}");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Place the nest now")) { int c = sim.DebugNestPlace(); last = Done(c >= 0 ? $"nest at bush {c}, the parent is building" : "no ground for a thicket"); }
+                if (GUILayout.Button("Skip to spring")) { int c = sim.DebugNestSpring(); last = Done(c >= 0 ? $"spring: the parent builds at bush {c}" : "no ground for a thicket"); }
+                if (GUILayout.Button("Lay eggs")) { int n = sim.DebugNestLay(); last = Done(n > 0 ? $"{n} eggs in the nest" : "no nest"); }
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Take an egg (sim)")) last = Done(sim.DebugNestTakeEgg() ? $"an egg taken, {sim.NestEggs} left" : "refused: never the last egg, or the spring's share is taken");
+                if (GUILayout.Button("Hatch")) { int n = sim.DebugNestHatch(); last = Done(n > 0 ? $"{n} chicks" : "the eggs are gone (chicks off) or no nest"); }
+                if (GUILayout.Button("Gatherer takes an egg")) { sim.DebugNestLay(); var pv = PeopleView.Find(); last = Done(pv != null && pv.Planner != null && pv.Planner.DebugStartNestVisit(pv.Now, true, out var np) ? "a gatherer walks to the nest, the egg is taken in " + (np.resolveHour - pv.Now.hour).ToString("0.0") + " h" : "nobody free, or no nest"); }
+                if (GUILayout.Button("Kids look at the nest")) { sim.DebugNestLay(); var pv = PeopleView.Find(); last = Done(pv != null && pv.Planner != null && pv.Planner.DebugStartNestVisit(pv.Now, false, out var np) ? $"{np.lookerKeys.Count} kids creep up to the nest" : "no kids, or no nest"); }
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #709 ----
             // ---- #420-#422: deer, ducks, fish; floors, shy, restraint (placed-life spec §10) ----
             if (sim.EcologyOn && Section("Placed life (#420-#422)"))
             {

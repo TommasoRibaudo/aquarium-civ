@@ -63,7 +63,7 @@ namespace AquariumCiv.Sim.Eco
             st.treeCell = -1; st.treeProgress = 0f; st.treeWeeds = 0f; st.treeStage = 0; st.keeperMistings = 0; st.treeWilting = false;
             st.campGateMonth = st.villageGateMonth = -1;
             st.milestoneKeys = new List<string>(); st.milestoneMonths = new List<long>();
-            st.jarOn = true; st.jars = new List<LifeJarEntry>(); st.thicketA = st.thicketB = -1; st.thicketRadius = 0f; st.thickets = new List<Thicket>(); // #417: every jar starts shut
+            st.jarOn = true; st.jars = new List<LifeJarEntry>(); st.thicketA = st.thicketB = -1; st.thicketRadius = 0f; st.thickets = new List<Thicket>(); st.nest = new Nest(); // #417: every jar starts shut
             new EcoModel(st, land, t).Count();
         }
 

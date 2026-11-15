@@ -214,7 +214,7 @@ namespace AquariumCiv.Tests
             var sim = NewSim(5);
             sim.Advance(6);
             string json = JsonUtility.ToJson(sim.State);
-            string old = Regex.Replace(json, "\"eco\":\\{[^{}]*\\},", "");
+            string old = Regex.Replace(json, "\"eco\":\\{(?:[^{}]|\\{[^{}]*\\})*\\},", ""); // #709: the eco block holds the nest object (one level of braces)
             Assert.AreNotEqual(json, old, "the eco block was cut out");
             var loaded = JsonUtility.FromJson<SimState>(old);
             Assert.IsNotNull(loaded.eco);

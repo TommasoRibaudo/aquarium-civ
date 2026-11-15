@@ -86,6 +86,7 @@ namespace AquariumCiv.Sim.Eco
                 if (BushesIn(th) == 0) { ts.RemoveAt(at); SyncFirstThicket(); }
                 else if (at == 0) SyncFirstThicket();
             }
+            NestCheck(); // #709: a plucked nest bush moves the nest to another bush of its thicket, or it goes with the thicket
             Count();
         }
 
