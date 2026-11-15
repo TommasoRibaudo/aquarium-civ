@@ -73,7 +73,7 @@ namespace AquariumCiv.View.PlayTests
                 var wb = box.DebugWaterMesh.bounds;
                 Debug.Log($"[water] full: pond {Sim.EcoPondCells} bounds {wb.min} .. {wb.max}");
                 Assert.GreaterOrEqual(wb.max.x, Land.HX + BoxView.WaterFace - 0.002f, "the water reaches the right edge");
-                Assert.LessOrEqual(wb.min.z, -Land.HZ - BoxView.WaterFace + 0.002f, "the water reaches the front edge");
+                Assert.LessOrEqual(wb.min.z, Land.ZMin - BoxView.WaterFace + 0.002f, "the water reaches the front edge");
                 yield return Views("full");
             }
             finally { GameClock.EcologyPref = prefWas; }

@@ -17,7 +17,7 @@ namespace AquariumCiv.View.Tests
             var land = SimLayout.LandFor(preset);
             var spec = TerrainSpec.Preset(preset);
             for (float x = -3f; x <= 3f; x += 0.21f)
-                for (float z = -2.2f; z <= 2.2f; z += 0.19f)
+                for (float z = Land.ZMin; z <= Land.ZMax; z += 0.19f)
                     Assert.AreEqual(Sim.Settle.Terrain.Height(spec, x, z), land.Height(x, z), $"at {x},{z}");
         }
 

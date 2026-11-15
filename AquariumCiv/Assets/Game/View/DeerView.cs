@@ -39,7 +39,7 @@ namespace AquariumCiv.View
                 if (!any) break;
             }
             x = Mathf.Clamp(x, -Land.HX + 0.1f, Land.HX - 0.1f);
-            z = Mathf.Clamp(z, -Land.HZ + 0.1f, Land.HZ - 0.1f);
+            z = Land.ClampZ(z, 0.1f);
             return moved;
         }
 

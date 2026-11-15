@@ -441,13 +441,13 @@ namespace AquariumCiv.View
             {
                 var p = o + d * t;
                 if (Mathf.Abs(p.x) > Land.HX + 1f && t > 5f && p.y < 0f) break;
-                if (Mathf.Abs(p.x) <= Land.HX && Mathf.Abs(p.z) <= Land.HZ && p.y <= box.land.Height(p.x, p.z))
+                if (Mathf.Abs(p.x) <= Land.HX && Land.InZ(p.z) && p.y <= box.land.Height(p.x, p.z))
                 {
                     // one bisection pass between the last two samples
                     float lo = prev, hi = t;
                     for (int k = 0; k < 8; k++) { float m = (lo + hi) * 0.5f; var q = o + d * m; if (q.y <= box.land.Height(q.x, q.z)) hi = m; else lo = m; }
                     at = o + d * hi;
-                    at.x = Mathf.Clamp(at.x, -Land.HX + 0.05f, Land.HX - 0.05f); at.z = Mathf.Clamp(at.z, -Land.HZ + 0.05f, Land.HZ - 0.05f);
+                    at.x = Mathf.Clamp(at.x, -Land.HX + 0.05f, Land.HX - 0.05f); at.z = Land.ClampZ(at.z, 0.05f);
                     return true;
                 }
                 prev = t;

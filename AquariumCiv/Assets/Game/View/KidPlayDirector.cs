@@ -253,7 +253,7 @@ namespace AquariumCiv.View
             for (int k = 0; k < 6; k++)
             {
                 p.x = Mathf.Clamp(p.x, -Land.HX + 0.45f, Land.HX - 0.45f);
-                p.y = Mathf.Clamp(p.y, -Land.HZ + 0.45f, Land.HZ - 0.45f);
+                p.y = Land.ClampZ(p.y, 0.45f);
                 if (land == null || !land.IsWater(p.x, p.y)) break;
                 p = Vector2.Lerp(p, home, 0.4f);
             }
@@ -265,7 +265,7 @@ namespace AquariumCiv.View
                 {
                     float a = k * Mathf.PI / 6f;
                     var q = p + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (0.2f * ring);
-                    if (Mathf.Abs(q.x) > Land.HX - 0.45f || Mathf.Abs(q.y) > Land.HZ - 0.45f || (land != null && land.IsWater(q.x, q.y))) continue;
+                    if (Mathf.Abs(q.x) > Land.HX - 0.45f || !Land.InZ(q.y, 0.45f) || (land != null && land.IsWater(q.x, q.y))) continue;
                     int h = pv.LotHitsNear(q, PlayRingR);
                     if (h < bestHits) { bestHits = h; best = q; }
                 }

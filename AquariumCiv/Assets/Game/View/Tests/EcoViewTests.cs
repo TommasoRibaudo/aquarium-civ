@@ -115,14 +115,14 @@ namespace AquariumCiv.View.Tests
                 Assert.IsTrue(ec.WaterCell(SiteMap.Index(SiteMap.NX - 1, 0)), "water in the front-right corner cell");
                 var b = box.DebugWaterMesh.bounds;
                 Assert.That(b.max.x, Is.EqualTo(Land.HX + BoxView.WaterFace).Within(0.001f), "the sheet runs to the land's edge at the right");
-                Assert.That(b.min.z, Is.EqualTo(-Land.HZ - BoxView.WaterFace).Within(0.001f), "and at the front");
+                Assert.That(b.min.z, Is.EqualTo(Land.ZMin - BoxView.WaterFace).Within(0.001f), "and at the front");
                 Assert.That(b.max.x, Is.LessThanOrEqualTo(Land.HX + BoxView.WaterFace + 1e-4f), "never past the land's edge");
-                Assert.That(b.min.z, Is.GreaterThanOrEqualTo(-Land.HZ - BoxView.WaterFace - 1e-4f));
+                Assert.That(b.min.z, Is.GreaterThanOrEqualTo(Land.ZMin - BoxView.WaterFace - 1e-4f));
                 // #701 round 2: nothing of the water (sheet or face) is past the land's edge, so it never hangs out over the cut toward the pane.
                 foreach (var p in box.DebugWaterMesh.vertices)
                 {
                     Assert.That(Mathf.Abs(p.x), Is.LessThanOrEqualTo(Land.HX + BoxView.WaterFace + 1e-4f), "no water past the land's edge (x)");
-                    Assert.That(Mathf.Abs(p.z), Is.LessThanOrEqualTo(Land.HZ + BoxView.WaterFace + 1e-4f), "no water past the land's edge (z)");
+                    Assert.That(p.z, Is.InRange(Land.ZMin - BoxView.WaterFace - 1e-4f, Land.ZMax + BoxView.WaterFace + 1e-4f), "no water past the land's edge (z)");
                 }
                 // A wall of water stands at the glass, from the ground up to the level.
                 var v = box.DebugWaterMesh.vertices;
@@ -205,7 +205,7 @@ namespace AquariumCiv.View.Tests
                     // Along both glass walls where the hollow runs: the cut's top edge is the ground, not the old bank's height.
                     int checkedPts = 0;
                     for (float t = 0.6f; t < 2.9f; t += 0.1f)
-                        foreach (var p in new[] { new Vector2(t, -Land.HZ), new Vector2(Land.HX, -2.0f + (t - 0.6f) * 0.8f) })
+                        foreach (var p in new[] { new Vector2(t, Land.ZMin), new Vector2(Land.HX, -2.0f + (t - 0.6f) * 0.8f) })
                         {
                             float g = box.land.Height(p.x, p.y);
                             Assert.That(box.DebugCutTop(p), Is.EqualTo(g).Within(1e-4f), $"cut top at {p}");

@@ -106,7 +106,7 @@ namespace AquariumCiv.View.Moments
             public const float MinYaw = -30f, MaxYaw = 55f, MinZoom = 0.3f, MaxZoom = 1.3f;
             public const float PitchCeiling = 68f, PitchFloorFull = 24f, PitchFloorClose = 14f, CloseZoom = 0.3f;
             /// <summary>Box interior half-size and the pan margin (Land.HX/HZ, BoxCameraMath.PanMargin).</summary>
-            public const float HX = 3f, HZ = 2.2f, PanMargin = 0.3f;
+            public const float HX = Sim.Settle.Terrain.HX, HZ = Sim.Settle.Terrain.HZ, CZ = Sim.Settle.Terrain.CZ, PanMargin = 0.3f; // #658: the land is 6 x 6 and its centre is CZ, not 0
 
             public static float PitchFloor(float zoom)
             {
@@ -119,7 +119,7 @@ namespace AquariumCiv.View.Moments
             public static (float x, float z) PanBounds(float zoom)
             {
                 float k = (1f - zoom) / 0.7f; k = k < 0f ? 0f : k > 1f ? 1f : k;
-                return ((HX - PanMargin) * k, (HZ - PanMargin) * k);
+                return ((HX - PanMargin) * k, (HZ - PanMargin) * k); // offsets from the box centre
             }
 
             public static CameraPose Clamp(CameraPose p)
@@ -129,7 +129,7 @@ namespace AquariumCiv.View.Moments
                 p.pitch = Clamp(p.pitch, PitchFloor(p.zoom), PitchCeiling);
                 var (bx, bz) = PanBounds(p.zoom);
                 p.target.x = Clamp(p.target.x, -bx, bx);
-                p.target.z = Clamp(p.target.z, -bz, bz);
+                p.target.z = CZ + Clamp(p.target.z - CZ, -bz, bz);
                 return p;
             }
 
