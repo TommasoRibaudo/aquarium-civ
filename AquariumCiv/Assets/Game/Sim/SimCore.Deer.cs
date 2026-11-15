@@ -33,7 +33,7 @@ namespace AquariumCiv.Sim
         /// <summary>#690: the grown trees standing in a wood (the deer jar opens at <see cref="EcoTuning.jarDeerWood"/>).</summary>
         public int EcoWoodTrees => EcologyOn ? EcoM.WoodTrees() : 0;
         /// <summary>How many deer dolls to show: the sim count, capped for the phone.</summary>
-        public int EcoDeerShown(int cap = DeerHerd.DefaultCap) => DeerHerd.Shown(EcoDeerCount, cap);
+        public int EcoDeerShown(int cap = -1) => DeerHerd.Shown(EcoDeerCount, cap);
         /// <summary>Where the herd lives now: the placed cell, or the far side of the wood while it is shy (#422). -1 with no deer.</summary>
         public int EcoDeerHome => EcologyOn && EcoDeerCount > 0 ? EcoM.HomeCell(LifeSpecies.Deer) : -1;
         /// <summary>The deer taken by the hunt so far.</summary>
