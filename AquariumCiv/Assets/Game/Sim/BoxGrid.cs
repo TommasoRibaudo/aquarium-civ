@@ -33,7 +33,7 @@ namespace AquariumCiv.Sim
                 grew |= Pad(ref st.lot); grew |= Pad(ref st.ring); grew |= Pad(ref st.pathMonth);
             }
             var e = s.eco;
-            if (e != null && e.on && e.cover != null && e.cover.Length < EcoLand.N)
+            if (e != null && e.on && e.cover != null && e.cover.Length > 0 && e.cover.Length < EcoLand.N)
             {
                 int old = e.cover.Length;
                 var l = land?.Invoke();
@@ -47,7 +47,7 @@ namespace AquariumCiv.Sim
                 // wet, puddle, sprout, watered: zeros. A layer of the wrong length is wiped whole (EcoModel.EnsureLayers).
                 Pad(ref e.wet); Pad(ref e.puddle); Pad(ref e.sprout); Pad(ref e.watered);
             }
-            if (e != null && e.on && e.seen != null)
+            if (e != null && e.on && e.seen != null && e.seen.Length > 0) // empty: no mask yet (HasMask false); padding it would make one
             {
                 int bytes = (EcoLand.N + 7) / 8;
                 if (e.seen.Length < bytes) { Array.Resize(ref e.seen, bytes); grew = true; } // the new cells are unseen (not green yet)
@@ -57,7 +57,8 @@ namespace AquariumCiv.Sim
 
         static bool Pad<T>(ref T[] a)
         {
-            if (a == null || a.Length >= SiteMap.N) return false; // null: not recorded (an old, unsettled save), the sim makes it
+            // null or empty: not recorded (an old, unsettled save; Unity's JsonUtility loads an absent array as an empty one), the sim makes it
+            if (a == null || a.Length == 0 || a.Length >= SiteMap.N) return false;
             Array.Resize(ref a, SiteMap.N);
             return true;
         }
