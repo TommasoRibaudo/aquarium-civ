@@ -224,6 +224,18 @@ namespace AquariumCiv.View
         /// water hides the sheet's square edge, so the shoreline is where the land meets the level. Where the water reaches the
         /// box's edge the sheet runs on to the glass (clamped there) and a wall of water stands from the ground up to the level,
         /// so you see the pond through the side pane (#269).</summary>
+        /// <summary>#701: how far under the level the ground must be, at all four corners, for a piece of the sheet to be drawn (the mud band reads up to +2 cm).</summary>
+        public const float RimMargin = 0.012f;
+
+        /// <summary>#701: whether a piece of the water sheet (the box-local rectangle) lies under the level by <see cref="RimMargin"/> at all four corners.
+        /// The water and the ice share it, so the ice ends where the water ends.</summary>
+        public bool WaterPieceUnder(float x0, float z0, float x1, float z1)
+        {
+            float lvl = layout.eco.waterY;
+            float hi = Mathf.Max(Mathf.Max(land.Height(x0, z0), land.Height(x0, z1)), Mathf.Max(land.Height(x1, z0), land.Height(x1, z1)));
+            return hi < lvl - RimMargin;
+        }
+
         Mesh EcoWaterMesh()
         {
             var mb = new MeshBuilder(seed + 3) { jitter = 0f };
@@ -237,23 +249,32 @@ namespace AquariumCiv.View
                 {
                     if (!ec.NearWater(c)) continue;
                     float x = Site.CXc(c), z = Site.CZc(c);
-                    float depth = ec.waterY - land.Height(x, z);
-                    var col = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01(depth / 0.12f));
-                    float x0 = x - h, x1 = x + h, z0 = z - h, z1 = z + h;
                     int i = Site.I(c), j = Site.J(c);
-                    // At the box's edge the sheet goes on to the glass where the ground there is under the water, and no further.
-                    bool eL = i == 0 && land.Height(-HX + 0.001f, z) < y, eR = i == Site.NX - 1 && land.Height(HX - 0.001f, z) < y;
-                    bool eF = j == 0 && land.Height(x, -HZ + 0.001f) < y, eB = j == Site.NZ - 1 && land.Height(x, HZ - 0.001f) < y;
-                    if (eL) x0 = -HX - GlassInner; if (eR) x1 = HX + GlassInner;
-                    if (eF) z0 = -HZ - GlassInner; if (eB) z1 = HZ + GlassInner;
-                    x0 = Mathf.Max(x0, -HX - GlassInner); x1 = Mathf.Min(x1, HX + GlassInner);
-                    z0 = Mathf.Max(z0, -HZ - GlassInner); z1 = Mathf.Min(z1, HZ + GlassInner);
-                    QuadUp(mb, new Vector3(x0, y, z0), new Vector3(x0, y, z1), new Vector3(x1, y, z1), new Vector3(x1, y, z0), col);
-                    // The wall at the glass, seen through the pane: from the ground at the edge up to the level.
-                    if (eL) WaterWall(mb, new Vector2(-HX, z0), new Vector2(-HX, z1), -HX - GlassInner, new Vector3(-1, 0, 0), y, co);
-                    if (eR) WaterWall(mb, new Vector2(HX, z0), new Vector2(HX, z1), HX + GlassInner, new Vector3(1, 0, 0), y, co);
-                    if (eF) WaterWall(mb, new Vector2(x0, -HZ), new Vector2(x1, -HZ), -HZ - GlassInner, new Vector3(0, 0, -1), y, co);
-                    if (eB) WaterWall(mb, new Vector2(x0, HZ), new Vector2(x1, HZ), HZ + GlassInner, new Vector3(0, 0, 1), y, co);
+                    // #701: the sheet is cut into a grid inside the cell and keeps only the pieces whose corners are all under the
+                    // level by a margin: it follows the dug bank and ends a little inside the dirt rim, never over the grass.
+                    const int Sub = 3;
+                    float step = 2f * h / Sub;
+                    for (int sj = 0; sj < Sub; sj++)
+                        for (int si = 0; si < Sub; si++)
+                        {
+                            float x0 = x - h + si * step, x1 = x0 + step, z0 = z - h + sj * step, z1 = z0 + step;
+                            bool eL = i == 0 && si == 0 && land.Height(-HX + 0.001f, (z0 + z1) * 0.5f) < y, eR = i == Site.NX - 1 && si == Sub - 1 && land.Height(HX - 0.001f, (z0 + z1) * 0.5f) < y;
+                            bool eF = j == 0 && sj == 0 && land.Height((x0 + x1) * 0.5f, -HZ + 0.001f) < y, eB = j == Site.NZ - 1 && sj == Sub - 1 && land.Height((x0 + x1) * 0.5f, HZ - 0.001f) < y;
+                            if (!WaterPieceUnder(x0, z0, x1, z1)) continue; // at the glass too: the piece against the pane still ends inside the bank
+                            // At the box's edge the sheet goes on to the glass where the ground there is under the water, and no further.
+                            if (eL) x0 = -HX - GlassInner; if (eR) x1 = HX + GlassInner;
+                            if (eF) z0 = -HZ - GlassInner; if (eB) z1 = HZ + GlassInner;
+                            x0 = Mathf.Max(x0, -HX - GlassInner); x1 = Mathf.Min(x1, HX + GlassInner);
+                            z0 = Mathf.Max(z0, -HZ - GlassInner); z1 = Mathf.Min(z1, HZ + GlassInner);
+                            float depth = ec.waterY - land.Height((x0 + x1) * 0.5f, (z0 + z1) * 0.5f);
+                            var col = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01(depth / 0.12f));
+                            QuadUp(mb, new Vector3(x0, y, z0), new Vector3(x0, y, z1), new Vector3(x1, y, z1), new Vector3(x1, y, z0), col);
+                            // The wall at the glass, seen through the pane: from the ground at the edge up to the level.
+                            if (eL) WaterWall(mb, new Vector2(-HX, z0), new Vector2(-HX, z1), -HX - GlassInner, new Vector3(-1, 0, 0), y, co);
+                            if (eR) WaterWall(mb, new Vector2(HX, z0), new Vector2(HX, z1), HX + GlassInner, new Vector3(1, 0, 0), y, co);
+                            if (eF) WaterWall(mb, new Vector2(x0, -HZ), new Vector2(x1, -HZ), -HZ - GlassInner, new Vector3(0, 0, -1), y, co);
+                            if (eB) WaterWall(mb, new Vector2(x0, HZ), new Vector2(x1, HZ), HZ + GlassInner, new Vector3(0, 0, 1), y, co);
+                        }
                 }
             }
             return mb.ToMesh("Water");
