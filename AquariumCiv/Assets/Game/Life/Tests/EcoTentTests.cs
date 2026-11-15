@@ -134,6 +134,31 @@ namespace AquariumCiv.Life.Tests
 
         // ---------------------------------------------------------------- the planner's scene
 
+        /// <summary>#696: a tent the sim builds at night is raised by whoever is awake, not by people out of their beds (they came out of the
+        /// tents, raised it and walked back in, so the last one going to bed saw the others come out first).</summary>
+        [Test]
+        public void ANightRaisingTakesNobodyOutOfBed()
+        {
+            var sim = Eco();
+            var planner = LifePlanner.Wired(sim);
+            var tent = sim.DebugCampMoment();
+            planner.Invalidate();
+            foreach (float hour in new[] { 21.5f, 22.5f, 23.5f, 0.5f, 3f })
+            {
+                var now = new ViewTime(3, hour);
+                planner.ForgetTent(tent.id);
+                bool planned = planner.BeginTentRaising(tent.id, now, false, out var plan);
+                if (!planned) continue; // everyone asleep: it just stands
+                var sched = new System.Collections.Generic.List<PersonActivity>();
+                foreach (var w in plan.workers)
+                {
+                    planner.DaySchedule(w.who, 3, sched);
+                    PersonActivity at = default; foreach (var x in sched) if (x.start <= hour + 1e-4f && x.end > hour) at = x;
+                    Assert.AreNotEqual(ActivityKind.Sleep, at.kind, $"{w.who} was asleep at {hour:0.0} and is raising the tent");
+                }
+            }
+        }
+
         [Test]
         public void TheSceneIsSane()
         {

@@ -11,6 +11,9 @@ namespace AquariumCiv.Life
         /// <see cref="Invalidate"/>, and the planner's own forced day changes (season, weather, a water run).</summary>
         public static readonly string[] ReplanTriggers = { "month", "population", "chronicle", "nudge", "supper", "building", "invalidate", "season", "weather", "waterrun" };
 
+        /// <summary>Debug (#696): the live scenes and reactions now on, one line (what could be pulling someone out of bed).</summary>
+        public string DebugLiveScenes() => "live: " + string.Join(" | ", live.ConvertAll(x => $"{x.kind} day {x.day} {x.start:0.00}-{x.end:0.00} a={x.a} b={x.b}")) + " ; reactions: " + string.Join(" | ", reactions.ConvertAll(x => $"{x.gesture} {x.day} {x.start:0.00}-{x.end:0.00}"));
+
         /// <summary>Debug: make one replan happen the way <paramref name="trigger"/> would. Returns what was done.</summary>
         public string DebugTrigger(string trigger)
         {

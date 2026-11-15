@@ -160,10 +160,10 @@ namespace AquariumCiv.Life
         {
             var list = new List<Person>();
             if (b.builderId > 0)
-                foreach (var p in people) if (p.n != null && p.n.id == b.builderId && p.Adult && !InHunt(p, now)) { list.Add(p); break; }
+                foreach (var p in people) if (p.n != null && p.n.id == b.builderId && p.Adult && !InHunt(p, now) && !InBed(p, now)) { list.Add(p); break; }
             var rest = new List<Person>();
             foreach (var p in people)
-                if (p.Adult && !list.Contains(p) && p.job != JobType.Toolmaker && !carerBabies.ContainsKey(p.key) && !InHunt(p, now)) rest.Add(p);
+                if (p.Adult && !list.Contains(p) && p.job != JobType.Toolmaker && !carerBabies.ContainsKey(p.key) && !InHunt(p, now) && !InBed(p, now)) rest.Add(p);
             rest.Sort((a, c) =>
             {
                 int k = H(a.key, b.id, 420).CompareTo(H(c.key, b.id, 420));
@@ -172,6 +172,10 @@ namespace AquariumCiv.Life
             foreach (var p in rest) { if (list.Count >= TentBuilders) break; list.Add(p); }
             return list;
         }
+
+        /// <summary>#696: asleep at the time, by the planned day. A tent the sim builds at night is not raised by people out of their beds
+        /// (they came out of the tents, raised it, and walked back in: the last one in saw the others come out first).</summary>
+        bool InBed(Person p, ViewTime now) { var segs = DayOf(p); return segs[Find(segs, now.hour)].kind == ActivityKind.Sleep; }
 
         bool InHunt(Person p, ViewTime now) => HuntStepAt(p.who, now, out _, out _);
 
