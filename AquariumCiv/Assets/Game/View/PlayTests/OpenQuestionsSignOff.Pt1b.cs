@@ -132,13 +132,13 @@ namespace AquariumCiv.View.PlayTests
 
         /// <summary>A pond cell nearest a pane (the water edge that reaches the glass).</summary>
         static Vector2 PondAtGlass(System.Collections.Generic.List<Vector2> cells) =>
-            cells.OrderBy(p => Mathf.Min(Land.HX - Mathf.Abs(p.x), Land.HZ - Mathf.Abs(p.y))).First();
+            cells.OrderBy(p => Mathf.Min(Land.HX - Mathf.Abs(p.x), Land.HZ - Mathf.Abs(p.y - Land.CZ))).First();
 
         /// <summary>The pond's water edge at a pane, moved a little inward (off the glass) so a steeper pitch sees the water surface and the dug rim beside it, not the dirt wall below.</summary>
         static Vector2 PondEdgeInside(System.Collections.Generic.List<Vector2> cells, float inward)
         {
             var p = PondAtGlass(cells);
-            if (Land.HX - Mathf.Abs(p.x) <= Land.HZ - Mathf.Abs(p.y)) p.x -= Mathf.Sign(p.x) * inward; else p.y -= Mathf.Sign(p.y) * inward;
+            if (Land.HX - Mathf.Abs(p.x) <= Land.HZ - Mathf.Abs(p.y - Land.CZ)) p.x -= Mathf.Sign(p.x) * inward; else p.y -= Mathf.Sign(p.y - Land.CZ) * inward;
             return p;
         }
 
@@ -171,8 +171,8 @@ namespace AquariumCiv.View.PlayTests
         void FramePondRim(System.Collections.Generic.List<Vector2> cells)
         {
             var p = PondAtGlass(cells);
-            bool onX = Land.HX - Mathf.Abs(p.x) <= Land.HZ - Mathf.Abs(p.y);
-            var inward = box.transform.TransformDirection(onX ? new Vector3(-Mathf.Sign(p.x), 0f, 0f) : new Vector3(0f, 0f, -Mathf.Sign(p.y)));
+            bool onX = Land.HX - Mathf.Abs(p.x) <= Land.HZ - Mathf.Abs(p.y - Land.CZ);
+            var inward = box.transform.TransformDirection(onX ? new Vector3(-Mathf.Sign(p.x), 0f, 0f) : new Vector3(0f, 0f, -Mathf.Sign(p.y - Land.CZ)));
             FrameRim(PondEdgeInside(cells, RimInward), RimZoom, RimPitch, YawLooking(inward));
         }
 
