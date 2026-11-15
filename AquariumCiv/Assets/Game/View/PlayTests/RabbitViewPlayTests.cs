@@ -183,8 +183,14 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsNotNull(RabbitView.Instance, "rabbits live in the box");
                 TimeLapseView.DebugOpen();
                 yield return Frames(10);
+                TimeLapseView.DebugSeek(0f); // back in time: they step out (tester run 1: at the timeline's end the box is today's, they stay)
+                yield return Frames(10);
                 Assert.IsNull(RabbitView.Instance, "no rabbit view in the replay");
                 Assert.IsNull(BushView.Instance, "no berries in the replay");
+                TimeLapseView.DebugSeek(TimeLapseView.Find().Lapse.EndPosition);
+                yield return Frames(10);
+                Assert.IsNotNull(RabbitView.Instance, "at the timeline's end: today's rabbits");
+                Assert.IsNotNull(BushView.Instance, "at the timeline's end: today's berries");
                 TimeLapseView.DebugClose();
                 yield return Frames(10);
                 Assert.IsNotNull(RabbitView.Instance, "back in the live box");
