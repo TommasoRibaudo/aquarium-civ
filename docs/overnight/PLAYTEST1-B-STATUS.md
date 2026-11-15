@@ -39,11 +39,13 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - 19:28 · Lane B started early with #702 (UI, no Life overlap) while #697 is in lane A; order otherwise as the prompt. Stall watcher running.
 - 20:05 · #702 round 1 accepted: pill in FeedbackUI's own doc (sort 100); FeedbackPillPlayTests 1/1 (7 panels, real touch), smoke 2/2, UI 6/6, Settings 10/10, Glass 14/14, Pulse 5/5. Looked at card.png + moment.png: pill on top. Open: BoxCompletePlayTests 2/3 (clockHours string) not run on base → check in the batched pass; pill has no backing in the card shot → passed to #707. Merged 1ada892. Tooling: run-tests.sh exports UNITY_PROJECT_PATH (8d79379).
 - 20:08 · #707 (+#649 gear) worker started in the Editor folder, vs/707-hud-top.
+- 20:40 · #697/#696 round 1 (lane A) accepted: 53a139d; my SimTests run 1921/1921; diff read (pin moved into ClearDays, keeps sleep/walk segment, standing → short walk). Merged b043834. Cause posted on both issues. #696 not reproducible headless (base passes night tests; unprotected paths were direct ClearDays). Lane B part (ReplanKeepsPlansPlayTests 20 cases, LifePlannerTests, TentSleepers, 10 game min watched, smoke) after #707.
+- 20:42 · lane A started in parallel: #699 (F:\GameDev-wt99), #703 (703; call ★ jar shut while frozen), #700 (700; rule + spec only).
 
 ## Round logs
 ### #702
 - round 1: all boxes ticked with evidence; accepted.
 
 ### #697/#696
-- round 1: started 19:20.
+- round 1: all lane A boxes ticked; #696 guard tests didn't fail on base (noted). Lane B verification pending.
 
