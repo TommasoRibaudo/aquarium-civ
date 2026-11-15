@@ -471,12 +471,15 @@ namespace AquariumCiv.View
         /// <summary>The rolled bedroll carried across the back (2026-11-14, after references of camp bedrolls: a blanket rolled tight and
         /// carried crosswise, the rolled layers showing as rings at both ends, two leather straps round it, a woven band of colour):
         /// a lying roll 0.1 long and 0.05 thick, along the shoulders (local x), riding a little high on the back.</summary>
+        /// <summary>The bedroll's warm brown wool and its pale fur lining (2026-11-14: the first, canvas-pale one read as paper on the ground).</summary>
+        public static readonly Color BedrollWool = new Color(0.56f, 0.34f, 0.24f), BedrollFur = new Color(0.86f, 0.79f, 0.66f);
+
         public static void Bedroll(MeshBuilder mb)
         {
             const float L = 0.1f, R = 0.025f, Y = 0.006f;
             var lie = Quaternion.Euler(0f, 0f, -90f); // a prism's up along +x
-            var blanket = Color.Lerp(Palette.Hide, Palette.Canvas, 0.45f);
-            var layer = Color.Lerp(blanket, Palette.Plaster, 0.5f);
+            var blanket = BedrollWool;
+            var layer = BedrollFur;
             var deep = Color.Lerp(blanket, Palette.Bark, 0.45f);
             mb.Prism(new Vector3(-L * 0.5f, Y, 0f), R, R, L, 10, blanket, lie, capTop: false, capBottom: false);
             // the ends: the rolled layers as rings, each a hair proud of the last, so the roll reads as rolled from any side
@@ -497,6 +500,23 @@ namespace AquariumCiv.View
                 mb.Prism(new Vector3(sx, Y, 0f), R + 0.003f, R + 0.003f, 0.007f, 10, Palette.Timber, lie, capTop: true, capBottom: true);
                 mb.Box(new Vector3(sx + 0.0035f, Y + R + 0.004f, 0f), new Vector3(0.009f, 0.004f, 0.012f), Palette.RockLight); // the buckle on top
             }
+        }
+
+        /// <summary>Sign-off 2026-11-14: a mended bedroll laid out by the fire (CampBedrolls): the blanket spread flat, 0.2 long (a
+        /// doll lies on it), a paler fur lining showing at the edges, the woven band across its foot and the rolled pillow end away from
+        /// the fire (local -z; +z points at the fire).</summary>
+        public static void LaidBedroll(MeshBuilder mb)
+        {
+            var blanket = BedrollWool;
+            var fur = BedrollFur;
+            mb.Box(new Vector3(0f, 0.003f, 0.005f), new Vector3(0.1f, 0.006f, 0.2f), fur);
+            mb.Box(new Vector3(0f, 0.007f, 0.008f), new Vector3(0.088f, 0.005f, 0.186f), blanket);
+            mb.Box(new Vector3(0f, 0.0105f, 0.07f), new Vector3(0.089f, 0.002f, 0.016f), Color.Lerp(Palette.Accents[0], blanket, 0.35f)); // the band at the foot
+            mb.Box(new Vector3(0.02f, 0.0105f, 0.02f), new Vector3(0.04f, 0.002f, 0.06f), Color.Lerp(blanket, Palette.Plaster, 0.2f), Quaternion.Euler(0f, 8f, 0f)); // the blanket turned back
+            var lie = Quaternion.Euler(0f, 0f, -90f);
+            mb.Prism(new Vector3(-0.05f, 0.018f, -0.09f), 0.018f, 0.018f, 0.1f, 9, blanket, lie, capTop: true, capBottom: true, topCol: fur);
+            mb.Prism(new Vector3(-0.025f, 0.018f, -0.09f), 0.0195f, 0.0195f, 0.006f, 9, Palette.Timber, lie, capTop: true, capBottom: true);
+            mb.Prism(new Vector3(0.019f, 0.018f, -0.09f), 0.0195f, 0.0195f, 0.006f, 9, Palette.Timber, lie, capTop: true, capBottom: true);
         }
 
         /// <summary>A bedroll unrolled on the ground to be mended (Front slot, before someone seated): the pelt-shaped hide spread flat

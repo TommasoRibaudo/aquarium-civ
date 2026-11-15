@@ -132,6 +132,8 @@ namespace AquariumCiv.View
         readonly Dictionary<(Place, SlotSpots.HomeSpot), int> homeRanks = new();
         /// <summary>Where the dolls placed so far this frame stand (rule 6: one doll per spot, also after a slot moved off a lot).</summary>
         readonly List<Vector2> claimed = new();
+        /// <summary>Sign-off 2026-11-14: the laid-out bedrolls (CampBedrolls) taken this frame, one person on each.</summary>
+        readonly HashSet<int> restTaken = new();
         /// <summary>Batch 2: where the kids in a play group stand this frame (the still ones keep off them; the game's own members don't push each other).</summary>
         readonly List<Vector2> playSpots = new();
         /// <summary>Pieces standing on open ground (a well by the fire): rings and spreads keep off them.</summary>
@@ -376,6 +378,12 @@ namespace AquariumCiv.View
             meals.DrawPot(peopleRoot, Box.SolidMaterial, camp && planner.FireNow != CampFireStage.None /* #656: no pot by a fire that isn't lit */, (mx, mz) => Box.SurfaceHeight(mx, mz), LifeClock.SeasonOf(now.day) == Season.Winter); // #676: it simmers
             seen.Clear();
             claimed.Clear();
+            restTaken.Clear();
+            if (plannerSim != null && plannerSim.EcologyOn) // sign-off 2026-11-14: this session's laid-out bedrolls (CampBedrolls), drawn by the fire
+            {
+                CampBedrolls.Bind(plannerSim.State.seed);
+                if (Box != null && Box.Root != null && planner != null && planner.FirePoint(out float cbx, out float cbz)) CampBedrolls.Draw(Box.Root, Box.land, new Vector2(cbx, cbz));
+            }
             playSpots.Clear();
             // #189: everyone on view where they were drawn last frame, for the walkers to keep clear of (nobody goes round a sleeper they can't see, #203).
             crowd.Clear();
@@ -517,6 +525,15 @@ namespace AquariumCiv.View
                 if (away.sqrMagnitude < 1e-6f) away = Vector2.right;
                 target = rk + away.normalized * ScrapeReach; face = rk;
             }
+            // sign-off 2026-11-14 (2nd run): resting at the fire (a sit, a nap, a meal, a story), on one of the laid-out bedrolls, one each
+            if (!hidden && !a.moving && !a.enRoute && CampBedrolls.Count > 0 && a.place.kind is PlaceKind.Fire or PlaceKind.Green
+                && a.kind is ActivityKind.SitOut or ActivityKind.SitTogether or ActivityKind.ListenStory or ActivityKind.Listen or ActivityKind.Nap or ActivityKind.Eat
+                && planner.FirePoint(out float rfx, out float rfz))
+            {
+                int n = CampBedrolls.Count, at = (int)((uint)(a.who.Key * 2654435761u) % (uint)n);
+                for (int k = 0; k < n; k++, at = (at + 1) % n)
+                    if (restTaken.Add(at)) { target = CampBedrolls.Spots[at]; face = new Vector2(rfx, rfz); break; }
+            }
             // #494: at the glass, looking out: turned toward the camera, from where they stand (see GazesAtCamera).
             bool gazing = !a.moving && !a.enRoute && !hidden && !hunting && !tenting && !playing && GazesAtCamera(a.kind, a.place.kind) && CameraPlanePoint(out camPlane);
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
@@ -604,7 +621,8 @@ namespace AquariumCiv.View
             if (!started && !hunting && !playing && !paired) (kind, slot) = NewStartProp(a, kind, slot, walking); // #656/#677: dry grass and twigs, a fallen branch
             if (!walking && !started && !hunting && !playing && !paired) // sign-off 2026-11-14 (ChoreBeats): what each hand-work move holds
             {
-                if (style == DollStyle.FeedFire) (kind, slot) = ChoreBeats.FeedHolds(ChoreBeats.Clock(ChoreBeats.FeedBeat, time + d.phase, a.pace)) ? (PropKind.Tinder, PropSlot.Arms) : (PropKind.None, PropSlot.Hand);
+                if (style == DollStyle.FeedFire) (kind, slot) = ChoreBeats.FeedHolds(ChoreBeats.Clock(ChoreBeats.FeedBeat, time + d.phase, a.pace))
+                    ? (plannerSim != null && plannerSim.FireStage == CampFireStage.Logs ? PropKind.Log : PropKind.Tinder, PropSlot.Arms) : (PropKind.None, PropSlot.Hand); // a log for the log fire
                 else if (style == DollStyle.ScrapeHide) (kind, slot) = (PropKind.Scraper, PropSlot.Hand);
                 else if (style == DollStyle.SortBasket) (kind, slot) = (PropKind.Basket, PropSlot.Hand); // in the left hand (HoldInLeft), the right sorts
                 else if (style == DollStyle.Mend) (kind, slot) = (PropKind.Pelt, PropSlot.Front);
@@ -659,6 +677,8 @@ namespace AquariumCiv.View
                 tipSince = since = time - d.tipStart;
             }
             var pose = playing ? playGame.PoseOf(playIx, time, phase, d.stride, d.speed, out _) : DollMotion.Evaluate(style, phase, style == DollStyle.Chop ? a.pace * (0.9f + 0.2f * Hash01(a.who.Key, 6)) : a.pace /* #573: each chopper has their own tempo, so two at one tree never strike together */, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count, d.stride); // #358
+            // sign-off 2026-11-14 (2nd run): a bedroll mended by the fire is laid out there for the rest of the session
+            if (d.drew == DollStyle.Mend && style != DollStyle.Mend && !jump && planner.FirePoint(out float bfx, out float bfz)) CampBedrolls.Lay(new Vector2(bfx, bfz));
             if (style != d.drew)
             {
                 d.blendFrom = d.pose;
@@ -1442,6 +1462,9 @@ namespace AquariumCiv.View
         public delegate bool StartCueHook(in PersonActivity a, out StartCue cue);
         /// <summary>#656/#677: the new start's scenes (NewStartView: the arrival, the first logs). True holds the person this frame.</summary>
         public static StartCueHook StartHook;
+        /// <summary>The move a person's doll draws now (tests, the sign-off walk), and whether it walks.</summary>
+        public string DrawnOf(PersonRef who) => dolls.TryGetValue(who.Key, out var d) ? $"{d.drew}{(d.walking ? " (walking)" : "")}" : "no doll";
+
         /// <summary>Sign-off 2026-11-14 (ChoreBeats): how close the grass-fire feeder kneels to the flames, and the scraper stands to the hide rack.</summary>
         public const float FeedReach = 0.15f, ScrapeReach = 0.11f;
         static readonly Place RackMiddle = Place.Land(PlaceKind.HideRack, 1);

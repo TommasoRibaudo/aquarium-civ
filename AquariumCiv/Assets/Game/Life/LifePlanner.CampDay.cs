@@ -165,8 +165,8 @@ namespace AquariumCiv.Life
 
         /// <summary>
         /// The evening fire is the one time most of the camp gathers, and even then with roles: before the speech one tends the pot
-        /// (the camp's cook, else the day's first by hash), one brings and stacks the wood by the pile, and a few finish a chore at
-        /// their door and come later; the rest sit down at the fire. True when <paramref name="p"/> has a role (its block is laid).
+        /// (the camp's cook, else the day's first by hash), one brings and stacks the wood by the pile, one mends a bedroll at the
+        /// fire (sign-off 2026-11-14), and a few finish a chore at their door and come later; the rest sit down at the fire. True when <paramref name="p"/> has a role (its block is laid).
         /// </summary>
         bool CampEveningRole(Person p, DayInfo d)
         {
@@ -176,6 +176,8 @@ namespace AquariumCiv.Life
             if (rank == 0 && fireStage != CampFireStage.None) { At(fireStage == CampFireStage.GrassAndTwig ? ActivityKind.FeedFire : ActivityKind.Cook, 17.6f, fire, Prop.Stick, default, TripType.HomeToGreen); return true; } // sign-off 2026-11-14: a grass fire is fed, not stirred
             if (rank == 1 && fireStage == CampFireStage.Logs) { At(ActivityKind.StackWood, 17.6f, stash, Prop.Log, default, TripType.HomeToGreen); return true; }
             if (rank == 1 && fireStage == CampFireStage.GrassAndTwig) { At(ActivityKind.SitOut, 17.6f, fire, Prop.None, default, TripType.HomeToGreen); return true; } // sitting by the grass fire, its turn to feed it next (2026-11-14: no stick held over it)
+            // sign-off 2026-11-14 (2nd run): the third at the fire mends a bedroll there before the evening (it is laid out once done)
+            if (rank == 2 && fireStage != CampFireStage.None) { At(ActivityKind.Weave, 17.6f, fire, Prop.Hide, default, TripType.HomeToGreen); return true; }
             if (R(p.key, d.day, 210) < 0.35f)
             {
                 var ch = Chore(p, d, 211);

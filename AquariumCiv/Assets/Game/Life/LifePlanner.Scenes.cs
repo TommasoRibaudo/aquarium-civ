@@ -578,7 +578,7 @@ namespace AquariumCiv.Life
                 ActivityKind.HangFish => "hanging fish up to dry", ActivityKind.TakeDownFish => "taking the dry fish down", // #543
                 ActivityKind.Pray => "praying at the feather pole", // fb4 #566
                 ActivityKind.FeedFire => "feeding dry grass to the fire", ActivityKind.ScrapeHide => "scraping a hide at the rack", // sign-off 2026-11-14
-                ActivityKind.Weave when a.prop == Prop.Hide => "mending a bedroll at the tent",
+                ActivityKind.Weave when a.prop == Prop.Hide => "mending a bedroll by the fire",
                 ActivityKind.Prepare when a.place.kind == PlaceKind.Stash => "sorting the basket at the pile",
                 ActivityKind.Walk => $"walking to {where}",
                 ActivityKind.Sleep => "asleep at home",

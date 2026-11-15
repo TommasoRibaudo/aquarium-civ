@@ -70,11 +70,14 @@ namespace AquariumCiv.Life.Tests
         [TestCase(42)]
         public void TheGrassFire_IsFedNeverStirred_TheHandWorkIsAtRealThings(int seed)
         {
+            var bare = NewBox(seed);
+            Assert.IsFalse(Plan(bare).Any(a => a.kind == ActivityKind.Weave && a.prop == Prop.Hide), "no fire: no mending (it happens by the fire)");
             var sim = NewBox(seed);
             sim.DebugFireStage(1);
             var plan = Plan(sim);
             Assert.IsTrue(plan.Any(a => a.kind == ActivityKind.FeedFire && a.place.kind == PlaceKind.Fire), "someone feeds it (the pot is stirred too: there is one)");
-            Assert.IsTrue(plan.Any(a => a.kind == ActivityKind.Weave && a.prop == Prop.Hide && a.place.kind == PlaceKind.Home), "a bedroll mended at a tent");
+            Assert.IsTrue(plan.Any(a => a.kind == ActivityKind.Weave && a.prop == Prop.Hide && a.place.kind == PlaceKind.Fire), "a bedroll mended by the fire (2nd run)");
+            Assert.IsFalse(plan.Any(a => a.kind == ActivityKind.Weave && a.prop == Prop.Hide && a.place.kind != PlaceKind.Fire), "never anywhere else");
             Assert.IsFalse(plan.Any(a => a.kind == ActivityKind.ScrapeHide), "no hides yet: nothing to scrape");
             var pastHides = sim.State.eco; pastHides.hidesTotal = 3; pastHides.hidesDrying = 0;
             Assert.IsFalse(Plan(sim).Any(a => a.kind == ActivityKind.ScrapeHide), "hides all gone into tents: an empty rack is never scraped");
@@ -83,6 +86,9 @@ namespace AquariumCiv.Life.Tests
             var withHides = Plan(sim);
             Assert.IsTrue(withHides.Any(a => a.kind == ActivityKind.ScrapeHide && a.place.kind == PlaceKind.HideRack), "a hide scraped at the rack");
             Assert.IsTrue(withHides.Any(a => a.kind == ActivityKind.Weave && a.prop == Prop.Hide), "and still some mending: a mix");
+
+            sim.DebugFireStage(2);
+            Assert.IsTrue(Plan(sim).Any(a => a.kind == ActivityKind.FeedFire && a.place.kind == PlaceKind.Fire), "the log fire is fed too (a log from the stack)");
         }
 
         /// <summary>#656/#677 (view pass): hunger is shown, never punished: with the basket empty every walk is timed

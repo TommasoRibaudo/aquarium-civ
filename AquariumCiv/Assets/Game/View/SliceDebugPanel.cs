@@ -195,6 +195,7 @@ namespace AquariumCiv.View
             if (Btn("Fire: grass and twigs")) last = NewStartFire(1);
             if (Btn("Fire: logs")) last = NewStartFire(2);
             if (Btn("Fire: as the land")) last = NewStartFire(-1);
+            if (Btn("Lay a bedroll")) { var pv0 = PeopleView.Find(); last = pv0 != null && pv0.Planner != null && pv0.Planner.FirePoint(out float lbx, out float lbz) && CampBedrolls.Lay(new Vector2(lbx, lbz)) ? $"bedrolls by the fire: {CampBedrolls.Count} (this session only)" : "no fire, or the ring is full"; }
             EndRow();
             Row();
             if (Btn("First bush now")) last = EcoDebug.FirstBushNow();

@@ -74,10 +74,12 @@ namespace AquariumCiv.View.PlayTests
                 case "#651": return new[] { With(S("#651", "camp chores with no wild wood", "pt1_kindling",
                     "A fresh camp (its own box) with a grass fire and no wild tree: the camp's hand work, each at a real thing (2026-11-14). The buttons " +
                     "frame one person at each, close: feeding the fire (turn to the grass heap, an armful, push it in: the sparks flare, hands to the heat), " +
-                    "scraping a hide on the rack (a hard push down, shavings), sorting the basket over the pile, mending a bedroll at the tent. " +
+                    "the log fire fed with a log from its stack, scraping a hide on the rack (a hard push down, shavings), sorting the basket over the pile, " +
+                    "mending a bedroll by the fire; each mended bedroll is laid out by the fire for the session and people rest on it (Bedrolls by the fire). " +
                     "Good: each reads at a glance, nobody works at a fire spot with no fire, nobody strokes the flames.",
-                    SetupKindling, ("Feeding the fire", () => ChoreExtra(ActivityKind.FeedFire)), ("Scraping a hide", () => ChoreExtra(ActivityKind.ScrapeHide)),
-                    ("Sorting the basket", () => ChoreExtra(ActivityKind.Prepare)), ("Mending a bedroll", () => ChoreExtra(ActivityKind.Weave))), box: "camp") };
+                    SetupKindling, ("Feeding the fire", () => ChoreExtra(ActivityKind.FeedFire)), ("Feeding the log fire", () => ChoreExtra(ActivityKind.FeedFire, logs: true)),
+                    ("Scraping a hide", () => ChoreExtra(ActivityKind.ScrapeHide)), ("Sorting the basket", () => ChoreExtra(ActivityKind.Prepare)),
+                    ("Mending a bedroll", () => ChoreExtra(ActivityKind.Weave)), ("Bedrolls by the fire", BedrollsExtra)), box: "camp") };
                 case "#652": return new[] { With(S("#652", "the gatherers' place word", "pt1_place_word",
                     "A camp with no pond; someone's card is open while the planner names the low ground (the line below quotes it). Good: \"the dry hollow\"; " +
                     "press Add a pond: \"the water's edge\". Never \"the stream\". Read the card's doing line and the tag over the doll.", SetupPlaceWord,
@@ -411,6 +413,30 @@ namespace AquariumCiv.View.PlayTests
             Say($"wild trees grown: {Sim.WildWoodTreeCount} · fire: {Sim.FireStage} · hides {Sim.HidesTotal} · {ChoreCount()}");
         }
 
+        /// <summary>2026-11-14 (2nd run): three mended bedrolls laid out by the fire (as three mends would), then the early afternoon rest
+        /// and the evening at the fire: people sit, eat and nap on them.</summary>
+        IEnumerator BedrollsExtra()
+        {
+            Sim.DebugFireStage((int)CampFireStage.GrassAndTwig);
+            box.Refresh();
+            if (pv.Planner.FirePoint(out float fx, out float fz)) while (CampBedrolls.Count < 3 && CampBedrolls.Lay(new Vector2(fx, fz))) { }
+            int resting = 0;
+            foreach (float h in new[] { 18.4f, 14.2f, 19.2f })
+            {
+                Hour(h, true);
+                yield return Wait(2.5f);
+                resting = 0;
+                foreach (var a in pv.Activities)
+                    if (!a.moving && pv.TryGetDollPosition(a.who, out var p))
+                        foreach (var b in CampBedrolls.Spots) if ((b - p).sqrMagnitude < 0.06f * 0.06f) { resting++; break; }
+                if (resting > 0) break;
+            }
+            Frame(World(fx, fz), 0.2f, 50f, shift: false);
+            panel.collapsed = true;
+            yield return Held(1.2f);
+            Say($"bedrolls by the fire: {CampBedrolls.Count} (this session only) · people on them now: {resting}");
+        }
+
         string ChoreCount()
         {
             int feed = 0, scrape = 0, sort = 0, mend = 0, atBareFire = 0;
@@ -427,9 +453,14 @@ namespace AquariumCiv.View.PlayTests
         }
 
         /// <summary>2026-11-14: steps the day (and on a season at a time) until someone stands doing <paramref name="kind"/>, then follows them close.</summary>
-        IEnumerator ChoreExtra(ActivityKind kind)
+        IEnumerator ChoreExtra(ActivityKind kind, bool logs = false)
         {
-            bool Match(in PersonActivity a) => !a.moving && !a.enRoute && a.kind == kind && (kind != ActivityKind.Weave || a.prop == Prop.Hide)
+            if (kind == ActivityKind.FeedFire || kind == ActivityKind.Weave)
+            {
+                Sim.DebugFireStage(logs ? (int)CampFireStage.Logs : (int)CampFireStage.GrassAndTwig);
+                box.Refresh(); // the fire, and its grass heap or log stack
+            }
+            bool Match(in PersonActivity a) => !a.moving && (!a.enRoute || kind is ActivityKind.Weave or ActivityKind.FeedFire) && a.kind == kind // a fire chore: on the way is fine, we wait below && (kind != ActivityKind.Weave || a.prop == Prop.Hide)
                                                 && (kind != ActivityKind.Prepare || a.place.kind == PlaceKind.Stash);
             // what each chore needs: hides on the rack for the scraper; food on the land for the sorter (and the rack bare, so the hand
             // work falls to the basket or a bedroll)
@@ -441,7 +472,7 @@ namespace AquariumCiv.View.PlayTests
             for (int day = 0; day < 4 && who.IsNone; day++)
             {
                 if (day > 0) { Log(EcoDebug.SkipToNextSeason()); pv.Planner.Invalidate(); yield return Wait(1f); } // another day deals the chores again
-                foreach (float h in new[] { 8.5f, 9.5f, 10.5f, 13.5f, 14.5f, 15.5f, 17.2f })
+                foreach (float h in kind == ActivityKind.Weave ? new[] { 17.0f, 17.3f, 10.5f, 14.5f } : new[] { 8.5f, 9.5f, 10.5f, 13.5f, 14.5f, 15.5f, 17.2f }) // the mend: mostly before the evening, at the fire
                 {
                     Hour(h, true);
                     yield return Wait(0.8f);
@@ -457,6 +488,15 @@ namespace AquariumCiv.View.PlayTests
                 }
             }
             if (who.IsNone) { Say($"nobody is {kind} in four seasons · {ChoreCount()}"); yield break; }
+            // a fire chore: wait until they have walked over and sat down there (the hour jump leaves them on the way)
+            if (kind is ActivityKind.Weave or ActivityKind.FeedFire && pv.Planner.FirePoint(out float cfx, out float cfz))
+            {
+                var fireAt = new Vector2(cfx, cfz); var w = who;
+                yield return Until(() => pv.TryGetDollPosition(w, out var at) && (at - fireAt).magnitude < 0.5f, 20f);
+                Vector2 was = default; // then until they stop walking (sat down at their spot)
+                yield return Until(() => { bool still = pv.TryGetDollPosition(w, out var at) && (at - was).sqrMagnitude < 1e-6f; was = at; return still; }, 8f);
+                yield return Wait(1.5f);
+            }
             // centred on them with the panel folded (the arrow opens it): a close look at the hands, from high enough that a tent or the
             // rack doesn't stand in front
             hold = () =>
@@ -469,7 +509,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Held(1.2f);
             string d = "";
             foreach (var a in pv.Activities) if (a.who.Equals(who)) { d = pv.Planner.Describe(a) ?? ""; break; }
-            Say($"{d} · {ChoreCount()}");
+            Say($"{d} · drawn: {pv.DrawnOf(who)} · {ChoreCount()}");
         }
 
         static bool NamesThePlace(string d) => d.Contains("hollow") || d.Contains("water's edge") || d.Contains("stream");
