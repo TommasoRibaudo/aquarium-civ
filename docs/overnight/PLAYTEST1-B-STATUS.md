@@ -33,9 +33,9 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 Picked: open Polish issues with a clear Done-when, no `needs:user`, not out of scope, not built yet.
 - [x] #689 (merged; smoke in the batched pass) a village house's card says the year it was built (lane A, vs/689-built-year)
 - [x] #690 (merged; smoke in the batched pass) deer only when the wood is dense (lane A, vs/690-dense-wood; wolves' chain #437 checked)
-- [ ] #684 axe meets the trunk (user: probably fixed; check first, close if so)
-- [ ] #561 Skip all clears the History dot (check still true first)
-- [ ] #638 TelemetryPlayTests finger wipe (90-min time box)
+- [x] #684 (merged; not fixed before: stroke ended at the ground; live stance still to watch) axe meets the trunk (user: probably fixed; check first, close if so)
+- [x] #561 (merged; call: Skip all dismisses the stack) Skip all clears the History dot (check still true first)
+- [x] #638 (merged; test drags started off the glass) TelemetryPlayTests finger wipe (90-min time box)
 - [ ] #562 small UI tidy from tester run 4 (check each still true)
 - [ ] #563 Keeper's dilemmas card and bar polish (check each still true)
 Skipped: #560/#672 (built in #678, waiting for a phone check), #660–#662 (inside #668), needs:user and design issues, P10.
