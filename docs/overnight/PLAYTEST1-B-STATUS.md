@@ -29,6 +29,17 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [ ] PR `p9/playtest1-b` → `dev`, CI green, merged
 - [ ] Final report to the user
 
+## Extra queue (user, 2026-11-15: chain more well-defined easy todos tonight)
+Picked: open Polish issues with a clear Done-when, no `needs:user`, not out of scope, not built yet.
+- [ ] #689 a village house's card says the year it was built (lane A, vs/689-built-year)
+- [ ] #690 deer only when the wood is dense (lane A, vs/690-dense-wood; wolves' chain #437 checked)
+- [ ] #684 axe meets the trunk (user: probably fixed; check first, close if so)
+- [ ] #561 Skip all clears the History dot (check still true first)
+- [ ] #638 TelemetryPlayTests finger wipe (90-min time box)
+- [ ] #562 small UI tidy from tester run 4 (check each still true)
+- [ ] #563 Keeper's dilemmas card and bar polish (check each still true)
+Skipped: #560/#672 (built in #678, waiting for a phone check), #660–#662 (inside #668), needs:user and design issues, P10.
+
 ## Log
 - 2026-11-14 ~19:30 · run started (orchestrator in the session opened at F:\GameDev); worktree pt1b at d0c2008. C: 97% full (19 GB free) — watch editor-health exit 2.
 
