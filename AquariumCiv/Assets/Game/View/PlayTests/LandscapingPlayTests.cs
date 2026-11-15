@@ -192,6 +192,16 @@ namespace AquariumCiv.View.PlayTests
             }
             else Debug.LogWarning("[731] the first thicket is off screen: no refusal tap");
             int bushCell = BushCellOnScreen();
+            if (bushCell < 0)
+            {
+                // pan back to the glow (a fly stands in for the pan): the valid ground nearest the camp
+                int near = Sim.LifePlaceCellNearCamp(LifeSpecies.Thicket);
+                Assert.GreaterOrEqual(near, 0, "valid ground for a bush somewhere");
+                bc.FlyTo(box.transform.TransformPoint(box.land.OnGround(SiteMap.CXc(near), SiteMap.CZc(near))), Mathf.Min(bc.zoom, 0.6f));
+                yield return Until(() => !bc.IsFlying, 8f);
+                yield return Frames(5);
+                bushCell = BushCellOnScreen();
+            }
             Assert.GreaterOrEqual(bushCell, 0, "glowing ground for the bush on screen");
             yield return TapAt(lpv.ScreenOf(bushCell));
             yield return Frames(5);
