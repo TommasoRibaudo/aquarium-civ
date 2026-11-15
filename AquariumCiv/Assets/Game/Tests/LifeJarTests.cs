@@ -23,7 +23,7 @@ namespace AquariumCiv.Tests
         /// <summary>A second model over the sim's own state, to drive readiness from the counts directly.</summary>
         static EcoModel Model(SimCore sim) => new EcoModel(sim.State.eco, sim.EcoGround, sim.Config.eco);
 
-        static int Cells(float frac) => (int)MathF.Ceiling(frac * EcoLand.N);
+        static int Cells(float frac) => (int)MathF.Ceiling(frac * EcoLand.TunedCells); // #658: the jar and gate shares are read against the tuned 2640 cells
 
         /// <summary>Greens the dry cells nearest the camp until <paramref name="frac"/> of the land is meadow, then lives a season
         /// (the jars open at a season's end).</summary>
