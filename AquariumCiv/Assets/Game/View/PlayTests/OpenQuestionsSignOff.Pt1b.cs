@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
@@ -66,11 +67,11 @@ namespace AquariumCiv.View.PlayTests
                     "title's ink, side by side, readable over the sand with no disc behind them. Night, Winter and Over the pond change what is behind them; judge each.",
                     SetupHudTop, ("Night", HudNightExtra), ("Winter", HudWinterExtra), ("Over the pond", HudPondExtra)) };
                 case "#704": return new[] { With(S("#704", "the fire on dry ground and snow", "pt1b_fire_ground",
-                    "A fresh camp (its own box) at dusk, close on the log fire over dry bare ground. Good: no green ring at the fire's base, the ground under it reads as " +
+                    "A fresh camp (its own box) by day, close on the log fire over dry bare ground. Good: no green ring at the fire's base, the ground under it reads as " +
                     "ash and dirt. Grass fire and Log fire swap the stage; Snow puts the camp in winter: still no green ring, the fire sits in the snow.",
                     SetupFireGround, ("Grass fire", () => FireGroundExtra(1)), ("Log fire", () => FireGroundExtra(2)), ("Snow", FireSnowExtra)), box: "camp") };
                 case "#701": return new[] { S("#701", "the pond's rim at the glass", "pt1b_pond_rim",
-                    "Close on the pond's edge where it reaches the glass (low pitch). Good: the water ends inside the dug dirt rim, also at the pane, and does not run over " +
+                    "Close on the pond's edge where it reaches the glass (from above, so the water and the rim beside it show). Good: the water ends inside the dug dirt rim, also at the pane, and does not run over " +
                     "the dirt. Whole pond shows all of it; Under ice: the ice shares the same edge; Thawed puts the water back.",
                     SetupPondRim, ("Whole pond", PondWholeExtra), ("Under ice", () => PondRimIceExtra(true)), ("Thawed", () => PondRimIceExtra(false))) };
                 case "#676": return new[] { S("#676", "the stew by kind: fish, rabbit, berries, thin", "pt1b_stew_kind",
@@ -83,10 +84,10 @@ namespace AquariumCiv.View.PlayTests
                     "and says what touching it does, the question line names them, nothing crowds the tags. Touch one to answer (the marks go). Next choice stages " +
                     "the camp's other touch choices.",
                     SetupTouchChoice, ("Next choice", NextChoiceExtra)) };
-                case "#703": return new[] { S("#703", "the duck jar in winter", "pt1b_duck_jar",
+                case "#703": return new[] { With(S("#703", "the duck jar in winter", "pt1b_duck_jar",
                     "The pond is ice and the Kit is open on Life. Good: the Ducks jar is shut and greyed with \"The pond is ice. Ducks will come when it thaws.\"; " +
                     "press Thaw: the jar opens. Freeze shuts it again.",
-                    SetupDuckJar, ("Thaw", DuckThawExtra), ("Freeze", DuckFreezeExtra)) };
+                    SetupDuckJar, ("Thaw", DuckThawExtra), ("Freeze", DuckFreezeExtra)), box: "camp") };
                 case "#669": return new[] { S("#669", "History before the first house", "pt1b_history_first",
                     "The played box (fish on the rack, props, berries, rabbits) with History open. Good: press Timeline start: scrub back, nothing placed or built later " +
                     "stands there (no life, rack, woodpile, props); Timeline end: today's box is back, with everything. Early years is a point near the start.",
@@ -133,11 +134,46 @@ namespace AquariumCiv.View.PlayTests
         static Vector2 PondAtGlass(System.Collections.Generic.List<Vector2> cells) =>
             cells.OrderBy(p => Mathf.Min(Land.HX - Mathf.Abs(p.x), Land.HZ - Mathf.Abs(p.y))).First();
 
+        /// <summary>The pond's water edge at a pane, moved a little inward (off the glass) so a steeper pitch sees the water surface and the dug rim beside it, not the dirt wall below.</summary>
+        static Vector2 PondEdgeInside(System.Collections.Generic.List<Vector2> cells, float inward)
+        {
+            var p = PondAtGlass(cells);
+            if (Land.HX - Mathf.Abs(p.x) <= Land.HZ - Mathf.Abs(p.y)) p.x -= Mathf.Sign(p.x) * inward; else p.y -= Mathf.Sign(p.y) * inward;
+            return p;
+        }
+
+        const float RimZoom = 0.2f, RimPitch = 52f, RimInward = 0.3f;
+
         /// <summary>The close frame of the rim stops: closer than a player can pinch, so the zoom floor is lowered until the next stop.</summary>
-        void FrameRim(Vector2 at, float zoom, float pitch)
+        void FrameRim(Vector2 at, float zoom, float pitch, float yaw = float.NaN)
         {
             zoomFloorChanged = true; Rig.minZoom = 0.02f;
-            Frame(World(at.x, at.y), zoom, pitch, shift: false);
+            Frame(World(at.x, at.y), zoom, pitch, yaw, shift: false);
+        }
+
+        /// <summary>The orbit angle (of the eight 45 degree ones) whose view runs along <paramref name="dir"/> (world, horizontal).</summary>
+        static float YawLooking(Vector3 dir)
+        {
+            float keep = Rig.yaw, best = keep, bd = -2f;
+            dir.y = 0f; dir.Normalize();
+            for (int k = 0; k < 8; k++)
+            {
+                Rig.yaw = k * 45f; Rig.Apply();
+                var f = Camera.main.transform.forward; f.y = 0f; f.Normalize();
+                float d = Vector3.Dot(f, dir);
+                if (d > bd) { bd = d; best = Rig.yaw; }
+            }
+            Rig.yaw = keep; Rig.Apply();
+            return best;
+        }
+
+        /// <summary>Frames the pond's edge at its nearest pane from outside the glass, square on to the pane, from above.</summary>
+        void FramePondRim(System.Collections.Generic.List<Vector2> cells)
+        {
+            var p = PondAtGlass(cells);
+            bool onX = Land.HX - Mathf.Abs(p.x) <= Land.HZ - Mathf.Abs(p.y);
+            var inward = box.transform.TransformDirection(onX ? new Vector3(-Mathf.Sign(p.x), 0f, 0f) : new Vector3(0f, 0f, -Mathf.Sign(p.y)));
+            FrameRim(PondEdgeInside(cells, RimInward), RimZoom, RimPitch, YawLooking(inward));
         }
 
         void LeaveTouchChoice()
@@ -151,6 +187,8 @@ namespace AquariumCiv.View.PlayTests
         void CloseLoosePt1b()
         {
             PondIce.Force = null;
+            SeasonLook.HoldPhase = null;
+            if (dollsPinned && pv != null) { pv.ClearPins(); dollsPinned = false; }
             var cv = ChoiceSceneView.Instance;
             if (cv != null && (cv.State != ChoiceSceneView.Phase.Idle || ChoiceSceneView.DebugWatch)) LeaveTouchChoice();
             ChoiceSceneView.DebugWatch = false;
@@ -204,28 +242,63 @@ namespace AquariumCiv.View.PlayTests
         }
 
         // ---------------------------------------------------------------- #704 the fire on dry ground and snow
+        /// <summary>The hour of the fire stop: the camp is out working (at dusk two people stand in front of the fire and hide its base).</summary>
+        const float FireHour = 11f, SnowHour = 15.5f;
+
         IEnumerator SetupFireGround()
         {
             yield return FreshCamp();
             Sim.DebugFireStage(2);
             box.Rebuild();
-            Hour(18.6f, true);
+            SeasonLook.HoldPhase = null;
+            Hour(FireHour, true);
             yield return Wait(2f);
             yield return FrameFireGround();
-            Say("dry camp ground, fire stage " + Sim.FireStage);
+            Say("dry camp ground, fire stage " + Sim.FireStage + " · zoom " + Rig.zoom.ToString("0.00") + " · fire point " + pv.Planner.FirePoint(out _, out _));
         }
+
+        /// <summary>Everyone stood away from the fire (pinned on a ring 2.6 u out), so nobody hides its base. Cleared by <see cref="CloseLoosePt1b"/>.</summary>
+        void ClearFireOfDolls()
+        {
+            if (pv == null || pv.Planner == null || !pv.Planner.FirePoint(out float fx, out float fz)) return;
+            pv.ClearPins();
+            int k = 0;
+            foreach (var a in pv.Activities)
+            {
+                float ang = 1.1f * k++ + 0.7f;
+                pv.Pin(a.who, new Vector2(fx + 2.6f * Mathf.Cos(ang), fz + 2.6f * Mathf.Sin(ang)));
+            }
+            dollsPinned = true;
+        }
+
+        bool dollsPinned;
+
+        string DollsNearFire()
+        {
+            if (!pv.Planner.FirePoint(out float fx, out float fz)) return "?";
+            var sb = new System.Text.StringBuilder();
+            foreach (var act in pv.Activities)
+                if (pv.TryGetDollPosition(act.who, out var q) && (q - new Vector2(fx, fz)).magnitude < 0.6f) sb.Append(act.kind + " ");
+            return sb.Length == 0 ? "nobody" : sb.ToString();
+        }
+
+        float fireZoom = 0.07f;
 
         IEnumerator FrameFireGround()
         {
-            if (pv.Planner != null && pv.Planner.FirePoint(out float fx, out float fz)) { zoomFloorChanged = true; Rig.minZoom = 0.02f; Frame(World(fx, fz), 0.07f, 38f, shift: false); }
+            if (pv.Planner != null && pv.Planner.FirePoint(out float fx, out float fz)) { zoomFloorChanged = true; Rig.minZoom = 0.02f; Frame(World(fx, fz), fireZoom, 38f, shift: false); }
             else Frame(CampCentre(), 0.18f, 42f);
-            yield return Held(1f);
+            yield return Held(0.5f);
+            ClearFireOfDolls();
+            yield return Held(4f);
         }
 
         IEnumerator FireGroundExtra(int stage)
         {
+            SeasonLook.HoldPhase = null;
             Sim.DebugFireStage(stage);
             box.Rebuild();
+            Hour(FireHour, true);
             yield return Wait(1.2f);
             yield return FrameFireGround();
             Say("fire held at: " + Sim.FireStage);
@@ -234,10 +307,15 @@ namespace AquariumCiv.View.PlayTests
         IEnumerator FireSnowExtra()
         {
             for (int k = 0; k < 4 && LifeClock.SeasonOf(Sim.State.month) != Season.Winter; k++) Log(EcoDebug.SkipToNextSeason());
-            Hour(18.6f, true);
-            yield return Wait(2f);
+            if (UnityEngine.Object.FindAnyObjectByType<SeasonDriver>() == null) box.gameObject.AddComponent<SeasonDriver>(); // a box opened by a stop has none (the driver is added at scene load)
+            SeasonLook.HoldPhase = 0.5f; // the middle of winter: full snow cover now (the box's own look can lag, or hold the spring of a first run)
+            Hour(SnowHour, true);
+            box.Rebuild();
+            yield return Wait(3f);
+            fireZoom = 0.2f; // wider: the snow lies on the open ground round the fire
             yield return FrameFireGround();
-            Say("winter: " + SeasonLook.Word(Sim.State.month) + " · fire " + Sim.FireStage);
+            fireZoom = 0.07f;
+            Say("winter: " + SeasonLook.Word(Sim.State.month) + " · fire " + Sim.FireStage + " · snow " + SeasonLook.Snow.ToString("0.00") + " · weights " + SeasonLook.Weights + " · near the fire: " + DollsNearFire());
         }
 
         // ---------------------------------------------------------------- #701 the pond's rim at the glass
@@ -249,9 +327,9 @@ namespace AquariumCiv.View.PlayTests
             yield return Wait(1.5f);
             var cells = PondCells();
             if (cells.Count == 0) { Say("setup failed: no pond"); DefaultView(); yield break; }
-            FrameRim(PondAtGlass(cells), 0.14f, 35f);
+            FramePondRim(cells);
             yield return Held(1f);
-            Say($"{cells.Count} pond cells; the edge at the nearest pane, zoom 0.14 (the zoom floor is lowered for this stop only)");
+            Say($"{cells.Count} pond cells; the edge at the nearest pane, zoom 0.2, pitch 52 (the zoom floor is lowered for this stop only)");
         }
 
         IEnumerator PondWholeExtra()
@@ -269,7 +347,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Wait(2f);
             var cells = PondCells();
             if (cells.Count == 0) { Say("no pond"); yield break; }
-            FrameRim(PondAtGlass(cells), 0.14f, 35f);
+            FramePondRim(cells);
             yield return Held(1f);
             Say(ice ? "under ice: the ice and the water edge" : "thawed");
         }
@@ -321,6 +399,8 @@ namespace AquariumCiv.View.PlayTests
             string staged = ChoiceSceneView.DebugStage();
             yield return Until(() => v.State == ChoiceSceneView.Phase.Waiting, 45f);
             yield return Wait(2f);
+            // both tags and the bar in view
+            panel.collapsed = true; // the sign-off panel would cover the upper tag: folded for this stop (tap the arrow to read the text)
             Say(id + " · " + v.AskLine + (v.State == ChoiceSceneView.Phase.Waiting ? "" : " · NOT WAITING: " + staged));
         }
 
@@ -339,15 +419,26 @@ namespace AquariumCiv.View.PlayTests
         // ---------------------------------------------------------------- #703 the duck jar in winter
         IEnumerator SetupDuckJar()
         {
+            yield return FreshCamp(); // a box where no ducks are placed yet (a placed flock stays, so its jar would read "Placed")
             Hour(10f);
             yield return EnsurePond();
             Sim.DebugJarsReady();
             PondIce.Force = true; // the cheat's own pair: every jar open, then the ice
             DefaultView();
             yield return Frames(10);
-            OpenLifeRow();
+            ShowDuckJar();
             yield return Wait(1.2f);
+            ShowDuckJar();
+            yield return Wait(0.5f);
             Say(DuckJarLine());
+        }
+
+        /// <summary>The Kit on its Life chooser with the Ducks jar picked, so its need line shows.</summary>
+        void ShowDuckJar()
+        {
+            OpenLifeRow();
+            var f = typeof(GameHud).GetField("lockedPick", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (f != null) f.SetValue(hud, (LifeSpecies?)LifeSpecies.Ducks);
         }
 
         string DuckJarLine() => "ducks jar: " + Sim.JarStateOf(LifeSpecies.Ducks) + " · " + (Sim.JarNeed(LifeSpecies.Ducks) ?? "(no line)");
@@ -356,7 +447,8 @@ namespace AquariumCiv.View.PlayTests
         {
             PondIce.Force = false;
             yield return Wait(1.5f);
-            OpenLifeRow();
+            ShowDuckJar();
+            yield return Wait(0.8f);
             Say("thaw · " + DuckJarLine());
         }
 
@@ -364,7 +456,8 @@ namespace AquariumCiv.View.PlayTests
         {
             PondIce.Force = true;
             yield return Wait(1.5f);
-            OpenLifeRow();
+            ShowDuckJar();
+            yield return Wait(0.8f);
             Say("ice · " + DuckJarLine());
         }
 
@@ -412,6 +505,14 @@ namespace AquariumCiv.View.PlayTests
             yield return Held(0.8f);
         }
 
+        /// <summary>Close on the fish rack (about the zoom of a person card): the take-down and the carrying read.</summary>
+        IEnumerator FrameRackClose()
+        {
+            if (FireAndRack(out _, out var rack)) Frame(rack, 0.14f, 45f);
+            else Frame(CampCentre(), 0.2f, 45f);
+            yield return Held(0.8f);
+        }
+
         IEnumerator RackNightExtra()
         {
             Hour(18.5f, true);
@@ -440,7 +541,7 @@ namespace AquariumCiv.View.PlayTests
             Log("fish on the rack: " + FishRackView.DebugRack());
             Log(SimDebugPanel.DoPathOverRack(false));
             yield return Wait(1f);
-            yield return FrameRackAndFire(0.3f);
+            yield return FrameRackClose();
             Say(SimDebugPanel.DoRackMoveNow());
         }
 
@@ -449,7 +550,7 @@ namespace AquariumCiv.View.PlayTests
             Hour(10f, true);
             Log(SimDebugPanel.DoPathOverRack(true));
             yield return Wait(1f);
-            yield return FrameRackAndFire(0.3f);
+            yield return FrameRackClose();
             Say(SimDebugPanel.DoRackMoveNow());
         }
 
@@ -462,6 +563,10 @@ namespace AquariumCiv.View.PlayTests
             Frame(CampCentre(), 0.3f, 45f);
             yield return Held(0.8f);
             Say(LaundryCheats.LaundryNow());
+            yield return Wait(0.3f);
+            // close on the home's washing line, about the zoom of a person card
+            var lines = pv.Planner.LaundryOn(pv.Now.day);
+            if (lines != null && lines.Count > 0 && pv.TryGetLineAnchor(lines[0].home, out var an)) Frame(World(an.centre.x, an.centre.y), 0.1f, 45f);
             yield return Held(1f);
         }
 
@@ -495,6 +600,15 @@ namespace AquariumCiv.View.PlayTests
             Log("wood: " + Sim.DebugGrowFarWood());
             yield return Wait(2.5f);
             OpenLifeRow();
+            var trees = new System.Collections.Generic.List<Vector2>();
+            for (int c = 0; c < EcoLand.N; c++)
+                if (Sim.EcoCoverAt(c) == EcoCover.Tree) trees.Add(new Vector2(SiteMap.CXc(c), SiteMap.CZc(c)));
+            if (trees.Count > 0)
+            {
+                var m = PondMiddle(trees); // the wood, between the sign-off panel and the kit sheet
+                Frame(World(m.x, m.y), 0.45f, 50f);
+                yield return Held(1f);
+            }
             Say(DeerJarLine() + " (the jar opens at the next sim tick if it still reads shut)");
         }
     }
