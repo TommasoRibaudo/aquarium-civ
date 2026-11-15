@@ -125,21 +125,34 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("after the kill");
         }
 
+        /// <summary>#561 (the user's call, 2026-11-10): Skip all answers the whole stack, so the dot goes and History is the time-lapse,
+        /// all by real touches: the peek swiped away leaves a dot, the Stories chip reopens the stack, Skip all clears the dot, History replays.</summary>
         [UnityTest, Timeout(120000)]
-        public IEnumerator SkipAllLeavesADotThatOpensTheStack()
+        public IEnumerator SkipAllClearsTheDot_AndHistoryOpensTheTimeLapse()
         {
             yield return Returned();
-            yield return Tap("cards-peek");
+            yield return TapAt(new Vector2(Screen.width * 0.5f, Screen.height * 0.6f)); // the peek goes: the cards wait
+            yield return Frames(4);
+            Assert.AreEqual(CardStackMode.Hidden, Model.Mode);
+            Assert.IsTrue(Model.HistoryDot, "cards wait: a dot");
+            var dot = GameHud.Instance.Root.Q("hud-history-dot");
+            Assert.IsTrue(Shown(dot), "a dot, never a number");
+            yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root, "hud-history-dot")); // hierarchy D1: the Stories chip, not History
+            yield return Frames(6);
+            Assert.AreEqual(CardStackMode.Open, Model.Mode, "the Stories chip opens what's waiting");
             yield return Tap("cards-skip");
             Assert.AreEqual(CardStackMode.Hidden, Model.Mode);
             Assert.IsFalse(GameHud.Instance.ToolsHidden);
             yield return Frames(3);
-            Assert.IsTrue(Shown(GameHud.Instance.Root.Q("hud-history-dot")), "a dot, never a number");
-            yield return Shot("cards_dot");
-            yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root, "hud-history-dot")); // hierarchy D1: the Stories chip, not History
-            yield return Frames(6);
-            Assert.AreEqual(CardStackMode.Open, Model.Mode, "the Stories chip opens what's waiting");
-            Assert.IsNull(GameHud.Instance.OpenSheet);
+            Assert.IsFalse(Model.HistoryDot, "Skip all answers the stack");
+            Assert.IsFalse(Shown(dot), "the dot is gone from the screen");
+            yield return Shot("cards_skip_no_dot");
+            yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root, "hud-history"));
+            var tl = TimeLapseView.Find();
+            yield return Until(() => tl != null && tl.Active, 3f);
+            Assert.IsTrue(tl != null && tl.Active, "History opens the time-lapse, not the stack");
+            Assert.AreEqual(CardStackMode.Hidden, Model.Mode);
+            AssertNoErrors("skip all");
         }
 
         [UnityTest, Timeout(120000)]
@@ -596,7 +609,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Tap("cards-peek");
             yield return Frames(8);
             yield return Shot(dir + "story-first");
-            yield return Tap("cards-skip");
+            Model.Close(); // the back gesture leaves the stories waiting (Skip all answers them, #561): the chip shows
             yield return Frames(8);
             yield return Shot(dir + "stories-chip");
 
