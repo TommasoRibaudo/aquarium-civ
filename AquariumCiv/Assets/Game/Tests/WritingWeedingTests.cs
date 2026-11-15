@@ -73,6 +73,16 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void NobodyInAnAskComesFromOutsideTheBox()
+        {
+            // the closed world (feedback rule; writing-events.md §3): people live in the tank, nothing comes from beyond it
+            foreach (var d in DilemmaDefs.All)
+                foreach (var t in new[] { d.question }.Concat(d.askedBy?.Values ?? Enumerable.Empty<string>()).Concat(d.options.SelectMany(o => new[] { o.hint, o.label })))
+                    foreach (var w in new[] { "past the sky wall", "behind the keeper's window", "beyond", "outside", "far-away", "the world" })
+                        StringAssert.DoesNotContain(w, (t ?? "").ToLowerInvariant(), d.id);
+        }
+
+        [Test]
         public void TheRenamedCallbackIdsAndNoGoat()
         {
             var ids = DilemmaDefs.All.SelectMany(d => d.options).SelectMany(o => o.callbacks).Select(c => c.id).ToList();

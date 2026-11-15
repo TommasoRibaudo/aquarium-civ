@@ -281,7 +281,7 @@ namespace AquariumCiv.Sim
             {
                 ["the kind"] = "{t1} and {t2} are cold and hungry. Can they stay?",
                 ["the worrier"] = "Strangers! {t1} and {t2}. Probably fine? Can they stay?",
-                ["the gossip"] = "{t1} and {t2} came from past the sky wall! Can they stay?",
+                ["the gossip"] = "{t1} and {t2}? From across {land}, they say. Stay?", // round 2: from inside the box (closed world)
                 ["the brave"] = "I found {t1} and {t2} by {land}. Can they stay?",
                 ["the grump"] = "{t1} and {t2}. Two more mouths. Can they stay?",
             },
@@ -487,7 +487,7 @@ namespace AquariumCiv.Sim
                 ["the joker"] = "A family across the pond. Here, or near enough to wave?",
                 ["the loud"] = "A FAMILY! Across the pond! Where do they live?",
                 ["the gossip"] = "I've met the pond family already. Here, or there?",
-                ["the dreamer"] = "They came from behind the Keeper's window! Here, or there?",
+                ["the dreamer"] = "The pond family! I dreamt of them. Here, or there?", // round 2: nobody comes from outside the box
             },
             options = new[]
             {
