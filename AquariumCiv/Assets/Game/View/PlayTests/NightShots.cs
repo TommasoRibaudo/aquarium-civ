@@ -15,7 +15,7 @@ namespace AquariumCiv.View.PlayTests
     [Explicit("Screenshots for the eye: run by hand"), Category("NightShots")]
     public class NightShots : PlayTestBase
     {
-        const string Out = "F:/GameDev/AquariumCiv/Temp/agent/night/";
+        static readonly string Out = UnityEngine.Application.dataPath + "/../Temp/agent/night/";
         static SimCore S => GameClock.Instance.ActiveSim;
 
         protected static IEnumerator Snap(string name)

@@ -17,7 +17,7 @@ namespace AquariumCiv.View.PlayTests
     [Category("CameraGlassFeel")]
     public class CameraGlassFeelPlayTests : PlayTestBase
     {
-        const string Dir = "F:/GameDev/AquariumCiv/Temp/agent/p273/";
+        static readonly string Dir = UnityEngine.Application.dataPath + "/../Temp/agent/p273/";
         static BoxCamera Rig => Camera.main.GetComponent<BoxCamera>();
 
         IEnumerator Open()
@@ -130,7 +130,7 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator FreePan_FromTheCamp_ReachesBothSideWalls_AtCloseMidAndFarZoom()
         {
             yield return Open();
-            string dir = "F:/GameDev/AquariumCiv/Temp/agent/p538/"; Directory.CreateDirectory(dir);
+            string dir = UnityEngine.Application.dataPath + "/../Temp/agent/p538/"; Directory.CreateDirectory(dir);
             var log = new StringBuilder();
             float reach = Land.HX - CameraGlass.Margin - CameraGlass.Gap - 0.3f; // a small margin short of the rest limit
             foreach (var (zoomName, zoom) in new[] { ("close", CameraReach.MinZoom), ("mid", 0.6f), ("far", 1f) })

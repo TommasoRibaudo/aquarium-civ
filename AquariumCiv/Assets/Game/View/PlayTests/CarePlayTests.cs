@@ -22,7 +22,7 @@ namespace AquariumCiv.View.PlayTests
     public class CarePlayTests : InputTestFixture
     {
         const string ScenePath = "Assets/Game/Scenes/Slice.unity";
-        const string Shots = "F:/GameDev/AquariumCiv/Temp/agent/";
+        static readonly string Shots = UnityEngine.Application.dataPath + "/../Temp/agent/";
         Touchscreen touch;
         int touchId = 1;
         string savePath, backup;
