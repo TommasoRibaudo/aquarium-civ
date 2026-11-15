@@ -19,7 +19,10 @@ sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Wo
 - [x] Lane A: specs #692–#695, #708, #709 (vs/692-people-things-specs, b3-692, Opus) — merged d53de79
 - [x] Lane A: kit inventory, mock-ups, words #668 (vs/668-kit-mockups, b3-668, Opus) — merged e0e9d3c
 - [x] Approvals page for the user: https://claude.ai/artifact/DJ8y9LKcqkKctRhsWjT7U9 (186 specs/assets, Q1–Q13, kit K1–K6; answers come back pasted)
-- [ ] Lane A: #709 nest sim (vs/709-nest-sim, b3-709, Sonnet) — started 12:28
+- [x] Lane A: #709 nest sim (vs/709-nest-sim, Sonnet) — merged 0a62cdd. Q4–Q6 defaults as one value each
+  (NestBirdSlots 0, nestChicks 2, nestWhichThicket 0), nestWinterGone false. **Editor pass:** move
+  `ResolveNestVisits` out of FishRackView into the nest view (it rides the rack view's Update today); draw B71.a–d
+  after the user's spec OK.
 - [ ] Editor: landscaping view/UI #726/#730/#731/#732 — pt1b Editor (port 7800), branch vs/731-landscaping-view in F:\GameDev-wt\pt1b, lock taken 12:27, watcher running
 - [ ] Editor: AnimLab clips for approved specs; #708 fish; #709 nest view
 - [ ] Editor: writing #714 boat, #717, #718 UI, #719, #720, #721, #723
