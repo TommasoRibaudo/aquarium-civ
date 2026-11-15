@@ -347,6 +347,17 @@ namespace AquariumCiv.Tests
             }
         }
 
+        [Test, Explicit("#710: does lowering the sim caps (duckCap, deerMax) to the drawn budget move the village gate? 8 seeds, Active habit")]
+        public void SimCaps_AgainstTheBudget_Measure()
+        {
+            var variants = new (string, EcoTuning)[] { ("current duckCap 8 deerMax 8", new EcoTuning()), ("duckCap 4 deerMax 4 (budget)", new EcoTuning { duckCap = 4, deerMax = 4 }) };
+            foreach (var (name, t) in variants)
+            {
+                var ys = Eight.Select(s => PacingLab.Run(Habit.Active, s, t).village).ToList();
+                TestContext.Out.WriteLine($"{name}: " + string.Join(" ", ys.Select(PacingResult.F)) + $"  mean {Mean(ys):0.0}");
+            }
+        }
+
         [Test, Explicit("prints the before/after table (docs/design/placed-life.md, Pacing (#569))")]
         public void PrintTable()
         {

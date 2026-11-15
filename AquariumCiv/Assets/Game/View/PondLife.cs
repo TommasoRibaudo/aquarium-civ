@@ -23,10 +23,11 @@ namespace AquariumCiv.View
         public static bool AutoCreate = true;
         public static PondLife Instance { get; private set; }
 
-        public const int DuckPondCells = 20, TwoDucksPondCells = 40, MaxFrogs = 6, MaxPads = 4;
-        /// <summary>The most ducks the pond draws: the sim's wild cap (spec §4.1, 8). Tester 2026-11-08: it was 2, so a flock of 8 after a
+        public const int DuckPondCells = 20, TwoDucksPondCells = 40, MaxPads = 4;
+        public static int MaxFrogs => AquariumCiv.Sim.AnimalBudget.Frogs;
+        /// <summary>The most ducks the pond draws: the budget (#710). Tester 2026-11-08: it was 2, so a flock of 8 after a
         /// ten-year jump showed as 2.</summary>
-        public const int MaxDucks = AquariumCiv.Sim.SimCore.DucksShownCap;
+        public static int MaxDucks => AquariumCiv.Sim.SimCore.DucksShownCap;
         /// <summary>A person closer than this (box units) sends a frog into the water, and a duck away.</summary>
         public const float FrogFlee = 0.32f, DuckFlee = 0.30f;
 

@@ -21,9 +21,9 @@ namespace AquariumCiv.Sim
     public partial class SimCore
     {
         /// <summary>The most fish shadows the view shows (spec §4.1).</summary>
-        public const int FishShownCap = 8;
+        public static int FishShownCap => AnimalBudget.Fish;
         /// <summary>The most wild ducks the view shows: the wild cap.</summary>
-        public const int DucksShownCap = 8;
+        public static int DucksShownCap => AnimalBudget.Ducks;
 
         /// <summary>The feathers fletched the hunters' arrows (the view shows fletching on their backs from now on).</summary>
         public event Action ArrowsFletched;
@@ -32,7 +32,7 @@ namespace AquariumCiv.Sim
         /// <summary>The wild flock (pen ducks, #431, are apart). 0 before the Keeper places the pair; with the ecology off too.</summary>
         public int EcoDucks => EcologyOn ? State.eco.ducks : 0;
         /// <summary>How many ducks to show: the wild flock, capped (#428: PondLife reads this instead of the pond's size).</summary>
-        public int EcoDucksShown(int cap = DucksShownCap) => Math.Max(0, Math.Min(cap, EcoDucks));
+        public int EcoDucksShown(int cap = -1) => Math.Max(0, Math.Min(cap < 0 ? DucksShownCap : cap, EcoDucks));
         /// <summary>Where the flock lives: the placed edge cell, or the pond's far edge while it is shy (#422). -1 with no ducks.</summary>
         public int EcoDuckHome => EcologyOn && EcoDucks > 0 ? EcoM.HomeCell(LifeSpecies.Ducks) : -1;
         /// <summary>Eggs in the nests now (laid at the spring step, hatched at the summer step).</summary>
@@ -68,7 +68,7 @@ namespace AquariumCiv.Sim
         /// <summary>The fish in the pond. 0 before the Keeper places the school.</summary>
         public int EcoFish => EcologyOn ? State.eco.fish : 0;
         /// <summary>How many fish shadows to show (#429): the stock, at most 8.</summary>
-        public int EcoFishShown(int cap = FishShownCap) => Math.Max(0, Math.Min(cap, EcoFish));
+        public int EcoFishShown(int cap = -1) => Math.Max(0, Math.Min(cap < 0 ? FishShownCap : cap, EcoFish));
         /// <summary>What the pond holds now (1 per 3 pond cells, never less than the founding school). 0 with no fish.</summary>
         public int EcoFishCap => EcologyOn && EcoFish > 0 ? EcoM.FishCap : 0;
         /// <summary>Where the school lives: the placed deep cell, or the pond's far side while it is shy (#422). -1 with no fish.</summary>
