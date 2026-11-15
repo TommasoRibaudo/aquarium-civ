@@ -20,7 +20,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [ ] 15 · #655 numbers in the issue (if time)
 - [~] Design proposals for #708, #709, #710 + #658, #687 written (open-questions.md + issue comments)
 - [ ] Every issue's *Done when* ticked with evidence, or listed as short after 4 rounds
-- [ ] Batched Editor pass green (EditMode 10 assemblies, PlayMode classes, smoke); failures fixed or noted as baseline
+- [x] Batched Editor pass at 408c38b: EditMode 10 assemblies 2372 run, 0 failed; PlayMode 26 classes + 3 categories, smoke 2/2. Baseline (fail on d0c2008 too): DeerWolf 2 (under crowns), BoxComplete clockHours. Care glass 1 fail then 4/4 on rerun (flake). Hugs 1 inconclusive (known).
 - [ ] `Playtest1BPlaythrough` + the touch play-through done, every beat looked at
 - [ ] Tester run(s) on cadence and at the end; [real] fixed; [polish] listed
 - [ ] Walkthrough: branch, open-questions.md section, `Staged()` stops, auto run clean, every shot looked at
