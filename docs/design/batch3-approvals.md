@@ -251,6 +251,16 @@ Shared rules for all of them (how often, the work still gets done, kids stay saf
 205. **W721.a** Rituals replay every year: harvest and winter hints and done lines as in #721; "the woodpile at {place} has a roof older than most of the people."; "…has {seats} seats now, one for every year since the first feast." · ☐ OK ☐ change: ___
 206. **W721.b** The offering basket "goes to the Keeper's tree every autumn…"; "the children of {place} carry a small basket of their own behind the big one."; the yearly history lines as in #721 · ☐ OK ☐ change: ___
 207. **W718** Deleted: wishes, Sky Crumb, Lens (the book lists 3 relics), the tap-back card, gift teasers, the "Sky Bread" and "Great Eye-Glass" era titles. The Keeper Doll always holds the cloth. · ☐ OK ☐ change: ___
+208. **W717** Teller: the person the Keeper picks tells tonight's story at the fire, in the picked manner (slow or short), with the four lines from #717. The fire keeper is never tonight's teller. · ☐ OK ☐ change: ___
+209. **W719.a** Names: "Not you, Pip" and "Pip was the hand" now use a real child's name; "Not you, goat." → "Yes, you too."; "Long live the new chief!" names the leader of the era (headman, chief, mayor). · ☐ OK ☐ change: ___
+210. **W719.b** Lines fixed at the source: camp bread → berries; the grumpy dog, the loud market, the brave lanterns, the glass singer and the village grain lines reworded; bank line 38 and five first-person lines cut. · ☐ OK ☐ change: ___
+211. **W721.c** Until the Keeper's tree stands, the offering goes "to the tallest tree". · ☐ OK ☐ change: ___
+212. **W723** Four wolf and dog asks cut to 15 words or fewer, e.g. "…Chase it off, or let it eat?" · ☐ OK ☐ change: ___
+213. **W718.b** Since #718, the later halves of stage 1 and stage 3 can't be reached, so bank lines 11, 12, 35–37 and 40–44 never show, and people say "glass" from stage 3. My pick: leave it and reword those lines when the stages get new content. · ☐ OK ☐ change: ___
+214. **W718.c** The story voice now only uses history lines, so there are fewer story bubbles. My pick: keep it (fits "fewer stories"). · ☐ OK ☐ change: ___
+215. **W715.d** The sandal's book label says "Lost to the stream" but the story now loses it in the mud. My pick: "Lost in the mud". · ☐ OK ☐ change: ___
+216. **A-boat** The pond family's boat is still a placeholder that doesn't read as a boat. My pick: a CC0 Kenney/KayKit boat model, picked and shown to you first. · ☐ OK ☐ change: ___
+217. **S-ritual** Rituals and the teller's manner need staging specs (berrying walk, log line, long table, carrying to the tree, the teller's gestures). My pick: write them into animation-specs.md for your OK, then AnimLab clips. · ☐ OK ☐ change: ___
 
 ## Questions (pick one; my pick first)
 

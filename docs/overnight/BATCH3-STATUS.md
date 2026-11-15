@@ -17,7 +17,13 @@ sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Wo
 - [x] Lane A: landscaping sim #726–#730 (vs/724-landscaping-sim, Sonnet) — round 2 re-tuned earning (first seed y2–5, 4–5 by the village, village year 23.0); merged 2d6f6c1
 - [x] Lane A: writing #713–#716 + sim parts of #718, #721 (vs/713-writing, Opus) — round 2 fixed the closed-world
   lines; merged (3c29c1a + csproj fix d41f73d); full sim suite 2081/2081. Lines added to the approvals page (W714–W721, W718).
-- [ ] Editor: writing view side #718 #721 #714-boat #717 #719 #720 #723 (vs/718-writing-view in pt1b, Opus) — lock taken, watcher running
+- [x] Editor: writing view side #718 #721 #714-boat #717 #719 #720 #723 (vs/718-writing-view in pt1b, Opus) — merged 5f78e9b.
+  #718 removed wishes/Sky Crumb/Lens/tap-back UI (PlayMode 666→661, EditMode 2574→2559 incl. new tests); #721 rituals as
+  held moments (festival gathering); new Sim/ContentRules.cs + ContentRulesTests/ContentRulesViewTests; fixed
+  LaundryLines.ColourOf negative index. Failing on base too: SettleTests.NudgeAnswers, EveningTalk teaser, ShapingTray (2),
+  CardStack LongCards, Feedback5 rabbit stalk, PeopleViewTests (2, LaundryView Destroy), WorkHitTests. Shots in scratchpad
+  shots-718. Open: boat still not a boat (needs an asset OK); ritual/teller staging needs specs; stage 1/3 later bank lines
+  unreachable since #718; fewer story bubbles; sandal label "Lost to the stream". Editor ready, lock released.
 - [x] Lane A: specs #692–#695, #708, #709 (vs/692-people-things-specs, b3-692, Opus) — merged d53de79
 - [x] Lane A: kit inventory, mock-ups, words #668 (vs/668-kit-mockups, b3-668, Opus) — merged e0e9d3c
 - [x] Approvals page for the user: https://claude.ai/artifact/DJ8y9LKcqkKctRhsWjT7U9 (186 specs/assets, Q1–Q13, kit K1–K6; answers come back pasted)
@@ -30,7 +36,7 @@ sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Wo
   BoxGrow 6, all pass. Shots in scratchpad shots-731. Open [est]: tool name, earned-seed ghost is still the Keeper's mound,
   small pluck ring, the rail wraps to two rows (both for #668). pt1b worktree left on vs/731-landscaping-view, Editor ready, lock released.
 - [ ] Editor: AnimLab clips for approved specs; #708 fish; #709 nest view
-- [ ] Editor: writing #714 boat, #717, #718 UI, #719, #720, #721, #723
+- [ ] Base failures listed above (present on p9/batch3 before the writing merge): triage before the PR
 - [ ] Editor: #668 build of the chosen mock-up
 - [ ] People and things #692–#695 builds (after clip sign-off)
 - [ ] Batched pass, smoke, tester, walkthrough stops, PR to dev
