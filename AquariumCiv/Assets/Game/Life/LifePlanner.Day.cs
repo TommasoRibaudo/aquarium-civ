@@ -89,43 +89,93 @@ namespace AquariumCiv.Life
 
         // ---------------------------------------------------------------- sleepers stay asleep through a replan (#607)
 
-        /// <summary>The sim moved (a month ticked mid-night, an entry, a newcomer) and every day is planned again from the new snapshot;
-        /// a different night owl, a changed bedtime or a new pairing then got people who were already asleep up and out of the tent, and
-        /// back in again. So a stay in bed that is under way is kept: the new plan may change anything but that.</summary>
-        readonly Dictionary<int, (float start, float end)> sleeperPins = new Dictionary<int, (float start, float end)>();
+        /// <summary>The sim moved (a month ticked mid-night, an entry, a newcomer, a supper picked) and every day is planned again from
+        /// the new snapshot. #607 kept the ones already in bed in bed; #696/#697: the same goes for everyone. Whoever is asleep or
+        /// partway through a walk finishes that stay or walk, and whoever is standing somewhere does not jump: if the new plan wants
+        /// them elsewhere they set off from where they are (a short walk), so no one turns round or appears at the new place in one
+        /// frame. The new plan may change anything but the segment that is under way.</summary>
+        struct Pin
+        {
+            public bool hasSeg;
+            public Seg seg;     // the stay in bed / the walk under way, kept whole; for someone standing, the stop they are at, cut off now
+            public Seg[] past;  // what the old plan had them doing before that: a replan changes the future, never the past
+            public Place at;    // where they are when the pin ends (or now, for someone standing)
+            public float from;  // the hour from which the new plan takes over
+        }
+
+        readonly Dictionary<int, Pin> sleeperPins = new Dictionary<int, Pin>();
         long pinDay = long.MinValue;
         ViewTime lastAsked;
+        /// <summary>Debug / tests (#697/#696): how many people the last replan pinned (asleep, mid-walk, standing).</summary>
+        public int PinnedSleepers, PinnedWalkers, PinnedStanding;
+        /// <summary>#697: off = only the sleepers are kept through a replan (#607's behaviour); tests and the debug panel use it to compare.</summary>
+        public bool KeepEveryone = true;
 
         void PinSleepers()
         {
             if (dayInfo.day == long.MinValue || lastAsked.day != dayInfo.day) return;
             if (pinDay != dayInfo.day) { sleeperPins.Clear(); pinDay = dayInfo.day; }
             float h = lastAsked.hour;
+            PinnedSleepers = PinnedWalkers = PinnedStanding = 0;
             foreach (var kv in dayCache)
             {
                 var segs = kv.Value;
-                var s = segs[Find(segs, h)];
-                if (s.kind != ActivityKind.Sleep || s.Moving || h < s.start || h >= s.end) continue;
-                sleeperPins[kv.Key] = (s.start, s.end);
+                int at = Find(segs, h);
+                var s = segs[at];
+                if (h < s.start || h >= s.end) { sleeperPins.Remove(kv.Key); continue; }
+                bool sleeping = s.kind == ActivityKind.Sleep && !s.Moving;
+                if (!KeepEveryone && !sleeping) { sleeperPins.Remove(kv.Key); continue; }
+                var past = new Seg[at];
+                Array.Copy(segs, past, at);
+                if (sleeping || s.Moving) { sleeperPins[kv.Key] = new Pin { hasSeg = true, seg = s, past = past, at = s.place, from = s.end }; if (sleeping) PinnedSleepers++; else PinnedWalkers++; }
+                else { sleeperPins[kv.Key] = new Pin { hasSeg = false, seg = s, past = past, at = s.place, from = h }; PinnedStanding++; }
             }
         }
 
-        /// <summary>The new plan with a pinned sleeper's stay in bed put back over whatever it planned for those hours.</summary>
+        /// <summary>The new plan from now on, after what the old plan had them doing up to now (the stay in bed or the walk under way
+        /// whole), and a short walk from where the person is to wherever the new plan has them next.</summary>
         Seg[] KeepSleepersIn(Person p, Seg[] segs)
         {
-            if (pinDay != dayInfo.day || !sleeperPins.TryGetValue(p.key, out var pin) || !IsValidPlace(p.home)) return segs;
-            var list = new List<Seg>(segs.Length + 2);
-            bool put = false;
+            if (pinDay != dayInfo.day || !sleeperPins.TryGetValue(p.key, out var pin)) return segs;
+            if (lastAsked.day == dayInfo.day && lastAsked.hour > pin.from + (pin.hasSeg ? 0.001f : 0.3f)) return segs; // an old pin: that moment has passed
+            if (!IsValidPlace(pin.at) || (pin.hasSeg && !IsValidPlace(pin.seg.from))) return segs;
+            if (pin.hasSeg && pin.seg.kind == ActivityKind.Sleep && !IsValidPlace(p.home)) return segs;
+            float t1 = pin.from;
+            var list = new List<Seg>(segs.Length + pin.past.Length + 3);
+            list.AddRange(pin.past);
+            var cur = pin.seg;
+            if (!pin.hasSeg) cur.end = t1;
+            if (cur.end > cur.start + 1e-4f) list.Add(cur);
+            int firstNew = list.Count;
             foreach (var s0 in segs)
             {
+                if (s0.end <= t1 + 1e-4f) continue;
                 var s = s0;
-                if (s.end <= pin.start + 1e-4f) { list.Add(s); continue; }
-                if (s.start < pin.start) { s.end = pin.start; list.Add(s); s = s0; }
-                if (!put) { put = true; list.Add(new Seg { start = pin.start, end = pin.end, kind = ActivityKind.Sleep, place = p.home, from = p.home, src = ActivitySource.Schedule, trip = TripType.Home, chronicleId = -1, partner = PersonRef.None }); }
-                if (s.start >= pin.end - 1e-4f) { list.Add(s); continue; }
-                if (s.end > pin.end + 1e-4f) { s.start = pin.end; list.Add(s); }
+                if (s.start < t1) s.start = t1;
+                list.Add(s);
             }
-            if (!put) list.Add(new Seg { start = pin.start, end = pin.end, kind = ActivityKind.Sleep, place = p.home, from = p.home, src = ActivitySource.Schedule, trip = TripType.Home, chronicleId = -1, partner = PersonRef.None });
+            if (firstNew >= list.Count) return list.ToArray();
+            // Where the new plan has them from t1 on: if that is not where they stand, they walk there (not jump, not turn round).
+            var n = list[firstNew];
+            if (IsValidPlace(n.place) && !(n.place == pin.at && (!n.Moving || n.from == pin.at)))
+            {
+                if (ActivityInfo.IsMove(n.kind) && n.from != n.place)
+                {
+                    n.from = pin.at; // a walk already: it starts from where they are
+                    list[firstNew] = n;
+                }
+                else
+                {
+                    float w = Math.Min(WalkHours(pin.at, n.place), Math.Max(0.05f, n.end - t1));
+                    float wEnd = Math.Min(n.end, t1 + w);
+                    if (wEnd > t1 + 1e-3f)
+                    {
+                        var walk = new Seg { start = t1, end = wEnd, kind = ActivityKind.Walk, place = n.place, from = pin.at, src = ActivitySource.Schedule, trip = TripType.Errand, chronicleId = -1, partner = PersonRef.None };
+                        n.start = wEnd;
+                        if (n.end > n.start + 1e-4f) { list[firstNew] = n; list.Insert(firstNew, walk); } else list[firstNew] = walk;
+                    }
+                }
+            }
             return list.ToArray();
         }
 
@@ -134,7 +184,7 @@ namespace AquariumCiv.Life
         Person dayFireKeeper;
         int buildDepth;
 
-        void ClearDays() { prayerDay = long.MinValue; /* #566 */ runInReady = false; runInCache.Clear(); dayCache.Clear(); blockCache.Clear(); carryPlans.Clear(); fishDutiesDay = long.MinValue; dayInfo.day = long.MinValue; idleDay = long.MinValue; /* #656 */ }
+        void ClearDays() { PinSleepers(); /* #697/#696: whoever is asleep or on a walk keeps it through any replan: a sim change, a forced season, a water run, Invalidate */ prayerDay = long.MinValue; /* #566 */ runInReady = false; runInCache.Clear(); dayCache.Clear(); blockCache.Clear(); carryPlans.Clear(); fishDutiesDay = long.MinValue; dayInfo.day = long.MinValue; idleDay = long.MinValue; /* #656 */ }
 
         void EnsureDay(long day)
         {

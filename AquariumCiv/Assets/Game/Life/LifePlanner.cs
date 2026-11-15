@@ -74,6 +74,7 @@ namespace AquariumCiv.Life
         public void PlanAll(ViewTime t, List<PersonActivity> into)
         {
             into.Clear();
+            lastAsked = t; // #607/#697: the moment a replan is felt at
             Sync();
             EnsureDay(t.day);
             PruneLive(t);
@@ -91,6 +92,7 @@ namespace AquariumCiv.Life
         /// <summary>One person's activity at a view time. A person no longer in the box gets <see cref="ActivityKind.None"/>.</summary>
         public PersonActivity Plan(PersonRef who, ViewTime t)
         {
+            lastAsked = t;
             Sync();
             EnsureDay(t.day);
             PruneLive(t);
@@ -298,29 +300,64 @@ namespace AquariumCiv.Life
             if (pond != pondSeen) { pondSeen = pond; polyCache.Clear(); }
             long sig = Signature();
             if (sig == snapSig) return;
+            if (ReplanLog != null) LogReplan(snapSig == long.MinValue ? "invalidated" : null);
+            Array.Copy(sigParts, sigSeen, sigParts.Length);
             snapSig = sig;
             polyCache.Clear();
-            PinSleepers(); // #607: a replan at night leaves the ones already in bed in bed
             Snapshot();
             ClearDays();
             DropReactionsToGoneGifts();
+        }
+
+        /// <summary>#697/#696 diagnosis: when set, every replan says which part of the sim signature moved (or why it was forced)
+        /// and what each person was doing at the time. Off in the game; tests and the debug panel turn it on.</summary>
+        public Action<string> ReplanLog;
+        static readonly string[] sigNames = { "month", "buildings", "notables", "population", "chronicle", "nudges", "era", "supper", "belief", "roles" };
+        readonly long[] sigParts = new long[sigNames.Length], sigSeen = new long[sigNames.Length];
+
+        void LogReplan(string forced)
+        {
+            string why = forced;
+            if (why == null)
+            {
+                var moved = new List<string>();
+                for (int i = 0; i < sigParts.Length; i++) if (sigParts[i] != sigSeen[i]) moved.Add(sigNames[i]);
+                why = "sim moved: " + string.Join("+", moved);
+            }
+            var sb = new System.Text.StringBuilder();
+            sb.Append("replan (").Append(why).Append(") at day ").Append(lastAsked.day).Append(' ').Append(lastAsked.hour.ToString("0.00"));
+            if (dayInfo.day != long.MinValue && lastAsked.day == dayInfo.day)
+            {
+                float h = lastAsked.hour;
+                foreach (var kv in dayCache)
+                {
+                    var segs = kv.Value;
+                    var s = segs[Find(segs, h)];
+                    sb.Append(" | ").Append(kv.Key).Append(':').Append(s.kind).Append(s.Moving ? ">" : "=").Append(s.place.kind);
+                }
+            }
+            ReplanLog(sb.ToString());
         }
 
         /// <summary>Cheap check that the sim moved: month, counts, era, role holders.</summary>
         long Signature()
         {
             var s = sim.State;
-            long h = s.month;
-            h = h * 31 + s.buildings.Count;
-            h = h * 31 + s.notables.Count;
-            h = h * 31 + s.population;
-            h = h * 31 + s.chronicle.Count;
-            h = h * 31 + s.nudges.Count;
-            h = h * 31 + (int)s.era * 2 + (s.eraReady ? 1 : 0);
-            h = h * 31 + s.supperPick * 7 + s.supperMonth; // #589
-            h = h * 31 + sim.BeliefStage * 2 + (sim.BeliefHalfNow == BeliefHalf.Later ? 1 : 0); // #92: how they see the glass
+            sigParts[0] = s.month;
+            sigParts[1] = s.buildings.Count;
+            sigParts[2] = s.notables.Count;
+            sigParts[3] = s.population;
+            sigParts[4] = s.chronicle.Count;
+            sigParts[5] = s.nudges.Count;
+            sigParts[6] = (int)s.era * 2 + (s.eraReady ? 1 : 0);
+            sigParts[7] = s.supperPick * 7 + s.supperMonth; // #589
+            sigParts[8] = sim.BeliefStage * 2 + (sim.BeliefHalfNow == BeliefHalf.Later ? 1 : 0); // #92: how they see the glass
+            long roles = 0;
             if (s.roles != null)
-                for (int i = 0; i < s.roles.Count; i++) h = h * 31 + s.roles[i].holderId * (i + 7);
+                for (int i = 0; i < s.roles.Count; i++) roles = roles * 31 + s.roles[i].holderId * (i + 7);
+            sigParts[9] = roles;
+            long h = 0;
+            for (int i = 0; i < sigParts.Length; i++) h = h * 31 + sigParts[i];
             return h;
         }
 
