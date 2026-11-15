@@ -9,7 +9,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [x] 3 · #703 merged (lane A; jar look in Unity pending) — call: jar shut while frozen
 - [~] 4 · #700 rule merged 969c8b2 (racks + Keeper's fire props); spec B27 written; beat not built (needs user sign-off)
 - [x] 5 · #698 merged 760c9d3 (cause: tent-bound doll drawn Hidden short of its slot when the way was blocked; original tester vanish not reproduced directly)
-- [ ] 6 · #669 merged (buildings too)
+- [x] 6 · #669 merged (buildings too) — call: live animals and berries hidden in a replay (no per-year record); rack/pile/frame recorded from first live sight
 - [x] 7 · #702 merged (1ada892)
 - [x] 8 · #707 merged 2d1156e (open for look sign-off)
 - [ ] 9 · #704 merged (open for look sign-off)
@@ -56,6 +56,9 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - 2026-11-14 23:15 · #698 merged (760c9d3) after 3 rounds
 
 ## Round logs
+
+### #669
+- round 1: ReplayGate + ThingSince; HistoryBuilt 1/1, TimeLapsePlay 5/5 (perf step 12.2 ms flaked once, passed alone), TimeLapseScreen 3/3, smoke 2/2, SimTests green. Shots looked at. Accepted.
 
 ### #698
 - round 1: inTent snap (from #696) fixed with TentArrived guard; ChaseEndPlayTests 2/2. Original cause not found.
