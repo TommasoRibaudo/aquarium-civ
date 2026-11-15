@@ -56,6 +56,7 @@ namespace AquariumCiv.Life
             h = h * 31 + S.buildings.Count;
             h = h * 31 + (int)S.era;
             h = h * 31 + sim.EcoGrownTrees; // #573: a grown tree between months (the woods spot is asked again)
+            h = h * 31 + RackSites.Moves(sim); // #700: a rack moved off a path: the rack places are asked again
             h = h * 31 + sim.EcoPondCells; // #495: the pond grows between months' lots: its shore is asked again
             if (h == sig && s == st) return true;
             bool newSettlement = s != st;
@@ -419,14 +420,14 @@ namespace AquariumCiv.Life
             CampStash.At(fx, fz, CampStash.PileRadius, out wx, out wz);
             land[(int)PlaceKind.Stash * 4 + 1] = new Spot(wx, wz);
             // #543: the fish rack by the fire (0 = where people stand, 1 = the rack's middle)
-            FishRackSpot.At(fx, fz, sim.State.seed, FishRackSpot.StandRadius, out wx, out wz);
+            float fishA = RackSites.Fish(sim, fx, fz); // #700: off the paths
+            FishRackSpot.At(fx, fz, fishA, FishRackSpot.StandRadius, out wx, out wz);
             land[(int)PlaceKind.FishRack * 4] = new Spot(wx, wz);
-            FishRackSpot.At(fx, fz, sim.State.seed, FishRackSpot.Distance, out wx, out wz);
+            FishRackSpot.At(fx, fz, fishA, FishRackSpot.Distance, out wx, out wz);
             land[(int)PlaceKind.FishRack * 4 + 1] = new Spot(wx, wz);
             // sign-off 2026-11-14: the hide rack (LifePlanner.HideFrame's own sums): 1 = its middle, 0 = a step toward the fire, to scrape at
             {
-                float a = (LifePlanner.Mix(sim.State.seed, 0, 0, 410) >> 8) * (1f / 16777216f) * 6.2831853f;
-                a = CampSpots.RackAngle(fx, fz, a, LifePlanner.HideFrameDistance);
+                float a = RackSites.Hide(sim, fx, fz);
                 float ux = (float)System.Math.Cos(a), uz = (float)System.Math.Sin(a);
                 land[(int)PlaceKind.HideRack * 4 + 1] = new Spot(fx + ux * LifePlanner.HideFrameDistance, fz + uz * LifePlanner.HideFrameDistance);
                 land[(int)PlaceKind.HideRack * 4] = new Spot(fx + ux * (LifePlanner.HideFrameDistance - 0.12f), fz + uz * (LifePlanner.HideFrameDistance - 0.12f));

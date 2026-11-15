@@ -357,7 +357,7 @@ namespace AquariumCiv.View
                 foreach (var b in sim.State.buildings) if (b.lotId != 0) spots.Add(new CampSpots.Disc(b.x, b.z, 0.22f));
                 planner.HideFrame(out float hx, out float hz, out _, out _);
                 rackAngle = Mathf.Atan2(hz - fz, hx - fx);
-                fishAngle = FishRackSpot.AngleFor(fx, fz, sim.State.seed); // #543
+                fishAngle = FishRackSpot.AngleFor(sim, fx, fz); // #543, #700 (where the camp stands it now)
             }
             var pole = sim.FeatherPoleProp; // fb4 #566: one feather pole, however many answers asked for a feather (old saves too)
             foreach (var p in list)

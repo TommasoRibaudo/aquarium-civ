@@ -172,7 +172,8 @@ namespace AquariumCiv.Life
             Sync();
             if (!FishRackOn) return false;
             if (!FirePoint(out float fx, out float fz)) return false;
-            FishRackSpot.Frame(fx, fz, sim.State.seed, out look.x, out look.z, out look.dirX, out look.dirZ);
+            RackSites.Observe(sim, now); // #700
+            FishRackSpot.Frame(fx, fz, RackSites.Fish(sim, fx, fz), out look.x, out look.z, out look.dirX, out look.dirZ);
             int dry = sim.FishDryOn(now.day), all = sim.FishOnRack, fresh = all - dry;
             for (int pass = 0; pass < 2; pass++)
             {

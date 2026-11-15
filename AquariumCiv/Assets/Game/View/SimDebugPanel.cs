@@ -58,6 +58,24 @@ namespace AquariumCiv.View
             return sim == null ? "no sim" : null;
         }
 
+        /// <summary>#700: lays path tier under a rack (the fish rack, or the hide rack) so it stands on a path; the rack moves off it at the next quiet moment.</summary>
+        public static string DoPathOverRack(bool hide)
+        {
+            var e = Need(out var s); if (e != null) return e;
+            var map = s.Settlement?.Map; var planner = PeopleView.Find()?.Planner;
+            if (map == null || planner == null || !planner.FirePoint(out float fx, out float fz)) return "no settled camp";
+            float a = hide ? RackSites.Hide(s, fx, fz) : RackSites.Fish(s, fx, fz);
+            float dist = hide ? LifePlanner.HideFrameDistance : FishRackSpot.Distance, hl = hide ? 0.3f : 0.3f, hd = hide ? 0.22f : 0.14f;
+            float ux = Mathf.Cos(a), uz = Mathf.Sin(a), cx = fx + ux * dist, cz = fz + uz * dist, n = 0;
+            for (float along = -hl; along <= hl; along += 0.03f)
+                for (float across = -hd; across <= hd; across += 0.03f)
+                {
+                    int c = AquariumCiv.Sim.Settle.SiteMap.CellAt(cx + ux * across - uz * along, cz + uz * across + ux * along);
+                    if (c >= 0 && map.tier[c] < AquariumCiv.Sim.Settle.PathNet.PathTier) { map.tier[c] = AquariumCiv.Sim.Settle.PathNet.PathTier; n++; }
+                }
+            return Done((hide ? "hide rack" : "fish rack") + ": path laid over it (" + n + " cells); it moves at night or when empty");
+        }
+
         public static string DoRelic(string id) { var e = Need(out var s); if (e != null) return e; var r = s.DebugGiveRelic(id); return Done(r == null ? "no " + id : "relic " + id); }
         public static string DoLoseSandal() { var e = Need(out var s); if (e != null) return e; return Done(s.DebugLoseSandal() != null ? "sandal lost" : "nobody to lose it"); }
         public static string DoSandalYears() { var e = Need(out var s); if (e != null) return e; return Done(s.DebugSkipSandalYears(20) ? "sandal lost 20 years longer" : "no lost sandal"); }
@@ -282,6 +300,16 @@ namespace AquariumCiv.View
             if (Section("Camp props (fb4 #540)"))
                 if (GUILayout.Button("Camp props: show all (rack, every prop)")) last = ConsequenceCheats.ShowCampProps();
             // ---- end fb4 #540 ----
+            // ---- #700: a path grows over a rack ----
+            if (Section("Path over the rack (#700)"))
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Path over the fish rack")) last = DoPathOverRack(false);
+                if (GUILayout.Button("Path over the hide rack")) last = DoPathOverRack(true);
+                GUILayout.EndHorizontal();
+                GUILayout.Label("The rack moves at night or when empty; press Bedtime (clock to 20:00) to see it go.");
+            }
+            // ---- end #700 ----
             if (Section("Staged moments (#370)")) { var line = StagedMoments.Gui(); if (line != null) last = line; } // #370
             // ---- #373: the Keeper's choices page and the hand pins ----
             if (Section("Keeper's choices (#373)"))
