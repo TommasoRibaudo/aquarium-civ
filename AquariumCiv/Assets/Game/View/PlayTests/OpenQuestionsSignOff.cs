@@ -35,7 +35,7 @@ namespace AquariumCiv.View.PlayTests
     {
         public static bool AutoAnswer;
         const string ScenePath = "Assets/Game/Scenes/Slice.unity";
-        static readonly string ShotDir = "F:/GameDev/AquariumCiv/Temp/agent/oqsignoff/";
+        static readonly string ShotDir = UnityEngine.Application.dataPath + "/../Temp/agent/oqsignoff/";
         const string LastKey = "OpenQuestionsSignOff.Last";
 
         static SimCore Sim => GameClock.Instance.ActiveSim;

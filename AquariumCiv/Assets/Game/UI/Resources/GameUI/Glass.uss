@@ -360,6 +360,7 @@
 }
 .kg-dots { flex-direction: row; justify-content: center; flex-shrink: 0; }
 .kg-page-dot { width: 19.25px; height: 19.25px; margin: 0 8.25px; border-radius: 50%; background-color: var(--dot-off); }
+.kg-dots--many > .kg-page-dot { width: 13.75px; height: 13.75px; margin: 0 4.4px; }
 .kg-page-dot--on { background-color: var(--timber); }
 .kg-pips { flex-direction: row; align-items: center; }
 .kg-pip { width: 33px; height: 33px; margin-right: 11px; border-width: 4px; border-color: var(--timber); border-radius: 50%; }

@@ -78,6 +78,7 @@ namespace AquariumCiv.Sim
         public DilemmaDef def;
         public DilemmaKind kind;
         public string question;
+        public string speaker = "";         // #563: who puts a trait-worded question (their name), else ""
         public DilemmaOptionView[] options;
     }
 
@@ -445,6 +446,8 @@ namespace AquariumCiv.Sim
             var def = DilemmaDefOf(d);
             if (d == null || def == null) return null;
             var v = new DilemmaView { dilemma = d, def = def, kind = def.kind, question = QuestionOf(d), options = new DilemmaOptionView[def.options.Length] };
+            var asker = FindNotable(d.askerId);
+            if (asker != null && def.askedBy != null && def.askedBy.TryGetValue(asker.trait ?? "", out var voiced) && !string.IsNullOrEmpty(voiced)) v.speaker = asker.name;
             for (int i = 0; i < v.options.Length; i++)
             {
                 var o = def.options[i];

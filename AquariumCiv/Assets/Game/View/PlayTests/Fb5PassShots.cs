@@ -22,7 +22,7 @@ namespace AquariumCiv.View.PlayTests
     [Explicit("Screenshots for the eye: run by hand"), Category("Fb5Pass")]
     public class Fb5PassShots : PlayTestBase
     {
-        public static string Dir = "F:/GameDev/AquariumCiv/Temp/agent/fb5/pass/";
+        public static string Dir = UnityEngine.Application.dataPath + "/../Temp/agent/fb5/pass/";
         static SimCore Sim => GameClock.Instance.ActiveSim;
         static BoxCamera Rig => Camera.main.GetComponent<BoxCamera>();
 

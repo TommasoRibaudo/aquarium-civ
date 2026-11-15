@@ -17,7 +17,7 @@ namespace AquariumCiv.View.PlayTests
     [Category("ZoomLurch")]
     public class ZoomLurchPlayTests : PlayTestBase
     {
-        const string Dir = "F:/GameDev/AquariumCiv/Temp/agent/p377/";
+        static readonly string Dir = UnityEngine.Application.dataPath + "/../Temp/agent/p377/";
         static BoxCamera Rig => Camera.main.GetComponent<BoxCamera>();
 
         struct Sample { public float zoom, pitch, height, dist; public Vector3 target; }

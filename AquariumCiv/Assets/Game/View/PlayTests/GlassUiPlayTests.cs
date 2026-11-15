@@ -378,7 +378,7 @@ namespace AquariumCiv.View.PlayTests
             Assume.That(stack.Model.Mode, Is.EqualTo(CardStackMode.Peek), "needs a return with stories");
             yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-peek"));
             yield return Frames(4);
-            yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-skip"));
+            stack.Model.Close(); // the back gesture leaves the stories waiting; Skip all answers the stack and clears the dot (#561)
             yield return Frames(6);
             var hud = GameHud.Instance;
             Assert.IsTrue(stack.Model.HistoryDot, "stories wait");

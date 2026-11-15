@@ -687,12 +687,25 @@ namespace AquariumCiv.GameUI
             if (up != null)
             {
                 float h = up.layout.height;
-                if (!float.IsNaN(h) && h > 0f) lane = h - i.w + GameUiPanel.ToastAboveSheet;
+                if (!float.IsNaN(h) && h > 0f)
+                {
+                    float lift = up.resolvedStyle.bottom; // #563: a bar sits above the tools lane, not on the glass edge: the toast clears its top, not its height alone
+                    lane = h - i.w + GameUiPanel.ToastAboveSheet + (float.IsNaN(lift) ? 0f : Mathf.Max(0f, lift - i.w));
+                }
             }
-            toastLabel.style.bottom = Mathf.Max(lane, toastClear > 0f ? GameUiPanel.Lane(toastClear, i.w) : 0f);
+            toastLabel.style.bottom = Mathf.Max(lane, toastClear > 0f ? GameUiPanel.Lane(toastClear, i.w) : 0f, barClear > 0f ? GameUiPanel.Lane(barClear, i.w) : 0f);
         }
 
         float toastClear;
+        float barClear;
+
+        /// <summary>#563: the choice's bar (the card stack's or the box's) is up in the tools lane: toasts go over it, 0 lets them back. Its own field: the moment player's clear resets every frame.</summary>
+        public void SetBarClear(float bottom)
+        {
+            if (Mathf.Approximately(barClear, bottom)) return;
+            barClear = bottom;
+            PlaceToast();
+        }
 
         /// <summary>Tester run 8: a prompt in the toast's own lane (short screens) hid the words under it: toasts go over <paramref name="bottom"/> while it's up, 0 lets them back.</summary>
         public void SetToastClear(float bottom)

@@ -17,7 +17,7 @@ namespace AquariumCiv.View.PlayTests
     [Explicit("Screenshots for the eye: run by hand"), Category("Fb5Season")]
     public class Fb5SeasonShots : PlayTestBase
     {
-        public static string Dir = "F:/GameDev/AquariumCiv/Temp/agent/fb5/576/spec3/";
+        public static string Dir = UnityEngine.Application.dataPath + "/../Temp/agent/fb5/576/spec3/";
         static SimCore Sim => GameClock.Instance.ActiveSim;
         static BoxCamera Rig => Camera.main.GetComponent<BoxCamera>();
 

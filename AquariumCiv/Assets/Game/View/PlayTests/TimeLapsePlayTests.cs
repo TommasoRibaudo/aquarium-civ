@@ -20,7 +20,7 @@ namespace AquariumCiv.View.PlayTests
     public class TimeLapsePlayTests
     {
         const string ScenePath = "Assets/Game/Scenes/Slice.unity";
-        const string Shots = "F:/GameDev/AquariumCiv/Temp/agent/";
+        static readonly string Shots = UnityEngine.Application.dataPath + "/../Temp/agent/";
         string savePath, backup;
         readonly List<string> errors = new();
 
