@@ -532,6 +532,12 @@ namespace AquariumCiv.View
                 if (away.sqrMagnitude < 1e-6f) away = Vector2.right;
                 target = rk + away.normalized * ScrapeReach; face = rk;
             }
+            // #684: a woodcutter at a living land's tree stands so the axe's blade lands on the trunk at chop height (it struck the ground beside it), the two of a tree on opposite sides
+            if (!hidden && !a.moving && !a.enRoute && a.kind == ActivityKind.Chop && a.place.kind == PlaceKind.Woods && plannerSim != null && plannerSim.EcologyOn)
+            {
+                target = DollMotion.ChopStand(spot, Hash01(a.who.Key, 7) * Mathf.PI * 2f + a.slot * Mathf.PI, out var chopFace);
+                face = chopFace;
+            }
             // sign-off 2026-11-14 (2nd run): resting at the fire (a sit, a nap, a meal, a story), on one of the laid-out bedrolls, one each
             if (!hidden && !a.moving && !a.enRoute && CampBedrolls.Count > 0 && a.place.kind is PlaceKind.Fire or PlaceKind.Green
                 && a.kind is ActivityKind.SitOut or ActivityKind.SitTogether or ActivityKind.ListenStory or ActivityKind.Listen or ActivityKind.Nap or ActivityKind.Eat
