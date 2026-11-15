@@ -310,7 +310,7 @@ namespace AquariumCiv.View
             {
                 GUILayout.BeginHorizontal();
                 foreach (var k in RitualKind.All)
-                    if (GUILayout.Button("Play " + k + " now")) { var e = Sim?.DebugPlayRitual(k); last = e == null ? "no box" : e.text; }
+                    if (GUILayout.Button("Play " + k + " now")) last = StagedMoments.DebugPlayRitualNow(k); // the held moment, staged now
                 GUILayout.EndHorizontal();
             }
             // ---- end #721 ----

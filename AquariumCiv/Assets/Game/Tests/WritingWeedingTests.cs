@@ -340,6 +340,54 @@ namespace AquariumCiv.Tests
             Assert.IsNull(sim.DebugPlayRitual("nope"));
         }
 
+        /// <summary>#721 Editor pass: a ritual played while the Keeper watches is a held moment (no card), named by its line; away, it is
+        /// its line only (a card the first time); a held ritual not staged within its season is History.</summary>
+        [Test]
+        public void AWatchedRitualIsAHeldMoment_AwayItIsItsLine()
+        {
+            var sim = NewSim(3, new SimConfig { dilemmas = true, moments = true });
+            for (int m = 0; m < 12; m++) sim.Advance(1.0 / 12);
+            foreach (var k in RitualKind.All)
+            {
+                var e = sim.DebugPlayRitual(k);
+                var held = sim.MomentOfEntry(e.id);
+                Assert.IsNotNull(held, k + ": held for the Keeper");
+                Assert.AreEqual(MomentKind.Ritual, held.kind);
+                Assert.AreEqual(k, sim.RitualOfEntry(e.id));
+                Assert.AreEqual(e.notableId, held.personA, "led by its named person");
+                Assert.IsTrue(sim.MomentHidesCard(e), "watched live, not a card");
+            }
+            Assert.IsNull(SimCore.RitualOfLine("ritual_offering_empty"), "the empty basket is a line, not a moment");
+            Assert.AreEqual(RitualKind.Feast, SimCore.RitualOfLine(SimCore.RitualYearKind(RitualKind.Feast)));
+
+            var away = NewSim(4, new SimConfig { dilemmas = true, moments = true });
+            for (int m = 0; m < 12; m++) away.Advance(1.0 / 12);
+            away.State.customs ??= new List<string>();
+            away.State.customs.Add(RitualKind.CustomOf(RitualKind.Woodpile));
+            away.CatchUp(2.0);
+            var line = away.State.chronicle.LastOrDefault(x => SimCore.RitualOfLine(x.kind) == RitualKind.Woodpile);
+            Assume.That(line, Is.Not.Null, "autumn came while away");
+            Assert.IsNull(away.MomentOfEntry(line.id), "away: no held moment");
+
+            var stale = NewSim(5, new SimConfig { dilemmas = true, moments = true });
+            for (int m = 0; m < 12; m++) stale.Advance(1.0 / 12);
+            var se = stale.DebugPlayRitual(RitualKind.Feast);
+            var sm = stale.MomentOfEntry(se.id);
+            for (int m = 0; m <= MomentRules.RitualHoldMonths; m++) stale.Step();
+            Assert.AreEqual(HeldMomentState.Carded, sm.state, "its season is over: History");
+        }
+
+        [Test]
+        public void TheFeastCallbackCountsTheSeats()
+        {
+            var sim = WithChoice("village_harvest", 0);
+            ChronicleEntry e;
+            var told = new List<string>();
+            while ((e = sim.DebugFireCallbackNow()) != null) told.Add(e.text);
+            Assert.IsTrue(told.All(t => !t.Contains("{")), string.Join(" / ", told));
+            Assert.IsTrue(told.Any(t => t.Contains("seats now")), string.Join(" / ", told));
+        }
+
         // ---------- #718: the shaping-only text is gone ----------
 
         [Test]

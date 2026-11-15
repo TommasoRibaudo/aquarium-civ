@@ -44,7 +44,25 @@ namespace AquariumCiv.Sim
         public static string RitualFirstKind(string kind) => "ritual_" + kind;
         public static string RitualYearKind(string kind) => "ritual_" + kind + "_year";
 
-        /// <summary>A ritual played this month: (kind, the one who led it, its chronicle entry). The view stages it if the Keeper watches.</summary>
+        /// <summary>The ritual a chronicle line plays ("ritual_feast" or "ritual_feast_year" → "feast"), or null (the empty basket too).</summary>
+        public static string RitualOfLine(string entryKind)
+        {
+            if (entryKind == null || !entryKind.StartsWith("ritual_")) return null;
+            foreach (var k in RitualKind.All)
+                if (entryKind == RitualFirstKind(k) || entryKind == RitualYearKind(k)) return k;
+            return null;
+        }
+
+        /// <summary>#721 (Editor pass): the ritual a held moment's line plays, or null.</summary>
+        public string RitualOfEntry(int entryId)
+        {
+            for (int i = State.chronicle.Count - 1; i >= 0; i--)
+                if (State.chronicle[i].id == entryId) return RitualOfLine(State.chronicle[i].kind);
+            return null;
+        }
+
+        /// <summary>A ritual played this month: (kind, the one who led it, its chronicle entry). Its line queues a held moment
+        /// (<see cref="MomentKind.Ritual"/>) while the Keeper watches; the view stages it with <see cref="RitualKind.Caption"/>.</summary>
         public event Action<string, Notable, ChronicleEntry> RitualPlayed;
 
         /// <summary>The rituals this box keeps (a custom answered or lapsed into), in the order of <see cref="RitualKind.All"/>.</summary>

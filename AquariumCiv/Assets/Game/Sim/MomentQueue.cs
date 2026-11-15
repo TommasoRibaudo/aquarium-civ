@@ -3,8 +3,9 @@ using System;
 namespace AquariumCiv.Sim
 {
     /// <summary>#369: the ceremonies that wait for the Keeper (visit-loop.md 2.1; research 16 §4.1).
-    /// #422: Ruling, a notable's rule on a species at its floor ("leave the does in spring"), staged at the fire.</summary>
-    public enum MomentKind { Wedding, Newborn, NewLeader, Callback, Festival, Ruling, WhiteWolf }
+    /// #422: Ruling, a notable's rule on a species at its floor ("leave the does in spring"), staged at the fire.
+    /// #721: Ritual, a yearly ritual played while the Keeper watches (appended: saves keep the kinds' numbers).</summary>
+    public enum MomentKind { Wedding, Newborn, NewLeader, Callback, Festival, Ruling, WhiteWolf, Ritual }
 
     /// <summary>#369: where a held moment is. Waiting in the queue, Playing in the box now, Played while watched, or Carded: it
     /// could not be staged (held too long, the queue overflowed, its people are gone, the baby grew, the view could not play it)
@@ -83,6 +84,8 @@ namespace AquariumCiv.Sim
         public const int MaxHoldMonths = 8 * SimConfig.MonthsPerYear;
         /// <summary>A newborn is held up to the glass only while under 2 [est].</summary>
         public const int NewbornHoldMonths = 2 * SimConfig.MonthsPerYear;
+        /// <summary>#721: a ritual waits for the Keeper only through its season; after that its line is History (a card the first time) [est].</summary>
+        public const int RitualHoldMonths = 2;
         /// <summary>An open after at least this long away (real hours, 15 minutes) is a new visit (the same rule as the choices').</summary>
         public const double VisitAwayHours = 0.25;
         /// <summary>The budget saved up while nothing waits: one moment, so a quiet hour doesn't turn into a burst [est].</summary>
@@ -161,7 +164,9 @@ namespace AquariumCiv.Sim
                 case SimCore.CallbackKind: kind = MomentKind.Callback; return true;
                 case SimCore.RulingKind: kind = MomentKind.Ruling; return true; // #422
                 case SimCore.WhiteWolfKind: kind = MomentKind.WhiteWolf; return true; // #437: a pure moment, everyone comes out to see
-                default: kind = MomentKind.Wedding; return false;
+                default:
+                    if (SimCore.RitualOfLine(entryKind) != null) { kind = MomentKind.Ritual; return true; } // #721: the year's ritual, while watched
+                    kind = MomentKind.Wedding; return false;
             }
         }
 

@@ -184,7 +184,8 @@ namespace AquariumCiv.View.ShowMe
         {
             if (HeldNow != null)
             {
-                var lines = PeopleVoice.MomentLines(HeldNow.kind, HeldNow.personA, HeldNow.personB);
+                var lines = PeopleVoice.MomentLines(HeldNow.kind, HeldNow.personA, HeldNow.personB,
+                    HeldNow.kind == MomentKind.Ritual ? sim.RitualOfEntry(HeldNow.entryId) : null, PeopleVoice.KeeperName(sim)); // #721
                 for (int i = 0; i < lines.Count; i++)
                     yield return Make($"held:{HeldNow.id}:{i}", lines[i].text, lines[i].speaker, BubbleSource.Moment, -1, 0);
                 yield break;

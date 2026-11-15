@@ -89,6 +89,7 @@ namespace AquariumCiv.Sim
             if (!Config.moments || e == null) return;
             if (MomentRules.KindOfLine(e.kind, out var kind))
             {
+                if (kind == MomentKind.Ritual && CatchingUp) return; // #721: away, a ritual is its line (a card the first time, History after)
                 int a = e.notableId, b = e.otherNotableId;
                 if (kind == MomentKind.Newborn) b = FindNotable(e.notableId)?.parentId ?? -1; // the child, then the parent who holds them up
                 QueueMoment(kind, e, a, b);
@@ -151,6 +152,9 @@ namespace AquariumCiv.Sim
                     break;
                 case MomentKind.NewLeader:
                     if (Alive(m.personA) == null || (SeatOf(LeaderOf(State.era))?.holderId ?? -1) != m.personA) return MomentCardReason.PeopleGone;
+                    break;
+                case MomentKind.Ritual:
+                    if (age > MomentRules.RitualHoldMonths) return MomentCardReason.HeldTooLong; // #721: its season is over
                     break;
             }
             return MomentCardReason.None;

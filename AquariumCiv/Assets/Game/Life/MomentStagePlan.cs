@@ -204,6 +204,7 @@ namespace AquariumCiv.Life
                 MomentKind.Festival => plan.Festival(cast),
                 MomentKind.Ruling => plan.Festival(cast), // #422: a gathering at the fire, the ruling notable speaking (its own beats: a view ticket)
                 MomentKind.WhiteWolf => plan.Festival(cast), // #437: the camp gathers to watch the white wolf (B21.d; its own beats: #441)
+                MomentKind.Ritual => plan.Festival(cast), // #721: the gathering at the fire (signed off) until each ritual's own beats are specced and signed off
                 _ => plan.Fail("not a staged kind"),
             };
             if (!ok) return null;
