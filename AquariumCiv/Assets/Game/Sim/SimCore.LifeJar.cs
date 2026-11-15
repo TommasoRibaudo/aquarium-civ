@@ -216,6 +216,7 @@ namespace AquariumCiv.Sim
             var m = EcoM;
             try
             {
+                m.cheatPlaceOnIce = true; // #703: the scripted placing ignores the ice (the Keeper's tap does not)
                 int c = LifePlaceCellNearCamp(s);
                 if (c < 0) { m.cheatBareGround = true; c = LifePlaceCellNearCamp(s); }
                 if (c < 0) return -1;
@@ -223,7 +224,7 @@ namespace AquariumCiv.Sim
                 if (j.State != JarState.Ready) { j.state = (int)JarState.Ready; j.readyMonth = State.month; j.readySeen = true; }
                 return PlaceLife(s, c) ? c : -1;
             }
-            finally { m.cheatBareGround = false; }
+            finally { m.cheatBareGround = false; m.cheatPlaceOnIce = false; }
         }
 
         /// <summary>#519 debug ("pond dries"): every pond cell is bare ground now, and the ducks and the fish keep to the water at once

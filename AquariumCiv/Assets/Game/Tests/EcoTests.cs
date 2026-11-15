@@ -53,7 +53,12 @@ namespace AquariumCiv.Tests
             public void Play(SimCore sim)
             {
                 var e = sim.State.eco;
-                if (!VisitsAt(e.season)) return;
+                if (!VisitsAt(e.season))
+                {
+                    // #703: the duck jar is shut while the pond is ice, and this Keeper's yearly visit falls in winter: a thawed jar is placed the season it opens
+                    if (care && places) PlaceReadyJars(sim, s => s == LifeSpecies.Ducks && (which == null || which(s)));
+                    return;
+                }
                 if (places) PlaceReadyJars(sim, which); // #417-#419: the Keeper places every jar that is ready, by the camp
                 var land = sim.EcoGround;
                 // The lab plans the whole visit from the land as it stands on arrival, then does it.
