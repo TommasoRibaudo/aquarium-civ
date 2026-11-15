@@ -314,6 +314,7 @@ namespace AquariumCiv.View
             }
             PrepareFields();
             Reserve();
+            if (Eco) PruneSpots(); // #730: a lifted tree or bush leaves no spot behind for the kids, the deer or the charms
             System.Array.Clear(wantHash, 0, ChunkCount);
             ChunkHashes(wantHash, wantParts);
             PickChunks(Spread ? ScrubChunksPerFrame : ChunkCount);

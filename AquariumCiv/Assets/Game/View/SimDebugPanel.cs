@@ -477,8 +477,16 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Crowd: +3 thickets")) { int made = sim.DebugCrowdThickets(3); last = Done($"{made} thickets placed: {sim.BushThicketCount} stand, each holds {sim.BushCap / System.Math.Max(1, sim.BushThicketCount)}"); }
                 if (GUILayout.Button("Shrink: one season now")) { sim.DebugSkipSeasons(1); last = Done($"a season on: {sim.BushThicketCount} thickets, {sim.State.eco.cBush} bushes of {sim.BushCap}"); }
                 GUILayout.EndHorizontal();
+                // ---- #732: many thickets, and letting them settle to their targets (grow or shed, a bush a season) ----
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Crowd: up to 10 thickets")) { int made = sim.DebugCrowdThickets(System.Math.Max(0, 10 - sim.BushThicketCount)); last = Done($"{made} placed: {sim.BushThicketCount} thickets stand"); }
+                if (GUILayout.Button("Settle: 2 years now")) { sim.DebugSkipSeasons(8); last = Done($"2 years on: {sim.BushThicketCount} thickets, {sim.State.eco.cBush} bushes of {sim.BushCap}"); }
+                GUILayout.EndHorizontal();
                 // ---- #730: the landscaping tool (name open, [est]); phase 1 is the sim: pluck what the tool could take in an area ----
                 GUILayout.Label($"{SimCore.LandscapeToolName}: takes seedlings, young trees, bushes" + (sim.EcoLandscapeTakesGrownTrees ? ", grown trees (flag ON)" : " (grown trees: flag off)"));
+                var lhud = AquariumCiv.GameUI.GameHud.Instance;
+                if (lhud != null && GUILayout.Button(lhud.Hand == AquariumCiv.GameUI.GameHud.KitTool.Landscape ? "The tool is in hand" : "Put the tool in hand"))
+                { lhud.SetHand(AquariumCiv.GameUI.GameHud.KitTool.Landscape); last = Done("the landscaping tool in hand: tap or drag over seedlings and bushes"); }
                 if (GUILayout.Button("Pluck all within 1.2 of the camp (the tool's cells)"))
                 {
                     var g = sim.EcoGround; var r = sim.DebugLandscapeArea(g.campX, g.campZ, 1.2f);

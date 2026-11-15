@@ -287,7 +287,7 @@ namespace AquariumCiv.View
         {
             if (cam.LeanCancels != cancelsSeen) { cancelsSeen = cam.LeanCancels; leanRefused = true; }
             var hud = GameUI.GameHud.Instance;
-            bool inHand = hud != null && hud.Hand == GameUI.GameHud.KitTool.Life;
+            bool inHand = hud != null && (hud.Hand == GameUI.GameHud.KitTool.Life || hud.Hand == GameUI.GameHud.KitTool.Bush);
             if (leanRefused && !inHand && playing.Count == 0 && !cam.Leaning) leanRefused = false; // the next placing may lean again
         }
 

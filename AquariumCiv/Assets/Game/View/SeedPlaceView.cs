@@ -23,6 +23,8 @@ namespace AquariumCiv.View
         /// <summary>The hint while the ghost waits for its second tap (#516: the life slot's wording, naming what goes down).</summary>
         public const string TapAgainHint = "Tap again to plant the seed here.";
         public const string NotThere = "Not there: the seed can't grow in the hollow or the water.";
+        /// <summary>#727: an earned seed needs open ground: not the camp, the water, a thicket or the Keeper's tree.</summary>
+        public const string NotThereEarned = "Not there: a seed needs open ground, away from the camp, the water and the bushes.";
 
         [Tooltip("A press that wanders further than this (share of screen height) is a drag, not a tap.")] public float slop = 0.02f;
         [Tooltip("A tap this near the ghost's middle (box units) plants it.")] public float ghostReach = 0.28f;
@@ -86,7 +88,7 @@ namespace AquariumCiv.View
         {
             var mist = EcoMistView.Instance;
             if (mist == null || !mist.GroundPoint(screen, out var at)) { Last = "off the land: put back"; hud?.SetHand(GameHud.KitTool.None); return; }
-            if (!sim.CanPlantTree) { Last = "no seed"; hud?.SetHand(GameHud.KitTool.None); return; }
+            if (!sim.CanPlantAnySeed) { Last = "no seed"; hud?.SetHand(GameHud.KitTool.None); return; } // #727: the Keeper's tree, or an earned seed
             Ghost.reach = ghostReach;
             if (Ghost.OnGhost(at) && sim.TreeCellFor(Ghost.At.x, Ghost.At.z) == Ghost.Cell) { Plant(sim); return; }
             int cell = sim.TreeCellFor(at.x, at.z);
@@ -95,12 +97,12 @@ namespace AquariumCiv.View
                 Refusals++;
                 Last = "refused";
                 Ghost.Wobble();
-                hud?.Toast(NotThere, 3f);
+                hud?.Toast(sim.CanPlantTree ? NotThere : NotThereEarned, 3f);
                 return;
             }
             bool moved = GhostShown;
             tappedCell = SiteMap.CellAt(at.x, at.z);
-            Ghost.Show(cell, new Vector3(SiteMap.CXc(cell), 0f, SiteMap.CZc(cell)), hud, GameHud.SeedHint);
+            Ghost.Show(cell, new Vector3(SiteMap.CXc(cell), 0f, SiteMap.CZc(cell)), hud, hud != null ? hud.SeedHintShown : GameHud.SeedHint);
             Last = moved ? $"ghost moved to {cell}" : $"ghost at {cell}";
         }
 
@@ -110,14 +112,16 @@ namespace AquariumCiv.View
             float x = SiteMap.CXc(cell), z = SiteMap.CZc(cell);
             // #378: a press by the glass lands a little way in from it (the ghost showed where); say so, the seed never jumps silently
             bool shifted = tappedCell >= 0 && tappedCell != cell;
-            if (!sim.PlantTree(x, z)) { Last = "refused"; hud?.Toast(NotThere, 3f); return; }
+            bool keepers = sim.CanPlantTree; // the first seed is the Keeper's tree; after it, an earned seed (#727)
+            if (!sim.PlantTree(x, z)) { Last = "refused"; hud?.Toast(keepers ? NotThere : NotThereEarned, 3f); return; }
             Plantings++;
             Last = $"planted at ({x:0.00}, {z:0.00})";
             HideGhost();
             box.Refresh();
             GameClock.Instance?.Save();
             hud?.SetHand(GameHud.KitTool.None);
-            hud?.Toast(shifted ? "The seed went in a little way from the glass, where a tree has room. Mist it, and keep its weeds back." : "The seed is in the ground. Mist it, and keep its weeds back.", 4f);
+            if (!keepers) hud?.Toast(sim.SeedsInPouch > 0 ? $"The seed is in the ground. It will grow into a tree. {sim.SeedsInPouch} more in the life jar." : "The seed is in the ground. It will grow into a tree.", 4f);
+            else hud?.Toast(shifted ? "The seed went in a little way from the glass, where a tree has room. Mist it, and keep its weeds back." : "The seed is in the ground. Mist it, and keep its weeds back.", 4f);
             var pv = PeopleView.Find();
             if (pv != null && pv.Planner != null) pv.Planner.ReactAt(AquariumCiv.Life.KeeperGesture.Rain, pv.Now, x, z, 1.4f);
         }

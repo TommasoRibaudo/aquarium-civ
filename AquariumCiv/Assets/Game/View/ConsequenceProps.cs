@@ -252,7 +252,8 @@ namespace AquariumCiv.View
         sealed class Made { public Transform t; public Mesh mesh; public string kind; public float yaw; public Vector3 at; }
 
         /// <summary>#635: the mesh key of a thing: its kind, or for charms on a tree the tree and the count (a new death adds a charm).</summary>
-        static string KeyOf(ConsequenceProp p, int charms) => p.anchor != PropAnchor.Tree ? p.kind : p.treeCell >= 0 ? $"charms:{p.treeCell}:{charms}" : $"pole:{charms}";
+        // #730: and the drawn crown's size, so charms whose tree was lifted re-tie on the next drawn tree (BoxView prunes its spots).
+        static string KeyOf(ConsequenceProp p, int charms, float treeR = 0f) => p.anchor != PropAnchor.Tree ? p.kind : p.treeCell >= 0 ? $"charms:{p.treeCell}:{charms}:{treeR:0.000}" : $"pole:{charms}";
 
         /// <summary>#635: the drawn tree a tree thing hangs on: its cell's spot, else the nearest drawn grown tree (a wild crown is drawn on
         /// some of its cells only). False when none is drawn near.</summary>
@@ -400,7 +401,7 @@ namespace AquariumCiv.View
                     continue;
                 }
                 int charms = p.anchor == PropAnchor.Tree ? sim.CharmsOn(p) : 0;
-                string key = KeyOf(p, charms);
+                string key = KeyOf(p, charms, treeR);
                 if (!made.TryGetValue(p.id, out var m) || m.t == null || m.kind != key)
                 {
                     if (m != null) { Kill(m.mesh); if (m.t != null) Kill(m.t.gameObject); }

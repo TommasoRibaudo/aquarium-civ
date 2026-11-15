@@ -428,7 +428,7 @@ namespace AquariumCiv.View
         public static bool Placing()
         {
             var hud = GameHud.Instance;
-            if (hud != null && (hud.Hand == GameHud.KitTool.Life || hud.Hand == GameHud.KitTool.Seed)) return true;
+            if (hud != null && (hud.Hand == GameHud.KitTool.Life || hud.Hand == GameHud.KitTool.Seed || hud.Hand == GameHud.KitTool.Bush)) return true;
             var lp = LifePlaceView.Instance;
             if (lp != null && lp.GhostShown) return true;
             var sp = SeedPlaceView.Instance;

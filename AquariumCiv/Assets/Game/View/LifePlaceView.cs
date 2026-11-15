@@ -75,6 +75,13 @@ namespace AquariumCiv.View
         /// <summary>The ghost is shown, at <see cref="GhostCell"/>.</summary>
         /// <summary>fb4 #542: the pond tool (ducks, fish) is in hand: the camera keeps the pond framed.</summary>
         public bool FramingWater => framedFor == (hud != null ? hud.HeldLife : framedFor) && IsWater(framedFor) && hud != null && hud.Hand == GameHud.KitTool.Life;
+        /// <summary>#731: an earned bush is in hand (<see cref="GameHud.KitTool.Bush"/>): the thicket's ground glows, a tap shows the ghost, a tap on it
+        /// founds a small thicket (<see cref="SimCore.PlaceBush"/>), a refused tap says why (<see cref="SimCore.ThicketRefusal"/>, as #664).</summary>
+        public bool BushMode => hud != null && hud.Hand == GameHud.KitTool.Bush;
+        /// <summary>#731: the hint while the bush's ghost waits.</summary>
+        public const string BushTapAgainHint = "Tap again to plant the bush here.";
+        /// <summary>#731: the last refusal's words (tests).</summary>
+        public string LastRefusal { get; private set; } = "";
         public bool GhostShown => ghostGo != null && ghostGo.activeSelf;
         public int GhostCell => Ghost.Cell;
         GhostTap Ghost => ghost ??= new GhostTap(TapAgainHintFor(LifeSpecies.Thicket), ghostReach);
@@ -115,7 +122,7 @@ namespace AquariumCiv.View
         {
             var sim = Sim;
             hud ??= GameHud.Instance;
-            bool holding = sim != null && sim.EcologyOn && box != null && hud != null && hud.Hand == GameHud.KitTool.Life;
+            bool holding = sim != null && sim.EcologyOn && box != null && hud != null && (hud.Hand == GameHud.KitTool.Life || hud.Hand == GameHud.KitTool.Bush);
             if (!holding)
             {
                 if (glowGo != null && glowGo.activeSelf) glowGo.SetActive(false);
@@ -126,9 +133,10 @@ namespace AquariumCiv.View
                 DrawNo();
                 return;
             }
-            var s = hud.HeldLife;
-            // the glow follows the land: rebuilt when the species changes or the land moved on (a season, a placing)
-            int stamp = (int)(sim.State.month * 8 + (int)s);
+            bool bush = BushMode;
+            var s = bush ? LifeSpecies.Thicket : hud.HeldLife;
+            // the glow follows the land: rebuilt when the species changes or the land moved on (a season, a placing); #731: and per thicket placed
+            int stamp = (int)(sim.State.month * 8 + (int)s) + (bush ? 1000003 * (1 + sim.BushThicketCount) : 0);
             if (s != glowFor || stamp != glowStamp)
             {
                 if (GhostShown && (s != ghostFor || !sim.LifeGroundOk(s, GhostCell))) HideGhost(); // #516: the ghost is always the species in hand
@@ -167,6 +175,7 @@ namespace AquariumCiv.View
             // fb4 #542: the player taps the water they SEE; the ray goes on to the pond's bed, which can sit a cell or more further on
             if (IsWater(s) && (cell < 0 || !sim.LifeGroundOk(s, cell)) && SurfaceCell(screen, out int sc) && sim.LifeGroundOk(s, sc)) { cell = sc; at = box.land.OnGround(SiteMap.CXc(sc), SiteMap.CZc(sc)); }
             Ghost.reach = ghostReach;
+            if (BushMode) { TapBush(sim, cell, at); return; }
             // fb4 #542: on the pond any tap on its water sets the group down where the ghost stands (the first tap on the water showed it)
             bool onWater = IsWater(s) && cell >= 0 && sim.LifeGroundOk(s, cell);
             if (GhostShown && (onWater || Ghost.OnGhost(at)) && sim.CanPlaceLife(s, GhostCell))
@@ -186,6 +195,43 @@ namespace AquariumCiv.View
             ShowGhost(s, cell); // the tap-again hint stays while the ghost waits and goes with it (GhostTap)
             LifeArrivalView.Instance?.LeanOnGhost(s, Ghost.At); // user 2026-11-08: the camera leans in so the group reads at phone size
             Last = moved ? $"ghost moved to {cell}" : $"ghost at {cell}";
+        }
+
+        /// <summary>#731: a tap with an earned bush in hand: on the ghost it plants; on good ground it shows (or moves) the ghost; elsewhere the
+        /// ghost wobbles and the toast says why (#664).</summary>
+        void TapBush(SimCore sim, int cell, Vector3 at)
+        {
+            if (GhostShown && Ghost.OnGhost(at) && sim.CanPlaceBush(GhostCell)) { PlaceBush(sim, GhostCell); return; }
+            string why = cell < 0 ? "Not here" : sim.ThicketRefusal(cell);
+            if (why != null)
+            {
+                Refusals++;
+                LastRefusal = why;
+                Last = $"no: cell {cell}: {why}";
+                Ghost.Wobble();
+                noAt = box.land.OnGround(at.x, at.z); noT = Time.unscaledTime;
+                hud?.Toast(why + ".", 3f, through: true);
+                return;
+            }
+            bool moved = GhostShown;
+            ShowGhost(LifeSpecies.Thicket, cell, BushTapAgainHint, GameHud.BushHint);
+            LifeArrivalView.Instance?.LeanOnGhost(LifeSpecies.Thicket, Ghost.At);
+            Last = moved ? $"ghost moved to {cell}" : $"ghost at {cell}";
+        }
+
+        void PlaceBush(SimCore sim, int cell)
+        {
+            if (!sim.PlaceBush(cell)) { Last = "refused"; return; }
+            Placings++;
+            Last = $"placed a bush at {cell}";
+            HideGhost();
+            box.Refresh();
+            GameClock.Instance?.Save();
+            int left = sim.BushesInPouch;
+            hud?.SetHand(GameHud.KitTool.None); // one at a time: the next bush is taken from the jar again
+            hud?.Toast(left > 0 ? $"A small thicket starts here. {(left == 1 ? "1 more bush waits" : left + " more bushes wait")} in the life jar." : "A small thicket starts here.", 4f);
+            var pv = PeopleView.Find();
+            if (pv != null && pv.Planner != null) pv.Planner.ReactAt(AquariumCiv.Life.KeeperGesture.Rain, pv.Now, SiteMap.CXc(cell), SiteMap.CZc(cell), 1.4f);
         }
 
         /// <summary>fb4 #542: the water tool was just taken: the camera frames the whole pond (the glow's cells), so the first tap is on a big target.</summary>
@@ -378,13 +424,13 @@ namespace AquariumCiv.View
             _ => new[] { (-0.07f, 0f, 0.05f, 0.09f), (0.07f, 0f, 0.05f, 0.09f) },
         };
 
-        void ShowGhost(LifeSpecies s, int cell)
+        void ShowGhost(LifeSpecies s, int cell, string hint = null, string withdraw = null)
         {
             var target = new Vector3(SiteMap.CXc(cell), 0f, SiteMap.CZc(cell));
             if (ghostGo == null) ghostGo = Child("LifeGhost", out ghostMesh);
             ghostGo.SetActive(true);
-            Ghost.SetHint(TapAgainHintFor(s), hud);
-            Ghost.Show(cell, target, hud, GameHud.LifeHintFor(s));
+            Ghost.SetHint(hint ?? TapAgainHintFor(s), hud);
+            Ghost.Show(cell, target, hud, withdraw ?? GameHud.LifeHintFor(s));
             ghostFor = s;
         }
 

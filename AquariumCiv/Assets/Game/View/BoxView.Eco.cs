@@ -80,6 +80,31 @@ namespace AquariumCiv.View
         /// <summary>#359: where each grown tree was drawn (site cell -> ground point, crown radius), as BushSpots: the kids play round the real trunks.</summary>
         public readonly Dictionary<int, (Vector3 pos, float r)> TreeSpots = new();
 
+        /// <summary>#730 (landscaping phase 2): the spots are written as chunks build and were never taken out, so a tree or a bush the landscaping
+        /// tool lifted (or one that died) stayed a "tree to play round" until the box was rebuilt. Each refresh drops the spots whose cell no
+        /// longer holds what was drawn there.</summary>
+        void PruneSpots()
+        {
+            var ec = layout.eco;
+            if (ec == null || ec.cover == null) return;
+            var gone = new List<int>();
+            lock (TreeSpots)
+            {
+                foreach (var kv in TreeSpots)
+                {
+                    bool keepers = kv.Key == ec.treeCell && ec.treeStage >= 4;
+                    if (!keepers && (kv.Key < 0 || kv.Key >= ec.cover.Length || ec.cover[kv.Key] != EcoLayer.Tree)) gone.Add(kv.Key);
+                }
+                foreach (int c in gone) TreeSpots.Remove(c);
+            }
+            gone.Clear();
+            lock (BushSpots)
+            {
+                foreach (var kv in BushSpots) if (kv.Key < 0 || kv.Key >= ec.cover.Length || ec.cover[kv.Key] != EcoLayer.Bush) gone.Add(kv.Key);
+                foreach (int c in gone) BushSpots.Remove(c);
+            }
+        }
+
         /// <summary>The radius round the Keeper's tree inside which a grown wild tree drops branches the people gather (SimCore.DeadfallTreeCell).</summary>
         static readonly float DeadfallRadius = new AquariumCiv.Sim.Eco.EcoTuning().woodsClearRadius;
 

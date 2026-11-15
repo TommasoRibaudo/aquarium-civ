@@ -293,7 +293,9 @@ namespace AquariumCiv.Life
             x = s.x; z = s.z;
             if (p.kind == PlaceKind.Woods && p.index > 0 && sim != null && sim.EcologyOn) // #573: the next grown wild tree (two choppers to a tree)
             {
-                if (!woodsRank.TryGetValue(p.index, out int wcell)) woodsRank[p.index] = wcell = sim.WoodsTreeCell(st.GreenX, st.GreenZ, p.index);
+                // #730: a cached tree the landscaping tool lifted (or that fell) is looked up again, so no chopper works at bare ground
+                if (!woodsRank.TryGetValue(p.index, out int wcell) || (wcell >= 0 && (AquariumCiv.Sim.Eco.EcoCover)sim.State.eco.cover[wcell] != AquariumCiv.Sim.Eco.EcoCover.Tree))
+                    woodsRank[p.index] = wcell = sim.WoodsTreeCell(st.GreenX, st.GreenZ, p.index);
                 if (wcell < 0) return false;
                 x = SiteMap.CXc(wcell); z = SiteMap.CZc(wcell);
             }
