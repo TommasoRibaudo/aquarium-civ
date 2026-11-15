@@ -4,7 +4,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 
 ## Checklist
 - [x] `p9/playtest1-b` from `origin/dev`; this prompt committed (already on dev via #712)
-- [ ] 1 · #697 → #696 cause written in both issues; merged
+- [x] 1 · #697 → #696 cause written in both issues; merged (b043834 + 74e22c4); close after the batched pass
 - [x] 2 · #699 merged (lane A; Unity check pending)
 - [x] 3 · #703 merged (lane A; jar look in Unity pending) — call: jar shut while frozen
 - [~] 4 · #700 rule merged 969c8b2 (racks + Keeper's fire props); spec B27 written; beat not built (needs user sign-off)
@@ -49,6 +49,8 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - 22:15 · #703 round 1 accepted: c11423a+81aec5c, SimTests 1924. Call (recorded): ★ the duck jar is shut while the pond is ice; need line "The pond is ice. Ducks will come when it thaws."; a placing made before the freeze is kept (ducks leave for winter per #618, come back). Test change reviewed: EcoTests' once-a-year winter Keeper now places a thawed duck jar outside its visit (lab artifact); PlacedLifeTests accepts 'shut under ice'. Risk for the user: a winter-only player waits until spring for ducks (village gate up to 9 months later). Merged.
 - 22:45 · #676 lane A round 1 accepted: affcc34 (+ my .meta commit; the worker made none). StewKinds.Decide: rabbit (hunt this/last month) > fish (pile has fish) > berries/roots (food) > thin. MealDirector.LookOf per kind. SimTests 1941. Merged 0d00f73. Lane B part (StewLookTests, StewKindTests, MealDirectorTests; fish + rabbit stew shots day/dusk) queued for the Editor.
 - 23:00 · #697/#696 round 2 (Editor): b6eeab7. ReplanKeepsPlansPlayTests 22/22, LifePlanner 24/24, TentSleepers 4/4, EcoTent 10/10, smoke 2/2, day watch (year 17, ~10 clock min, triggers every 30 s) PASS → #697 done. New #696 cause found+fixed: ChooseBuilders took sleeping adults to raise a night tent (test fails before/passes after). Night watch still FAILS: sleeper 23 shown at the tent at a chronicle+nudges+belief replan while the plan says Sleep=Home → a view path (scene/reaction) shows sleepers. Round 3 sent (instrument doll visibility, fix at source; 90-min box).
+- 23:40 · #696 round 3 accepted: 406644d. View cause: a replan/new sleeper renumbers the home's slots; the hidden doll 'walked' to its new slot and the walk style replaced Hidden (PeopleView.Drive). Fix: asleep/indoors dolls take a changed slot at once, never the walk style. Night watch 1/1 (0 sleeper frames), day watch 1/1, ReplanKeepsPlans 22/22, smoke 2/2. Merged 74e22c4; view cause posted on #696. Merged-branch SimTests (after #676) 1941/1941.
+- 23:42 · Editor restart before #698 (3 tickets since start: #702, #707, #697; a recompile returned 400).
 
 ## Round logs
 ### #702
@@ -71,5 +73,6 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 
 ### #697/#696
 - round 1: all lane A boxes ticked; #696 guard tests didn't fail on base (noted). Lane B verification pending.
+- round 3: view cause found + fixed; all boxes ticked.
 - round 2: #697 boxes ticked (day watch). #696: night-builder cause fixed, night watch red (view shows a sleeper at a chronicle/nudge/belief replan). Sent back.
 
