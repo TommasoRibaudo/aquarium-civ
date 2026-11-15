@@ -36,6 +36,7 @@ namespace AquariumCiv.View
         SimCore preview;
         BoxView box;
         long seenMonth = -1;
+        int seenCoverEdits;
         Era seenEra;
         bool seenAny;
         readonly List<int> waveOrder = new();
@@ -239,6 +240,7 @@ namespace AquariumCiv.View
                 return;
             }
             if (sim.State.era > seenEra && waveOnEraChange && !MomentLook) { StartWave(seenEra); return; }
+            if (sim.CoverEdits != seenCoverEdits) { seenCoverEdits = sim.CoverEdits; Box.Refresh(); } // a cheat rewrote the cover
             if (sim.State.month != seenMonth || sim.State.era != seenEra) Box.Refresh();
         }
 

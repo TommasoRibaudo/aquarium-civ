@@ -483,6 +483,9 @@ namespace AquariumCiv.Sim
             return true;
         }
 
+        /// <summary>Bumped when a debug cheat rewrites the cover: the view refreshes the box the next frame.</summary>
+        public int CoverEdits { get; private set; }
+
         /// <summary>Debug: a far wood (a 5 x 5 block of grown trees, every cell at least 1.6 u from the fire, dry, off the settlement), the
         /// block farthest from the fire that fits. True when one was grown.</summary>
         public bool DebugGrowFarWood()
@@ -514,6 +517,9 @@ namespace AquariumCiv.Sim
                 for (int di = 0; di < W; di++) e.cover[SiteMap.Index(SiteMap.I(best) + di, SiteMap.J(best) + dj)] = (byte)EcoCover.Tree;
             EcoM.Count();
             if (Config.settle) Settlement.SyncEco();
+            CoverEdits++;                         // the box view redraws (SimLayoutSource watches this)
+            EcoM.UpdateJars(State.month, false);  // the jars read the new wood now, not at the season's end
+            EcoTell();
             return true;
         }
 
