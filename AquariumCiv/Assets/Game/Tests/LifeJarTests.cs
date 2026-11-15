@@ -118,16 +118,17 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void Deer_NeedRabbitsPlaced_AndFiveGrownTrees()
+        public void Deer_NeedRabbitsPlaced_AndAWood()
         {
-            var sim = World(); var m = Model(sim); var e = sim.State.eco;
-            e.cTrees = 20; m.UpdateJars(1);
+            // #690: the gate reads the cover (grown trees in company), not the bare count; the wood is a real block of trees
+            var sim = World(); var m = Model(sim);
+            PlacedLifeTests.Wood(sim, 5); m.UpdateJars(1);
             Assert.AreEqual(JarState.Locked, m.JarStateOf(LifeSpecies.Deer), "the camp's rabbits first");
             SetPlaced(m, LifeSpecies.Thicket); SetPlaced(m, LifeSpecies.Rabbits);
-            e.cTrees = 4; m.UpdateJars(2);
-            Assert.AreEqual(JarState.Locked, m.JarStateOf(LifeSpecies.Deer));
-            e.cTrees = 5; m.UpdateJars(3);
-            Assert.AreEqual(JarState.Ready, m.JarStateOf(LifeSpecies.Deer), "5 grown trees, earlier than the village's 8");
+            m.UpdateJars(2);
+            Assert.AreEqual(JarState.Locked, m.JarStateOf(LifeSpecies.Deer), "5 grown trees are no longer a wood (#690)");
+            PlacedLifeTests.Wood(sim, 20); m.UpdateJars(3);
+            Assert.AreEqual(JarState.Ready, m.JarStateOf(LifeSpecies.Deer), "a wood of 20, earlier than the wolves' 20 + deer for a year");
         }
 
         [Test]

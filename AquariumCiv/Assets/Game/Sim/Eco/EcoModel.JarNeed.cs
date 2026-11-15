@@ -43,7 +43,7 @@ namespace AquariumCiv.Sim.Eco
                 case LifeSpecies.Rabbits:
                     return MeadowFrac >= t.jarRabbitsMeadow ? null : n + (anyMeadow ? " need a bigger meadow" : " need a meadow");
                 case LifeSpecies.Deer:
-                    return st.cTrees >= t.jarDeerTrees ? null : $"{n} need more trees ({st.cTrees}/{t.jarDeerTrees})";
+                    { int w = WoodTrees(); return w >= t.jarDeerWood ? null : $"{n} need a thicker wood ({w}/{t.jarDeerWood})"; } // #690
                 case LifeSpecies.Ducks:
                     return st.cPond >= t.jarDucksPond ? null : n + (st.cPond > 0 ? " need a bigger pond" : " need a pond");
                 case LifeSpecies.Fish:
