@@ -490,9 +490,9 @@ namespace AquariumCiv.View.PlayTests
             cam.FlyTo(new Vector3(0f, 2.2f, 0f), 0.55f, 0.2f);
             yield return new WaitForSecondsRealtime(0.6f);
             Assert.IsTrue(hud.OffHome);
-            // #604: the title has no pill any more (its ink follows the light); the round buttons keep their backing off home
+            // #604: the title has no pill any more (its ink follows the light); #707: nor behind the round buttons
             Assert.AreEqual(0f, hud.Root.Q("hud-title-text").resolvedStyle.backgroundColor.a, "no pill behind the name");
-            Assert.IsTrue(hud.Root.Query(className: "hud-disc").ToList().Any(d => d.resolvedStyle.backgroundColor.a > 0f), "the round buttons keep a backing");
+            Assert.IsFalse(hud.Root.Query(className: "hud-disc").ToList().Any(d => d.resolvedStyle.backgroundColor.a > 0f), "no backing behind the round buttons");
             AssertNoErrors("backing");
         }
 
