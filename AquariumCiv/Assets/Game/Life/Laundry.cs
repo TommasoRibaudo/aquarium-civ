@@ -49,7 +49,7 @@ namespace AquariumCiv.Life
         public static bool CanHang(Season season, Weather w) => season != Season.Winter && !WetDay(w);
 
         /// <summary>A chore starting at <paramref name="hour"/> may be hanging the washing: dry, not winter, and early enough for a stay before 17:00.</summary>
-        public static bool ChoreFits(Season season, Weather w, float hour) => CanHang(season, w) && hour + ChoreHours + LeastStay <= Latest;
+        public static bool ChoreFits(Season season, Weather w, float hour) => CanHang(season, w) && hour + ChoreHours + LeastStay <= Latest + 1e-4f; // float sums: 15.8 + 0.7 + 0.5 lands a hair over 17
 
         /// <summary>When the stay ends if she left at <paramref name="leave"/>: one view hour on, never past 17:00.</summary>
         public static float TakeInAt(float leave) => Math.Min(Math.Max(leave, 0f) + StayHours, Math.Max(Latest, leave));
