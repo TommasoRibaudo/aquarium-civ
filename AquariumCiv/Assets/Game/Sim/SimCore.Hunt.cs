@@ -40,6 +40,7 @@ namespace AquariumCiv.Sim
             if (!EcologyOn || HuntSurplus <= 0 || !EcoM.TryTake(LifeSpecies.Rabbits, LifeTaker.Hunters, State.month, out _)) return false;
             State.eco.hidesDrying++;
             State.eco.hidesTotal++;
+            State.eco.rabbitCatchDay = State.month; // #676: rabbit stew today and tomorrow
             return true;
         }
 
