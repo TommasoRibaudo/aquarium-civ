@@ -1350,12 +1350,12 @@ trots off, tail up.*
 ### B28.a The line and the cloths (the prop)
 | | |
 |---|---|
-| Line | a cord 0.3 u long between two dark-wood stakes 0.1 u high (0.012 u thick), so a doll's raised hand (arm x 150) reaches it. At the home's `Line` spot, **parallel to the wall**, 0.1 u out. One line per home, shared by housemates |
-| Cloths | 4 (up to 5 in a big home), each a flat quad 0.05 w x 0.06 h u hanging from the cord with a 0.008 u fold at the top. Muted, no two neighbours alike: ochre, faded blue, undyed linen, dull rust. Never white (it reads as paper on grass, as the first bedrolls did), never saturated. One is small (a kid's shirt, 0.035 x 0.04 u) |
-| Pins | a 0.01 u dark dot at each cloth's top corners |
+| Line | a cord 0.55 u long between two dark-wood stakes 0.17 u high (0.014 u thick), so a doll's raised hand (arm x 150, reach about 0.2 u) reaches it. At the home's `Line` spot, **parallel to the wall**, 0.1 u out. One line per home, shared by housemates |
+| Cloths | 4 (up to 5 in a big home), each a flat quad **0.11 w x 0.13 h u** hanging from the cord with a 0.012 u fold at the top, 0.03 u apart. Muted, no two neighbours alike: ochre, faded blue, undyed linen, dull rust. Never white (it reads as paper on grass, as the first bedrolls did), never saturated. One is small (a kid's shirt, 0.08 x 0.09 u) |
+| Pins | a 0.015 u dark dot at each cloth's top corners |
 | Basket | a low wicker basket (0.05 u) on the ground at the near stake, a wad of the cloth colours at the rim. Present only while the chore runs; the doer carries it in after |
 | Where (rule) | the `Line` spot, swapped to the door's other side (`blockSide`) and then out in front when blocked, by the same checks as the kindling block. **Never on a path cell**: the path test #700 added (`CampSpots`, `Life/RackSites.cs`) applies, and a line whose cord would cross a path takes the other side of the door. Never under a tent's roof edge; never within 0.12 u of the fire, a rack or another line |
-| On a phone | at the default camera 1 u is 120-140 px: a cloth is about 7 x 8 px and the cord about 40 px. That reads only as **a row of coloured patches**, so: 4 cloths, each its own colour, each >= 0.045 u wide, and the line clear of the tent's shadow. At a close zoom the cloths scale with the doll |
+| On a phone | at the default camera 1 u is 120-140 px, so a cloth is about 14-16 px wide and 17-19 px tall (the small one about 11 px), the cord about 70 px: a row of coloured patches that reads as washing. **Trade-off:** a cloth is about 0.6 of a doll tall (a real shirt is nearer 0.3), so it is oversized; we pick the readable size over true scale, as the doll itself is oversized. Each cloth >= 0.11 u wide, the line clear of the tent's shadow; at a close zoom the cloths scale with the doll
 
 ### B28.b The beats (one doll, per cloth; 3 cloths in the dawn window)
 | | |
@@ -1393,15 +1393,15 @@ trots off, tail up.*
 | | |
 |---|---|
 | Night | the line is **never** up at night: a dawn chore, in by 17:00. A line left overnight reads as forgotten |
-| Rain, storm, snow | no hanging on a wet day (`Weather.KeeperRain`, `Storm`, `Snow`): that day's chore is `SweepStep` (the swap `WithWood` makes for kindling). If rain starts while cloths hang, two people run out and take them in at once (arm x 160 -> 60, 0.15 s each, walk x 1.5): the one fast taking-in, and a visible answer to the Keeper's rain. Fog is dry: the line stays, cloths dimmed |
+| Rain, storm, snow | no hanging on a wet day (`Weather.KeeperRain`, `Storm`, `Snow`): that day's chore is `SweepStep` (the swap `WithWood` makes for kindling). If rain starts while cloths hang, the doer or a housemate takes them in at their next free moment (B28.d's taking-in, no hurry), else the quiet fade. Fog is dry: the line stays, cloths dimmed |
 | Winter | no hanging (cloths freeze stiff): the chore is `SitOut` or `SweepStep` |
 | Kids | a kid beside the doer may hand her the next cloth (B7.b) once per chore; never needed |
 
 ### B28.f Cheats, the AnimLab clip, tests
 | | |
 |---|---|
-| Cheats | **"Laundry now"** (`View/SimDebugPanel.cs`, `// #705`): the home nearest the camera centre does the chore at once, with the stay shown at 16 s. **"Take in the washing"** (end the stay now). **"Rain on the washing"** (the rain dash) |
-| Clip (AnimLab) | three shots, front view, default camera and a close zoom: (1) B28.b for two cloths in real time, ending on the full swaying line; (2) the hung line at 4 x speed: wet to dry, the walk out, the plucking and the carry in; (3) the fade, and the rain dash. Plus a **still at the default camera, phone-size render (1179 x 2556)** to judge whether four patches read as washing, and prop renders of the line (front, side, from above) |
+| Cheats | **"Laundry now"** (`View/SimDebugPanel.cs`, `// #705`): the home nearest the camera centre does the chore at once, with the stay shown at 16 s. **"Take in the washing"** (end the stay now) |
+| Clip (AnimLab) | three shots, front view, default camera and a close zoom: (1) B28.b for two cloths in real time, ending on the full swaying line; (2) the hung line at 4 x speed: wet to dry, the walk out, the plucking and the carry in; (3) the fade. Plus a **still at the default camera, phone-size render (1179 x 2556)** to judge whether four patches read as washing, and prop renders of the line (front, side, from above) |
 | Sign-off | the user sees: cloths on the line during the chore and after it; the pin, the smooth and the taking-in each once; a row of muted patches that reads as washing at the default camera |
 | Tests | P1 (a hand within 0.1 u of the cord at each pin), P2 (the cloth `Jolt`s within 0.2 s of the pin), P5, P8 (contacts held >= 0.1 s; offsets >= 0.025 u). Plan tests: the line is never on a path cell; no hanging on rain, storm, snow or in winter; no line at 17:00; the taker is the doer or a housemate; the chore stays inside the dawn window |
 
