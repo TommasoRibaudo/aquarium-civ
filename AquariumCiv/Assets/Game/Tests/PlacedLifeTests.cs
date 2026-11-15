@@ -117,7 +117,7 @@ namespace AquariumCiv.Tests
             var sim = Camp();
             Seasons(sim, 8);
             Assert.AreEqual(0, sim.EcoDeerCount, "nothing arrives by itself");
-            Assert.AreEqual(JarState.Ready, sim.JarStateOf(LifeSpecies.Deer), "5 grown trees and the camp's rabbits");
+            Assert.AreEqual(JarState.Ready, sim.JarStateOf(LifeSpecies.Deer), "a wood and the camp's rabbits (#690)");
             int c = sim.LifePlaceCellNearCamp(LifeSpecies.Deer);
             Assert.IsTrue(sim.PlaceLife(LifeSpecies.Deer, c));
             Assert.AreEqual(1, sim.EcoDeerStags); Assert.AreEqual(2, sim.EcoDeerDoes);

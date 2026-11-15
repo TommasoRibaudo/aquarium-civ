@@ -126,7 +126,7 @@ namespace AquariumCiv.Sim.Eco
             {
                 case LifeSpecies.Thicket: return st.treeCell >= 0 && MeadowFrac >= t.jarThicketMeadow; // 2026-11-14: the seed is in the ground first
                 case LifeSpecies.Rabbits: return MeadowFrac >= t.jarRabbitsMeadow;
-                case LifeSpecies.Deer: return st.cTrees >= t.jarDeerTrees;      // the Keeper's own grown tree counts
+                case LifeSpecies.Deer: return WoodTrees() >= t.jarDeerWood;      // #690: a wood (grown trees close together), not a few trees
                 case LifeSpecies.Ducks: return st.cPond >= t.jarDucksPond;
                 case LifeSpecies.Fish:
                 {

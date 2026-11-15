@@ -319,6 +319,34 @@ namespace AquariumCiv.Tests
                 }
         }
 
+        [Test, Explicit("#690: how many grown trees stand in a wood (company within reach) as the real game grows them, per year, against the plain tree count; and when the deer and wolf jars open")]
+        public void DeerWood_Measure()
+        {
+            var variants = new[] { (3, 4), (3, 3), (2, 3), (4, 6), (5, 8) };
+            foreach (var s in Eight)
+            {
+                var line = new StringBuilder(); int five = -1;
+                var cur = new EcoTuning(); var wolfReady = -1f; var deerReady = -1f;
+                PacingLab.Run(Habit.Active, s, cur, 40, false, sim =>
+                {
+                    var e = sim.State.eco;
+                    if (five < 0 && e.cTrees >= 5) five = (int)sim.State.month;
+                    if (deerReady < 0 && sim.JarReadyMonth(LifeSpecies.Deer) >= 0) deerReady = sim.JarReadyMonth(LifeSpecies.Deer) / 12f;
+                    if (wolfReady < 0 && sim.JarReadyMonth(LifeSpecies.Wolves) >= 0) wolfReady = sim.JarReadyMonth(LifeSpecies.Wolves) / 12f;
+                    if (sim.State.month % 24 == 0)
+                    {
+                        line.Append($" y{sim.State.month / 12}:T{e.cTrees}");
+                        foreach (var (r, k) in variants)
+                        {
+                            var m = new EcoModel(e, sim.EcoGround, new EcoTuning { jarWoodReach = r, jarWoodCompany = k });
+                            line.Append($"/{m.WoodTrees()}");
+                        }
+                    }
+                });
+                TestContext.Out.WriteLine($"seed {s,2}: 5 trees at m{five}, deer jar ready y{PacingResult.F(deerReady)}, wolves y{PacingResult.F(wolfReady)} |{line}");
+            }
+        }
+
         [Test, Explicit("prints the before/after table (docs/design/placed-life.md, Pacing (#569))")]
         public void PrintTable()
         {

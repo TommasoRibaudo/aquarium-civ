@@ -60,6 +60,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoPacingTests.cs" /><!-- #569 the mister waters the forest -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DuckJarIceTests.cs" /><!-- #703 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/JarNeedTests.cs" /><!-- #570 what is missing, in words -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/DeerWoodTests.cs" /><!-- #690 the deer want a wood -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoWetTests.cs" /><!-- P8 polish 266 sim half, 271 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoSeenTests.cs" /><!-- P8 polish 281 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoRabbitTests.cs" /><!-- P8 polish 282 -->

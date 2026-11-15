@@ -71,10 +71,10 @@ namespace AquariumCiv.Tests
             Assert.AreEqual("Ducks need a bigger pond", m.JarNeed(LifeSpecies.Ducks, 0));
             st.cPond = sim.Config.eco.jarDucksPond;
             Assert.IsNull(m.JarNeed(LifeSpecies.Ducks, 0));
-            Assert.AreEqual("Deer need more trees (0/5)", m.JarNeed(LifeSpecies.Deer, 0));
-            st.cTrees = 4;
-            Assert.AreEqual("Deer need more trees (4/5)", m.JarNeed(LifeSpecies.Deer, 0));
-            st.cTrees = 5;
+            Assert.AreEqual("Deer need a thicker wood (0/12)", m.JarNeed(LifeSpecies.Deer, 0)); // #690
+            PlacedLifeTests.Wood(sim, 4);
+            Assert.AreEqual("Deer need a thicker wood (0/12)", m.JarNeed(LifeSpecies.Deer, 0), "4 trees in a block are not in company enough");
+            PlacedLifeTests.Wood(sim, 16);
             Assert.IsNull(m.JarNeed(LifeSpecies.Deer, 0));
             st.cGrass = 1;
             Assert.AreEqual("Rabbits need a bigger meadow", RabbitsShutNeed(m), "a patch of grass is a meadow, only too small");

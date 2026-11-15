@@ -30,6 +30,8 @@ namespace AquariumCiv.Sim
         public int EcoDeerFawns => EcologyOn ? State.eco.deerFawns : 0;
         /// <summary>What the wood holds now (1 per 3 grown trees, 3 to 8).</summary>
         public int EcoDeerCap => EcologyOn ? EcoM.DeerCap : 0;
+        /// <summary>#690: the grown trees standing in a wood (the deer jar opens at <see cref="EcoTuning.jarDeerWood"/>).</summary>
+        public int EcoWoodTrees => EcologyOn ? EcoM.WoodTrees() : 0;
         /// <summary>How many deer dolls to show: the sim count, capped for the phone.</summary>
         public int EcoDeerShown(int cap = DeerHerd.DefaultCap) => DeerHerd.Shown(EcoDeerCount, cap);
         /// <summary>Where the herd lives now: the placed cell, or the far side of the wood while it is shy (#422). -1 with no deer.</summary>
