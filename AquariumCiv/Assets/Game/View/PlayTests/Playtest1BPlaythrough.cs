@@ -638,9 +638,19 @@ namespace AquariumCiv.View.PlayTests
             yield return Snap("06d_history_at_the_end_everything_back");
             for (int tries = 0; tries < 3 && screen.IsOpen; tries++)
             {
+                // A player closes the caption first (its X, tl-cap-close), and only then reaches the screen's Close (tl-close, hidden while the caption is up).
+                // Every tap here is on an element that is really on screen: a hidden one has a zero rect and a tap on it proves nothing.
                 var capClose = screen.Root.Q("tl-cap-close");
-                if (capClose != null && Shown(capClose)) { yield return TapAt(GameUiPanel.ScreenCenter(capClose)); yield return Frames(20); }
+                if (capClose != null && Shown(capClose))
+                {
+                    Assert.Greater(capClose.worldBound.width * capClose.worldBound.height, 1f, "the caption's X has a real rect");
+                    yield return TapAt(GameUiPanel.ScreenCenter(capClose));
+                    yield return Frames(30);
+                    Note("6 history", $"tapped the caption's X (try {tries + 1}): caption X shown {Shown(capClose)}, open {screen.IsOpen}");
+                }
                 var close = screen.Root.Q("tl-close");
+                Assert.IsTrue(close != null && Shown(close) && close.worldBound.width > 1f && close.worldBound.height > 1f,
+                    $"Close is on screen before it is tapped (shown {Shown(close)}, rect {close?.worldBound}, caption X shown {Shown(capClose)})");
                 yield return TapAt(GameUiPanel.ScreenCenter(close));
                 yield return Frames(40);
                 Note("6 history", $"tapped Close (try {tries + 1}): open {screen.IsOpen}, close button shown {Shown(close)}");

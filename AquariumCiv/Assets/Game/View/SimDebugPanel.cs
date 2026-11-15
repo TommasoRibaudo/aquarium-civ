@@ -366,7 +366,7 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Ready every species")) last = Done($"{sim.DebugJarsReady()} jars opened");
                 if (GUILayout.Button("Lock all jars (#570: see the greyed list)")) last = Done($"{sim.DebugLockJars()} jars shut"); // #570
                 // ---- #690: a dense wood, so the deer jar opens by the real gate (scattered trees would not) ----
-                if (GUILayout.Button("Dense wood: 25 trees far from the fire (#690)")) last = Done(sim.DebugGrowFarWood() ? $"a wood: {sim.EcoWoodTrees} trees in company (deer jar needs {sim.Config.eco.jarDeerWood})" : "no room for a wood");
+                if (GUILayout.Button("Dense wood: 25 trees far from the fire (#690)")) last = Done(sim.DebugGrowFarWood() ? $"a wood: {sim.EcoWoodTrees} trees in company; deer jar {sim.JarStateOf(AquariumCiv.Sim.Eco.LifeSpecies.Deer)}" + (sim.JarNeed(AquariumCiv.Sim.Eco.LifeSpecies.Deer) is { Length: > 0 } need ? " (" + need + ")" : "") : "no room for a wood");
                 // ---- end #690 ----
                 GUILayout.Label("village line: " + (sim.VillageWaitsLine is { Length: > 0 } vl ? vl : "(none)")); // #570
                 for (int i = 0; i < all.Length; i += 3)

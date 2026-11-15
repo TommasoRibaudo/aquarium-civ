@@ -299,6 +299,7 @@ namespace AquariumCiv.View
             bool ask = State == Phase.Waiting && Watched();
             if (letRow != null) SyncLetRow(ask);
             if (boxBar != null) SyncBoxBar(inBox && (ask || State == Phase.Reacting));
+            HookBarProbe();
             if (State == Phase.Idle) return;
             phaseT += dt;
             var pv = PeopleView.Find();
@@ -610,6 +611,34 @@ namespace AquariumCiv.View
         }
 
         VisualElement showBarEl;
+        GameHud probeHud;
+
+        /// <summary>Tester run 2: a toast over this choice clears the real top of whatever the choice has up: its bar and the "Let them decide" button above it (measured, not a constant).</summary>
+        void HookBarProbe()
+        {
+            var hud = GameHud.Instance;
+            if (hud == probeHud) return;
+            probeHud = hud;
+            hud?.SetBarProbe("choice", ProbeTop);
+        }
+
+        static bool Up(VisualElement e) => e != null && e.panel != null && e.resolvedStyle.display != DisplayStyle.None && e.worldBound.width > 0f && !float.IsNaN(e.worldBound.yMin);
+
+        float ProbeTop()
+        {
+            float top = float.NaN;
+            if (boxBarUp && Up(boxBar)) top = boxBar.worldBound.yMin;
+            if (Up(letBtn) && (boxBarUp || (letRow != null && letRow.resolvedStyle.display != DisplayStyle.None)))
+                top = float.IsNaN(top) ? letBtn.worldBound.yMin : Mathf.Min(top, letBtn.worldBound.yMin);
+            if (!float.IsNaN(top) && uiRoot?.panel != null)
+            {
+                peekEl ??= uiRoot.panel.visualTree.Q("cards-peek"); // the card peek rides above the bar while a choice waits: the toast clears it too
+                if (Up(peekEl)) top = Mathf.Min(top, peekEl.worldBound.yMin);
+            }
+            return top;
+        }
+
+        VisualElement peekEl;
 
         /// <summary>Visit loop: "Let them decide" is really hidden (display none and not visible, taps off) unless the question waits and the player watches;
         /// shown, it sits just above the cards' bar (whose height and lift vary with the safe area and a wrapped answer line), never behind it.</summary>

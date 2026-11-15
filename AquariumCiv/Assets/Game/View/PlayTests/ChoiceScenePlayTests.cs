@@ -388,6 +388,45 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("held choice staged");
         }
 
+        /// <summary>Tester run 2 (playtest 1 batch 2): a toast raised while a choice waits in the box rides over the choice's bar AND the
+        /// "Let them decide" button above it (#563 cleared the bar only). Measured on screen at two phone sizes.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator AToastDuringAChoiceClearsTheBarAndTheLetButton_1179x2556() { yield return ToastOverChoice(1179, 2556); }
+
+        [UnityTest, Timeout(600000)]
+        public IEnumerator AToastDuringAChoiceClearsTheBarAndTheLetButton_1080x1920() { yield return ToastOverChoice(1080, 1920); }
+
+        IEnumerator ToastOverChoice(int w, int h)
+        {
+            yield return OpenBox(w, h);
+            DilemmaCheats.Toggle(true);
+            Dilemma d = null;
+            for (int i = 0; i < 4 && d == null; i++)
+            {
+                d = Sim.DebugRaiseDilemma("camp_fire");
+                if (d == null) { SimLayoutSource.DebugSkipYears(1f); yield return null; }
+            }
+            Assert.IsNotNull(d);
+            GameClock.DebugAway(24);
+            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Waiting && Choice.BoxBarUp, 90f);
+            yield return Frames(20);
+            var hud = GameHud.Instance;
+            var bar = Choice.UiRoot.Q("choice-bar");
+            var let = Choice.UiRoot.Q("choice-let");
+            Assert.IsTrue(Shown(bar) && Shown(let), $"{w}x{h}: the bar and the button are up");
+            hud.Toast("A toast over the choice bar test", 60f, true);
+            yield return Frames(30);
+            var toast = hud.Root.Q("hud-toast");
+            Assert.IsTrue(Shown(toast), $"{w}x{h}: the toast is on screen");
+            yield return Shot($"toast-over-choice-{w}x{h}");
+            Assert.IsFalse(toast.worldBound.Overlaps(bar.worldBound), $"{w}x{h}: toast {toast.worldBound} clear of the bar {bar.worldBound}");
+            Assert.IsFalse(toast.worldBound.Overlaps(let.worldBound), $"{w}x{h}: toast {toast.worldBound} clear of Let them decide {let.worldBound}");
+            Assert.LessOrEqual(toast.worldBound.yMax, Mathf.Min(bar.worldBound.yMin, let.worldBound.yMin) + 0.5f, $"{w}x{h}: the toast sits over both");
+            var peekEl = Cards.Root.panel.visualTree.Q("cards-peek");
+            if (Shown(peekEl)) Assert.IsFalse(toast.worldBound.Overlaps(peekEl.worldBound), $"{w}x{h}: toast {toast.worldBound} clear of the card peek {peekEl.worldBound}");
+            AssertNoErrors("toast over choice");
+        }
+
         /// <summary>t3-choice (tester run 2 D): a choice raised while the player watches: the peek switches to it with the "?" mark,
         /// and the people stage it in the box.</summary>
         [UnityTest, Timeout(600000)]
