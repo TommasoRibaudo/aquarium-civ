@@ -18,12 +18,12 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [x] 12 · #706 merged (open for look sign-off)
 - [x] 13 · #705 specced, built and clipped, on vs/705-build (e6f7597), for sign-off only
 - [ ] 15 · #655 numbers in the issue (if time)
-- [~] Design proposals for #708, #709, #710 + #658, #687 written (open-questions.md + issue comments)
+- [x] Design proposals for #708, #709, #710 + #658, #687 written (open-questions.md + issue comments)
 - [ ] Every issue's *Done when* ticked with evidence, or listed as short after 4 rounds
 - [x] Batched Editor pass at 408c38b: EditMode 10 assemblies 2372 run, 0 failed; PlayMode 26 classes + 3 categories, smoke 2/2. Baseline (fail on d0c2008 too): DeerWolf 2 (under crowns), BoxComplete clockHours. Care glass 1 fail then 4/4 on rerun (flake). Hugs 1 inconclusive (known).
 - [x] `Playtest1BPlaythrough` 14/14 by touch at 1179×2556 (shots in the scratchpad pt1b-play). Open: ducks not visible on the pond in 03e/03g (count holds); History end needs the caption X before Close; last sleeper walk-in not proven, only "nobody up".
 - [x] Tester runs 1 and 2: [real] fixed (rack cheat overflow 7b66c93; toast behind "Let them decide" + Dense wood cheat + Beat06 debd9ca); [polish] listed in open-questions
-- [ ] Walkthrough: branch, open-questions.md section, `Staged()` stops, auto run clean, every shot looked at
+- [x] Walkthrough on p9/playtest1-b-signoff (6df5930): 14 batch-2 stops + 6 decisions, auto run clean, every shot looked at (scratchpad oq2); Editor left on it
 - [ ] Work issues closed (sign-off ones left open with a comment); answered feedback notes closed
 - [ ] `docs/tooling.md` entry for any tooling problem solved; Run In Background ON; lock released; Editor ready
 - [ ] PR `p9/playtest1-b` → `dev`, CI green, merged
