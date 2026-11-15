@@ -192,3 +192,9 @@ Verdicts from the `OpenQuestionsSignOff` play test, one run per section.
 | 21. #671 faded near glass up close | Playtest 1 / Look | skipped |  | 17:29:57 |
 | 22. #656 the arrival with the basket and the bundle | Playtest 1 / Look | signed off |  | 17:30:09 |
 | 62. Being built now | Waiting on you | decide later |  | 17:30:32 |
+
+## Run 2026-11-14 18:31
+
+| Stop | Section | Verdict | Note | Time |
+|---|---|---|---|---|
+| 7. #651 camp chores with no wild wood | Playtest 1 / Look | signed off |  | 18:32:06 |
