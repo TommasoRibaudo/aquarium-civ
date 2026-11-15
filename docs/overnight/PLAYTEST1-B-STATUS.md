@@ -1,0 +1,35 @@
+# Playtest 1, batch 2 — run status
+
+Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` in `F:\GameDev-wt\pt1b`.
+
+## Checklist
+- [x] `p9/playtest1-b` from `origin/dev`; this prompt committed (already on dev via #712)
+- [ ] 1 · #697 → #696 cause written in both issues; merged
+- [ ] 2 · #699 merged
+- [ ] 3 · #703 merged (call recorded)
+- [ ] 4 · #700 rule merged; take-down/rebuild beat specced, on its branch
+- [ ] 5 · #698 merged
+- [ ] 6 · #669 merged (buildings too)
+- [ ] 7 · #702 merged
+- [ ] 8 · #707 merged (open for look sign-off)
+- [ ] 9 · #704 merged (open for look sign-off)
+- [ ] 10 · #701 merged (open for look sign-off)
+- [ ] 11 · #676 stew by kind merged (open for look sign-off)
+- [ ] 12 · #706 merged (open for look sign-off)
+- [ ] 13 · #705 specced, built and clipped, on its branch
+- [ ] 15 · #655 numbers in the issue (if time)
+- [ ] Design proposals for #708, #709, #710 + #658, #687 written (open-questions.md + issue comments)
+- [ ] Every issue's *Done when* ticked with evidence, or listed as short after 4 rounds
+- [ ] Batched Editor pass green (EditMode 10 assemblies, PlayMode classes, smoke); failures fixed or noted as baseline
+- [ ] `Playtest1BPlaythrough` + the touch play-through done, every beat looked at
+- [ ] Tester run(s) on cadence and at the end; [real] fixed; [polish] listed
+- [ ] Walkthrough: branch, open-questions.md section, `Staged()` stops, auto run clean, every shot looked at
+- [ ] Work issues closed (sign-off ones left open with a comment); answered feedback notes closed
+- [ ] `docs/tooling.md` entry for any tooling problem solved; Run In Background ON; lock released; Editor ready
+- [ ] PR `p9/playtest1-b` → `dev`, CI green, merged
+- [ ] Final report to the user
+
+## Log
+- 2026-11-14 ~19:30 · run started (orchestrator in the session opened at F:\GameDev); worktree pt1b at d0c2008. C: 97% full (19 GB free) — watch editor-health exit 2.
+
+## Round logs
