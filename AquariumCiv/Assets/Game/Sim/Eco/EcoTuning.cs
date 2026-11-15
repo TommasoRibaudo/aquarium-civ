@@ -153,6 +153,13 @@ namespace AquariumCiv.Sim.Eco
         public float thicketRadius = 0.45f;
         public float rabbitThicketMargin = 0.12f; // tester 2026-11-08: the rabbits' ground stays this far outside the thicket's widest edge
         public int thicketBushes = 22, thicketFounders = 3;
+        // #724 landscaping (landscaping.md section 8, decision 2026-11-14; every number here is [est], the user confirms):
+        // #726 the pouch: one seed and one bush per civ step (a new era, and each +landscapePeopleStep people at the peak, counted from landscapeStartPeople),
+        // at most landscapePouchCap of each waiting. #728 up to thicketMax thickets. #729 with n thickets each holds thicketBushes / n^thicketCrowdExp
+        // bushes (a disc radius x n^-thicketRadiusExp, never under thicketFounders), and one above its target loses thicketShrinkPerSeason a season.
+        public int landscapePouchCap = 3, landscapeStartPeople = 5, landscapePeopleStep = 5;
+        public int thicketMax = 12, thicketShrinkPerSeason = 1;
+        public float thicketCrowdExp = 0.5f, thicketRadiusExp = 0.25f;
         public float thicketWatered = 0.6f; // #605: a watered thicket (mean water w at its bushes) adds a second bush in a season with chance thicketWatered * w, never past the cap
 
         // Gates

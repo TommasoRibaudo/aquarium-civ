@@ -459,6 +459,17 @@ namespace AquariumCiv.View
                 }
             }
             // ---- end #417 ----
+            // ---- #724 landscaping: the pouch, thickets, the plucking tool (docs/design/landscaping.md section 8); one block, extended by #727-#730 ----
+            if (sim.EcologyOn && Section("Landscaping (#724)"))
+            {
+                GUILayout.Label($"pouch: {sim.SeedsInPouch} seeds, {sim.BushesInPouch} bushes (cap {sim.PouchCap}) · peak people {sim.State.eco.peakPeople}");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Give 3 seeds")) { sim.DebugGiveSeeds(3); last = Done($"pouch: {sim.SeedsInPouch} seeds"); }
+                if (GUILayout.Button("Give 3 bushes")) { sim.DebugGiveBushes(3); last = Done($"pouch: {sim.BushesInPouch} bushes"); }
+                if (GUILayout.Button("Next civ step")) { int n = sim.DebugNextCivStep(); last = Done(n > 0 ? $"a civ step: pouch {sim.SeedsInPouch} seeds, {sim.BushesInPouch} bushes" : "both pouches are full: the step waits"); }
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #724 ----
             // ---- #420-#422: deer, ducks, fish; floors, shy, restraint (placed-life spec §10) ----
             if (sim.EcologyOn && Section("Placed life (#420-#422)"))
             {

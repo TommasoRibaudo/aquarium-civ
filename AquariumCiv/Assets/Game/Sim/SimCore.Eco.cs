@@ -66,6 +66,8 @@ namespace AquariumCiv.Sim
             int cal = CalendarMonth; // the land steps by the calendar, not the raw month (#603)
             int season = (cal / 3 + 3) % 4;
             EcoM.Month(season, s.month); // the surface, every month: the wet area dries, shoots grow (#266, #271)
+            if (EcoM.EarnLandscape((int)s.era, s.population) > 0) // #726: the civ grew a step: more seed and bushes to plant
+                Chronicle("eco_pouch", "More seed came down from the sky, and a few young bushes with it. The people were glad.", 0.5f);
             if (cal % 3 == 0)
             {
                 EcoM.Step(season, s.month);
@@ -162,6 +164,22 @@ namespace AquariumCiv.Sim
             EcoTell();
             return true;
         }
+
+        // ---------- #726 the pouch: what the Keeper earned to plant (landscaping.md §8.1) ----------
+        /// <summary>Seeds waiting in the pouch (each plants one normal tree seedling, #727). 0 off the ecology.</summary>
+        public int SeedsInPouch => EcologyOn ? EcoM.SeedsInPouch : 0;
+        /// <summary>Bushes waiting in the pouch (each plants one small thicket, #728). 0 off the ecology.</summary>
+        public int BushesInPouch => EcologyOn ? EcoM.BushesInPouch : 0;
+        /// <summary>The most each pouch holds ([est] 3).</summary>
+        public int PouchCap => Config.eco?.landscapePouchCap ?? new EcoTuning().landscapePouchCap;
+        /// <summary>Debug ("give seeds"): n seeds into the pouch, past the cap.</summary>
+        public void DebugGiveSeeds(int n) { if (EcologyOn) EcoM.DebugGiveSeeds(n); }
+        /// <summary>Debug ("give bushes"): n bushes into the pouch, past the cap.</summary>
+        public void DebugGiveBushes(int n) { if (EcologyOn) EcoM.DebugGiveBushes(n); }
+        /// <summary>Test hook: seeds and bushes leave the pouch (as planting would).</summary>
+        public void DebugTakeFromPouch(int seeds, int bushes) { if (EcologyOn) { EcoM.DebugGiveSeeds(-seeds); EcoM.DebugGiveBushes(-bushes); } }
+        /// <summary>Debug ("next civ step"): the peak people rise one step and the pouch is paid at once. Seeds and bushes added.</summary>
+        public int DebugNextCivStep() => EcologyOn ? EcoM.DebugNextCivStep((int)State.era, State.population) : 0;
 
         void EcoWipe(float amount) { if (EcologyOn) EcoM.Wipe(amount); }
         void EcoSnip(float amount) { if (EcologyOn) EcoM.Snip(amount); }

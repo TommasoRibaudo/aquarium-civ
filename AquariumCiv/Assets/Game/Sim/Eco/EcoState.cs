@@ -74,6 +74,13 @@ namespace AquariumCiv.Sim.Eco
         /// set (one thicket per box, placed-life spec §5.1): it stays in the save so an old one loads.</summary>
         public float thicketRadius;
 
+        /// <summary>#726 (landscaping.md §8.1, decision 2026-11-14): what the Keeper has earned to plant. <see cref="seedsPouch"/> seeds (each
+        /// plants a normal tree seedling, #727) and <see cref="bushesPouch"/> bushes (each plants a small thicket, #728), at most
+        /// <see cref="EcoTuning.landscapePouchCap"/> waiting each. <see cref="seedSteps"/> / <see cref="bushSteps"/> count the civ steps
+        /// already paid out to each counter, <see cref="peakPeople"/> the most people the box ever had. A save from before has all zero:
+        /// the first month pays what the civ's size owes, up to the cap.</summary>
+        public int seedsPouch, bushesPouch, seedSteps, bushSteps, peakPeople;
+
         /// <summary>#417 the life jar (placed-life spec §2, §9): one entry per <see cref="LifeSpecies"/>, keyed by name so adding a
         /// species never breaks a save. <see cref="jarOn"/> is false in a save from before the jar: the model migrates it once
         /// (EcoModel.EnsureJars: rabbits that arrived and wild bushes count as placed).</summary>
