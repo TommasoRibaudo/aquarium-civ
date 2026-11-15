@@ -15,7 +15,9 @@ sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Wo
 
 ## Plan
 - [x] Lane A: landscaping sim #726–#730 (vs/724-landscaping-sim, Sonnet) — round 2 re-tuned earning (first seed y2–5, 4–5 by the village, village year 23.0); merged 2d6f6c1
-- [ ] Lane A: writing #713–#716 (+ sim parts of #718, #721) (vs/713-writing, b3-713, Opus)
+- [x] Lane A: writing #713–#716 + sim parts of #718, #721 (vs/713-writing, Opus) — round 2 fixed the closed-world
+  lines; merged (3c29c1a + csproj fix d41f73d); full sim suite 2081/2081. Lines added to the approvals page (W714–W721, W718).
+- [ ] Editor: writing view side #718 #721 #714-boat #717 #719 #720 #723 (vs/718-writing-view in pt1b, Opus) — lock taken, watcher running
 - [x] Lane A: specs #692–#695, #708, #709 (vs/692-people-things-specs, b3-692, Opus) — merged d53de79
 - [x] Lane A: kit inventory, mock-ups, words #668 (vs/668-kit-mockups, b3-668, Opus) — merged e0e9d3c
 - [x] Approvals page for the user: https://claude.ai/artifact/DJ8y9LKcqkKctRhsWjT7U9 (186 specs/assets, Q1–Q13, kit K1–K6; answers come back pasted)
