@@ -77,6 +77,8 @@ namespace AquariumCiv.Sim.Eco
         /// the thicket jar's; every further one is an earned bush (#726). <see cref="thicketA"/> / <see cref="thicketRadius"/> stay in step with the
         /// first, and a save from before the list (one thicket in those two fields) is read as a one-thicket list.</summary>
         public List<Thicket> thickets = new List<Thicket>();
+        /// <summary>#709 (B71): the one nest, in a bush of a thicket. An old save has none (built = false: no nest yet).</summary>
+        public Nest nest = new Nest();
 
         /// <summary>#726 (landscaping.md §8.1, decision 2026-11-14): what the Keeper has earned to plant. <see cref="seedsPouch"/> seeds (each
         /// plants a normal tree seedling, #727) and <see cref="bushesPouch"/> bushes (each plants a small thicket, #728), at most

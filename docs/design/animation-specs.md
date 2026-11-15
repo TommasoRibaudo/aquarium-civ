@@ -2200,6 +2200,8 @@ camp, at least 0.3 u from any path, never one being picked at that moment.
 **The count:** the bird is not an `AnimalBudget` kind, and neither is the sign bird today. pt1b-proposals (#709, the ★ the user
 chose) said the nest "costs no animal slots". **Ask:** keep the bird outside the budget, or take one slot from the frogs.
 
+**Sim built (lane A, `vs/709-nest-sim`):** `EcoState.nest`, `EcoModel.Nest.cs`, `SimCore.Nest.cs`, `LifePlanner.Nest.cs`. Q4, Q5 and Q6 take their defaults, each one value: `AnimalBudget.NestBirdSlots` (0 = outside the budget), `EcoTuning.nestChicks` (2; 0 = the eggs just go), `EcoTuning.nestWhichThicket` (0 = oldest thicket with 6+ bushes; 1 = the biggest). The nest stays through the winter as an empty nest (`nestWinterGone` false). Eggs are laid in one go the second month of spring (2 to 3); the view shows them one a day if it wants (B71.a).
+
 ##### B71.a The nest and the eggs (the asset)
 | | |
 |---|---|

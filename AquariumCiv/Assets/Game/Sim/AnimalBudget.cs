@@ -23,7 +23,17 @@ namespace AquariumCiv.Sim
         public static float LandArea => 2f * Terrain.HX * 2f * Terrain.HZ;
 
         /// <summary>The most of <paramref name="kind"/> drawn on land of <paramref name="area"/> u2 (at least 1).</summary>
-        public static int Cap(Kind kind, float area) => Math.Max(1, (int)MathF.Round(Base[(int)kind] * area / BaseArea));
+        public static int Cap(Kind kind, float area)
+        {
+            int cap = (int)MathF.Round(Base[(int)kind] * area / BaseArea);
+            if (kind == Kind.Frogs) cap -= NestBirdSlots; // #709 Q4: the nest's parent bird, if it is made to take a slot, takes it from the frogs
+            return Math.Max(1, cap);
+        }
+
+        /// <summary>#709 Q4 [est, the user decides]: animal slots the nest's parent bird takes from the frogs. 0 = the bird is outside the budget (the proposal
+        /// the user chose with the nest: "the nest costs no animal slots"; the sign bird at the first bush never counted either). 1 = it takes one frog slot.
+        /// One line to change (AnimalBudgetTests pins the table at 0; at 1 the frogs draw one fewer and the total is 32).</summary>
+        public static int NestBirdSlots = 0;
         /// <summary>The most of <paramref name="kind"/> drawn on the current land.</summary>
         public static int Cap(Kind kind) => Cap(kind, LandArea);
 

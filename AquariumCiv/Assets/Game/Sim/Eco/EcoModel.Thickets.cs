@@ -130,6 +130,7 @@ namespace AquariumCiv.Sim.Eco
             foreach (var c in thCells)
             {
                 if (Cv(c) != EcoCover.Bush || (BushBusy?.Invoke(c) ?? false)) continue;
+                if (st.nest != null && st.nest.built && c == st.nest.cell && thCells.Count > 1) continue; // #709: the shrinking leaves the nest's bush (a plucked one still goes)
                 float d = Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), cx, cz);
                 if (d > bestD + 1e-6f) { bestD = d; best = c; }
             }
