@@ -146,6 +146,8 @@ namespace AquariumCiv.View
         readonly List<Solid> solids = new();
         /// <summary>#189: how much faster than the plan the drawn doll may catch up with where it should be.</summary>
         const float DrawnSlack = 0.35f;
+        /// <summary>#698: a drawn doll this near its tent's spot is in (hidden at once); further off it walks there first.</summary>
+        const float TentArrived = 0.04f;
         /// <summary>Tester run 9: catching up with the plan: the least extra speed, and how it grows with the gap (per second) on the way and into a slot.</summary>
         const float CatchLeast = 0.03f, CatchWalking = 1f, CatchArriving = 3f;
         /// <summary>Tester run 9: under this speed a doll hasn't really got a way to face, and turns at <see cref="SlowTurn"/> at the most (degrees a second).</summary>
@@ -553,6 +555,9 @@ namespace AquariumCiv.View
             if (targetSpeed > pace * 3f) targetSpeed = pace;
             d.lastSpot = spot;
             bool inTent = !a.moving && !a.enRoute && DollMotion.StyleOf(a.kind) == DollStyle.Hidden; // #696: asleep or indoors: nobody sees them, so a changed slot is taken at once, not walked to
+            // #698: ...but a doll still DRAWN out in the open (a play group, a chase, held it past the plan's walk to bed) is seen: it walks the rest
+            // of the way to the tent, and goes in on arriving, it does not vanish on the spot.
+            if (inTent && d.placed && !d.pose.hidden && !snapAll && dt > 0f && (target - d.pos).sqrMagnitude > TentArrived * TentArrived) inTent = false;
             bool jump = !d.placed || d.wasHidden || dt <= 0f || snapAll || inTent;
             if (jump) d.pos = target;
             else if (playing) d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Min(0.75f, playCue.speed * 1.15f + 0.15f + (target - d.pos).magnitude * 3f) * dt); // #358: the game's pace (a run in tag), catching up fast
