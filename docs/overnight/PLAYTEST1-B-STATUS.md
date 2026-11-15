@@ -16,7 +16,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [x] 10 · #701 merged (open for look sign-off) — short: small/grown pond shots unreachable on seed 4242 (pond floods to 424 cells); rule asserted on the mesh
 - [ ] 11 · #676 stew by kind merged (open for look sign-off)
 - [x] 12 · #706 merged (open for look sign-off)
-- [ ] 13 · #705 specced, built and clipped, on its branch
+- [x] 13 · #705 specced, built and clipped, on vs/705-build (e6f7597), for sign-off only
 - [ ] 15 · #655 numbers in the issue (if time)
 - [~] Design proposals for #708, #709, #710 + #658, #687 written (open-questions.md + issue comments)
 - [ ] Every issue's *Done when* ticked with evidence, or listed as short after 4 rounds
@@ -112,6 +112,7 @@ Skipped: #560/#672 (built in #678, waiting for a phone check), #660–#662 (insi
 - round 1 (lane A): accepted; meta files added by me. Look pending in Editor.
 
 ### #705
+- build round 1: Laundry rules + beat + cheats; LaundryTests 20/20, Laundry play 3/3, smoke 2/2; AnimLab hang/take-in/fade sheets look right. Calls: DawnStagger village worst limit 12→13 (chore stretch); take-in rare (5 of 113 in 40 village days, the rest fade); line small at full-box zoom.
 - spec round 1: cloths ~7 px (unreadable), rain dash (new beat) → round 2: fixed. Spec accepted for the user's sign-off.
 
 ### #697/#696
