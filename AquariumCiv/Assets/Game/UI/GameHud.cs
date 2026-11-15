@@ -63,7 +63,6 @@ namespace AquariumCiv.GameUI
         Vector2 tapStart;
         float tapTime;
         public const float TapSlopFraction = 0.02f, TapMaxSeconds = 0.4f;
-        const float TopRowTop = 110f; // 40 pt
         const string WaitingClass = "kg-tool--waiting";
         const string ArriveClass = "kg-tool--arrive";
         const int ArriveStepMs = 220;
@@ -421,7 +420,7 @@ namespace AquariumCiv.GameUI
 
         /// <summary>Each frame: the slot shows while a jar is ready, the Kit button keeps a small dot until it is placed, and a jar
         /// that opened (here or while away) wiggles the Kit button once, the next time the HUD is up to see it.</summary>
-        VisualElement photoButton;
+        VisualElement photoButton, settingsButton;
 
         /// <summary>#647 (playtest: a first run played with no UI at all): photo mode hides every prompt, and only a short tap brings them
         /// back, which misting (a held drag) never is. While the first run is on, the Photo button steps out and photo mode ends.</summary>
@@ -734,9 +733,18 @@ namespace AquariumCiv.GameUI
         public void SetOffHome(bool off)
         {
             if (offHome == off) return;
-            offHome = off;
-            topRow?.EnableInClassList("hud-top--backed", off);
-            if (FeedbackUI.Instance != null) FeedbackUI.Instance.SetBacked(off); // #702: the pill is drawn there now
+            offHome = off; // #707: no backing behind any of the top row, home or not: the ink (and its halo) carries it
+        }
+
+        /// <summary>#707: the top row's place, shared with FeedbackUI's pill (it lives in another document): 110 down, 44 from the safe edge,
+        /// each round button 144 wide. The pill is left of Photo; Settings is left of the pill.</summary>
+        public const float TopRowTop = 110f, TopRowSide = 44f, TopIconSlot = 144f;
+
+        static VisualElement FeedbackSlot()
+        {
+            var gap = new VisualElement { name = "hud-feedback-slot", pickingMode = PickingMode.Ignore };
+            gap.style.width = TopIconSlot; gap.style.height = TopIconSlot; gap.style.flexShrink = 0;
+            return gap;
         }
 
         public bool OffHome => offHome;
@@ -748,12 +756,27 @@ namespace AquariumCiv.GameUI
             float target = inkLightness < 0f ? HudInk.Target(HudInk.Daylight) : HudInk.Target(HudInk.Daylight, inkLightness);
             float next = inkLightness < 0f ? target : HudInk.Step(inkLightness, target, Time.unscaledDeltaTime);
             float halo = HudInk.Step(inkHalo, offHome ? 1f : 0f, Time.unscaledDeltaTime);
-            if (Mathf.Approximately(next, inkLightness) && Mathf.Approximately(halo, inkHalo)) return;
+            if (Mathf.Approximately(next, inkLightness) && Mathf.Approximately(halo, inkHalo))
+            {
+                if (FeedbackUI.Instance != null && FeedbackUI.Instance.Pill != inkedPill) ApplyIconInk();
+                return;
+            }
             inkLightness = next; inkHalo = halo;
             var ink = HudInk.Ink(next);
             // fb7 pass: off home the dark ink can sit on the glass rails and the room: a soft pale halo then (the light ink keeps its dark shadow)
             var shadow = new TextShadow { offset = new Vector2(0f, 2f), blurRadius = 6f, color = HudInk.Shadow(next, halo) };
             foreach (var l in new[] { nameLabel, yearLabel }) { l.style.color = ink; l.style.textShadow = shadow; }
+            ApplyIconInk();
+        }
+
+        VisualElement inkedPill;
+        /// <summary>#707: the round buttons draw in the title's ink (no disc behind them), Feedback's too.</summary>
+        void ApplyIconInk()
+        {
+            var tint = HudInk.Ink(inkLightness < 0f ? 0f : inkLightness);
+            foreach (var b in new VisualElement[] { settingsButton, photoButton, FeedbackUI.Instance != null ? FeedbackUI.Instance.Pill : null })
+                if (b != null) foreach (var ic in b.Query<GlassIcon>().ToList()) ic.style.unityBackgroundImageTintColor = tint;
+            inkedPill = FeedbackUI.Instance != null ? FeedbackUI.Instance.Pill : null;
         }
 
         bool IsOverUi(Vector2 screenPos) => !hidden && GameUiPanel.Over(root, screenPos);
@@ -790,7 +813,7 @@ namespace AquariumCiv.GameUI
             root.Add(safe);
 
             topRow = Row("hud-top");
-            // The name chip opens the offices list (#215); the settings mark to its right opens Settings.
+            // The name chip opens the offices list (#215). #707: Settings sits with the other round buttons, in the corner.
             var title = new GlassButton("", () => Open(Offices), ButtonKind.Quiet, UiRole.Open) { name = "hud-title" };
             title.AddToClassList("hud-title");
             var words = new VisualElement { name = "hud-title-text", pickingMode = PickingMode.Ignore };
@@ -800,7 +823,6 @@ namespace AquariumCiv.GameUI
             nameLabel.pickingMode = yearLabel.pickingMode = PickingMode.Ignore;
             title.Add(words);
             topRow.Add(title);
-            topRow.Add(IconButton("hud-settings", "settings", () => Open(Settings), UiRole.Open));
             var spacer = new VisualElement { pickingMode = PickingMode.Ignore };
             spacer.AddToClassList("hud-spacer");
             topRow.Add(spacer);
@@ -808,6 +830,8 @@ namespace AquariumCiv.GameUI
             corner.AddToClassList("hud-corner");
             // #702: the Feedback pill isn't here any more: FeedbackUI draws it over every panel, in this place, left of Photo (#650: full ink)
             if (FeedbackUI.InTestBuild && FeedbackUI.AutoCreate && FeedbackUI.Instance == null) FeedbackUI.Create();
+            corner.Add(settingsButton = IconButton("hud-settings", "settings", () => Open(Settings), UiRole.Open));
+            if (FeedbackUI.InTestBuild) corner.Add(FeedbackSlot()); // #707: the pill (FeedbackUI's document) hangs in this gap, between Settings and Photo
             corner.Add(photoButton = IconButton("hud-photo", "photo", () => SetCameraMode(true), UiRole.Toggle));
             topRow.Add(corner);
             safe.Add(topRow);

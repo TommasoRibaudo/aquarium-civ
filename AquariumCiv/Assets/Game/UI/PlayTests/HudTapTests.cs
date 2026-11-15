@@ -103,7 +103,7 @@ namespace AquariumCiv.GameUI.PlayTests
             Assert.Greater(list.childCount, 0, "it says something: a row per office, or that there are none yet");
             yield return Tap(root, "offices-close");
             yield return Tap(root, "hud-settings");
-            Assert.AreEqual(GameHud.Settings, hud.OpenSheet, "the mark beside it opens Settings");
+            Assert.AreEqual(GameHud.Settings, hud.OpenSheet, "the mark in the corner opens Settings");
             EndHud();
         }
 

@@ -142,7 +142,6 @@ namespace AquariumCiv.GameUI
                 pillSlot.Add(pill);
                 parent.Add(pillSlot);
                 PlacePill();
-                if (GameHud.Instance != null) SetBacked(GameHud.Instance.OffHome);
             }
             root = new VisualElement { name = "fb-root", pickingMode = PickingMode.Ignore };
             root.AddToClassList("hud-fill");
@@ -208,17 +207,14 @@ namespace AquariumCiv.GameUI
             return l;
         }
 
-        /// <summary>The same quiet backing the HUD's icons get off the home view.</summary>
-        public void SetBacked(bool on) => pillSlot?.EnableInClassList("hud-top--backed", on);
-
-        /// <summary>The HUD's top row: 44 in from the safe edge, 110 down (or under the notch); Photo is 144 wide, the pill is left of it.</summary>
+        /// <summary>The HUD's top row (GameHud's shared constants): the pill is left of Photo, Settings is left of it.</summary>
         void PlacePill()
         {
             pillSafe = Screen.safeArea;
             pillScreen = new Vector2Int(Screen.width, Screen.height);
             var i = GameUiPanel.SafeInsets(pillSafe, Screen.width, Screen.height);
-            pill.style.top = Mathf.Max(i.y, 110f);
-            pill.style.right = i.z + 44f + 144f;
+            pill.style.top = Mathf.Max(i.y, GameHud.TopRowTop);
+            pill.style.right = i.z + GameHud.TopRowSide + GameHud.TopIconSlot;
         }
 
         // ---------------- behaviour ----------------
