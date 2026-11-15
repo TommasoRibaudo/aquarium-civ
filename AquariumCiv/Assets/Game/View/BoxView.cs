@@ -873,7 +873,7 @@ namespace AquariumCiv.View
 
         static void Fill(ref float[] f, float v)
         {
-            f ??= new float[FX * FZ];
+            if (f == null || f.Length != FX * FZ) f = new float[FX * FZ]; // #658: a field built before the land grew is the wrong size
             for (int i = 0; i < f.Length; i++) f[i] = v;
         }
 
@@ -904,7 +904,7 @@ namespace AquariumCiv.View
             if (f == null) return far;
             float fx = (x + Land.HX) / FieldRes, fz = (z - Land.ZMin) / FieldRes;
             int i = Mathf.FloorToInt(fx), j = Mathf.FloorToInt(fz);
-            if (i < 0 || j < 0 || i >= FX - 1 || j >= FZ - 1) return far;
+            if (i < 0 || j < 0 || i >= FX - 1 || j >= FZ - 1 || f.Length != FX * FZ) return far;
             float u = fx - i, v = fz - j;
             int o = j * FX + i;
             return (f[o] * (1 - u) + f[o + 1] * u) * (1 - v) + (f[o + FX] * (1 - u) + f[o + FX + 1] * u) * v;
