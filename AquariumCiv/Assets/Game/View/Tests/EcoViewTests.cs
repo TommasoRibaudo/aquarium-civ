@@ -114,14 +114,20 @@ namespace AquariumCiv.View.Tests
                 // The hollow's water stands in the very corner cell, against both walls.
                 Assert.IsTrue(ec.WaterCell(SiteMap.Index(SiteMap.NX - 1, 0)), "water in the front-right corner cell");
                 var b = box.DebugWaterMesh.bounds;
-                Assert.That(b.max.x, Is.EqualTo(Land.HX + BoxView.GlassInner).Within(0.001f), "the sheet runs to the right glass");
-                Assert.That(b.min.z, Is.EqualTo(-Land.HZ - BoxView.GlassInner).Within(0.001f), "and to the front glass");
-                Assert.That(b.max.x, Is.LessThanOrEqualTo(Land.HX + BoxView.GlassInner + 1e-4f), "clamped there, never through it");
-                Assert.That(b.min.z, Is.GreaterThanOrEqualTo(-Land.HZ - BoxView.GlassInner - 1e-4f));
+                Assert.That(b.max.x, Is.EqualTo(Land.HX + BoxView.WaterFace).Within(0.001f), "the sheet runs to the land's edge at the right");
+                Assert.That(b.min.z, Is.EqualTo(-Land.HZ - BoxView.WaterFace).Within(0.001f), "and at the front");
+                Assert.That(b.max.x, Is.LessThanOrEqualTo(Land.HX + BoxView.WaterFace + 1e-4f), "never past the land's edge");
+                Assert.That(b.min.z, Is.GreaterThanOrEqualTo(-Land.HZ - BoxView.WaterFace - 1e-4f));
+                // #701 round 2: nothing of the water (sheet or face) is past the land's edge, so it never hangs out over the cut toward the pane.
+                foreach (var p in box.DebugWaterMesh.vertices)
+                {
+                    Assert.That(Mathf.Abs(p.x), Is.LessThanOrEqualTo(Land.HX + BoxView.WaterFace + 1e-4f), "no water past the land's edge (x)");
+                    Assert.That(Mathf.Abs(p.z), Is.LessThanOrEqualTo(Land.HZ + BoxView.WaterFace + 1e-4f), "no water past the land's edge (z)");
+                }
                 // A wall of water stands at the glass, from the ground up to the level.
                 var v = box.DebugWaterMesh.vertices;
                 float low = float.MaxValue;
-                foreach (var p in v) if (Mathf.Abs(p.x - (Land.HX + BoxView.GlassInner)) < 1e-4f && p.y < low) low = p.y;
+                foreach (var p in v) if (Mathf.Abs(p.x - (Land.HX + BoxView.WaterFace)) < 1e-4f && p.y < low) low = p.y;
                 Assert.That(low, Is.LessThan(ec.waterY - 0.05f), "water is seen below the level through the side pane");
             }
             finally { Object.DestroyImmediate(go); }
