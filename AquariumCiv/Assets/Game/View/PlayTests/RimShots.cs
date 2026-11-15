@@ -130,6 +130,9 @@ namespace AquariumCiv.View.PlayTests
             for (int i = 0; i < 12 && Sim.State.era != Era.Camp; i++) { EcoDebug.MistCamp(); EcoDebug.SkipSeasons(1); }
             yield return new WaitForSecondsRealtime(2f);
             var box = Object.FindAnyObjectByType<BoxView>();
+            Sim.DebugFireStage(2); // #704: the log fire (the grass fire is shot as well, below)
+            box.Rebuild();
+            yield return new WaitForSecondsRealtime(1f);
             var fire = box.layout.pieces.FirstOrDefault(q => q.kind == PieceKind.Fire);
             Log("era " + Sim.State.era + ", fire piece: " + (fire != null ? $"({fire.x:0.00},{fire.z:0.00}) variant {fire.variant}" : "none"));
             Assert.IsNotNull(fire, "the camp has a fire");
@@ -145,6 +148,9 @@ namespace AquariumCiv.View.PlayTests
             }
             Log("bare/dry: " + EcoDebug.SkipToNextSeason() + " bare " + Sim.State.eco.cover.Count(c => c == (byte)EcoCover.Bare));
             yield return Close("1dry");
+            Sim.DebugFireStage(1); box.Rebuild(); yield return new WaitForSecondsRealtime(1f);
+            yield return Close("1dry_grassfire");
+            Sim.DebugFireStage(2); box.Rebuild(); yield return new WaitForSecondsRealtime(1f);
             foreach (var (x, z) in new[] { (fire.x, fire.z), (fire.x + 0.5f, fire.z), (fire.x - 0.5f, fire.z + 0.3f), (fire.x, fire.z - 0.5f) }) EcoDebug.MistBig(x, z);
             EcoDebug.SkipSeasons(2);
             yield return new WaitForSecondsRealtime(2f);
