@@ -74,7 +74,7 @@ Skipped: #560/#672 (built in #678, waiting for a phone check), #660–#662 (insi
 ### Tester run 1
 - [real] rack cheat stack overflow (DebugRackAt → BasePlace → PlanBase loop): fixed 7b66c93 + regression test (crashes without the guard).
 - [polish→fixed] History timeline end hid berries and rabbits: fixed 7b66c93.
-- [polish, for the user] glass edge line crosses year line and gear when close (#707); Feedback pill alone in photo mode (#702); fish vs thin stew close at mid zoom (#676); touch-hint ring covers "name" on the naming step.
+- [polish, for the user] glass edge line crosses year line and gear when close (#707); Feedback pill alone in photo mode: #702 asks for it there (binding, tested), #673 says no button in photo mode: DECISION for the user; fish vs thin stew close at mid zoom (#676); touch-hint ring covers "name" on the naming step.
 - Not checked: kid seen walking into tent (#698), real winter ice for #703, return welcome. Box mesh filters 36 vs 14 after runs: to check.
 
 ### #704 + #701 (one worker, one branch)
