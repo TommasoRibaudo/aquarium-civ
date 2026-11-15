@@ -131,14 +131,14 @@ namespace AquariumCiv.View.Cards.Tests
         }
 
         [Test]
-        public void SkipAllLeavesTheUnreadForTheNextOpenAndReadCardsDontComeBack()
+        public void TheBackGestureLeavesTheUnreadForTheNextOpenAndReadCardsDontComeBack()
         {
             var sim = Quiet();
             AddMany(sim, 4);
             var m = Opened(Model(sim));
             string first = m.Face.id;
             m.Next();
-            m.SkipAll();
+            m.Close();
             Assert.AreEqual(CardStackMode.Hidden, m.Mode);
             Assert.IsTrue(m.HistoryDot, "a dot, the cards wait");
 
@@ -149,6 +149,21 @@ namespace AquariumCiv.View.Cards.Tests
             Assert.IsFalse(ids.Contains(first));
         }
 
+        /// <summary>#561 (the user's call, 2026-11-10): Skip all is the Keeper's answer to the whole stack, so the dot goes and nothing comes back.</summary>
+        [Test]
+        public void SkipAllClearsTheDotAndNothingComesBack()
+        {
+            var sim = Quiet();
+            AddMany(sim, 4);
+            var m = Opened(Model(sim));
+            m.Next();
+            m.SkipAll();
+            Assert.AreEqual(CardStackMode.Hidden, m.Mode);
+            Assert.IsFalse(m.HistoryDot, "no dot: the stack is answered");
+            Assert.IsFalse(sim.HasUnreadCards);
+            Assert.IsFalse(m.Prepare(Day), "nothing is due again");
+        }
+
         [Test]
         public void ACardLookedAtForAMomentCountsOnlyAfterALook()
         {
@@ -156,7 +171,7 @@ namespace AquariumCiv.View.Cards.Tests
             AddMany(sim, 2);
             var m = Opened(Model(sim));
             clock += CardStackModel.MinReadSeconds / 2;
-            m.SkipAll();
+            m.Close();
             Assert.AreEqual(2, sim.UnreadCards(Day).cards.Count, "a flick past reads nothing");
             Opened(m);
             clock += CardStackModel.MinReadSeconds;
@@ -265,7 +280,7 @@ namespace AquariumCiv.View.Cards.Tests
             sim.State.month += 3;
             var s = Opened(Model(sim));
             s.Next();
-            s.SkipAll();
+            s.Close();
             Assert.Less(sim.State.cards.since, last.month);
             Assert.IsTrue(sim.HasUnreadCards);
         }

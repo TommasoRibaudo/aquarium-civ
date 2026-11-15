@@ -162,6 +162,27 @@ namespace AquariumCiv.View
         /// the arm overhead, down with it level). Before, the blade trailed: the hoe was raised blade-back, the axe struck edge-up.
         /// Striking tools also tip forward from the arm (<see cref="StrikeTip"/>), so they land on the ground or block in front
         /// rather than going on down the arm into the ground (the hoe's blade ended ~0.1 u under the soil on the hit).</summary>
+        /// <summary>#684: the axe's stroke ends this high (u over the ground, the doll's own scale): where it bites a trunk, and at the
+        /// chopping block's top (0.05). It struck the ground (tip at about -0.03) before, short of the tree.</summary>
+        public const float ChopHeight = 0.06f;
+        /// <summary>#684: the arm's lowest angle in the axe's stroke (degrees), which puts the blade at <see cref="ChopHeight"/> on the hit.</summary>
+        public const float ChopLow = 52f;
+
+        /// <summary>#684: where the axe's blade lands on the hit, from the doll's root: <see cref="ChopReach"/> u away, <see cref="ChopSide"/>
+        /// degrees round to the right-arm side of straight ahead (measured over the stroke's hit frames, ToolGripTests).</summary>
+        public const float ChopReach = 0.204f, ChopSide = 18.8f, ChopBite = 0.02f;
+
+        /// <summary>#684: where a woodcutter stands at a tree (box-local x, z), at <paramref name="angle"/> round the trunk, and the point
+        /// they face, so the axe's blade lands on the trunk's axis side, <see cref="ChopBite"/> into it, at <see cref="ChopHeight"/>.</summary>
+        public static Vector2 ChopStand(Vector2 tree, float angle, out Vector2 face)
+        {
+            var stand = tree + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * (ChopReach + ChopBite);
+            float toTree = angle + Mathf.PI; // the way from the stand to the trunk, as atan2(z, x)
+            float front = toTree - ChopSide * Mathf.Deg2Rad; // turned so the blade (that much to the right) points at the trunk
+            face = stand + new Vector2(Mathf.Cos(front), Mathf.Sin(front));
+            return stand;
+        }
+
         public static Quaternion ToolGrip(PropKind kind) => Quaternion.Euler(StrikeTip(kind), 0f, 0f) * Quaternion.Euler(180f, 0f, 0f);
 
         /// <summary>#401: degrees a striking tool's handle leans forward of the arm while it is swung (the fist turns the tool out).
@@ -269,7 +290,7 @@ namespace AquariumCiv.View
                     bool hammer = style == DollStyle.Hammer;
                     float period = (hammer ? 0.75f : 1.15f) / pace;
                     float u = Frac(t / period);
-                    float top = hammer ? 120f : 165f, low = hammer ? 50f : 40f;
+                    float top = hammer ? 120f : 165f, low = hammer ? 50f : ChopLow; // #684: the axe bites the trunk at ChopHeight, not the ground
                     float a = u < 0.62f ? Smooth(low + 5f, top, u / 0.62f) : u < 0.76f ? Mathf.Lerp(top, low, (u - 0.62f) / 0.14f) : Mathf.Lerp(low, low + 5f, (u - 0.76f) / 0.24f);
                     p.armR = new Vector3(a, 0, 8f);
                     p.armL = new Vector3(hammer ? 45f : 30f, 0, -12f);

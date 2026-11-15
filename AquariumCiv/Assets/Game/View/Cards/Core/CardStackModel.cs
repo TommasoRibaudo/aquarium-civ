@@ -350,12 +350,13 @@ namespace AquariumCiv.View.Cards
             return true;
         }
 
-        /// <summary>Skip all: what's unread waits for the next open (the dot says so).</summary>
+        /// <summary>The stack closes: what's unread (a swipe-away, the back gesture, never Skip all, #561) waits for the next open, and the dot says so.</summary>
         public void SkipAll()
         {
             if (Mode != CardStackMode.Open) return;
             LeaveEarly();
             log.SkipAll(stack.cards.Concat(stack.also).Count(c => !sim.IsCardRead(c)));
+            foreach (var c in stack.cards.Concat(stack.also)) sim.MarkCardRead(c); // #561: Skip all is a call on all of them: the dot goes
             End();
         }
 
