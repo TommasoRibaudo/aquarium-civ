@@ -388,6 +388,34 @@ namespace AquariumCiv.Tests
             Assert.IsTrue(told.Any(t => t.Contains("seats now")), string.Join(" / ", told));
         }
 
+        // ---------- #720: LandWords keeps the era's nouns, no phrase swaps ----------
+
+        /// <summary>#720: every choice, callback and chronicle line, rendered on both lands over years and eras, never says the old
+        /// misfires ("the warmest spot", "chose the camp") or a thing no box has (goat, hens, kitten); LandWords only turns the camp's
+        /// huts into tents.</summary>
+        [Test]
+        public void NoLineOnEitherLandSaysAGoatOrAPatchedPhrase()
+        {
+            string[] bad = { "the warmest spot", "chose the camp", "goat", "hens", "kitten" };
+            var defs = DilemmaDefs.All.Concat(SmallChoices.All).Concat(LifeChoices.All).ToList();
+            foreach (bool living in new[] { false, true })
+                foreach (int seed in new[] { 1, 2 })
+                {
+                    var cfg = new SimConfig { dilemmas = true, ecology = living };
+                    var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+                    var told = new List<string>();
+                    sim.Chronicled += e => told.Add(e.text);
+                    for (int y = 0; y < 50; y++) { sim.Advance(1); if (sim.State.eraReady) sim.AdvanceEra(); if (y % 12 == 0) foreach (var d in defs) told.AddRange(DilemmaContentTests.AllText(d).Select(t => sim.LandWords(DilemmaContentTests.Fill(t)))); }
+                    foreach (var t in told.Where(x => !string.IsNullOrEmpty(x)))
+                        foreach (var w in bad) StringAssert.DoesNotContain(w, t.ToLowerInvariant(), $"{(living ? "living land" : "slice")} seed {seed}: \"{t}\"");
+                }
+            var camp = new SimCore(new SimConfig { ecology = true }, SimCore.NewWorld(3, new SimConfig { ecology = true }));
+            Assume.That(camp.State.era == Era.Camp && camp.EcologyOn);
+            Assert.AreEqual("The Keeper chose the woodpile.", camp.LandWords("The Keeper chose the woodpile."), "no phrase swaps");
+            Assert.AreEqual("the tent across the pond", camp.LandWords("the hut across the pond"), "the camp's tents stay (era nouns)");
+            Assert.AreEqual("They moved in with a goat.", camp.LandWords("They moved in with a goat."), "a bad line is fixed at its source, not patched");
+        }
+
         // ---------- #718: the shaping-only text is gone ----------
 
         [Test]

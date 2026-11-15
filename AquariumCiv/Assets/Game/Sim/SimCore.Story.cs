@@ -149,6 +149,8 @@ namespace AquariumCiv.Sim
         // #715 [est]: no goat and no fence post in a box that has neither (research 21): the stew, and where the path goes.
         static readonly string[] Quarrels = { "the last of the stew", "whose turn it was at the well", "the best way to bake bread", "where the new path should go", "a song lyric" };
         static readonly string[] FriendReasons = { "a long night of storytelling", "sharing the last apple", "fixing a roof together", "a snowball fight" };
+        /// <summary>#720: the living land's camp (tents, no apple trees): the same reasons, in its own words (same count: the same dice).</summary>
+        static readonly string[] FriendReasonsCamp = { "a long night of storytelling", "sharing the last of the basket", "fixing a tent together", "a snowball fight" };
         static readonly string[] PlaceNames = { "Glasswick", "Brightmere", "Little Hollow", "Keepersend", "Pebbleford", "Dewmoor", "Lanternfold" };
 
         void StoryStep(int season, bool winter)
@@ -191,7 +193,7 @@ namespace AquariumCiv.Sim
             if (mates.a != null) Add(1f, () =>
             {
                 mates.a.friendId = mates.b.id; mates.b.friendId = mates.a.id;
-                Chronicle("friendship", $"{mates.a.FullName} and {mates.b.FullName} became fast friends after {Pick(r, FriendReasons)}.", 0.5f, mates.a.id, mates.b.id);
+                Chronicle("friendship", $"{mates.a.FullName} and {mates.b.FullName} became fast friends after {Pick(r, EcologyOn && State.era == Era.Camp ? FriendReasonsCamp : FriendReasons)}.", 0.5f, mates.a.id, mates.b.id);
             });
             var foes = PickPair(r, adults, (a, b) => a.rivalId < 0 && b.rivalId < 0 && a.friendId != b.id && a.partnerId != b.id);
             if (foes.a != null) Add(0.9f, () =>
