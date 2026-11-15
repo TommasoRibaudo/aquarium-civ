@@ -168,7 +168,7 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return new WaitForEndOfFrame();
             var tex = ScreenCapture.CaptureScreenshotAsTexture();
-            Directory.CreateDirectory(Shots);
+            Directory.CreateDirectory(Path.GetDirectoryName(Shots + name + ".png")); // a name may carry a folder ("night/...")
             File.WriteAllBytes(Shots + name + ".png", tex.EncodeToPNG());
             UnityEngine.Object.Destroy(tex);
         }

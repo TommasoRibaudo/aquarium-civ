@@ -69,7 +69,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(0, props.FishShown, "no fish on the pile yet");
 
             // 1. a catch lands in the fish basket: the sim's basket count goes up, the basket beside the fisher shows it
-            StringAssert.Contains("sent to fish", FishingView.DebugBiteNow());
+            { string said = FishingView.DebugBiteNow(); Assert.IsTrue(said.Contains("sent to fish") || said.Contains(" fishing: the next catch"), said); } // a fisher may already be at the pond
             yield return Until(() => fv.FishKept > 0, 60f);
             Assert.Greater(fv.FishKept, 0, "a catch was kept");
             Assert.Greater(sim.FishInBasket, 0, "it is in the fish basket");
