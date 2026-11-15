@@ -58,6 +58,10 @@ namespace AquariumCiv.View.ShowMe
         /// getting up".</summary>
         public HeldMoment HeldNow { get; set; }
 
+        /// <summary>#717: the Keeper's pick is telling tonight's story now (their notable id, -1 = nobody): they say their manner's lines
+        /// (<see cref="PeopleVoice.TellerLines"/>) before anything else.</summary>
+        public int TellerNow { get; set; } = -1;
+
         public WorldBubbles(SimCore sim, BubbleRules rules = null)
         {
             this.sim = sim ?? throw new ArgumentNullException(nameof(sim));
@@ -189,6 +193,13 @@ namespace AquariumCiv.View.ShowMe
                 for (int i = 0; i < lines.Count; i++)
                     yield return Make($"held:{HeldNow.id}:{i}", lines[i].text, lines[i].speaker, BubbleSource.Moment, -1, 0);
                 yield break;
+            }
+            // #717: the picked teller's lines while they tell it (one telling, one evening: the key carries the month).
+            if (TellerNow >= 0)
+            {
+                var tl = PeopleVoice.TellerLines(sim.State.storyTellerManner, sim.WoodpileStands);
+                for (int i = 0; i < tl.Count; i++)
+                    yield return Make($"teller:{sim.State.storyTellerMonth}:{i}", tl[i], TellerNow, BubbleSource.Moment, -1, 0);
             }
             // 1. What's happening now, in this stage's words.
             if (!string.IsNullOrEmpty(moment) && moment != PeopleMoment.Any)

@@ -10,6 +10,24 @@ namespace AquariumCiv.View.ShowMe
     /// </summary>
     public static partial class PeopleVoice
     {
+        /// <summary>#717: what the Keeper's pick says while telling tonight's story, by manner (<see cref="SmallChoices.MannerSlow"/>,
+        /// <see cref="SmallChoices.MannerShort"/>). The woodpile line only where the woodpile stands. [est] until the user signs them off.</summary>
+        public static List<string> TellerLines(int manner, bool woodpile)
+        {
+            var l = new List<string>();
+            if (manner == SmallChoices.MannerShort)
+            {
+                if (woodpile) l.Add("So nobody sat on the woodpile again. The end.");
+                l.Add("That's the whole story. It's true, too.");
+            }
+            else
+            {
+                l.Add("And then the wind said... no, wait. Let me do the wind.");
+                l.Add("This next part is the scary part. Come closer.");
+            }
+            return l;
+        }
+
         /// <summary>The lines for a moment of <paramref name="kind"/>: (text, who) where who is -1 for the crowd, else a notable id.
         /// <paramref name="a"/> and <paramref name="b"/> are the moment's principals (the couple; the child and the parent; the new
         /// chief; a ritual's leader). Deterministic order; the caller says each at most once a moment. #721: a ritual's lines are its
