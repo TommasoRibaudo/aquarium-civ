@@ -873,7 +873,7 @@ namespace AquariumCiv.View.PlayTests
             float y = v.Max(q => q.y), worst = float.MinValue; int n = 0;
             foreach (var q in v)
             {
-                if (Mathf.Abs(q.x) >= Land.HX - 0.005f || Mathf.Abs(q.z) >= Land.HZ - 0.005f) continue;
+                if (Mathf.Abs(q.x) >= Land.HX - 0.005f || !Land.InZ(q.z, 0.005f)) continue;
                 if (q.y < y - 0.001f) continue;
                 n++;
                 worst = Mathf.Max(worst, box.land.Height(q.x, q.z));
@@ -912,8 +912,8 @@ namespace AquariumCiv.View.PlayTests
                 var front = cells.OrderBy(p => p.y).First();
                 var side = cells.OrderByDescending(p => p.x).First();
                 var centre = new Vector2(cells.Average(p => p.x), cells.Average(p => p.y));
-                var glass = cells.OrderBy(p => Mathf.Min(Land.HX - Mathf.Abs(p.x), Land.HZ - Mathf.Abs(p.y))).First();
-                float glassGap = Mathf.Min(Land.HX - Mathf.Abs(glass.x), Land.HZ - Mathf.Abs(glass.y));
+                var glass = cells.OrderBy(p => Mathf.Min(Land.HX - Mathf.Abs(p.x), Land.GlassGapZ(p.y))).First();
+                float glassGap = Mathf.Min(Land.HX - Mathf.Abs(glass.x), Land.GlassGapZ(glass.y));
                 Note("9 pond", $"nearest pond cell to the glass: {glassGap:0.00} u off it");
                 var spots = new List<(string, Vector2, float, float, float)> { ("a_whole", centre, Rig.Home.yaw, 50f, 0.32f), ("b_front", front, Rig.Home.yaw, 35f, 0.14f), ("c_side", side, Rig.Home.yaw + 40f, 35f, 0.14f), ("d_glass", glass, Rig.Home.yaw, 35f, 0.14f) };
                 foreach (var (n, at, yaw, pitch, zoom) in spots)

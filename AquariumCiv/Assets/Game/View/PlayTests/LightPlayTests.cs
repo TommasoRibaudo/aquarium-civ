@@ -207,7 +207,7 @@ namespace AquariumCiv.View.PlayTests
                     spot = new Vector2(Screen.width * x, Screen.height * y);
                     if (UiInput.Over(spot) || !cards.PickDoll(spot).IsNone || !cards.PickPerson(spot).IsNone || cards.PickBuilding(spot) >= 0) continue;
                     if (!BoxCameraMath.GroundPoint(cam.ScreenPointToRay(spot), Land.G, out var g)) continue;
-                    if ((Mathf.Abs(g.x) < Land.HX - 0.2f && Mathf.Abs(g.z) < Land.HZ - 0.2f) == onLand) return true;
+                    if ((Mathf.Abs(g.x) < Land.HX - 0.2f && Land.InZ(g.z, 0.2f)) == onLand) return true;
                 }
             spot = default;
             return false;
@@ -307,7 +307,7 @@ namespace AquariumCiv.View.PlayTests
         static bool CentreOnLand(Camera cam)
         {
             var ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-            return BoxCameraMath.GroundPoint(ray, Land.G, out var g) && Mathf.Abs(g.x) <= Land.HX && Mathf.Abs(g.z) <= Land.HZ;
+            return BoxCameraMath.GroundPoint(ray, Land.G, out var g) && Mathf.Abs(g.x) <= Land.HX && Land.InZ(g.z);
         }
 
         /// <summary>How much of the screen shows the land's top.</summary>
@@ -318,7 +318,7 @@ namespace AquariumCiv.View.PlayTests
                 for (float x = 0.05f; x < 1f; x += 0.1f)
                 {
                     n++;
-                    if (BoxCameraMath.GroundPoint(cam.ViewportPointToRay(new Vector3(x, y, 0f)), Land.G, out var g) && Mathf.Abs(g.x) <= Land.HX && Mathf.Abs(g.z) <= Land.HZ) on++;
+                    if (BoxCameraMath.GroundPoint(cam.ViewportPointToRay(new Vector3(x, y, 0f)), Land.G, out var g) && Mathf.Abs(g.x) <= Land.HX && Land.InZ(g.z)) on++;
                 }
             return on / (float)n;
         }

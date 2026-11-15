@@ -42,6 +42,8 @@ namespace AquariumCiv.View
 
         /// <summary>#658: the glass test and clamp along z. The land runs ZMin..ZMax, not -HZ..HZ.</summary>
         public static bool InZ(float z, float margin = 0f) => Sim.Settle.Terrain.InZ(z, margin);
+        /// <summary>How far z is from the nearer of the front and back glass.</summary>
+        public static float GlassGapZ(float z) => Mathf.Min(z - ZMin, ZMax - z);
         public static float ClampZ(float z, float margin = 0f) => Sim.Settle.Terrain.ClampZ(z, margin);
 
         public bool Inside(Vector2 p, float margin) => Mathf.Abs(p.x) <= HX - margin && Sim.Settle.Terrain.InZ(p.y, margin);
