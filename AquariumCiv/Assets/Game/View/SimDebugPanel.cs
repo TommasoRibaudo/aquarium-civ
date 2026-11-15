@@ -459,6 +459,39 @@ namespace AquariumCiv.View
                 }
             }
             // ---- end #417 ----
+            // ---- #724 landscaping: the pouch, thickets, the plucking tool (docs/design/landscaping.md section 8); one block, extended by #727-#730 ----
+            if (sim.EcologyOn && Section("Landscaping (#724)"))
+            {
+                GUILayout.Label($"pouch: {sim.SeedsInPouch} seeds, {sim.BushesInPouch} bushes (cap {sim.PouchCap}) · peak people {sim.State.eco.peakPeople}");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Give 3 seeds")) { sim.DebugGiveSeeds(3); last = Done($"pouch: {sim.SeedsInPouch} seeds"); }
+                if (GUILayout.Button("Give 3 bushes")) { sim.DebugGiveBushes(3); last = Done($"pouch: {sim.BushesInPouch} bushes"); }
+                if (GUILayout.Button("Next civ step")) { int n = sim.DebugNextCivStep(); last = Done(n > 0 ? $"a civ step: pouch {sim.SeedsInPouch} seeds, {sim.BushesInPouch} bushes" : "both pouches are full: the step waits"); }
+                GUILayout.EndHorizontal();
+                // ---- #728: thickets as a list ----
+                var ths = new System.Collections.Generic.List<(int cell, float radius, int bushes)>(); sim.BushThickets(ths);
+                GUILayout.Label($"thickets: {ths.Count} " + string.Join(" · ", ths.Select(x => $"{x.bushes} bushes r {x.radius:0.00}")));
+                if (GUILayout.Button("Place a thicket by the camp (uses a pouch bush)")) { int c = sim.DebugPlaceThicketNearCamp(); last = Done(c < 0 ? "no valid ground (or the cap)" : $"thicket {sim.BushThicketCount} placed at cell {c}"); }
+                // ---- #729: crowding and shrinking: more thickets lower every target; a thicket over its target sheds a bush a season ----
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Crowd: +3 thickets")) { int made = sim.DebugCrowdThickets(3); last = Done($"{made} thickets placed: {sim.BushThicketCount} stand, each holds {sim.BushCap / System.Math.Max(1, sim.BushThicketCount)}"); }
+                if (GUILayout.Button("Shrink: one season now")) { sim.DebugSkipSeasons(1); last = Done($"a season on: {sim.BushThicketCount} thickets, {sim.State.eco.cBush} bushes of {sim.BushCap}"); }
+                GUILayout.EndHorizontal();
+                // ---- #730: the landscaping tool (name open, [est]); phase 1 is the sim: pluck what the tool could take in an area ----
+                GUILayout.Label($"{SimCore.LandscapeToolName}: takes seedlings, young trees, bushes" + (sim.EcoLandscapeTakesGrownTrees ? ", grown trees (flag ON)" : " (grown trees: flag off)"));
+                if (GUILayout.Button("Pluck all within 1.2 of the camp (the tool's cells)"))
+                {
+                    var g = sim.EcoGround; var r = sim.DebugLandscapeArea(g.campX, g.campZ, 1.2f);
+                    last = Done($"plucked {r.saplings} seedlings/young, {r.bushes} bushes, {r.trees} trees; {sim.BushThicketCount} thickets left");
+                }
+                if (GUILayout.Button(sim.EcoLandscapeTakesGrownTrees ? "Grown trees: stop plucking them (flag off)" : "Grown trees: pluck them too (flag on, the open question)"))
+                {
+                    if (sim.Config.eco == null) sim.Config.eco = new AquariumCiv.Sim.Eco.EcoTuning();
+                    sim.Config.eco.landscapePluckGrown = !sim.Config.eco.landscapePluckGrown;
+                    last = Done("grown-tree pluck " + (sim.Config.eco.landscapePluckGrown ? "ON" : "off"));
+                }
+            }
+            // ---- end #724 ----
             // ---- #420-#422: deer, ducks, fish; floors, shy, restraint (placed-life spec §10) ----
             if (sim.EcologyOn && Section("Placed life (#420-#422)"))
             {

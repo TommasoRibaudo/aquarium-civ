@@ -605,11 +605,11 @@ namespace AquariumCiv.View
             return m != null && m.GroundPoint(screen, out at);
         }
 
-        /// <summary>How far from the finger (box units) a sapling still counts as touched.</summary>
+        /// <summary>How far from the finger (box units) a sapling still counts as touched (#730: the landscaping tool's reach now).</summary>
         public const float SaplingReach = 0.16f;
         /// <summary>Plucks that happened this session (tests and the debug panel).</summary>
         public int Plucks { get; private set; }
-        /// <summary>What the last pluck took: "weed", "treeweed", "vine", "sapling" or "" (tests).</summary>
+        /// <summary>What the last pluck took: "weed", "treeweed", "vine" or "" (tests). ("sapling" was the tweezers' until #730.)</summary>
         public string LastPluck { get; private set; } = "";
         bool tweezing, tweezeTried;
         float lastPluckAt = -9f, tweezeT;
@@ -632,8 +632,9 @@ namespace AquariumCiv.View
             if (PluckAt(sim, pos)) lastPluckAt = Time.unscaledTime;
         }
 
-        /// <summary>Plucks whatever overgrows under a screen point: a weed patch, a tuft round the tree or a cell of vine (what is drawn there), else the wild
-        /// sapling nearest to the land point there. Never the Keeper's tree, a grown tree or the heart of a wood (the sim decides). True if something came out.</summary>
+        /// <summary>Plucks whatever overgrows under a screen point: a weed patch, a tuft round the tree or a cell of vine (what is drawn there). #730: the
+        /// tweezers no longer take seedlings and young trees; the landscaping tool does (SimCore.EcoLandscapePluck; its kit wiring is the Editor pass:
+        /// the hover ghost, the pop through <c>props.PopSapling</c>, <see cref="SaplingReach"/>). True if something came out.</summary>
         public bool PluckAt(SimCore sim, Vector2 screenPos)
         {
             var c = Cam;
@@ -641,34 +642,7 @@ namespace AquariumCiv.View
             var piece = props.PickUnder(c, screenPos, TapReachPixels * 1.2f);
             // #375 (playtest #347): the tweezers reach through the glass, grimy or not. BehindDirtyGlass is the cloth's rule (Classify); here it dropped
             // every weed, tuft and vine seen through a fogged patch, so a pluck only worked on clean glass.
-            bool onLand = LandPoint(screenPos, out var at);
-            if (piece != null && onLand)
-            {
-                // A wild sapling nearer the finger than the drawn piece wins (a weed patch's reach must not hide the sapling you tapped).
-                int near = sim.EcoNearestSapling(at.x, at.z, SaplingReach);
-                if (near >= 0)
-                {
-                    var sw = box.transform.TransformPoint(new Vector3(Sim_X(near), box.GroundHeight(Sim_X(near), Sim_Z(near)), Sim_Z(near)));
-                    var ss = c.WorldToScreenPoint(sw);
-                    var ps = c.WorldToScreenPoint(piece.Center);
-                    if (Vector2.Distance(screenPos, ss) < Vector2.Distance(screenPos, ps)) piece = null;
-                }
-            }
-            if (piece != null) return PluckPiece(sim, piece);
-            if (onLand)
-            {
-                int cell = sim.EcoPluckSapling(at.x, at.z, SaplingReach);
-                if (cell >= 0)
-                {
-                    var local = new Vector3(Sim_X(cell), 0f, Sim_Z(cell));
-                    local.y = box.GroundHeight(local.x, local.z);
-                    props.PopSapling(local);
-                    box.Refresh();
-                    Plucked("sapling", local, 0.9f);
-                    return true;
-                }
-            }
-            return false;
+            return piece != null && PluckPiece(sim, piece);
         }
 
         static float Sim_X(int cell) => AquariumCiv.Sim.Settle.SiteMap.CXc(cell);

@@ -37,8 +37,21 @@ namespace AquariumCiv.Sim
             {
                 if (ecoModel != null) return ecoModel;
                 Config.eco ??= new EcoTuning();
-                return ecoModel = new EcoModel(State.eco, EcoLand.For(TerrainPreset), Config.eco);
+                ecoModel = new EcoModel(State.eco, EcoLand.For(TerrainPreset), Config.eco);
+                ecoModel.BushBusy = BushBeingPicked; // #729: a shrinking thicket never sheds a bush the people are picking
+                return ecoModel;
             }
+        }
+
+        /// <summary>#729: the people picked at this bush on the latest view day anyone picked (the visit in progress or the last one).</summary>
+        bool BushBeingPicked(int cell)
+        {
+            var e = State.eco;
+            if (e?.bushPickCell == null || e.bushPickCell.Count == 0) return false;
+            long latest = long.MinValue;
+            for (int i = 0; i < e.bushPickDay.Count; i++) if (e.bushPickDay[i] > latest) latest = e.bushPickDay[i];
+            int at = e.bushPickCell.IndexOf(cell);
+            return at >= 0 && e.bushPickDay[at] == latest;
         }
 
         /// <summary>The static land under the ecology (heights, hollows, the flood line, the cells nobody builds on).</summary>
@@ -66,6 +79,8 @@ namespace AquariumCiv.Sim
             int cal = CalendarMonth; // the land steps by the calendar, not the raw month (#603)
             int season = (cal / 3 + 3) % 4;
             EcoM.Month(season, s.month); // the surface, every month: the wet area dries, shoots grow (#266, #271)
+            if (EcoM.EarnLandscape((int)s.era, s.population, BuildingKinds()) > 0) // #726: the civ grew a step: more seed and bushes to plant
+                Chronicle("eco_pouch", "More seed came down from the sky, and a few young bushes with it. The people were glad.", 0.5f);
             if (cal % 3 == 0)
             {
                 EcoM.Step(season, s.month);
@@ -152,15 +167,46 @@ namespace AquariumCiv.Sim
         /// spot is in the hollow or the water.</summary>
         /// <summary>#378: the cell the Keeper's tree would really take for a press at (x, z): the cell itself, or the nearest cell
         /// clear of the glass and the hollow; -1 when there is none.</summary>
-        public int TreeCellFor(float x, float z) => EcologyOn ? EcoM.TreeCellFor(x, z) : -1;
+        public int TreeCellFor(float x, float z) => !EcologyOn ? -1 : State.eco.treeCell >= 0 ? EcoM.SeedCellFor(x, z, SettledCell) : EcoM.TreeCellFor(x, z); // #727: once the Keeper's tree stands, the answer is the earned seed's cell
 
+        /// <summary>#727: the Keeper's tree stands and a seed waits in the pouch (#726): the next planting makes a normal seedling.</summary>
+        public bool CanPlantSeed => EcologyOn && State.eco.treeCell >= 0 && EcoM.SeedsInPouch > 0 && EcoM.SeedAvailable;
+        /// <summary>#727: a planting is possible now, the Keeper's first tree or an earned seed. The kit's seed reads this (<see cref="CanPlantTree"/> is the first tree alone).</summary>
+        public bool CanPlantAnySeed => CanPlantTree || CanPlantSeed;
+
+        /// <summary>Plants the Keeper's tree at (x, z) (the first seed), or, once it stands, an earned seed from the pouch as a normal seedling (#727).
+        /// False, and nothing is spent, when there is no seed, or no valid ground.</summary>
         public bool PlantTree(float x, float z)
         {
             if (!EcologyOn) return false;
-            if (!EcoM.Plant(x, z, State.month)) return false;
+            if (!EcoM.Plant(x, z, State.month, SettledCell)) return false;
             CountKeeperAction(KeeperAction.Plant, false);
             EcoTell();
             return true;
+        }
+
+        // ---------- #726 the pouch: what the Keeper earned to plant (landscaping.md §8.1) ----------
+        /// <summary>Seeds waiting in the pouch (each plants one normal tree seedling, #727). 0 off the ecology.</summary>
+        public int SeedsInPouch => EcologyOn ? EcoM.SeedsInPouch : 0;
+        /// <summary>Bushes waiting in the pouch (each plants one small thicket, #728). 0 off the ecology.</summary>
+        public int BushesInPouch => EcologyOn ? EcoM.BushesInPouch : 0;
+        /// <summary>The most each pouch holds ([est] 3).</summary>
+        public int PouchCap => Config.eco?.landscapePouchCap ?? new EcoTuning().landscapePouchCap;
+        /// <summary>Debug ("give seeds"): n seeds into the pouch, past the cap.</summary>
+        public void DebugGiveSeeds(int n) { if (EcologyOn) EcoM.DebugGiveSeeds(n); }
+        /// <summary>Debug ("give bushes"): n bushes into the pouch, past the cap.</summary>
+        public void DebugGiveBushes(int n) { if (EcologyOn) EcoM.DebugGiveBushes(n); }
+        /// <summary>Test hook: seeds and bushes leave the pouch (as planting would).</summary>
+        public void DebugTakeFromPouch(int seeds, int bushes) { if (EcologyOn) { EcoM.DebugGiveSeeds(-seeds); EcoM.DebugGiveBushes(-bushes); } }
+        /// <summary>Debug ("next civ step"): the peak people rise one step and the pouch is paid at once. Seeds and bushes added.</summary>
+        public int DebugNextCivStep() => EcologyOn ? EcoM.DebugNextCivStep((int)State.era, State.population, BuildingKinds()) : 0;
+
+        /// <summary>How many kinds of building stand (the fire, the tent, a hut, a farm ...): a civ step when a new kind comes.</summary>
+        int BuildingKinds()
+        {
+            var seen = new System.Collections.Generic.HashSet<string>();
+            foreach (var b in State.buildings) seen.Add(b.type);
+            return seen.Count;
         }
 
         void EcoWipe(float amount) { if (EcologyOn) EcoM.Wipe(amount); }
@@ -184,21 +230,55 @@ namespace AquariumCiv.Sim
             return true;
         }
 
-        /// <summary>Plucks the wild sapling nearest a point (within <paramref name="radius"/> box units); never the Keeper's tree, a grown tree or the heart of a wood. The cell, or -1.</summary>
-        public int EcoPluckSapling(float x, float z, float radius)
+        // ---------- the landscaping tool (#730 phase 1; EcoModel.Pluck.cs). The tweezers no longer take saplings. ----------
+        /// <summary>The landscaping tool's name is the user's to give (open question in #724): until then the sim and the debug panel call it this. [est]</summary>
+        public const string LandscapeToolName = "the landscaping tool";
+
+        /// <summary>The cell the landscaping tool would take nearest a point (within <paramref name="radius"/> box units): a wild seedling or young tree, a bush,
+        /// or, with <see cref="EcoTuning.landscapePluckGrown"/> on, a grown forest tree. Never the Keeper's tree. -1 if none. Plucks nothing (the hover ghost).</summary>
+        public int EcoNearestLandscape(float x, float z, float radius) => EcologyOn ? EcoM.NearestPluckable(x, z, radius) : -1;
+
+        /// <summary>What the landscaping tool would take on this cell (None: nothing, or the Keeper's tree).</summary>
+        public PluckKind EcoLandscapeKind(int cell) => EcologyOn ? EcoM.PluckKindAt(cell) : PluckKind.None;
+
+        /// <summary>The landscaping tool could take what stands on this cell.</summary>
+        public bool EcoCanLandscape(int cell) => EcoLandscapeKind(cell) != PluckKind.None;
+
+        /// <summary>Grown forest trees can be plucked too (a tuning flag, off until the user decides).</summary>
+        public bool EcoLandscapeTakesGrownTrees => EcologyOn && EcoM.PluckGrownTrees;
+
+        /// <summary>The landscaping tool takes what is nearest a point (within <paramref name="radius"/>). The cell, or -1. The people nearby react as to a prune
+        /// (the view asks them); the history gets one line a month.</summary>
+        public int EcoLandscapePluck(float x, float z, float radius) => EcoLandscapePluck(x, z, radius, out _);
+
+        /// <summary>As above, and says what it took.</summary>
+        public int EcoLandscapePluck(float x, float z, float radius, out PluckKind kind)
         {
+            kind = PluckKind.None;
             if (!EcologyOn) return -1;
-            int c = EcoM.NearestSapling(x, z, radius);
-            if (c < 0 || !EcoM.PluckSapling(c)) return -1;
+            int c = EcoM.NearestPluckable(x, z, radius);
+            if (c < 0) return -1;
+            kind = EcoM.Pluck(c);
+            if (kind == PluckKind.None) return -1;
             CountKeeperAction(KeeperAction.Prune, true);
+            if (kind != PluckKind.Sapling && Config.settle) Settlement.SyncEco(); // a thicket that lost its last bush gives its ground back to the planner
+            if (State.eco.clearedLineMonth != State.month)
+            {
+                State.eco.clearedLineMonth = State.month;
+                Chronicle("eco_cleared", "A corner of the grass was cleared. Something lifted the plants out of the ground, and the people made room.", 0.4f);
+            }
             return c;
         }
 
-        /// <summary>The wild sapling the tweezers could take nearest a point (within <paramref name="radius"/>), without plucking it; -1 if none.</summary>
-        public int EcoNearestSapling(float x, float z, float radius) => EcologyOn ? EcoM.NearestSapling(x, z, radius) : -1;
-
-        /// <summary>A wild sapling the tweezers could take stands on this cell.</summary>
-        public bool EcoCanPluckSapling(int cell) => EcologyOn && EcoM.CanPluckSapling(cell);
+        /// <summary>Debug ("pluck all in an area"): everything the landscaping tool could take within <paramref name="radius"/> of a point comes out now
+        /// (the Keeper's tree stays). (saplings, bushes, trees) taken.</summary>
+        public (int saplings, int bushes, int trees) DebugLandscapeArea(float x, float z, float radius)
+        {
+            if (!EcologyOn) return (0, 0, 0);
+            var r = EcoM.DebugPluckArea(x, z, radius);
+            if (r.saplings + r.bushes + r.trees > 0 && Config.settle) Settlement.SyncEco();
+            return r;
+        }
 
         /// <summary>Plucks the vine on a cell.</summary>
         public bool EcoPluckVine(int cell)
