@@ -1,0 +1,22 @@
+{
+  "name": "700-fish-rack",
+  "notes": "#700 B27: a path has grown over the fish rack. Two grown-ups take it down and set it up again: antic (rub the neck, look at the path, at the rack, at free ground), the fish come off one by one, the ridge pole lifts and tips, each frame is pulled out of its hole (dust, grass), the Lifter carries the ridge pole on her shoulder and the basket in her hand while the Carrier carries both frames under his arms, round the fire to the new spot; he plants one frame, shuffles along and plants the other, both lift the pole into the forks and drop it in (the frames wobble), the fish go back on, the Lifter steps back with a hand on her hip and nods, the Carrier turns and waves at the old spot (four holes stay). The rack is drawn by RackMoveMesh from RackMovePlan (the same plan the game runs); the people stand where RackMovePlan.Stand says and are posed by RackMoveBeats.Apply. The walk in and out are not in the clip.",
+  "duration": 24.5,
+  "fps": 30,
+  "warmup": 0,
+  "camera": { "view": "default", "focus": [-0.17, 0.42], "span": 1.15 },
+  "sheet": { "from": 0.2, "to": 22.4, "frames": 24, "columns": 6 },
+  "expect": { "reactSeconds": 0.2, "neighbourRadius": 0.3 },
+  "knownGaps": [],
+  "objects": [
+    { "id": "fire", "kind": "fire", "pos": [0.0, 0.0] },
+    { "id": "rack", "kind": "rackmove", "pos": [0.0, 0.0, 0.0], "radius": 0.2,
+      "state": { "kind": 0, "fx": 0.0, "fz": 0.0, "oldAngle": 1.449, "newAngle": 2.349, "cargo": 6, "fresh": 2, "start": 0.0, "seed": 700 } }
+  ],
+  "dolls": [
+    { "id": "lifter", "seed": 701, "role": "rack-keeper", "prop": "FishBasket", "slot": "Hand", "phase": 0,
+      "timeline": [ { "label": "take the rack down, carry it, set it up", "activity": "MoveRack", "atRack": "rack", "role": "Lifter", "pos": [0.0, 0.0], "t": 0.0, "dur": 24.5 } ] },
+    { "id": "carrier", "seed": 702, "role": "carrier", "prop": "None", "slot": "Hand", "phase": 0.5,
+      "timeline": [ { "label": "pull the frames, carry them, plant them", "activity": "MoveRack", "atRack": "rack", "role": "Carrier", "pos": [0.0, 0.0], "t": 0.0, "dur": 24.5 } ] }
+  ]
+}

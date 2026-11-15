@@ -291,6 +291,18 @@ namespace AnimBench
             throw new ClipException($"face/target '{id}' is neither a doll nor an object");
         }
 
+        readonly Dictionary<ObjectSpec, AquariumCiv.Life.RackMovePlan> rackPlans = new Dictionary<ObjectSpec, AquariumCiv.Life.RackMovePlan>();
+
+        /// <summary>#700: the "rackmove" object's plan: state kind (0 fish, 1 hide), fx, fz, oldAngle, newAngle, cargo, fresh, start (clip seconds).</summary>
+        AquariumCiv.Life.RackMovePlan RackPlanOf(ObjectSpec o)
+        {
+            if (rackPlans.TryGetValue(o, out var p)) return p;
+            var st = o.State;
+            p = AquariumCiv.Life.RackMovePlan.Make((AquariumCiv.Life.RackKind)(int)st["kind"], st["fx"], st["fz"], st["oldAngle"], st["newAngle"], (int)st["cargo"], (int)st["fresh"]);
+            rackPlans[o] = p;
+            return p;
+        }
+
         void StepDoll(DollState d, float t, float tc, float dt)
         {
             if (StepPlayDoll(d, t, dt)) return; // #358: a play group drives this doll
@@ -306,6 +318,16 @@ namespace AnimBench
             if (seg.Hunt == HuntPhase.Stalk) stalkNow = HuntStalk.Sample(since, seg.FreezeA, seg.FreezeB);
             var plan = seg.Moves ? Vector2.Lerp(seg.From, seg.To, seg.Hunt == HuntPhase.Stalk ? stalkNow.fraction : progress) : seg.From;   // #362: seven creeping steps
 
+            // #700 (B27): at a rack move: where the plan says the person stands (PeopleView.Drive's rackNow), and what they face
+            AquariumCiv.Life.RackMovePlan rackPlan = null; var rackRole = AquariumCiv.Life.RackRole.Lifter; float rackSince = 0f; Vector2? rackFace = null;
+            if (seg.AtRack != null && ObjectById(seg.AtRack) is ObjectState rackObj)
+            {
+                rackPlan = RackPlanOf(rackObj.Spec);
+                rackRole = string.Equals(seg.Role, "Carrier", StringComparison.OrdinalIgnoreCase) ? AquariumCiv.Life.RackRole.Carrier : AquariumCiv.Life.RackRole.Lifter;
+                rackSince = Mathf.Clamp(tc - rackObj.Spec.State["start"], 0f, rackPlan.total - 0.001f);
+                rackPlan.Stand(rackRole, rackSince, out float rsx, out float rsz, out float rmx, out float rmz, out _);
+                plan = new Vector2(rsx, rsz); rackFace = new Vector2(rmx, rmz);
+            }
             var prev = d.Pos;
             bool jump = !d.Placed || dt <= 0f;
             d.Pos = plan;
@@ -313,7 +335,7 @@ namespace AnimBench
             d.Speed = Mathf.Lerp(d.Speed, inst, dt > 0f ? 1f - Mathf.Exp(-dt * 10f) : 1f);
             d.Placed = true;
             if (d.Speed > Bench.WalkStarts) d.Walking = true; else if (d.Speed < Bench.WalkStops) d.Walking = false;
-            bool walking = d.Walking;
+            bool walking = d.Walking && rackPlan == null; // #700: the carry's legs are part of the beat's pose
 
             var style = seg.Style;
             var kind = seg.Activity ?? ActivityKind.None;
@@ -330,6 +352,7 @@ namespace AnimBench
                 case FaceKind.Angle: faceAngle = seg.Face.Angle; break;
                 case FaceKind.Ref: face = Resolve(seg.Face.Ref); break;
             }
+            if (rackFace.HasValue) face = rackFace;
             float want = d.Yaw;
             if (jump) d.Velocity = Vector2.zero;
             else d.Velocity = Vector2.Lerp(d.Velocity, (d.Pos - prev) / dt, 1f - Mathf.Exp(-dt * Bench.VelocityRate));
@@ -395,6 +418,7 @@ namespace AnimBench
             float actSince = seg.ActT0.HasValue ? Mathf.Max(0f, tc - seg.ActT0.Value) : since; // batch 2: a sliced step runs one clock
             float actProgress = seg.ActT0.HasValue && seg.ActT1.Value > seg.ActT0.Value ? Mathf.Clamp01(actSince / (seg.ActT1.Value - seg.ActT0.Value)) : progress;
             var pose = DollMotion.Evaluate(style, phase, seg.Pace, step, steps, propSlot, holds, d.Speed, actProgress, actSince, seg.Count, d.Stride);
+            if (rackPlan != null) AquariumCiv.View.RackMoveBeats.Apply(ref pose, rackPlan, rackRole, rackSince, d.Stride, holds); // #700 (B27)
             if (style != d.Drew)
             {
                 d.BlendFrom = d.Pose;

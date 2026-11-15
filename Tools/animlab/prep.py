@@ -129,6 +129,7 @@ def make_lab(clip_path, bench_dir, lab_path):
         assert len(f) == n * DOLL_STRIDE
         dolls.append({"id": d["id"], "kid": d["kid"], "camp": d["camp"], "seed": d["seed"], "scale": d["scale"],
                       "f": [r4(v) for v in f], "prop": props})
+    clip_objs = {o.get("id"): o for o in clip.get("objects", [])}
     objects = []
     for o in track["objects"]:
         ch = o["ch"]
@@ -137,8 +138,12 @@ def make_lab(clip_path, bench_dir, lab_path):
             p = ch["pos"][i]
             f += [p[0], p[1], p[2], ch["yaw"][i], ch["visible"][i], ch["phase"][i], ch.get("berries", [0] * n)[i]]
         size = o.get("size", [0, 0])
-        objects.append({"id": o["id"], "kind": o["kind"], "radius": o["radius"], "sx": size[0], "sz": size[1],
-                        "f": [r4(v) for v in f], "act": list(ch["act"])})
+        entry = {"id": o["id"], "kind": o["kind"], "radius": o["radius"], "sx": size[0], "sz": size[1],
+                 "f": [r4(v) for v in f], "act": list(ch["act"])}
+        if o["kind"] == "rackmove":  # #700: the rack move's plan, from the clip's state (AnimLabBuilder draws the rack from it)
+            st = (clip_objs.get(o["id"], {}) or {}).get("state", {}) or {}
+            entry["rack"] = [float(st.get(k, 0)) for k in ("kind", "fx", "fz", "oldAngle", "newAngle", "cargo", "fresh", "start", "seed")]
+        objects.append(entry)
     lab = {
         "format": "animlab/1", "clip": os.path.splitext(os.path.basename(clip_path))[0], "request": os.path.abspath(clip_path),
         "issue": str(head.get("issue", "")), "branch": str(head.get("branch", "")), "commit": str(head.get("commit", "")),

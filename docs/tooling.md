@@ -888,3 +888,8 @@ Killing a `Tools/run-tests.sh` mid-run can leave `unity command test status` rep
 
 ### 2026-11-15 Â· Play tests wrote shots into the main checkout from a worktree
 23 test and agent-tool files had `F:/GameDev/AquariumCiv/Temp/agent/...` hard-coded, so a run in a worktree Editor wrote (and overwrote) shots in the main checkout. They now use `Application.dataPath + "/../Temp/agent/..."` (the running project). New shot code: use `PlayTestBase.Shots` or that expression, never an absolute path.
+
+### 2026-11-15 · #700 rack move beat: a plan object in AnimLab, and two traps
+- **A multi-person beat with moving props is one pure plan.** `Life/RackMove.cs` (`RackMovePlan`: clock, stands, parts) is what the game, AnimBench (`"atRack": "<object id>", "role": "Lifter|Carrier"` on a segment; object `"kind": "rackmove"` with `state` kind/fx/fz/oldAngle/newAngle/cargo/fresh/start) and AnimLab (`LabObject.rack`, `RackMoveMesh.Build` each frame) all run. Clips: `Tools/AnimBench/clips/700-*.json`.
+- **Tent plans from the arrival can still be "running" at 10:00 in a PlayMode test** (a rule that waits on `tentPlans` never started): guard on the kind of thing that needs it (hides only).
+- **`Assert.AreNotEqual` has no float tolerance overload**; use `Assert.Greater(Mathf.Abs(a - b), eps)`.

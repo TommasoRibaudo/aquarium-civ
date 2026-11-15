@@ -46,6 +46,7 @@ namespace AquariumCiv.EditorTools
             public RabbitDoll rabbit;
             public MeshFilter berries;
             public int berryCount = -1;
+            public MeshFilter rackMesh; // #700
         }
 
         sealed class Cell
@@ -370,6 +371,15 @@ namespace AquariumCiv.EditorTools
                         rig.go = MeshObject(s, root, o.id, b.ToMesh("LabRack"), Solid, p0);
                         break;
                     }
+                    case "rackmove":
+                    {
+                        // #700 (B27): the rack as the take-down and set-up beat draws it (RackMoveMesh), rebuilt each frame from the clip's plan
+                        rig.go = new GameObject(o.id);
+                        rig.go.transform.SetParent(root, false);
+                        rig.rackMesh = rig.go.AddComponent<MeshFilter>();
+                        rig.go.AddComponent<MeshRenderer>().sharedMaterial = Solid;
+                        break;
+                    }
                     case "feather":
                     {
                         // #566: the feather pole, as the game draws it (ConsequenceMeshes at its Scale)
@@ -473,6 +483,23 @@ namespace AquariumCiv.EditorTools
                     r.go.transform.localPosition = pos;
                     r.rabbit.Face(yaw, dt, act == RabbitAct.Flee);
                     r.rabbit.Show(act, a[k + 5], time);
+                    continue;
+                }
+                if (r.rackMesh != null && r.data.rack != null && r.data.rack.Length >= 9)
+                {
+                    var rk = r.data.rack;
+                    var rplan = AquariumCiv.Life.RackMovePlan.Make((AquariumCiv.Life.RackKind)(int)rk[0], rk[1], rk[2], rk[3], rk[4], (int)rk[5], (int)rk[6]);
+                    float since = Mathf.Clamp(f * dt - rk[7], 0f, rplan.total);
+                    var rmb = new MeshBuilder(700) { jitter = 0f };
+                    RackMoveMesh.Build(rmb, rplan, rplan.LookAt(since), (gx, gz) => 0f, (int)rk[8]);
+                    if (since >= rplan.tLift + 1.0f)
+                    {
+                        var holeList = new List<(float x, float z)>(); rplan.Holes(holeList);
+                        RackMoveMesh.Holes(rmb, holeList, (gx, gz) => 0f);
+                    }
+                    var oldMesh = r.rackMesh.sharedMesh;
+                    r.rackMesh.sharedMesh = rmb.ToMesh("LabRackMove");
+                    if (oldMesh != null) Object.DestroyImmediate(oldMesh);
                     continue;
                 }
                 if (r.data.kind is "water" or "pond" or "puddle") pos.y = Mathf.Max(pos.y, 0f) + 0.004f; // look-fix: on the flat lab ground, not under it
