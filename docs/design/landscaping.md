@@ -159,3 +159,23 @@ user's call (§7). The tweezers keep weeds and the vine.
 5. The landscaping tool: bush pluck, move the seedling pluck off the tweezers, rail icon (needs the tool's name).
 6. Bushes earned and placed one at a time: ghost, refusal reasons, counter (view + ui, after 3).
 7. Debug panel and the tester pass over all of it.
+
+## 9. Built so far: the sim half (batch 3, branch vs/724-landscaping-sim)
+Sim and tests only; nothing here is seen in the game until the Editor pass wires it. Numbers are [est]; they live in `EcoTuning`.
+
+| Issue | What is in | Where |
+|---|---|---|
+| #726 | Two pouch counters (`seedsPouch`, `bushesPouch`, cap 3 each, saved). One of each per new era and per +5 people over the start at the **peak**. A step that finds a full pouch stays owed. An old save is paid what it owes on its first month, up to the cap. | `EcoModel.Landscape.cs`, `SimCore.Eco.cs` (`SeedsInPouch`, `BushesInPouch`) |
+| #727 | After the Keeper's tree, `PlantTree` spends a pouch seed and makes a normal Seedling on open ground inside the tree bed (not the hollow, yard, fire ring, a thicket, the Keeper's tree or anything the settlement holds). `TreeCellFor` answers for the earned seed once the tree stands, so the ghost needs no new call. | `EcoModel.cs` `Plant`, `SeedCellFor` |
+| #728 | `thickets` is a list (max 12, areas never overlap). The first is the jar's; each pouch bush (`SimCore.PlaceBush`) founds a small one with 3 founders. `ThicketRefusal(cell)` gives the reason a tap is refused. `thicketA/Radius` stay in step with the first; a save without the list reads as one full thicket. Planner, rabbits and the seedling choke read every thicket. | `EcoModel.Thickets.cs`, `EcoModel.Jar.cs`, `Settlement.SyncEco` |
+| #729 | `n` thickets: each holds `floor(22 / sqrt n)` bushes (22, 15, 12, 11, 7 at n = 1, 2, 3, 4, 9; floor 3) and its disc is x `n^-0.25`. One above its target sheds a bush a season, the farthest from its centre that was not picked on the latest view day; the disc closes in behind it. When the crowd thins it opens again and refills. Totals 22, 30, 36, 44 ... 63 (n = 9), 72 (n = 12); rounding down makes n = 10 (60) a few under n = 9 (63). | `EcoModel.Thickets.cs` |
+| #730 phase 1 | `SimCore.EcoLandscapePluck / EcoNearestLandscape / EcoLandscapeKind` take seedlings, young trees (not a wood's heart, as before), bushes, and grown trees only when `landscapePluckGrown` is on (**off**). Never the Keeper's tree. A plucked thicket bush lowers that thicket's target by one and does not grow back; its last bush takes the thicket with it. The tweezers keep weeds, tufts and vine. One history line a month. | `EcoModel.Pluck.cs`, `CareView.PluckAt` |
+
+**Pacing (lab, `LandscapeOptionsLab.EarnedSeeds_VillageYear`, Active Keeper, seeds 7 / 21 / 42):** at the earned pace the pouch pays **nothing before year 45**: the lab camp peaks at 8 people (4-5 buildings, still the camp era), and the first step is 10 people, which is the village era's own threshold. So the village year is unchanged (23.3 / 23.5 / 23.3) and the seeds only matter after the village stands. A what-if, one seed at years 4, 8 and 12, brings the 10-tree gate from 23.3 / 23.5 / 23.3 to 18.3 / 18.3 / 15.8 and leaves the village at 23.0 (the fish gate, as in section 4).
+
+**Calls made, for the user to confirm:** the earning steps; the pouch cap; the crowding exponents and the cap of 12; a plucked bush lowers its thicket's target (the other option was a short memory of the cleared cell and regrowth); the wood's heart still protects young trees from the tool; one history line a month.
+
+**Still open (the user):** the tool's name; whether it plucks grown trees (the flag stays off); whether the pouch should pay earlier than the 10-people step (see the pacing note).
+
+**The Editor pass must wire:** the life row's seed and bush counts (`SimCore.SeedsInPouch`, `BushesInPouch`); the seed's ghost and tap reading `CanPlantAnySeed` instead of `CanPlantTree` (`GameHud` `seed =`, `SeedPlaceView`); the bush in hand (glow from `LifeGround(Thicket)`, refusal text from `ThicketRefusal`, `PlaceBush`) (#731); the tool in the rail (`KitPlace`, `GameHud`: hover ghost from `EcoNearestLandscape`, the pop through `props.PopSapling`, `CareView.SaplingReach`, `EcoLandscapePluck`); a mesh rebuild after a bush or tree pluck; `TweezersPlayTests` and `Feedback2Playthrough` now expect the tweezers to leave a sapling.
+
