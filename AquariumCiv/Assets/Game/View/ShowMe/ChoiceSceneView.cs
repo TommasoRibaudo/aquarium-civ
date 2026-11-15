@@ -685,6 +685,7 @@ namespace AquariumCiv.View
             }
             if (on == boxBarUp) return;
             boxBarUp = on;
+            GameHud.Instance?.SetBarClear(on ? GameUiPanel.ToastOverStrip : 0f); // #563: a toast rides above the bar, never under it
             boxBar.pickingMode = on ? PickingMode.Position : PickingMode.Ignore;
             GameHud.Instance?.HideTools(ToolBlock, on);
             GameHud.Instance?.TakeToolsLane(ToolBlock, on);
