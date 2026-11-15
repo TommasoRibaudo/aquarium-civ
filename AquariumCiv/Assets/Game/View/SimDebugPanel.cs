@@ -160,6 +160,13 @@ namespace AquariumCiv.View
                 if (GUILayout.Toggle(tl.Clock.SpeedIndex == i, ReplayClock.Speeds[i] + "x", GUI.skin.button)) tl.SetSpeed(i); // steps scale with a short history (#670)
             GUILayout.EndHorizontal();
             if (GUILayout.Button("Back to now")) last = TimeLapseView.DebugClose();
+            // #669: the replay draws only what stood then (rack, pile, hide frame, props, camps, relics by their month)
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Year 1")) last = TimeLapseView.DebugSeek(0f);
+            if (GUILayout.Button("Year 2")) last = TimeLapseView.DebugSeek(Mathf.Min(1f, end));
+            if (GUILayout.Button("Now")) last = TimeLapseView.DebugSeek(end);
+            GUILayout.EndHorizontal();
+            GUILayout.Label("replay gate: month " + ReplayGate.Month + (ReplayGate.AtPresent ? " (now)" : ""));
         }
 
         void FirstRunGui()

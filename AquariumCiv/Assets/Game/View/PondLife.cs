@@ -177,6 +177,7 @@ namespace AquariumCiv.View
             if (away) wantD = 0;
             if (Time.unscaledTime < forceDucksUntil) wantD = MaxDucks;
             if (Time.unscaledTime < HoldDucksUntil) wantD = 0;
+            if (!ReplayGate.Shows(-1)) wantD = 0; // #669: no record keeps how many ducks swam by year, so a replay shows none (only the box as it is now)
             WantedFrogs = wantF; WantedDucks = wantD;
 
             if (iced) { foreach (var p in pads) if (p != null) p.gameObject.SetActive(false); PadsShown = 0; } else UpdatePads(eco);

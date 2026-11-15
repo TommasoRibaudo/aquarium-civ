@@ -90,7 +90,8 @@ namespace AquariumCiv.View
 
             // Sky Crumb: the big lump where it fell, eaten away; the last piece by the fire.
             var crumb = sim.FindRelic(RelicId.SkyCrumb);
-            if (crumb != null && crumb.Found && pos.TryGetPosition(LifePlanner.RelicPlace(RelicId.SkyCrumb), out float cx, out float cz))
+            if (!InReplay(RelicId.SkyCrumb, crumb) && crumbPiece != null) crumbPiece.gameObject.SetActive(false); // #669
+            if (crumb != null && crumb.Found && InReplay(RelicId.SkyCrumb, crumb) && pos.TryGetPosition(LifePlanner.RelicPlace(RelicId.SkyCrumb), out float cx, out float cz))
             {
                 float left = CrumbFall.Left(crumb.foundMonth, sim.State.month);
                 var big = Ensure(RelicId.SkyCrumb, BuildCrumb);
@@ -115,7 +116,7 @@ namespace AquariumCiv.View
             }
 
             // Keeper Doll: on its post, facing the glass.
-            if (sim.HasRelic(RelicId.KeeperDoll) && pos.TryGetPosition(LifePlanner.RelicPlace(RelicId.KeeperDoll), out float dx, out float dz))
+            if (sim.HasRelic(RelicId.KeeperDoll) && InReplay(RelicId.KeeperDoll, sim.FindRelic(RelicId.KeeperDoll)) && pos.TryGetPosition(LifePlanner.RelicPlace(RelicId.KeeperDoll), out float dx, out float dz))
             {
                 var doll = Ensure(RelicId.KeeperDoll, BuildDollPost);
                 var n = PeopleView.GlassNormal(planner.GlassSide);
@@ -125,7 +126,7 @@ namespace AquariumCiv.View
             }
 
             // Lens: on its tripod, slowly following the camera.
-            if (sim.HasRelic(RelicId.Lens) && pos.TryGetPosition(LifePlanner.RelicPlace(RelicId.Lens), out float lx, out float lz))
+            if (sim.HasRelic(RelicId.Lens) && InReplay(RelicId.Lens, sim.FindRelic(RelicId.Lens)) && pos.TryGetPosition(LifePlanner.RelicPlace(RelicId.Lens), out float lx, out float lz))
             {
                 var lens = Ensure(RelicId.Lens, BuildLens);
                 lens.localPosition = box.land.OnGround(lx + 0.12f, lz);
@@ -142,7 +143,7 @@ namespace AquariumCiv.View
 
             // Left Sandal: an heir set it on the remembering stone.
             var sandal = sim.FindRelic(RelicId.LeftSandal);
-            bool onStone = sandal != null && sandal.Found && sandal.holderId != sandal.ownerId;
+            bool onStone = sandal != null && sandal.Found && sandal.holderId != sandal.ownerId && InReplay(RelicId.LeftSandal, sandal);
             if (onStone)
             {
                 bool church = sim.State.buildings.Exists(b => b.type == BuildingType.Church);
@@ -255,9 +256,17 @@ namespace AquariumCiv.View
             return mesh;
         }
 
+        /// <summary>#669: a relic stands in the box only from the month it was found, in a replay. Hides the part it had if it is too early.</summary>
+        bool InReplay(string id, Relic r)
+        {
+            bool ok = r == null || ReplayGate.Shows(r.foundMonth);
+            if (!ok && made.TryGetValue(id, out var part) && part != null && part.gameObject.activeSelf) part.gameObject.SetActive(false);
+            return ok;
+        }
+
         Transform Ensure(string id, System.Action<MeshBuilder> build)
         {
-            if (made.TryGetValue(id, out var t) && t != null) return t;
+            if (made.TryGetValue(id, out var t) && t != null) { if (!t.gameObject.activeSelf) t.gameObject.SetActive(true); return t; }
             t = Part("Relic_" + id, build);
             made[id] = t;
             return t;
