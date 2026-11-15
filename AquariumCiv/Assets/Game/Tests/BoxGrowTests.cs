@@ -190,6 +190,22 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(BoxGrid.Grow(sim.State, () => sim.EcoGround, sim.Config.eco));
         }
 
+        /// <summary>Unity's JsonUtility loads an absent array as an empty one, not null: an empty seen mask, layer or settle array is
+        /// "not recorded" and stays empty, or a save with no seen mask comes back from a load with one (all zeros).</summary>
+        [Test]
+        public void EmptyArrays_AreNotRecorded_AndStayEmpty()
+        {
+            var sim = new SimCore(Cfg(), SimCore.NewWorld(5, Cfg()));
+            var e = sim.State.eco;
+            e.seen = Array.Empty<byte>(); e.puddle = new float[0];
+            sim.State.settle.pathMonth = new int[0];
+            Assert.IsFalse(BoxGrid.Grow(sim.State, () => sim.EcoGround, sim.Config.eco), "nothing to grow");
+            Assert.AreEqual(0, e.seen.Length, "no seen mask stays no seen mask");
+            Assert.IsFalse(EcoSeen.HasMask(e));
+            Assert.AreEqual(0, e.puddle.Length);
+            Assert.AreEqual(0, sim.State.settle.pathMonth.Length);
+        }
+
         [Test]
         public void ABoxWithoutTheEcology_AndAnEmptyState_AreLeftAlone()
         {
