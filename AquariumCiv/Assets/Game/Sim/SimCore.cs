@@ -17,6 +17,8 @@ namespace AquariumCiv.Sim
         public SimCore(SimConfig config, SimState state)
         {
             Config = config; State = state;
+            // #658: a box saved before the deeper box grows its 16 back rows here, before Settlement or EcoModel read a cell (Sim/BoxGrid.cs).
+            BoxGrid.Grow(state, () => AquariumCiv.Sim.Eco.EcoLand.For(TerrainPreset), config.eco);
             SeasonCalendar.Shift = state.seasonShift; // #603: the seasons of the box in play
             // A save from before placement (#32): every building gets a lot now, once (Sim/Settle migrates from slots).
             if (config.settle && state.settle != null && state.settle.version == 0 && state.buildings.Count > 0) _ = Settlement;

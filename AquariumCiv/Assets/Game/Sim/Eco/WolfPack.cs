@@ -71,7 +71,7 @@ namespace AquariumCiv.Sim.Eco
             return false;
         }
 
-        public static bool OnLand(float x, float z) => MathF.Abs(x) <= Terrain.HX - GlassMargin && MathF.Abs(z) <= Terrain.HZ - GlassMargin;
+        public static bool OnLand(float x, float z) => MathF.Abs(x) <= Terrain.HX - GlassMargin && Terrain.InZ(z, GlassMargin);
 
         /// <summary>The wolf may stand here: on the land, outside the tent ring, at least <paramref name="minFire"/> (never less than the
         /// firelight's edge) from the fire, and at least <see cref="PersonGap"/> from every person.</summary>

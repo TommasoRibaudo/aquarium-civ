@@ -4,15 +4,15 @@ using System.Collections.Generic;
 namespace AquariumCiv.Sim.Settle
 {
     /// <summary>
-    /// The 0.1-unit site grid (60 × 44 cells) of research 08 §3.2. Static land layers (height, slope, pond, base
+    /// The 0.1-unit site grid (60 × 60 cells since the deeper box, #658; it was 60 × 44, and the 16 new rows are at the back) of research 08 §3.2. Static land layers (height, slope, pond, base
     /// fertility, water distance) are derived from the terrain; the live layers are the saved arrays of
     /// <see cref="SettleState"/>, shared by reference, so placement writes straight into the save.
     /// Ported from Growth Lab's SiteMap; the spike's bool layers are packed into <see cref="SettleState.flags"/>.
     /// </summary>
     public sealed class SiteMap
     {
-        public const int NX = 60, NZ = 44, N = NX * NZ;
-        public const float Cell = 0.1f, X0 = -Terrain.HX, Z0 = -Terrain.HZ;
+        public const int NX = 60, NZ = 60, N = NX * NZ;
+        public const float Cell = 0.1f, X0 = -Terrain.HX, Z0 = Terrain.ZMin;
         public const float GreenR = 0.42f;
 
         // SettleState.flags bits

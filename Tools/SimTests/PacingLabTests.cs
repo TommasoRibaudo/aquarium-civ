@@ -174,7 +174,7 @@ namespace AquariumCiv.Tests
                     for (int a = -1; a < 6; a++)
                     {
                         float x = SiteMap.CXc(t) + (a < 0 ? 0f : MathF.Cos(a * MathF.PI / 3f) * 0.5f), z = SiteMap.CZc(t) + (a < 0 ? 0f : MathF.Sin(a * MathF.PI / 3f) * 0.5f);
-                        if (MathF.Abs(x) > Terrain.HX - 0.2f || MathF.Abs(z) > Terrain.HZ - 0.2f) continue;
+                        if (MathF.Abs(x) > Terrain.HX - 0.2f || !Terrain.InZ(z, 0.2f)) continue;
                         int n = 0;
                         for (int c = 0; c < SiteMap.N; c++)
                         {
@@ -205,7 +205,7 @@ namespace AquariumCiv.Tests
                     float a = Terrain.Hash3(e.seed * 31 + 101, e.season * 16 + k, tries) * MathF.PI * 2f;
                     float rr = MathF.Sqrt(Terrain.Hash3(e.seed * 31 + 102, e.season * 16 + k, tries)) * reach;
                     float x = land.campX + MathF.Cos(a) * rr, z = land.campZ + MathF.Sin(a) * rr;
-                    if (MathF.Abs(x) > Terrain.HX - 0.2f || MathF.Abs(z) > Terrain.HZ - 0.2f) continue;
+                    if (MathF.Abs(x) > Terrain.HX - 0.2f || !Terrain.InZ(z, 0.2f)) continue;
                     int c = SiteMap.CellAt(x, z);
                     if (c < 0 || (EcoCover)e.cover[c] == EcoCover.Water) continue;
                     float score = e.moisture[c] + ((EcoCover)e.cover[c] == EcoCover.Bare ? 0f : 0.3f);

@@ -17,7 +17,7 @@ namespace AquariumCiv.Game
     /// </summary>
     public static class SaveStore
     {
-        public const int CurrentVersion = 3;
+        public const int CurrentVersion = 4;
         public const double MaxAwayHours = 30 * 24;
 
         [Serializable]
@@ -38,6 +38,9 @@ namespace AquariumCiv.Game
             e => { }, // 1 → 2 (#32, placement): the new state.settle reads as unsettled (version 0); the sim gives every
                       // building a lot from its old slot order once, when the SimCore is made (Sim/Settle, Settlement.Found)
             e => e.shelf = ShelfState.Single(e.state), // 2 → 3 (#87, the shelf): today's single box becomes a shelf of one
+            e => { }, // 3 → 4 (#658, the deeper box): the land is 60 x 60. The envelope needs no change: every box's per-cell arrays are
+                      // padded with the new back rows when its SimCore is made (Sim/BoxGrid.cs). The version only makes an older build, which
+                      // would read 3600 cells as 2640, refuse the save instead of mangling it (TooNew).
         };
 
         public static void Write(string path, SimState state, DateTime nowUtc, ShelfState shelf = null)

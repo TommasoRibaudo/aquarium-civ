@@ -147,7 +147,7 @@ namespace AquariumCiv.Sim
             var map = Settlement?.Map;
             if (map == null)
             {
-                g.x = -Terrain.HX * 0.75f; g.z = g.kind == ApartKind.ShoreHut ? -Terrain.HZ * 0.7f : Terrain.HZ * 0.7f;
+                g.x = -Terrain.HX * 0.75f; g.z = Terrain.CZ + (g.kind == ApartKind.ShoreHut ? -Terrain.HZ * 0.7f : Terrain.HZ * 0.7f);
                 return;
             }
             const byte block = SiteMap.FCanal | SiteMap.FGreen | SiteMap.FCommons | SiteMap.FYard | SiteMap.FRock;
@@ -185,7 +185,7 @@ namespace AquariumCiv.Sim
                     }
                     if (score > bestScore) { bestScore = score; best = c; }
                 }
-            if (best < 0) { g.x = -Terrain.HX * 0.75f; g.z = Terrain.HZ * 0.7f; return; }
+            if (best < 0) { g.x = -Terrain.HX * 0.75f; g.z = Terrain.CZ + Terrain.HZ * 0.7f; return; }
             g.cell = best;
             g.x = SiteMap.CXc(best);
             g.z = SiteMap.CZc(best);

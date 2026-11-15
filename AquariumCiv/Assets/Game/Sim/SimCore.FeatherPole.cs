@@ -109,7 +109,7 @@ namespace AquariumCiv.Sim
         static (float x, float z) Fixed(float fx, float fz, int seed)
         {
             float a0 = Terrain.Hash3(seed, 566, 1) * (float)Math.PI * 2f;
-            return (Terrain.Clamp(fx + (float)Math.Cos(a0) * MinTarget, -2.2f, 2.2f), Terrain.Clamp(fz + (float)Math.Sin(a0) * MinTarget, -1.4f, 1.4f));
+            return (Terrain.Clamp(fx + (float)Math.Cos(a0) * MinTarget, -2.2f, 2.2f), Terrain.ClampZ(fz + (float)Math.Sin(a0) * MinTarget, 0.8f));
         }
 
         /// <summary>The pole's spot. With no map (settling off) a fixed point out from the fire.</summary>
@@ -128,7 +128,7 @@ namespace AquariumCiv.Sim
                 for (int c = 0; c < SiteMap.N; c++)
                 {
                     float x = SiteMap.CXc(c), z = SiteMap.CZc(c);
-                    if (Math.Abs(x) > Terrain.HX - ApartSpots.GlassMargin || Math.Abs(z) > Terrain.HZ - ApartSpots.GlassMargin) continue;
+                    if (Math.Abs(x) > Terrain.HX - ApartSpots.GlassMargin || !Terrain.InZ(z, ApartSpots.GlassMargin)) continue;
                     float d = Terrain.Dist(x, z, fx, fz);
                     if (d < MinFire) continue;
                     if (!FreeAround(map, x, z, pass == 0 ? Room : Room * 0.6f, avoid, pass < 2)) continue;
