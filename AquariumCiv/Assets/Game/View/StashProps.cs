@@ -158,6 +158,7 @@ namespace AquariumCiv.View
             // #656/#677: a new box's stock shows from the moment the founders set the basket and the bundle down (the arrival)
             var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
             if (on && sim != null && !sim.StockSetDown) on = false;
+            if (on && sim != null) { if (ReplayGate.Active) on = ReplayGate.Shows(sim.ThingSince("stash")); else sim.NoteThing("stash"); } // #669: the pile stands from the month it was first seen
             if (root != null && root.gameObject.activeSelf != on) root.gameObject.SetActive(on);
             if (!on) return;
             if (root == null) Build();

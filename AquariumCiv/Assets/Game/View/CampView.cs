@@ -294,6 +294,7 @@ namespace AquariumCiv.View
             int n = planner.HideFramePoints(now, points);
             bool wanted = n > 0 || sim.HidesTotal > 0 || active.Count > 0 || pending.Count > 0;
             if (!wanted || !planner.HideFrame(out float cx, out float cz, out float dx, out float dz)) { HideFrame(); return; }
+            if (!ReplayGate.Shows(sim.ThingSince("frame"))) { HideFrame(); return; } // #669: not built yet in the replayed month
             int key = 17;
             key = key * 31 + n;
             key = key * 31 + Mathf.RoundToInt(cx * 200f);
@@ -306,6 +307,7 @@ namespace AquariumCiv.View
                 frameKey = key;
             }
             frame.SetActive(true);
+            if (!ReplayGate.Active) sim.NoteThing("frame"); // #669
             HidesShown = points.Count;
         }
 

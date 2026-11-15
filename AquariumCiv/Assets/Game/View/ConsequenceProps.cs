@@ -365,6 +365,11 @@ namespace AquariumCiv.View
             foreach (var p in list)
             {
                 if (!p.placed) continue;
+                if (!ReplayGate.Shows(p.placedMonth)) // #669: a replay shows it from the month it was placed
+                {
+                    if (made.TryGetValue(p.id, out var early) && early.t != null && early.t.gameObject.activeSelf) early.t.gameObject.SetActive(false);
+                    continue;
+                }
                 if (p.kind == ConsequenceKind.Feather && p != pole)
                 {
                     if (made.TryGetValue(p.id, out var gone)) { Kill(gone.mesh); if (gone.t != null) Kill(gone.t.gameObject); made.Remove(p.id); }
