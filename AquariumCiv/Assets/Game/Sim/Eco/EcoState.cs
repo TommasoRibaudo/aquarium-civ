@@ -84,6 +84,8 @@ namespace AquariumCiv.Sim.Eco
         /// already paid out to each counter, <see cref="peakPeople"/> the most people the box ever had. A save from before has all zero:
         /// the first month pays what the civ's size owes, up to the cap.</summary>
         public int seedsPouch, bushesPouch, seedSteps, bushSteps, peakPeople;
+        /// <summary>#730: the game month the history last said a corner was cleared (-1 never): one line a month, however many plants come out.</summary>
+        public long clearedLineMonth = -1;
 
         /// <summary>#417 the life jar (placed-life spec §2, §9): one entry per <see cref="LifeSpecies"/>, keyed by name so adding a
         /// species never breaks a save. <see cref="jarOn"/> is false in a save from before the jar: the model migrates it once
@@ -184,6 +186,9 @@ namespace AquariumCiv.Sim.Eco
         public int cell = -1;
         /// <summary>Its disc radius now (box units). #729 lets it shrink as the box holds more thickets.</summary>
         public float radius;
+        /// <summary>#730: bushes the Keeper plucked out of this thicket: its target is lower by this many (a plucked bush does not grow back; the
+        /// pluck means "make room"). [est: the other choice was a short memory of the cleared cell, then regrowth.]</summary>
+        public int trim;
     }
 
     /// <summary>#437: what became of a wolf kill: the ravens circle it (Open), the wolves ate it, or the people took the meat (choice 6.3).</summary>

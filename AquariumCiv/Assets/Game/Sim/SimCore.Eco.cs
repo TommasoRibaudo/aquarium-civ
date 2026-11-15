@@ -222,21 +222,55 @@ namespace AquariumCiv.Sim
             return true;
         }
 
-        /// <summary>Plucks the wild sapling nearest a point (within <paramref name="radius"/> box units); never the Keeper's tree, a grown tree or the heart of a wood. The cell, or -1.</summary>
-        public int EcoPluckSapling(float x, float z, float radius)
+        // ---------- the landscaping tool (#730 phase 1; EcoModel.Pluck.cs). The tweezers no longer take saplings. ----------
+        /// <summary>The landscaping tool's name is the user's to give (open question in #724): until then the sim and the debug panel call it this. [est]</summary>
+        public const string LandscapeToolName = "the landscaping tool";
+
+        /// <summary>The cell the landscaping tool would take nearest a point (within <paramref name="radius"/> box units): a wild seedling or young tree, a bush,
+        /// or, with <see cref="EcoTuning.landscapePluckGrown"/> on, a grown forest tree. Never the Keeper's tree. -1 if none. Plucks nothing (the hover ghost).</summary>
+        public int EcoNearestLandscape(float x, float z, float radius) => EcologyOn ? EcoM.NearestPluckable(x, z, radius) : -1;
+
+        /// <summary>What the landscaping tool would take on this cell (None: nothing, or the Keeper's tree).</summary>
+        public PluckKind EcoLandscapeKind(int cell) => EcologyOn ? EcoM.PluckKindAt(cell) : PluckKind.None;
+
+        /// <summary>The landscaping tool could take what stands on this cell.</summary>
+        public bool EcoCanLandscape(int cell) => EcoLandscapeKind(cell) != PluckKind.None;
+
+        /// <summary>Grown forest trees can be plucked too (a tuning flag, off until the user decides).</summary>
+        public bool EcoLandscapeTakesGrownTrees => EcologyOn && EcoM.PluckGrownTrees;
+
+        /// <summary>The landscaping tool takes what is nearest a point (within <paramref name="radius"/>). The cell, or -1. The people nearby react as to a prune
+        /// (the view asks them); the history gets one line a month.</summary>
+        public int EcoLandscapePluck(float x, float z, float radius) => EcoLandscapePluck(x, z, radius, out _);
+
+        /// <summary>As above, and says what it took.</summary>
+        public int EcoLandscapePluck(float x, float z, float radius, out PluckKind kind)
         {
+            kind = PluckKind.None;
             if (!EcologyOn) return -1;
-            int c = EcoM.NearestSapling(x, z, radius);
-            if (c < 0 || !EcoM.PluckSapling(c)) return -1;
+            int c = EcoM.NearestPluckable(x, z, radius);
+            if (c < 0) return -1;
+            kind = EcoM.Pluck(c);
+            if (kind == PluckKind.None) return -1;
             CountKeeperAction(KeeperAction.Prune, true);
+            if (kind != PluckKind.Sapling && Config.settle) Settlement.SyncEco(); // a thicket that lost its last bush gives its ground back to the planner
+            if (State.eco.clearedLineMonth != State.month)
+            {
+                State.eco.clearedLineMonth = State.month;
+                Chronicle("eco_cleared", "A corner of the grass was cleared. Something lifted the plants out of the ground, and the people made room.", 0.4f);
+            }
             return c;
         }
 
-        /// <summary>The wild sapling the tweezers could take nearest a point (within <paramref name="radius"/>), without plucking it; -1 if none.</summary>
-        public int EcoNearestSapling(float x, float z, float radius) => EcologyOn ? EcoM.NearestSapling(x, z, radius) : -1;
-
-        /// <summary>A wild sapling the tweezers could take stands on this cell.</summary>
-        public bool EcoCanPluckSapling(int cell) => EcologyOn && EcoM.CanPluckSapling(cell);
+        /// <summary>Debug ("pluck all in an area"): everything the landscaping tool could take within <paramref name="radius"/> of a point comes out now
+        /// (the Keeper's tree stays). (saplings, bushes, trees) taken.</summary>
+        public (int saplings, int bushes, int trees) DebugLandscapeArea(float x, float z, float radius)
+        {
+            if (!EcologyOn) return (0, 0, 0);
+            var r = EcoM.DebugPluckArea(x, z, radius);
+            if (r.saplings + r.bushes + r.trees > 0 && Config.settle) Settlement.SyncEco();
+            return r;
+        }
 
         /// <summary>Plucks the vine on a cell.</summary>
         public bool EcoPluckVine(int cell)

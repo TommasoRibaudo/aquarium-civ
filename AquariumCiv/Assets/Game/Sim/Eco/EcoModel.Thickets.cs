@@ -18,7 +18,17 @@ namespace AquariumCiv.Sim.Eco
     {
         /// <summary>How many bushes one thicket holds when it is full (the count settles here): <see cref="ThicketTarget"/> for each
         /// thicket, so the box's total. Before any thicket is placed it is the one-thicket figure.</summary>
-        public int BushCap => Math.Max(1, ThicketTarget() * Math.Max(1, Ts.Count));
+        public int BushCap
+        {
+            get
+            {
+                var ts = Ts;
+                if (ts.Count == 0) return Math.Max(1, ThicketTarget());
+                int sum = 0;
+                foreach (var th in ts) sum += ThicketTargetOf(th);
+                return Math.Max(1, sum);
+            }
+        }
 
         /// <summary>The thickets, as the save keeps them. An older save has only <see cref="EcoState.thicketA"/> / <see cref="EcoState.thicketRadius"/>:
         /// it is read as one thicket here (v1 loads as one full thicket). Those two fields stay in step with the first thicket.</summary>
@@ -56,6 +66,9 @@ namespace AquariumCiv.Sim.Eco
             return Math.Max(floor, (int)MathF.Floor(full / MathF.Pow(n, t.thicketCrowdExp) + 1e-3f));
         }
 
+        /// <summary>One thicket's own target: the crowd's <see cref="ThicketTarget"/> less the bushes the Keeper plucked from it (#730), at least 1.</summary>
+        public int ThicketTargetOf(Thicket th) => Math.Max(1, ThicketTarget() - Math.Max(0, th.trim));
+
         /// <summary>The disc radius a thicket has with <paramref name="n"/> thickets standing: the full radius x n^-<see cref="EcoTuning.thicketRadiusExp"/>.</summary>
         public float ThicketRadiusFor(int n) => t.thicketRadius * MathF.Pow(Math.Max(1, n), -t.thicketRadiusExp);
 
@@ -90,12 +103,11 @@ namespace AquariumCiv.Sim.Eco
             thinKeep = 0;
             if (ts.Count == 0) return;
             thinKeep = BushesInThicket();
-            int target = ThicketTarget();
             float rTarget = ThicketRadiusFor(ts.Count);
             for (int i = 0; i < ts.Count; i++)
             {
                 var th = ts[i];
-                int bushes = BushesIn(th);
+                int target = ThicketTargetOf(th), bushes = BushesIn(th);
                 for (int k = 0; k < t.thicketShrinkPerSeason && bushes > target; k++)
                     if (ShedThicketBush(th)) bushes--; else break;
                 EaseRadius(th, rTarget);

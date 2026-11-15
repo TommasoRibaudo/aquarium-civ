@@ -160,6 +160,8 @@ namespace AquariumCiv.Sim.Eco
         public int landscapePouchCap = 3, landscapeStartPeople = 5, landscapePeopleStep = 5;
         public int thicketMax = 12, thicketShrinkPerSeason = 1;
         public float thicketCrowdExp = 0.5f, thicketRadiusExp = 0.25f;
+        /// <summary>#730: the landscaping tool may also pluck a grown forest tree (never the Keeper's). OFF until the user decides (open question in #724).</summary>
+        public bool landscapePluckGrown = false;
         public float thicketWatered = 0.6f; // #605: a watered thicket (mean water w at its bushes) adds a second bush in a season with chance thicketWatered * w, never past the cap
 
         // Gates

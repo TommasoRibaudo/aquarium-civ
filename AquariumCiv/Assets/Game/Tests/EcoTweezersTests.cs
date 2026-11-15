@@ -7,7 +7,8 @@ using NUnit.Framework;
 
 namespace AquariumCiv.Tests
 {
-    /// <summary>#311 / #314: what the tweezers take (weeds round the tree, the forest edge) and the creeping vine. Pure sim.</summary>
+    /// <summary>#311 / #314: what the tweezers take (weeds round the tree) and the creeping vine, and the forest edge's saplings. #730: the saplings
+    /// are the landscaping tool's now (EcoLandscapePluck; PluckToolTests has the rest of it); the tweezers keep the weeds and the vine. Pure sim.</summary>
     public class EcoTweezersTests
     {
         static SimCore World(int seed = 7)
@@ -48,10 +49,10 @@ namespace AquariumCiv.Tests
             int c = OpenCell(sim);
             Set(sim, c, EcoCover.Seedling);
             sim.State.eco.moisture[c] = 0.5f;
-            Assert.IsTrue(sim.EcoCanPluckSapling(c));
-            Assert.AreEqual(c, sim.EcoPluckSapling(X(c), Z(c), 0.15f));
+            Assert.IsTrue(sim.EcoCanLandscape(c));
+            Assert.AreEqual(c, sim.EcoLandscapePluck(X(c), Z(c), 0.15f));
             Assert.AreEqual((byte)EcoCover.Grass, sim.State.eco.cover[c]);
-            Assert.AreEqual(-1, sim.EcoPluckSapling(X(c), Z(c), 0.15f), "nothing left to pluck");
+            Assert.AreEqual(-1, sim.EcoLandscapePluck(X(c), Z(c), 0.15f), "nothing left to pluck");
         }
 
         [Test]
@@ -61,7 +62,7 @@ namespace AquariumCiv.Tests
             int c = OpenCell(sim);
             Set(sim, c, EcoCover.Young);
             sim.State.eco.moisture[c] = 0f;
-            Assert.AreEqual(c, sim.EcoPluckSapling(X(c), Z(c), 0.15f));
+            Assert.AreEqual(c, sim.EcoLandscapePluck(X(c), Z(c), 0.15f));
             Assert.AreEqual((byte)EcoCover.Bare, sim.State.eco.cover[c]);
         }
 
@@ -72,10 +73,10 @@ namespace AquariumCiv.Tests
             int c = OpenCell(sim);
             sim.State.eco.treeCell = c;
             Set(sim, c, EcoCover.Seedling);
-            Assert.IsFalse(sim.EcoCanPluckSapling(c));
-            Assert.AreEqual(-1, sim.EcoPluckSapling(X(c), Z(c), 0.3f));
+            Assert.IsFalse(sim.EcoCanLandscape(c));
+            Assert.AreEqual(-1, sim.EcoLandscapePluck(X(c), Z(c), 0.3f));
             Set(sim, c, EcoCover.Young);
-            Assert.AreEqual(-1, sim.EcoPluckSapling(X(c), Z(c), 0.3f));
+            Assert.AreEqual(-1, sim.EcoLandscapePluck(X(c), Z(c), 0.3f));
             Assert.AreEqual((byte)EcoCover.Young, sim.State.eco.cover[c], "still standing");
         }
 
@@ -86,16 +87,16 @@ namespace AquariumCiv.Tests
             int c = OpenCell(sim);
             int i = SiteMap.I(c), j = SiteMap.J(c);
             Set(sim, c, EcoCover.Tree);
-            Assert.AreEqual(-1, sim.EcoPluckSapling(X(c), Z(c), 0.15f), "a grown tree stays");
+            Assert.AreEqual(-1, sim.EcoLandscapePluck(X(c), Z(c), 0.15f), "a grown tree stays");
             // a sapling at the wood's edge (two grown trees by it) comes out; inside the wood (three) it stays
             int s = SiteMap.Index(i + 2, j);
             Set(sim, s, EcoCover.Young);
             Set(sim, SiteMap.Index(i + 3, j), EcoCover.Tree);
             Set(sim, SiteMap.Index(i + 1, j), EcoCover.Tree);
-            Assert.IsTrue(sim.EcoCanPluckSapling(s), "two grown neighbours: the forest's edge");
+            Assert.IsTrue(sim.EcoCanLandscape(s), "two grown neighbours: the forest's edge");
             Set(sim, SiteMap.Index(i + 2, j + 1), EcoCover.Tree);
-            Assert.IsFalse(sim.EcoCanPluckSapling(s), "three grown neighbours: the heart");
-            Assert.AreEqual(-1, sim.EcoPluckSapling(X(s), Z(s), 0.15f));
+            Assert.IsFalse(sim.EcoCanLandscape(s), "three grown neighbours: the heart");
+            Assert.AreEqual(-1, sim.EcoLandscapePluck(X(s), Z(s), 0.15f));
             Assert.AreEqual((byte)EcoCover.Young, sim.State.eco.cover[s]);
         }
 
@@ -106,8 +107,8 @@ namespace AquariumCiv.Tests
             int c = OpenCell(sim);
             int far = SiteMap.Index(SiteMap.I(c) + 3, SiteMap.J(c));
             Set(sim, c, EcoCover.Seedling); Set(sim, far, EcoCover.Seedling);
-            Assert.AreEqual(-1, sim.EcoPluckSapling(X(c), Z(c) + 0.5f, 0.1f), "out of reach");
-            Assert.AreEqual(far, sim.EcoPluckSapling(X(far) - 0.02f, Z(far), 0.2f), "the one nearest the finger");
+            Assert.AreEqual(-1, sim.EcoLandscapePluck(X(c), Z(c) + 0.5f, 0.1f), "out of reach");
+            Assert.AreEqual(far, sim.EcoLandscapePluck(X(far) - 0.02f, Z(far), 0.2f), "the one nearest the finger");
         }
 
         [Test]
@@ -119,8 +120,8 @@ namespace AquariumCiv.Tests
             Assert.Greater(n, 0);
             var e = sim.State.eco;
             var cells = Enumerable.Range(0, EcoLand.N).Where(c => e.cover[c] == (byte)EcoCover.Seedling && c != e.treeCell).ToList();
-            Assert.AreEqual(n, cells.Count(c => sim.EcoCanPluckSapling(c)));
-            foreach (var c in cells.ToList()) Assert.AreEqual(c, sim.EcoPluckSapling(X(c), Z(c), 0.05f));
+            Assert.AreEqual(n, cells.Count(c => sim.EcoCanLandscape(c)));
+            foreach (var c in cells.ToList()) Assert.AreEqual(c, sim.EcoLandscapePluck(X(c), Z(c), 0.05f));
             Assert.AreEqual(0, Enumerable.Range(0, EcoLand.N).Count(c => e.cover[c] == (byte)EcoCover.Seedling && c != e.treeCell));
         }
 
