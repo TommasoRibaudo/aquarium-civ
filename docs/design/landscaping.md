@@ -109,3 +109,53 @@ deer jar (`jarDeerTrees`) and the village (`villageTrees`)? As written they do, 
 3. **Tool:** may it pluck **grown** trees? What is its name? Does a plucked thicket bush stay gone for a while?
 4. **Phase:** this is new feature work in the Polish phase ("no new features"): now, or after Polish?
 5. When picked: update `decisions.md` (one thicket, one seed) and `placed-life.md` §5.1, `keepers-hands.md` §3.3 and §5.7.
+
+## 8. Picked (the user, 2026-11-14): B3 trees, A3 bushes, one tool
+> "B3 for trees, you earn as the civ grows. A3, but you gain them as trees, but the first bush tries to grow a full thicket,
+> if you do more the thicket are gradually smaller (even shrinking when player is placing a lot)."
+
+Recorded in `decisions.md` (2026-11-14). The shape below is a proposal built from that sentence; numbers are [est] and are
+tuned with `EcoBushCountTests` and the pacing lab. Still open: the tool's name, whether it plucks grown trees, the phase (§7).
+
+### 8.1 Earning (trees and bushes)
+- Two counters on the Keeper: **seeds** (each plants one normal tree seedling) and **bushes** (each plants one bush). Both are
+  earned from the same civ steps, so they feel like one thing: the civ grows, the Keeper is given more to plant.
+- **Proposal for the steps:** one of each at every new era, and one more of each for every +5 people at their peak (so a
+  growing village pays out steadily and a shrinking one pays nothing). A stock of 3 at most waits in the pouch.
+- The first seed and the first bush stay as now: the seed is in the life jar from the start; the first bush is the first
+  thicket (§8.2), placed from the bushes jar once the seed is in the ground.
+- A placed seedling is a normal wild seedling from the first day (no extra care), so the pacing in §4 is an upper bound.
+- UI: the life row shows a count on the seed and the bush; the quick-placing ghost and the "tap again" of #518 are reused.
+- Debug panel: give seeds, give bushes, "next civ step".
+
+### 8.2 Thickets that shrink as you place more
+- The **first bush placed** founds a thicket that tries to grow to the **full size** (today: 22 bushes, `thicketRadius` 0.45 u),
+  as #418 does now.
+- **Every further bush the Keeper places** founds its own small thicket round that spot (min 3 bushes), or, if it lands
+  inside an existing thicket's disc, is refused with a reason ("already a thicket here"), as #664's refused tap does.
+- **Crowding rule** (the user's sentence): with `n` thickets, each thicket's target is `full / sqrt(n)` bushes (n=1: 22,
+  n=2: 15, n=4: 11, n=9: 7), and its disc radius follows (`radius x n^-0.25`). So the total berries rise slowly (22 -> 44 -> 66),
+  never with the count, and a heavy planter gets many small thickets, not a farm. A thicket never goes below its founders (3).
+- **Shrinking:** a new placing lowers every thicket's target at once. A thicket above its target loses **one bush a season**
+  (the weakest, the one farthest from its centre, never one the people are picking that visit), until it fits. It never
+  drops by a lump, and the berries it held are not lost: the gatherers carry them as now. Placing a lot shrinks the whole
+  box gently over a few seasons; stopping lets the thickets settle.
+- A **maximum of 12 thickets** and a minimum gap (the discs may not overlap) keep the settlement planner's reserved area sane:
+  each disc stays "water" to the planner, so the people's lots keep out of every one.
+- The rabbits' ground, the bird (#709), the berry kid and the drying mat read "the thickets" (a list) instead of "the thicket".
+- Save: `st.thicketA/B/Radius` become a list of discs (a v1 save loads as one full thicket).
+
+### 8.3 The tool (still to be named)
+One landscaping tool plucks seedlings, young trees and bushes (the tap lifts it out with the pop), never the Keeper's tree.
+A bush pluck lowers that thicket's count and, because the crowding rule is by thicket count, **plucking a whole thicket's
+bushes away frees room for the others to grow back** to their larger target. Whether it also lifts **grown** trees stays the
+user's call (§7). The tweezers keep weeds and the vine.
+
+### 8.4 Issues to build (small, one agent each)
+1. Seeds earned as the civ grows: the counters, the steps, the pouch UI (lane sim, then view).
+2. More trees: `Plant` takes any seed from the pouch as a normal seedling; tests and the pacing lab (lane sim).
+3. Thickets as a list: the data, the save migration, the planner reserve, the rabbit ground (lane sim).
+4. Crowding and shrinking: targets, one bush a season, tests with `EcoBushCountTests` (lane sim; after 3).
+5. The landscaping tool: bush pluck, move the seedling pluck off the tweezers, rail icon (needs the tool's name).
+6. Bushes earned and placed one at a time: ghost, refusal reasons, counter (view + ui, after 3).
+7. Debug panel and the tester pass over all of it.
