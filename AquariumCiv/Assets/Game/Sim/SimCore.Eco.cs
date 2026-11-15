@@ -258,7 +258,7 @@ namespace AquariumCiv.Sim
         /// <summary>Share of the land that is bare ground right now, 0..1 (the sound's barren bed uses this); 0 when the ecology is off.</summary>
         public float EcoBareShare => EcologyOn ? EcoM.Live().bare / (float)EcoLand.N : 0f;
         /// <summary>Share of the land in grass or tall grass right now.</summary>
-        public float EcoMeadowShare { get { if (!EcologyOn) return 0f; var l = EcoM.Live(); return (l.grass + l.tall) / (float)EcoLand.N; } }
+        public float EcoMeadowShare { get { if (!EcologyOn) return 0f; var l = EcoM.Live(); return (l.grass + l.tall) / (float)EcoLand.TunedCells; } } // read against the tuned land, as the gates do (EcoLand.TunedCells, #658)
         /// <summary>Cells of open water, and of grown trees, right now.</summary>
         public int EcoPondCells => EcologyOn ? EcoM.Live().pond : 0;
         public int EcoGrownTrees => EcologyOn ? EcoM.Live().trees : 0;
