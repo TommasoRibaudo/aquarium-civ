@@ -31,7 +31,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 
 ## Extra queue (user, 2026-11-15: chain more well-defined easy todos tonight)
 Picked: open Polish issues with a clear Done-when, no `needs:user`, not out of scope, not built yet.
-- [ ] #689 a village house's card says the year it was built (lane A, vs/689-built-year)
+- [x] #689 (merged; smoke in the batched pass) a village house's card says the year it was built (lane A, vs/689-built-year)
 - [ ] #690 deer only when the wood is dense (lane A, vs/690-dense-wood; wolves' chain #437 checked)
 - [ ] #684 axe meets the trunk (user: probably fixed; check first, close if so)
 - [ ] #561 Skip all clears the History dot (check still true first)
@@ -67,6 +67,15 @@ Skipped: #560/#672 (built in #678, waiting for a phone check), #660–#662 (insi
 - 2026-11-14 23:15 · #698 merged (760c9d3) after 3 rounds
 
 ## Round logs
+
+### #689
+- round 1 (lane A): cause = the camp tent rebuilt in place as the house kept its camp month; card reads BuiltMonthOf (village start for hut/farm/lumbermill; old month-0 saves take the lot month). SimTests 1947/1947. Accepted.
+
+### Tester run 1
+- [real] rack cheat stack overflow (DebugRackAt → BasePlace → PlanBase loop): fixed 7b66c93 + regression test (crashes without the guard).
+- [polish→fixed] History timeline end hid berries and rabbits: fixed 7b66c93.
+- [polish, for the user] glass edge line crosses year line and gear when close (#707); Feedback pill alone in photo mode (#702); fish vs thin stew close at mid zoom (#676); touch-hint ring covers "name" on the naming step.
+- Not checked: kid seen walking into tent (#698), real winter ice for #703, return welcome. Box mesh filters 36 vs 14 after runs: to check.
 
 ### #704 + #701 (one worker, one branch)
 - round 1: #704 cause = clearing outer band blended to fixed grassB; now ground colour. #701 cause = whole-cell water mesh; now 3×3 pieces under the level by 1.2 cm, ice shares it. EcoView 7/7, PondIce 7/7, EcoWater 1/1, PondLife 4/4, smoke 2/2, RimShots explicit pass. Shots looked at. Accepted with the small-pond gap noted.
