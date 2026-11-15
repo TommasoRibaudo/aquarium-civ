@@ -888,3 +888,8 @@ Killing a `Tools/run-tests.sh` mid-run can leave `unity command test status` rep
 
 ### 2026-11-15 · Play tests wrote shots into the main checkout from a worktree
 23 test and agent-tool files had `F:/GameDev/AquariumCiv/Temp/agent/...` hard-coded, so a run in a worktree Editor wrote (and overwrote) shots in the main checkout. They now use `Application.dataPath + "/../Temp/agent/..."` (the running project). New shot code: use `PlayTestBase.Shots` or that expression, never an absolute path.
+
+### 2026-11-15 · #705 washing line: AnimLab/AnimBench line objects, and two planner traps
+- **A new prop that is a mesh (not a PropKind) goes into AnimLab as an object kind.** `"kind": "line"` with `"state": {start, chore, stay, cloths, taken, fadeAt, seed}` (clip seconds; `fadeAt` is a clip time, -1 none) draws the game's own `LaundryLines.Build` through `LaundryView.LookReal` (prep.py copies the state into `lab.json` as `line`, `LabObject.line`). A doll stands at it with `"atLine": "<id>"` on a segment (`count` = its cloths); AnimBench does what `PeopleView.LaundryStand` does (the side steps are part of the beat, so the style stays `HangWash`). AnimBench draws the line as a grey dot: look at AnimLab's sheet. Clips: `Tools/AnimBench/clips/705-*.json`.
+- **Crowd people have negative keys.** Planner code that means "nobody" with `-1` or `>= 0` matches the crowd member whose key is -1. `LaundryLine.NoTaker` is `int.MinValue`.
+- **Offline compile after a merge can fail on a stale `Library/ScriptAssemblies` copy** (`GameHud` lacked a method that the source has): name `AquariumCiv.Game AquariumCiv.Game.UI` before `AquariumCiv.View` in the offline-csc list.

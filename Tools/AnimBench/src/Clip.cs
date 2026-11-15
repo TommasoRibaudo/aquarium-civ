@@ -230,6 +230,8 @@ namespace AnimBench
         public int? Step;
         public int Steps;
         public int Count;
+        /// <summary>#705: stands at this "line" object (a washing line) on the cloth the beat is at, as PeopleView.LaundryStand does.</summary>
+        public string AtLine;
         public float StepSeconds;
         public bool CopiesPartner, Hidden, EndBeat;
         /// <summary>#360: the bucket is drawn from muddy water (the full bucket is the brown one).</summary>
@@ -348,6 +350,7 @@ namespace AnimBench
                 seg.Pace = Get("pace") is JsonValue pv ? (float)pv.GetValue<double>() : 1f;
                 if (so["step"] != null) seg.Step = Clip.Int(so, "step", 0);
                 seg.Count = Get("count") is JsonValue cv ? (int)cv.GetValue<double>() : 0;
+                seg.AtLine = Get("atLine") is JsonValue al ? al.GetValue<string>() : null;
                 seg.StepSeconds = Get("stepSeconds") is JsonValue ss ? (float)ss.GetValue<double>() : 0.25f * clip.SecondsPerViewHour; // LifePlanner.StepHours
                 seg.CopiesPartner = Get("copiesPartner") is JsonValue cp && cp.GetValue<bool>();
                 seg.Hidden = Get("hidden") is JsonValue hv && hv.GetValue<bool>();

@@ -36,6 +36,8 @@ namespace AquariumCiv.EditorTools
         public float radius, sx, sz;
         public float[] f;
         public string[] act;
+        /// <summary>#705: a washing line's timings (clip seconds): start, chore length, stay, cloths, fade at (-1 none), taken (1/0), seed.</summary>
+        public float[] line;
     }
 
     [Serializable]

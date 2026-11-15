@@ -58,7 +58,7 @@ namespace AquariumCiv.Life.Tests
         }
 
         // Before the change (seed 7, the same 30 days): Village worst 16, mean 1328; Town worst 22, mean 1828.
-        [TestCase(Era.Village, 7, 16, 1328, 12, 1050)]
+        [TestCase(Era.Village, 7, 16, 1328, 13, 1050)] // #705: 13 (was 12): the washing's chore is 0.7 h now, so one more can be out at a moment; the mean is unchanged
         [TestCase(Era.Town, 7, 22, 1828, 18, 1450)]
         public void TheDawnKnotIsSmallerThanBeforeTheStagger(Era era, int seed, int before, int beforeMean, int maxWorst, int maxMean)
         {

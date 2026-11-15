@@ -1,0 +1,18 @@
+{
+  "name": "705-hang",
+  "notes": "#705 B28.b: one doer hangs two cloths on the line (lift, shake, reach, pin x2, smooth, step), shakes her hands dry, and looks at the full swaying line with one nod. The line is the game's own mesh (LaundryLines.Build): cord 0.55 u, stakes 0.17 u, cloths 0.11 x 0.13 u, pins, a basket at the near stake while she works. Real time.",
+  "duration": 9.5,
+  "fps": 30,
+  "warmup": 1,
+  "camera": { "view": "default", "focus": [0.0, -0.04], "span": 0.85 },
+  "sheet": { "from": 0.2, "to": 9.2, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.3, "reactSeconds": 0.2 },
+  "knownGaps": ["react", "arcs", "hitNear", "endBeat", "hold", "P1", "P2", "P5", "P8", "neighbours"],
+  "objects": [
+    { "id": "line", "kind": "line", "pos": [0.0, 0.0, 0.0], "yaw": 0, "state": { "start": 0.0, "chore": 6.0, "stay": 60, "cloths": 2, "taken": 1, "seed": 3 } }
+  ],
+  "dolls": [
+    { "id": "doer", "seed": 11, "camp": false,
+      "timeline": [ { "t": 0.0, "dur": 9.5, "activity": "HangWashing", "prop": "Bundle", "slot": "Hand", "pos": [0.0, -0.1], "atLine": "line", "count": 2, "target": "line" } ] }
+  ]
+}
