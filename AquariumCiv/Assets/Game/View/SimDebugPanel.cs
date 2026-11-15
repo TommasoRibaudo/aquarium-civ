@@ -472,6 +472,11 @@ namespace AquariumCiv.View
                 var ths = new System.Collections.Generic.List<(int cell, float radius, int bushes)>(); sim.BushThickets(ths);
                 GUILayout.Label($"thickets: {ths.Count} " + string.Join(" · ", ths.Select(x => $"{x.bushes} bushes r {x.radius:0.00}")));
                 if (GUILayout.Button("Place a thicket by the camp (uses a pouch bush)")) { int c = sim.DebugPlaceThicketNearCamp(); last = Done(c < 0 ? "no valid ground (or the cap)" : $"thicket {sim.BushThicketCount} placed at cell {c}"); }
+                // ---- #729: crowding and shrinking: more thickets lower every target; a thicket over its target sheds a bush a season ----
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Crowd: +3 thickets")) { int made = sim.DebugCrowdThickets(3); last = Done($"{made} thickets placed: {sim.BushThicketCount} stand, each holds {sim.BushCap / System.Math.Max(1, sim.BushThicketCount)}"); }
+                if (GUILayout.Button("Shrink: one season now")) { sim.DebugSkipSeasons(1); last = Done($"a season on: {sim.BushThicketCount} thickets, {sim.State.eco.cBush} bushes of {sim.BushCap}"); }
+                GUILayout.EndHorizontal();
             }
             // ---- end #724 ----
             // ---- #420-#422: deer, ducks, fish; floors, shy, restraint (placed-life spec §10) ----

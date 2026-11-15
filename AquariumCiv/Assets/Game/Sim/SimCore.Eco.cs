@@ -37,8 +37,21 @@ namespace AquariumCiv.Sim
             {
                 if (ecoModel != null) return ecoModel;
                 Config.eco ??= new EcoTuning();
-                return ecoModel = new EcoModel(State.eco, EcoLand.For(TerrainPreset), Config.eco);
+                ecoModel = new EcoModel(State.eco, EcoLand.For(TerrainPreset), Config.eco);
+                ecoModel.BushBusy = BushBeingPicked; // #729: a shrinking thicket never sheds a bush the people are picking
+                return ecoModel;
             }
+        }
+
+        /// <summary>#729: the people picked at this bush on the latest view day anyone picked (the visit in progress or the last one).</summary>
+        bool BushBeingPicked(int cell)
+        {
+            var e = State.eco;
+            if (e?.bushPickCell == null || e.bushPickCell.Count == 0) return false;
+            long latest = long.MinValue;
+            for (int i = 0; i < e.bushPickDay.Count; i++) if (e.bushPickDay[i] > latest) latest = e.bushPickDay[i];
+            int at = e.bushPickCell.IndexOf(cell);
+            return at >= 0 && e.bushPickDay[at] == latest;
         }
 
         /// <summary>The static land under the ecology (heights, hollows, the flood line, the cells nobody builds on).</summary>

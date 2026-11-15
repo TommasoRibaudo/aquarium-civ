@@ -103,6 +103,15 @@ namespace AquariumCiv.Sim
             finally { m.cheatBareGround = false; }
         }
 
+        /// <summary>Debug ("crowd"): <paramref name="n"/> more thickets by the camp, one earned bush each (#729: every thicket's target falls, the
+        /// big ones shed a bush a season). How many were placed.</summary>
+        public int DebugCrowdThickets(int n)
+        {
+            int made = 0;
+            for (int i = 0; i < n; i++) if (DebugPlaceThicketNearCamp() >= 0) made++; else break;
+            return made;
+        }
+
         /// <summary>The bush nearest the camp's green, or -1: the first bush chosen when the land has none yet marked.</summary>
         int NearestBushToCamp()
         {

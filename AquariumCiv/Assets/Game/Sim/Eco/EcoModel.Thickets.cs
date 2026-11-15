@@ -42,12 +42,29 @@ namespace AquariumCiv.Sim.Eco
         /// <summary>At least one thicket is placed (its centre and radius are set).</summary>
         public bool ThicketPlaced => Ts.Count > 0;
 
-        /// <summary>The bushes one thicket holds when full, with <see cref="ThicketCount"/> thickets standing. #729 makes it fall as they crowd;
-        /// until then every thicket holds the full <see cref="EcoTuning.thicketBushes"/>.</summary>
-        public int ThicketTarget() => Math.Max(1, t.thicketBushes);
+        /// <summary>#729 (the user, 2026-11-14: "the first bush tries to grow a full thicket, if you do more the thickets are gradually smaller"):
+        /// the bushes one thicket holds when full, with <see cref="ThicketCount"/> thickets standing.</summary>
+        public int ThicketTarget() => ThicketTargetFor(Ts.Count);
 
-        /// <summary>The disc radius a thicket has with <paramref name="n"/> thickets standing (#729 shrinks it; until then the full radius).</summary>
-        float ThicketRadiusFor(int n) => t.thicketRadius;
+        /// <summary>The bushes each thicket holds with <paramref name="n"/> thickets standing: <see cref="EcoTuning.thicketBushes"/> / n^<see cref="EcoTuning.thicketCrowdExp"/>
+        /// (22, 15, 12, 11 ... 7 at n = 1, 2, 3, 4 ... 9), rounded down, never under <see cref="EcoTuning.thicketFounders"/>. So the total berries
+        /// rise slowly (22, 30, 36, 44 ... 63), never with the count: a heavy planter gets many small thickets, not a farm.</summary>
+        public int ThicketTargetFor(int n)
+        {
+            n = Math.Max(1, n);
+            int full = Math.Max(1, t.thicketBushes), floor = Math.Min(full, Math.Max(1, t.thicketFounders));
+            return Math.Max(floor, (int)MathF.Floor(full / MathF.Pow(n, t.thicketCrowdExp) + 1e-3f));
+        }
+
+        /// <summary>The disc radius a thicket has with <paramref name="n"/> thickets standing: the full radius x n^-<see cref="EcoTuning.thicketRadiusExp"/>.</summary>
+        public float ThicketRadiusFor(int n) => t.thicketRadius * MathF.Pow(Math.Max(1, n), -t.thicketRadiusExp);
+
+        /// <summary>Debug-able hook for the people: a bush the shrinking must not take now (someone is picking at it this visit). Null = none.
+        /// SimCore sets it from the pick record.</summary>
+        public Func<int, bool> BushBusy;
+
+        /// <summary>#729: the bushes standing in thickets as the last <see cref="Thickets"/> found them (the thinning of strays reads it).</summary>
+        int thinKeep;
 
         /// <summary>The widest reach of a thicket's ragged edge (box units).</summary>
         float ReachOf(Thicket th) => th.radius * (1f + t.thicketEdge * 0.5f);
@@ -62,23 +79,80 @@ namespace AquariumCiv.Sim.Eco
             st.thicketB = -1;
         }
 
-        /// <summary>Every thicket fills: one bush a season next to a standing one, heart first, until it holds its target.
+        /// <summary>Every thicket, each season: one above its target (a thicket placed or a crowd grown since) loses
+        /// <see cref="EcoTuning.thicketShrinkPerSeason"/> bush, the one farthest from its centre that nobody is picking, until it fits (#729: never by
+        /// a lump, and the disc closes in behind it); one below fills a bush a season next to a standing one, heart first, until it holds its target.
         /// #605: where the mister's water fell on it, now and then a second one comes up (never past the target, never outside its area).
         /// Runs before the season's succession.</summary>
         void Thickets()
         {
             var ts = Ts;
+            thinKeep = 0;
             if (ts.Count == 0) return;
+            thinKeep = BushesInThicket();
             int target = ThicketTarget();
+            float rTarget = ThicketRadiusFor(ts.Count);
             for (int i = 0; i < ts.Count; i++)
             {
                 var th = ts[i];
-                if (BushesIn(th) >= target) continue;
+                int bushes = BushesIn(th);
+                for (int k = 0; k < t.thicketShrinkPerSeason && bushes > target; k++)
+                    if (ShedThicketBush(th)) bushes--; else break;
+                EaseRadius(th, rTarget);
+                if (i == 0) SyncFirstThicket();
+                if (bushes >= target) continue;
                 AddThicketBush(th);
                 if (BushesIn(th) >= target || t.thicketWatered <= 0f) continue;
                 float w = ThicketWatered(th);
                 if (w > 0f && Chance(31, i) < t.thicketWatered * w) AddThicketBush(th);
             }
+        }
+
+        /// <summary>#729: the bush of this thicket farthest from its centre (ties: the lowest cell) that nobody is picking goes back to meadow.
+        /// False when it has none to give.</summary>
+        bool ShedThicketBush(Thicket th)
+        {
+            CellsOf(th, thCells, thZones);
+            float cx = SiteMap.CXc(th.cell), cz = SiteMap.CZc(th.cell);
+            int best = -1; float bestD = -1f;
+            foreach (var c in thCells)
+            {
+                if (Cv(c) != EcoCover.Bush || (BushBusy?.Invoke(c) ?? false)) continue;
+                float d = Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), cx, cz);
+                if (d > bestD + 1e-6f) { bestD = d; best = c; }
+            }
+            if (best < 0) return false;
+            st.cover[best] = (byte)(st.moisture[best] >= t.tallAt && !land.yard[best] ? EcoCover.Tall : EcoCover.Grass);
+            return true;
+        }
+
+        /// <summary>#729: a thicket's disc follows the crowd. Above its target radius it closes in as its outer bushes go, never past the bushes that
+        /// stand (they would be strays), down to the target; below it (the crowd thinned) it opens up again, as far as the neighbours' areas allow.</summary>
+        void EaseRadius(Thicket th, float rTarget)
+        {
+            if (th.radius > rTarget + 1e-5f)
+            {
+                CellsOf(th, thCells, thZones);
+                float cx = SiteMap.CXc(th.cell), cz = SiteMap.CZc(th.cell), far = 0f;
+                foreach (var c in thCells) if (Cv(c) == EcoCover.Bush) far = MathF.Max(far, Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), cx, cz));
+                float hug = far / (1f - t.thicketEdge * 0.5f) + 0.005f; // the ragged edge never reaches in past 0.825 of the radius
+                th.radius = MathF.Max(rTarget, MathF.Min(th.radius, hug));
+            }
+            else if (th.radius < rTarget - 1e-5f)
+                th.radius = MathF.Max(th.radius, MathF.Min(rTarget, RoomFor(th)));
+        }
+
+        /// <summary>The widest radius a thicket may have without its area reaching another's (box units).</summary>
+        float RoomFor(Thicket th)
+        {
+            float room = float.MaxValue, k = 1f + t.thicketEdge * 0.5f;
+            foreach (var o in Ts)
+            {
+                if (o == th) continue;
+                float d = Terrain.Dist(SiteMap.CXc(th.cell), SiteMap.CZc(th.cell), SiteMap.CXc(o.cell), SiteMap.CZc(o.cell));
+                room = MathF.Min(room, (d - ReachOf(o)) / k);
+            }
+            return room;
         }
 
         /// <summary>Fills <paramref name="cells"/> with the cells of a thicket's area (zone above 0), in cell order, and <paramref name="zones"/> with their zones.</summary>
@@ -277,7 +351,8 @@ namespace AquariumCiv.Sim.Eco
             if (NearFire(c)) return Chance(16, c) < t.bushMarginDie; // the people keep the ground round the fire clear
             float zone = ThicketZone(c), die = zone <= 0f ? t.bushStrayDie : 0f;
             int cap = BushCap;
-            if (st.cBush > cap) die += t.bushThin * MathF.Min(1f, (st.cBush - cap) / (float)cap) * (1f - 0.85f * zone);
+            int basis = Math.Max(cap, thinKeep); // #729: the bushes a shrinking thicket still holds above its target are shed one a season, not thinned here
+            if (st.cBush > basis) die += t.bushThin * MathF.Min(1f, (st.cBush - basis) / (float)cap) * (1f - 0.85f * zone);
             return die > 0f && Chance(16, c) < die;
         }
     }

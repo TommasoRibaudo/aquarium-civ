@@ -11,7 +11,7 @@ namespace AquariumCiv.Tests
 {
     /// <summary>#728 (landscaping.md 8.2, decision 2026-11-14 "A3 bushes", reverses "exactly one thicket"): the thickets are a list. The
     /// first comes from the thicket jar, each earned bush founds another small one. At most 12, areas never overlap; a v1 save loads as one
-    /// thicket; the settlement keeps off every one; the rabbits keep out of every one. No crowding yet (#729).</summary>
+    /// thicket; the settlement keeps off every one; the rabbits keep out of every one. (Crowding is ThicketCrowdingTests, #729.)</summary>
     public class ThicketListTests
     {
         static SimCore World(int seed = 7)
@@ -55,7 +55,7 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(l[0].cell, sim.State.eco.thicketA, "thicketA is still the first thicket");
             Assert.AreEqual(l[0].radius, sim.State.eco.thicketRadius);
             Assert.AreEqual(0, sim.BushesInPouch, "the earned bush was spent");
-            Assert.AreEqual(sim.Config.eco.thicketBushes * 2, sim.BushCap, "no crowding yet: each holds the full count");
+            Assert.AreEqual(2 * 15, sim.BushCap, "#729: two thickets hold 15 each (22 / sqrt 2)");
         }
 
         [Test]
@@ -65,7 +65,7 @@ namespace AquariumCiv.Tests
             var e = sim.State.eco;
             for (int s = 0; s < 120; s++) sim.DebugSkipSeasons(1);
             var l = List(sim);
-            foreach (var th in l) Assert.AreEqual(sim.Config.eco.thicketBushes, th.bushes, "each thicket fills to the full count and stops");
+            foreach (var th in l) Assert.AreEqual(sim.BushCap / 3, th.bushes, "each thicket fills to its (crowded) count and stops");
             int outside = 0;
             for (int c = 0; c < EcoLand.N; c++) if ((EcoCover)e.cover[c] == EcoCover.Bush && sim.BushThicketZone(c) <= 0f) outside++;
             Assert.AreEqual(0, outside, "no bush outside the areas");
