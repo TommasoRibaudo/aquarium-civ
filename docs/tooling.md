@@ -875,3 +875,8 @@ into a RenderTexture from `script eval` (scratchpad `proprender.cs`). In-game cl
 until someone does the activity, with the panel folded. The Life test assembly takes ~9 min in the Editor: run it offline with
 `dotnet test Tools/SimTests` instead.
 - **2026-11-14 · `Tools/pulse-report.sh` died with "f-string expression part cannot include a backslash".** [verified] Python 3.11 rejects `\"` inside an f-string's braces (allowed only from 3.12). The `|` escape now happens in a variable before the f-string. Inside the script's single-quoted `python -c '...'`, use double quotes only.
+
+### 2026-11-14 — a second Editor on a worktree (when `F:\GameDev` belongs to another session)
+- **Symptom:** the Editor scripts (`restart-editor.sh`, `watch-editor-stall.sh`, `editor-health.sh`, `run-tests.sh`, `offline-csc.py`) all assumed `F:\GameDev\AquariumCiv`, its Editor.log and its Library, so an integration branch in a worktree couldn't get its own Editor.
+- **Fix:** they now read overrides: `PROJ=F:/GameDev-wt/<dir>/AquariumCiv` (project), `EDITOR_LOG=<file>` (the second Editor is launched with `-logFile` there, so the two Editors don't share Editor.log), `LOCK=<file>` (the stall watcher's lock) and `UNITY_LIB=<project>/Library` (offline-csc). `restart-editor.sh` only quits/counts the Editor whose command line has that project path.
+- **Seed the worktree's Library** from the main one first: `robocopy F:\GameDev\AquariumCiv\Library <wt>\AquariumCiv\Library /E /MT:16 /XD Bee` (2.4 GB, ~2 min), so the first open is an incremental import, not a full one. [verified 2026-11-14]

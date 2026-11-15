@@ -13,8 +13,8 @@ tooling.md 2026-10-29 has the recipe this automates.
 import hashlib, json, os, subprocess, sys, tempfile
 
 UNITY = "C:/Program Files/Unity/Hub/Editor/6000.3.27f1/Editor"
-LIB = "F:/GameDev/AquariumCiv/Library/ScriptAssemblies"
-PKG = "F:/GameDev/AquariumCiv/Library/PackageCache"
+LIB = os.environ.get("UNITY_LIB", "F:/GameDev/AquariumCiv/Library") + "/ScriptAssemblies"
+PKG = os.environ.get("UNITY_LIB", "F:/GameDev/AquariumCiv/Library") + "/PackageCache"
 
 
 REFS = {}
