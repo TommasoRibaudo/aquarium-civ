@@ -281,6 +281,11 @@ namespace AquariumCiv.Sim.Eco
         public bool cheatBareGround;
         bool MeadowOk(EcoCover c) => IsMeadow(c) || (cheatBareGround && c == EcoCover.Bare);
 
+        /// <summary>#703: the ducks' jar is shut while the pond is frozen (winter, or the debug ice, with some water): the wild ducks are
+        /// away then (#618), so a placing would send them off at once and the Keeper would pay for nothing. The jar keeps its state
+        /// (Ready stays Ready, a placed flock stays placed); SimCore reads it as shut and the need line says why. Opens by itself at the thaw.</summary>
+        public bool IceShut(LifeSpecies s, long month) => s == LifeSpecies.Ducks && st.cPond > 0 && (PondIce.Force ?? PondIce.Winter(month));
+
         /// <summary>The species can be placed on this cell now: its jar is Ready and the ground is valid.</summary>
         public bool CanPlace(LifeSpecies s, int cell, Func<int, bool> settled = null)
             => JarStateOf(s) == JarState.Ready && GroundOk(s, cell, settled);
@@ -386,7 +391,7 @@ namespace AquariumCiv.Sim.Eco
         public bool Place(LifeSpecies s, int cell, long month, Func<int, bool> settled, out bool restock)
         {
             restock = false;
-            if (!CanPlace(s, cell, settled)) return false;
+            if (IceShut(s, month) || !CanPlace(s, cell, settled)) return false; // #703: nothing is spent on a frozen pond
             var j = Jar(s);
             restock = j.placings > 0;
             j.state = (int)JarState.Placed; j.placings++; j.placedCell = cell; j.placedMonth = month;

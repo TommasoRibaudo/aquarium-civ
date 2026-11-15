@@ -335,6 +335,17 @@ namespace AquariumCiv.View
                 // ---- #519: the ducks and the fish keep to the water you can see ----
                 if (GUILayout.Button("Pond dries now (ducks/fish leave, #519)")) last = Done(EcoDebug.PondDries()); // tester feedback 3: the water goes on screen at once
                 // ---- end #519 ----
+                // ---- #703: winter ducks (the duck jar is shut while the pond is ice) ----
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Winter ducks: freeze + open duck jar")) // opens every shut jar, then the ice: Ducks reads shut with its ice line
+                {
+                    sim.DebugJarsReady(); AquariumCiv.Sim.Eco.PondIce.Force = true;
+                    last = Done("ice on; ducks jar: " + sim.JarStateOf(AquariumCiv.Sim.Eco.LifeSpecies.Ducks) + " / " + (sim.JarNeed(AquariumCiv.Sim.Eco.LifeSpecies.Ducks) ?? "(no line)"));
+                }
+                if (GUILayout.Button("Thaw (jar opens)")) { AquariumCiv.Sim.Eco.PondIce.Force = false; last = Done("thaw; ducks jar: " + sim.JarStateOf(AquariumCiv.Sim.Eco.LifeSpecies.Ducks)); }
+                if (GUILayout.Button("Ice by season")) { AquariumCiv.Sim.Eco.PondIce.Force = null; last = Done("ice follows the calendar"); }
+                GUILayout.EndHorizontal();
+                // ---- end #703 ----
                 // #423: the life tool in hand (glow, ghost, tap to place), for a ready jar
                 var hudL = GameHud.Instance;
                 GUILayout.BeginHorizontal();

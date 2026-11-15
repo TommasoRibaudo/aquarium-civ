@@ -21,10 +21,14 @@ namespace AquariumCiv.Sim.Eco
             _ => "Wolves",
         };
 
+        /// <summary>#703: the duck jar's line while the pond is ice, in the people's words.</summary>
+        public const string IceNeedLine = "The pond is ice. Ducks will come when it thaws.";
+
         /// <summary>The first thing a shut jar still waits for, as a short line ("Rabbits need a meadow"), or null when its land is
         /// ready (or the jar is not shut). The rung below comes first, then the land, in the order the Keeper can act on them.</summary>
         public string JarNeed(LifeSpecies s, long month)
         {
+            if (Jar(s).State == JarState.Ready && IceShut(s, month)) return IceNeedLine; // #703
             if (Jar(s).State != JarState.Locked) return null;
             var below = LifeJar.RungBelow(s);
             string n = PlainName(s);

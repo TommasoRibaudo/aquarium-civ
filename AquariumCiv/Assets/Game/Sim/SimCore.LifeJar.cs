@@ -21,7 +21,12 @@ namespace AquariumCiv.Sim
         public event Action<LifeSpecies> LifeJarOpened;
 
         /// <summary>The jar's state (Locked when the ecology is off).</summary>
-        public JarState JarStateOf(LifeSpecies s) => EcologyOn ? EcoM.JarStateOf(s) : JarState.Locked;
+        public JarState JarStateOf(LifeSpecies s)
+        {
+            if (!EcologyOn) return JarState.Locked;
+            var st = EcoM.JarStateOf(s);
+            return st == JarState.Ready && EcoM.IceShut(s, State.month) ? JarState.Locked : st; // #703: shut while the pond is ice
+        }
         public bool JarReady(LifeSpecies s) => JarStateOf(s) == JarState.Ready;
         /// <summary>At least one founding group of the species is in the box (a restock's open jar still counts).</summary>
         public bool LifeIsPlaced(LifeSpecies s) => EcologyOn && EcoM.IsPlaced(s);
@@ -31,18 +36,18 @@ namespace AquariumCiv.Sim
         {
             into.Clear();
             if (!EcologyOn) return;
-            foreach (var s in LifeJar.All) if (EcoM.JarStateOf(s) == JarState.Ready) into.Add(s);
+            foreach (var s in LifeJar.All) if (JarStateOf(s) == JarState.Ready) into.Add(s);
         }
 
         /// <summary>The life slot shows (spec §6): at least one jar is Ready.</summary>
-        public bool AnyJarReady { get { if (!EcologyOn) return false; foreach (var s in LifeJar.All) if (EcoM.JarStateOf(s) == JarState.Ready) return true; return false; } }
+        public bool AnyJarReady { get { if (!EcologyOn) return false; foreach (var s in LifeJar.All) if (JarStateOf(s) == JarState.Ready) return true; return false; } }
 
         /// <summary>#570 the shut jars, in <see cref="LifeJar.All"/> order (the chooser lists them greyed, after the ready ones).</summary>
         public void LockedJars(List<LifeSpecies> into)
         {
             into.Clear();
             if (!EcologyOn) return;
-            foreach (var s in LifeJar.All) if (EcoM.JarStateOf(s) == JarState.Locked) into.Add(s);
+            foreach (var s in LifeJar.All) if (JarStateOf(s) == JarState.Locked) into.Add(s);
         }
 
         /// <summary>#570 what a shut jar waits for, in the people's words ("Rabbits need a meadow"); null when it is not shut or its land is
@@ -92,7 +97,7 @@ namespace AquariumCiv.Sim
 
         /// <summary>The species can be placed on the site cell now: its jar is Ready and the ground is valid (spec §5), off the
         /// settlement's lots, paths, green and yards.</summary>
-        public bool CanPlaceLife(LifeSpecies s, int cell) => EcologyOn && EcoM.CanPlace(s, cell, SettledCell);
+        public bool CanPlaceLife(LifeSpecies s, int cell) => EcologyOn && !EcoM.IceShut(s, State.month) && EcoM.CanPlace(s, cell, SettledCell);
 
         /// <summary>The ground is valid for the species (spec §5), whatever its jar says: what glows while it is in hand.</summary>
         public bool LifeGroundOk(LifeSpecies s, int cell) => EcologyOn && EcoM.GroundOk(s, cell, SettledCell);
