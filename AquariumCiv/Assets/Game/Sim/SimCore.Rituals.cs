@@ -147,11 +147,14 @@ namespace AquariumCiv.Sim
                         : $"The harvest table was one seat longer than last year. {who} sat at the end.";
                 case RitualKind.Offering:
                     if (State.era == Era.Town && lead != null && lead.id == HolderOf(RoleType.Priest)?.id)
-                        return "The priest carried the offering to the Keeper's tree, and the town walked behind.";
-                    return $"{who} carried the best basket to the Keeper's tree and set it down.";
+                        return $"The priest carried the offering to {OfferingPlace}, and the town walked behind.";
+                    return $"{who} carried the best basket to {OfferingPlace} and set it down.";
             }
             return "";
         }
+
+        /// <summary>#723: where the offering goes: the Keeper's tree once it stands, else the tallest tree [est] (the slice has none).</summary>
+        string OfferingPlace => KeeperTreeGrown ? "the Keeper's tree" : "the tallest tree";
 
         /// <summary>Plays the ritual now: its line (a card the first time, History after), the event for the view.</summary>
         ChronicleEntry PlayRitual(string kind)

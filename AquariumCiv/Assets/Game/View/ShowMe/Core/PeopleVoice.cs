@@ -30,7 +30,7 @@ namespace AquariumCiv.View.ShowMe
 
         /// <summary>
         /// True if the people may say <paramref name="text"/> now: none of the words that state the game, and no "glass" before
-        /// the scholars name it (stage 3, after the Lens), no "window" in the camp (the sky wall has none yet).
+        /// the scholars name it (stage 3; #723), no "window" in the camp (the sky wall has none yet).
         /// </summary>
         public static bool Allowed(string text, SimCore sim)
         {
@@ -38,7 +38,7 @@ namespace AquariumCiv.View.ShowMe
             foreach (var w in Words(text))
             {
                 if (Array.IndexOf(Never, w) >= 0) return false;
-                if (sim != null && (w == "glass" || w == "glass's") && !(sim.BeliefStage >= 3 && sim.BeliefHalfNow == BeliefHalf.Later)) return false;
+                if (sim != null && (w == "glass" || w == "glass's") && sim.BeliefStage < 3) return false; // #723: from stage 3 (the Lens that opened its later half is gone, #718)
                 if (sim != null && (w == "window" || w == "window's") && sim.BeliefStage < 2) return false;
             }
             return true;

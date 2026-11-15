@@ -112,7 +112,7 @@ namespace AquariumCiv.View.ShowMe.Tests
                 Assert.That(b.seconds, Is.InRange(3.5f, 7f));
                 Assert.LessOrEqual(b.lines.Count, PeopleVoice.BubbleMaxLines, "fits a phone bubble");
                 string lower = b.text.ToLowerInvariant();
-                if (stage < 3 || !later) Assert.IsFalse(lower.Contains("glass"), $"{b}: no 'glass' before the Lens");
+                if (stage < 3) Assert.IsFalse(lower.Contains("glass"), $"{b}: no 'glass' before stage 3 (#723)");
                 if (stage == 1) Assert.IsFalse(lower.Contains("window"), $"{b}: the camp has no window");
             }
             Assert.IsNotEmpty(sim.State.saidBubbles, "what was said is kept with the box (#120)");
@@ -150,13 +150,17 @@ namespace AquariumCiv.View.ShowMe.Tests
             var live = sim.State.notables.Where(n => n.alive && n.age >= SimCore.AdultAge).OrderBy(n => n.id).Take(2).ToList();
             var e = sim.Chronicle("wedding", "A wedding.", 0.9f, live[0].id);
             e.otherNotableId = live[1].id;
+            // #719: one telling per story: a wedding is a card, so its bubble is its card quote, never the story voice too
+            var v = PeopleVoice.StoryLine(sim, e);
+            Assert.IsNotNull(v, "the wedding still has its first-person words (for a line that is never a card)");
+            Assert.AreEqual(live[0].id, v.speakerId, "by the one it's about");
+            StringAssert.Contains(live[1].name, v.text);
             var wb = new WorldBubbles(sim, NoWarmUp);
+            Assert.IsFalse(wb.Candidates().Any(x => x.entryId == e.id), "no quote: the carded wedding is not told again in a bubble");
+            e.quote = "We said yes by the fire."; e.speakerId = live[0].id;
             var b = wb.Candidates().FirstOrDefault(x => x.entryId == e.id);
-            Assert.IsNotNull(b, "the wedding is talked about");
-            Assert.AreEqual(BubbleSource.StoryVoice, b.source);
-            Assert.AreEqual(live[0].id, b.speakerId, "by the one it's about");
-            StringAssert.Contains(live[1].name, b.text);
-            Assert.IsTrue(b.text.Contains("arried") || b.text.Contains("said yes"), "the wedding, in the first person: " + b.text); // #120: a few wordings
+            Assert.IsNotNull(b, "with a quote, the quote is its bubble");
+            Assert.AreEqual(BubbleSource.StoryQuote, b.source);
             wb.Force(0);
             Assert.IsFalse(wb.Candidates().Any(x => x.entryId == e.id), "one bubble a story");
         }

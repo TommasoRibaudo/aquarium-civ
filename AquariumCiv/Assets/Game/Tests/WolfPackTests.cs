@@ -404,7 +404,7 @@ namespace AquariumCiv.Tests
             var d = sim.OpenDilemma;
             Assert.AreEqual(LifeChoices.ThiefDef.id, d.defId);
             Assert.IsTrue(sim.ChoiceStageDue, "staged in the box first");
-            StringAssert.Contains("Chase them off, or leave the scraps?", sim.QuestionOf(d)); StringAssert.DoesNotContain("{", sim.QuestionOf(d)); // #714: who saw it is named
+            StringAssert.Contains("Chase it off, or let it eat?", sim.QuestionOf(d)); // #723: 15 words at most StringAssert.DoesNotContain("{", sim.QuestionOf(d)); // #714: who saw it is named
             // three visits without an answer: the people decide (shown three times, never unseen)
             for (int v = 0; v < 3 && d.state == DilemmaState.Open; v++) { sim.CatchUp(1); sim.BeginVisit(); }
             Assert.AreEqual(DilemmaState.Lapsed, d.state);
@@ -497,7 +497,7 @@ namespace AquariumCiv.Tests
             var d = sim.DebugRaiseLifeChoice(LifeChoices.Kill);
             Assert.IsNotNull(d);
             Assert.IsTrue(k.asked);
-            StringAssert.Contains("under the ravens", sim.QuestionOf(d)); StringAssert.DoesNotContain("{", sim.QuestionOf(d)); // #714: who found it is named
+            StringAssert.Contains("found the wolves' kill in the wood", sim.QuestionOf(d)); StringAssert.DoesNotContain("{", sim.QuestionOf(d)); // #714: who found it is named
             Step(sim, 6);
             Assert.AreEqual(KillEaten.Open, k.EatenBy, "held open while the Keeper is asked");
             Assert.IsTrue(sim.AnswerDilemma(d.id, 1, DilemmaPath.Card));

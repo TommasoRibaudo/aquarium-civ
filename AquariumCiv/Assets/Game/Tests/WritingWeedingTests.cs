@@ -321,7 +321,7 @@ namespace AquariumCiv.Tests
         {
             var sim = WithChoice("village_harvest", 1);
             for (int m = 0; m < 2 * SimConfig.MonthsPerYear; m++) sim.Step();
-            Assert.IsTrue(sim.State.chronicle.Any(e => e.text.Contains("Keeper's tree") && e.kind.StartsWith("ritual_offering")));
+            Assert.IsTrue(sim.State.chronicle.Any(e => e.text.Contains(sim.KeeperTreeGrown ? "Keeper's tree" : "tallest tree") && e.kind.StartsWith("ritual_offering")), "#723: the Keeper's tree once it stands, else the tallest tree");
             Assert.IsTrue(sim.State.chronicle.Any(e => e.kind == "ritual_offering_empty"), "the basket is empty in spring");
             Assert.AreEqual("hidden", SimCore.GroupOf("ritual_offering_empty"));
         }
