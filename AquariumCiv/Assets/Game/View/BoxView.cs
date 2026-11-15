@@ -1105,7 +1105,8 @@ namespace AquariumCiv.View
                     ClearingKind.Yard => Color.Lerp(col, co.dirt, d < r * 0.7f ? 0.55f : 0.3f),
                     ClearingKind.Meadow => Meadow(n),
                     ClearingKind.Flowers => Color.Lerp(Meadow(n), Palette.Flowers[3], 0.15f),
-                    _ => d < r * 0.72f ? co.dirt : Color.Lerp(co.dirt, co.grassB, 0.45f),
+                    // #704: the trodden dirt's outer band takes the ground's own colour (the living land's cover: dry, wet, green or snowy), never a fixed green
+                    _ => d < r * 0.72f ? co.dirt : Color.Lerp(co.dirt, Eco ? col : co.grassB, 0.45f),
                 };
                 painted = !Grassy(c.kind);
             }
