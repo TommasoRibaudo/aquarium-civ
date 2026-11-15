@@ -46,6 +46,8 @@ namespace AquariumCiv.EditorTools
             public RabbitDoll rabbit;
             public MeshFilter berries;
             public int berryCount = -1;
+            public MeshFilter rackMesh; // #700
+            public MeshFilter lineMesh; public MeshBuilder lineMb;
         }
 
         sealed class Cell
@@ -370,6 +372,25 @@ namespace AquariumCiv.EditorTools
                         rig.go = MeshObject(s, root, o.id, b.ToMesh("LabRack"), Solid, p0);
                         break;
                     }
+                    case "rackmove":
+                    {
+                        // #700 (B27): the rack as the take-down and set-up beat draws it (RackMoveMesh), rebuilt each frame from the clip's plan
+                        rig.go = new GameObject(o.id);
+                        rig.go.transform.SetParent(root, false);
+                        rig.rackMesh = rig.go.AddComponent<MeshFilter>();
+                        rig.go.AddComponent<MeshRenderer>().sharedMaterial = Solid;
+                        break;
+                    }
+                    case "line":
+                    {
+                        // #705: the washing line, as the game draws it (LaundryLines.Build); its look is rebuilt each frame from the clip's timings
+                        rig.go = new GameObject(o.id);
+                        rig.go.transform.SetParent(root, false);
+                        rig.lineMesh = rig.go.AddComponent<MeshFilter>();
+                        var lr = rig.go.AddComponent<MeshRenderer>(); lr.sharedMaterial = Solid;
+                        rig.lineMb = new MeshBuilder(705) { jitter = 0f };
+                        break;
+                    }
                     case "feather":
                     {
                         // #566: the feather pole, as the game draws it (ConsequenceMeshes at its Scale)
@@ -473,6 +494,40 @@ namespace AquariumCiv.EditorTools
                     r.go.transform.localPosition = pos;
                     r.rabbit.Face(yaw, dt, act == RabbitAct.Flee);
                     r.rabbit.Show(act, a[k + 5], time);
+                    continue;
+                }
+                if (r.rackMesh != null && r.data.rack != null && r.data.rack.Length >= 9)
+                {
+                    var rk = r.data.rack;
+                    var rplan = AquariumCiv.Life.RackMovePlan.Make((AquariumCiv.Life.RackKind)(int)rk[0], rk[1], rk[2], rk[3], rk[4], (int)rk[5], (int)rk[6]);
+                    float since = Mathf.Clamp(f * dt - rk[7], 0f, rplan.total);
+                    var rmb = new MeshBuilder(700) { jitter = 0f };
+                    RackMoveMesh.Build(rmb, rplan, rplan.LookAt(since), (gx, gz) => 0f, (int)rk[8]);
+                    if (since >= rplan.tLift + 1.0f)
+                    {
+                        var holeList = new List<(float x, float z)>(); rplan.Holes(holeList);
+                        RackMoveMesh.Holes(rmb, holeList, (gx, gz) => 0f);
+                    }
+                    var oldMesh = r.rackMesh.sharedMesh;
+                    r.rackMesh.sharedMesh = rmb.ToMesh("LabRackMove");
+                    if (oldMesh != null) Object.DestroyImmediate(oldMesh);
+                    continue;
+                }
+                if (r.lineMesh != null && r.data.line != null && r.data.line.Length >= 7)
+                {
+                    var ln = r.data.line; float tc = f * dt;
+                    float ys = yaw * Mathf.Deg2Rad;
+                    var along = new Vector2(Mathf.Cos(ys), Mathf.Sin(ys)); var outD = new Vector2(along.y, -along.x);
+                    var mb = r.lineMb; mb.verts.Clear(); mb.normals.Clear(); mb.colors.Clear(); mb.uvs.Clear(); mb.lamps.Clear(); mb.tris.Clear();
+                    int cloths = Mathf.Clamp(Mathf.RoundToInt(ln[3]), 1, AquariumCiv.Life.Laundry.BigCapacity);
+                    if (LaundryView.LookReal(tc - ln[0], ln[1], ln[2], ln[4] < 0f ? float.MaxValue : ln[4] - ln[0], cloths, ln[5] > 0.5f, time, out var look))
+                    {
+                        look.seed = Mathf.RoundToInt(ln[6]);
+                        LaundryLines.Build(mb, new Vector3(pos.x, 0f, pos.z), along, outD, look, 1f);
+                    }
+                    var old = r.lineMesh.sharedMesh;
+                    r.lineMesh.sharedMesh = mb.ToMesh("LabLine");
+                    if (old != null) Object.DestroyImmediate(old);
                     continue;
                 }
                 if (r.data.kind is "water" or "pond" or "puddle") pos.y = Mathf.Max(pos.y, 0f) + 0.004f; // look-fix: on the flat lab ground, not under it

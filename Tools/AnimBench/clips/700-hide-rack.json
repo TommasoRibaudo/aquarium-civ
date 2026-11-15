@@ -1,0 +1,103 @@
+{
+  "name": "700-hide-rack",
+  "notes": "#700 B27, the hide rack: the same beat with hides (two on the frame, the Lifter's basket is the plain basket). Old spot 223 degrees round the fire, new spot 269 (the path took the old one); the rack is 0.5 u from the fire.",
+  "duration": 21.0,
+  "fps": 30,
+  "warmup": 0,
+  "camera": {
+    "view": "default",
+    "focus": [
+      -0.18,
+      -0.42
+    ],
+    "span": 1.15
+  },
+  "sheet": {
+    "from": 0.2,
+    "to": 19.6,
+    "frames": 24,
+    "columns": 6
+  },
+  "expect": {
+    "reactSeconds": 0.2,
+    "neighbourRadius": 0.3
+  },
+  "knownGaps": [],
+  "objects": [
+    {
+      "id": "fire",
+      "kind": "fire",
+      "pos": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "rack",
+      "kind": "rackmove",
+      "pos": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radius": 0.2,
+      "state": {
+        "kind": 1,
+        "fx": 0.0,
+        "fz": 0.0,
+        "oldAngle": 3.9,
+        "newAngle": 4.7,
+        "cargo": 2,
+        "fresh": 0,
+        "start": 0.0,
+        "seed": 700
+      }
+    }
+  ],
+  "dolls": [
+    {
+      "id": "lifter",
+      "seed": 701,
+      "role": "rack-keeper",
+      "prop": "Basket",
+      "slot": "Hand",
+      "phase": 0,
+      "timeline": [
+        {
+          "label": "take the rack down, carry it, set it up",
+          "activity": "MoveRack",
+          "atRack": "rack",
+          "role": "Lifter",
+          "pos": [
+            0.0,
+            0.0
+          ],
+          "t": 0.0,
+          "dur": 21.0
+        }
+      ]
+    },
+    {
+      "id": "carrier",
+      "seed": 702,
+      "role": "carrier",
+      "prop": "None",
+      "slot": "Hand",
+      "phase": 0.5,
+      "timeline": [
+        {
+          "label": "pull the frames, carry them, plant them",
+          "activity": "MoveRack",
+          "atRack": "rack",
+          "role": "Carrier",
+          "pos": [
+            0.0,
+            0.0
+          ],
+          "t": 0.0,
+          "dur": 21.0
+        }
+      ]
+    }
+  ]
+}

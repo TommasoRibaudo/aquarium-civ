@@ -18,6 +18,11 @@ namespace AquariumCiv.Life
             public float hide = float.NaN, fish = float.NaN;
             public bool night;
             public int moves;
+            // #700 (B27): with the beat on, a rack a path covers waits for the people to take it down (the planner commits the new angle at the plant)
+            public bool beats, force;
+            public bool wantsHide, wantsFish;
+            public float hideTo, fishTo;
+            public int hideSkip, fishSkip;
         }
 
         static readonly ConditionalWeakTable<SimCore, Memo> memos = new ConditionalWeakTable<SimCore, Memo>();
@@ -33,6 +38,32 @@ namespace AquariumCiv.Life
             if (map == null || !sim.Config.settle) return false;
             int c = SiteMap.CellAt(x, z);
             return c >= 0 && map.tier[c] >= PathTierMin;
+        }
+
+        /// <summary>#700 (B27): the view plays the take-down and set-up beat, so a rack a path covers stays where it is until
+        /// <see cref="Commit"/> (the planner calls it as the carry ends). Without it (tests, plain prototypes) the rack jumps at a quiet moment.</summary>
+        public static void EnableBeats(SimCore sim) { if (sim != null) Get(sim).beats = true; }
+        public static bool BeatsOn(SimCore sim) => sim != null && Get(sim).beats;
+
+        /// <summary>The cheat's "move now": a rack on a path may be taken down at any hour, loaded or not.</summary>
+        public static void ForceQuiet(SimCore sim, bool on) { if (sim != null) Get(sim).force = on; }
+        public static bool Forced(SimCore sim) => sim != null && Get(sim).force;
+
+        /// <summary>A rack a path covers that has somewhere to go (beat mode): where it stands and where it moves to.</summary>
+        public static bool Pending(SimCore sim, RackKind kind, out float from, out float to)
+        {
+            var m = Get(sim);
+            bool w = kind == RackKind.Hide ? m.wantsHide : m.wantsFish;
+            from = kind == RackKind.Hide ? m.hide : m.fish; to = kind == RackKind.Hide ? m.hideTo : m.fishTo;
+            return w && !float.IsNaN(from);
+        }
+
+        /// <summary>The beat's carry ended: the rack stands at <paramref name="angle"/> from now on.</summary>
+        public static void Commit(SimCore sim, RackKind kind, float angle)
+        {
+            var m = Get(sim);
+            if (kind == RackKind.Hide) { m.hide = angle; m.wantsHide = false; } else { m.fish = angle; m.wantsFish = false; }
+            m.moves++;
         }
 
         /// <summary>The path test for <paramref name="sim"/>, or null when no path can exist (the first run, plain prototypes).</summary>
@@ -58,6 +89,16 @@ namespace AquariumCiv.Life
             var onPath = PathTest(sim);
             if (!float.IsNaN(m.hide) && (onPath == null || !CampSpots.RackOnPath(fx, fz, m.hide, LifePlanner.HideFrameDistance,
                     CampSpots.RackHalfDepth, CampSpots.RackHalfLength + 0.035f, onPath))) return m.hide;
+            if (!float.IsNaN(m.hide) && m.beats)
+            {   // #700 (B27): the people take it down; until they do it stays
+                if (!m.wantsHide && m.hideSkip-- <= 0)
+                {
+                    float to = CampSpots.RackAngle(fx, fz, FishRackSpot.HideAngle(sim.State.seed), LifePlanner.HideFrameDistance, onPath);
+                    bool free = !CampSpots.RackOnPath(fx, fz, to, LifePlanner.HideFrameDistance, CampSpots.RackHalfDepth, CampSpots.RackHalfLength + 0.035f, onPath);
+                    if (free && Math.Abs(to - m.hide) > 1e-4f) { m.hideTo = to; m.wantsHide = true; } else m.hideSkip = 60; // no free spot: it stays, and is asked again later
+                }
+                return m.hide;
+            }
             if (!float.IsNaN(m.hide) && !(m.night || sim.HidesDrying == 0)) return m.hide; // in use by day: it waits for a quiet moment
             float a = CampSpots.RackAngle(fx, fz, FishRackSpot.HideAngle(sim.State.seed), LifePlanner.HideFrameDistance, onPath);
             if (!float.IsNaN(m.hide) && Math.Abs(a - m.hide) > 1e-4f) m.moves++;
@@ -74,6 +115,16 @@ namespace AquariumCiv.Life
             if (!float.IsNaN(m.fish)
                 && (onPath == null || !CampSpots.RackOnPath(fx, fz, m.fish, FishRackSpot.Distance, FishRackSpot.HalfDepth, FishRackSpot.HalfLength, onPath))
                 && CampSpots.AngleGap(m.fish, hide) >= CampSpots.RackGap) return m.fish;
+            if (!float.IsNaN(m.fish) && m.beats)
+            {   // #700 (B27): the people take it down; until they do it stays
+                if (!m.wantsFish && m.fishSkip-- <= 0)
+                {
+                    float to = CampSpots.FishRackAngle(fx, fz, hide, onPath);
+                    bool free = !CampSpots.RackOnPath(fx, fz, to, FishRackSpot.Distance, FishRackSpot.HalfDepth, FishRackSpot.HalfLength, onPath) && CampSpots.AngleGap(to, hide) >= CampSpots.RackGap;
+                    if (free && Math.Abs(to - m.fish) > 1e-4f) { m.fishTo = to; m.wantsFish = true; } else m.fishSkip = 60;
+                }
+                return m.fish;
+            }
             if (!float.IsNaN(m.fish) && !(m.night || sim.FishOnRack == 0)) return m.fish;
             float a = CampSpots.FishRackAngle(fx, fz, hide, onPath);
             if (!float.IsNaN(m.fish) && Math.Abs(a - m.fish) > 1e-4f) m.moves++;

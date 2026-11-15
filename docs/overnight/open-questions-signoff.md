@@ -198,3 +198,40 @@ Verdicts from the `OpenQuestionsSignOff` play test, one run per section.
 | Stop | Section | Verdict | Note | Time |
 |---|---|---|---|---|
 | 7. #651 camp chores with no wild wood | Playtest 1 / Look | signed off |  | 18:32:06 |
+
+## Run 2026-11-15 07:34
+
+| Stop | Section | Verdict | Note | Time |
+|---|---|---|---|---|
+| 1. #707 the HUD top: bare icons over sand, night, snow and the pond | Playtest 1, batch 2 / Look | signed off |  | 07:35:51 |
+| 2. #704 the fire on dry ground and snow | Playtest 1, batch 2 / Look | signed off |  | 07:36:28 |
+| 3. #701 the pond's rim at the glass | Playtest 1, batch 2 / Look | needs change | no, that is not true, it goes over. it almost feels like the acquarium glass is thinner where the water is | 07:37:30 |
+| 4. #676 the stew by kind: fish, rabbit, berries, thin | Playtest 1, batch 2 / Look | signed off |  | 07:49:03 |
+| 5. #706 the newcomers: touch choice marks | Playtest 1, batch 2 / Look | signed off |  | 07:49:16 |
+| 6. #703 the duck jar in winter | Playtest 1, batch 2 / Look | signed off |  | 07:49:44 |
+| 7. #669 History before the first house | Playtest 1, batch 2 / Look | signed off |  | 07:50:07 |
+| 8. #700 a path over the rack: it stays by day, moves off at night | Playtest 1, batch 2 / Look | signed off |  | 07:51:29 |
+| 9. #690 the deer jar's need line | Playtest 1, batch 2 / Look | signed off |  | 07:51:53 |
+| 10. #671 faded near glass up close | Playtest 1, batch 2 / Look | signed off |  | 07:52:21 |
+| 11. #705 spec: hanging out the washing (B28) | Playtest 1, batch 2 / Look | signed off |  | 07:57:28 |
+| 12. #705 hanging out the washing (live) | Playtest 1, batch 2 / Look | signed off |  | 07:57:49 |
+| 13. #700 spec: the rack's take-down and set-up (B27) | Playtest 1, batch 2 / Look | signed off |  | 07:57:54 |
+| 14. #700 the rack taken down and set up again (live) | Playtest 1, batch 2 / Look | signed off |  | 07:57:59 |
+| 15. #710 with #658, too many animals for the box | Playtest 1, batch 2 / Decisions needed | other | brother I told you to make the box a bit deeper and reducing the numbers of animals, this is the third time you are asking for confirmation. i want a deeper box and a little bit less animals. if this was not done, do it. | 07:59:07 |
+| 16. #687 the water rework. ★ The pond answers the stroke | Playtest 1, batch 2 / Decisions needed | ★ The pond answers the stroke: the soak lands at the next game month instead of the next ... | +++ when throwing water over the pond, an effect should show of water hitting other water and splashing | 08:00:10 |
+| 17. #709 the bird from the bushes. ★ Nest and eggs, no hunting | Playtest 1, batch 2 / Decisions needed | ★ Nest and eggs, no hunting: one nest in the placed thicket, one parent in spring, kids l... |  | 08:00:18 |
+| 18. #708 a deeper pond seen through the glass | Playtest 1, batch 2 / Decisions needed | ★ Fish first, inside today's water wall (seen from the side where the pond meets a pane, ... |  | 08:00:48 |
+| 19. #702 against #673, the Feedback pill in photo mode | Playtest 1, batch 2 / Decisions needed | ★ Keep it while playtests run (testers report what they see in photo mode), hide it in re... |  | 08:01:05 |
+| 20. #705 the washing's stay | Playtest 1, batch 2 / Decisions needed | ★ As specced |  | 08:01:15 |
+| 21. Calls I made | Playtest 1, batch 2 / Calls I made | accepted all |  | 08:01:20 |
+| 22. Polish noted, not fixed | Playtest 1, batch 2 / Polish noted | accepted all |  | 08:01:32 |
+| 23. #643 the wolf jar from the chooser | Playtest 1 / Look | signed off |  | 08:01:35 |
+| 24. #644 fields through the seasons | Playtest 1 / Look | signed off |  | 08:01:41 |
+| 25. #645 name fields and the iPhone keyboard | Playtest 1 / Look | signed off |  | 08:01:55 |
+| 26. #647 the first run without the Photo button | Playtest 1 / Look | signed off | all good here but look! The games started with some clothes drying lol! the camp has not been made yet!! | 08:02:50 |
+| 27. #648 quieter sound at the default view | Playtest 1 / Look | signed off |  | 08:03:07 |
+| 28. #649 the HUD icons: gear and Feedback | Playtest 1 / Look | signed off |  | 08:03:19 |
+| 29. #651 camp chores with no wild wood | Playtest 1 / Look | signed off |  | 08:03:25 |
+| 30. #652 the gatherers' place word | Playtest 1 / Look | signed off |  | 08:03:34 |
+| 31. #654 the Settings sliders | Playtest 1 / Look | signed off |  | 08:03:48 |
+| 32. #657 grass tufts up close | Playtest 1 / Look | signed off |  | 08:03:52 |

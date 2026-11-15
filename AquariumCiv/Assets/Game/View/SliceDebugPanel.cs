@@ -287,6 +287,10 @@ namespace AquariumCiv.View
             if (Btn("Fish on the rack")) last = FishRackView.DebugRack();
             if (Btn("Dried fish to pile")) last = FishRackView.DebugToPile();
             EndRow();
+            Row(); // #705: the washing line
+            if (Btn("Laundry now")) last = LaundryCheats.LaundryNow();
+            if (Btn("Take in the washing")) last = LaundryCheats.TakeInNow();
+            EndRow();
             Row(); // fb4 #566: the feather pole
             if (Btn("Feather pole: pray now")) last = ConsequenceCheats.PrayNow();
             EndRow();
