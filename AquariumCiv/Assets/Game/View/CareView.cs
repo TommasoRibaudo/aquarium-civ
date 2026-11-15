@@ -324,32 +324,6 @@ namespace AquariumCiv.View
         /// <summary>A pane's transform (tests).</summary>
         public Transform PaneOf(int i) => cols[i].transform;
 
-        /// <summary>#147: grime the sim counts for a crumb's smudge. Small: the mark itself is drawn on the one pane.</summary>
-        public const float CrumbGrime = 0.01f;
-        /// <summary>The last smudge: its pane (-1 = none yet), its uv and its radius, world units (tests).</summary>
-        public int LastSmudgePane { get; private set; } = -1;
-        public Vector2 LastSmudgeUv { get; private set; }
-        public float LastSmudgeRadius { get; private set; }
-
-        /// <summary>#147: the Sky Crumb hit a wall at <paramref name="boxPoint"/> (box space): a smudge on that pane, real grime the Keeper wipes off like any other.</summary>
-        public void Smudge(CrumbWall wall, Vector3 boxPoint, float radiusUv, float strength)
-        {
-            var sim = Sim;
-            for (int i = 0; i < cols.Length; i++)
-            {
-                var p = cols[i].transform.localPosition;
-                bool it = wall switch { CrumbWall.Left => zAxis[i] && p.x < 0f, CrumbWall.Right => zAxis[i] && p.x > 0f, _ => !zAxis[i] && p.z > 0f };
-                if (!it) continue;
-                var uv = Uv(i, box.transform.TransformPoint(boxPoint));
-                uv = new Vector2(Mathf.Clamp01(uv.x), Mathf.Clamp01(uv.y));
-                float r = radiusUv * masks[i].size.x;
-                masks[i].Smudge(uv, r, strength);
-                LastSmudgePane = i; LastSmudgeUv = uv; LastSmudgeRadius = r;
-                if (sim != null) { sim.AddMess(CrumbGrime, 0f); synced = sim.State.grime; } // no Grow: this grime is drawn here
-                return;
-            }
-        }
-
         /// <summary>The sim's grime is the source over time: it grows the masks unevenly, or fades them when something else
         /// (debug, clean all) took grime away. Wipes go the other way (the masks lead, the sim follows).</summary>
         void SyncMasks(SimCore sim)

@@ -40,7 +40,7 @@ namespace AquariumCiv.Sim
     public enum CardTone { Good, Neutral, Sad }
 
     /// <summary>The card looks of §2.1 ("Also…" is <see cref="ReturnStack.also"/>).</summary>
-    public enum CardKind { Story, Keeper, Wish, Relic, Legend, EraReady, Dilemma }
+    public enum CardKind { Story, Keeper, Relic, Legend, EraReady, Dilemma }
 
     /// <summary>One card on return: one entry, or several that share a thread (merged, Choice 2). Not saved.</summary>
     public sealed class ChronicleCard
@@ -198,10 +198,8 @@ namespace AquariumCiv.Sim
             var era = cards.Where(c => c.kind == CardKind.EraReady).OrderByDescending(c => c.month).FirstOrDefault();
             if (era != null) chosen.Add(era);
             var dilemma = cards.Where(c => c.kind == CardKind.Dilemma).OrderByDescending(c => c.score).FirstOrDefault();
-            if (dilemma != null && chosen.Count < stack.cap) chosen.Add(dilemma); // shares the wish slot: never both
-            var wish = cards.Where(c => c.kind == CardKind.Wish).OrderByDescending(c => c.score).FirstOrDefault();
-            if (wish != null && chosen.Count < stack.cap) chosen.Add(wish);
-            var pool = cards.Where(c => !chosen.Contains(c) && c.kind != CardKind.Wish && c.kind != CardKind.Dilemma && c.kind != CardKind.EraReady).ToList();
+            if (dilemma != null && chosen.Count < stack.cap) chosen.Add(dilemma);
+            var pool = cards.Where(c => !chosen.Contains(c) && c.kind != CardKind.Dilemma && c.kind != CardKind.EraReady).ToList();
             while (chosen.Count < stack.cap && pool.Count > 0)
             {
                 ChronicleCard best = null;
@@ -218,12 +216,12 @@ namespace AquariumCiv.Sim
             // Good news first (decided): if any good-news card exists, one always makes the stack. It takes the place of the
             // lowest-scoring sad card, else the lowest neutral one, never era ready or the wish; if those two fill the cap,
             // it comes on top of it.
-            if (!chosen.Any(c => c.tone == CardTone.Good && c.kind != CardKind.EraReady && c.kind != CardKind.Wish && c.kind != CardKind.Dilemma))
+            if (!chosen.Any(c => c.tone == CardTone.Good && c.kind != CardKind.EraReady && c.kind != CardKind.Dilemma))
             {
                 var good = pool.Where(c => c.tone == CardTone.Good).OrderByDescending(c => c.score).ThenByDescending(c => c.month).FirstOrDefault();
                 if (good != null)
                 {
-                    var swappable = chosen.Where(c => c.kind != CardKind.EraReady && c.kind != CardKind.Wish && c.kind != CardKind.Dilemma).ToList();
+                    var swappable = chosen.Where(c => c.kind != CardKind.EraReady && c.kind != CardKind.Dilemma).ToList();
                     var drop = swappable.Where(c => c.tone == CardTone.Sad).OrderBy(c => c.score).FirstOrDefault()
                                ?? swappable.OrderBy(c => c.score).FirstOrDefault();
                     if (drop != null) chosen.Remove(drop);
@@ -240,21 +238,20 @@ namespace AquariumCiv.Sim
                 chosen.Add(end);
                 pool.Remove(end);
                 if (chosen.Count <= stack.cap) continue;
-                var drop = chosen.Where(c => c != end && c != cb && c.kind != CardKind.EraReady && c.kind != CardKind.Wish && c.kind != CardKind.Dilemma && c.lead.kind != CallbackKind)
+                var drop = chosen.Where(c => c != end && c != cb && c.kind != CardKind.EraReady && c.kind != CardKind.Dilemma && c.lead.kind != CallbackKind)
                     .OrderBy(c => c.score).FirstOrDefault();
                 chosen.Remove(drop ?? cb);
             }
 
             // Order (good news first, decided).
             static IEnumerable<ChronicleCard> ByScore(IEnumerable<ChronicleCard> xs) => xs.OrderByDescending(c => c.score).ThenBy(c => c.month);
-            var rest = chosen.Where(c => c.kind != CardKind.EraReady && c.kind != CardKind.Wish && c.kind != CardKind.Dilemma).ToList();
+            var rest = chosen.Where(c => c.kind != CardKind.EraReady && c.kind != CardKind.Dilemma).ToList();
             var headline = ByScore(rest.Where(c => c.tone == CardTone.Good)).FirstOrDefault();
             stack.cards.AddRange(chosen.Where(c => c.kind == CardKind.EraReady));
             stack.cards.AddRange(chosen.Where(c => c.kind == CardKind.Dilemma)); // after the era card, before the rest
             if (headline != null) stack.cards.Add(headline);
             stack.cards.AddRange(ByScore(rest.Where(c => c != headline && c.tone != CardTone.Sad)));
             stack.cards.AddRange(ByScore(rest.Where(c => c.tone == CardTone.Sad)));
-            stack.cards.AddRange(chosen.Where(c => c.kind == CardKind.Wish));
             // #312: a callback sits after its dilemma's result card, wherever the scores put it.
             foreach (var cb in stack.cards.Where(c => c.lead.kind == CallbackKind).ToList())
             {
@@ -337,7 +334,6 @@ namespace AquariumCiv.Sim
             switch (GroupOf(e.kind))
             {
                 case "legend": return CardKind.Legend;
-                case "wish": return CardKind.Wish;
                 case "dilemma": return CardKind.Dilemma;
                 case "relic": return CardKind.Relic;
             }
@@ -368,7 +364,6 @@ namespace AquariumCiv.Sim
                 "lost" when e.relicId == RelicId.LeftSandal => $"{A} lost a sandal",
                 "lost" => $"{A} got lost in the hills",
                 "relic" => RelicHeadline(e),
-                "wish" when e.notableId >= 0 => $"{A} has a wish",
                 CallbackKind => CallbackHeadline(e.text),
                 "dilemma_result" when e.text != null && e.text.Length <= 60 => e.text, // #240: the whole line, full stop and all
                 _ => null,

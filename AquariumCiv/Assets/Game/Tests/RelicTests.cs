@@ -44,7 +44,6 @@ namespace AquariumCiv.Tests
             return n;
         }
 
-        // ---------- the Sky Crumb ----------
         // ---------- the Festival Mask ----------
         [Test]
         public void TheFirstEraFestivalLeavesTheMask()
@@ -281,7 +280,6 @@ namespace AquariumCiv.Tests
             Assert.IsNull(sim.Quote(PeopleMoment.Return));
         }
 
-        // ---------- the tap-back ----------
         // ---------- debug, saves, era tags ----------
         [Test]
         public void TheDebugPanelCanGiveEveryRelic()

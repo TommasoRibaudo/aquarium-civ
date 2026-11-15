@@ -45,9 +45,7 @@ namespace AquariumCiv.View.ShowMe.Tests
                 n.trait = "the clever";
             }
             sim.DebugSetBelief(stage, later);
-            if (later && stage == 1) sim.DebugGiveRelic(RelicId.SkyCrumb);
-            if (later && stage == 2) sim.DebugGiveRelic(RelicId.KeeperDoll);
-            if (later && stage == 3) sim.DebugGiveRelic(RelicId.Lens);
+            if (later && stage == 2) sim.DebugGiveRelic(RelicId.KeeperDoll); // #718: stages 1 and 3 have no relic; the debug belief opens their later half
             Assert.AreEqual(stage, sim.BeliefStage);
             return sim;
         }

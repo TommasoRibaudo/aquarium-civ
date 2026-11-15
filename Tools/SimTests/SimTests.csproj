@@ -37,7 +37,6 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TroddenGroundTests.cs" /><!-- #523 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettingTerrainTests.cs" /><!-- #115 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ShapingTests.cs" />
-    <Compile Include="../../AquariumCiv/Assets/Game/Tests/WishTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaTests.cs" /><!-- P7 #220 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ChoiceFixTests.cs" /><!-- visit loop C1 #368 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ConsequencePropTests.cs" /><!-- visit loop C4 #371 -->

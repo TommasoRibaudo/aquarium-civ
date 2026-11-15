@@ -216,40 +216,5 @@ namespace AquariumCiv.View.ShowMe
         }
 
         static string NumberWord(int n) => n switch { 1 => "One", 2 => "Two", 3 => "Three", 4 => "Four", 5 => "Five", _ => n.ToString() };
-
-        // ======================================================================================== a wish given (#191)
-
-        /// <summary>
-        /// The wisher's own words when their wish is given (the Given beat) or met (the smaller Met beat): glad, a little
-        /// surprised, never owing anything. Null if the wisher is gone or the line isn't allowed.
-        /// </summary>
-        public static PeopleQuote WishReaction(SimCore sim, Wish wish, bool met)
-        {
-            if (sim == null || wish == null || !Alive(sim, wish.notableId)) return null;
-            string keeper = KeeperName(sim);
-            string[] options;
-            if (met)
-                options = new[] { "It's all just as I dreamed. Well. Wetter.", "Look at it. I made a wish and now there's a thing.", "I'm going to go and stand in it for a bit." };
-            else switch (wish.kind)
-                {
-                    case SimCore.NudgeKind.Rain: options = new[] { $"Rain, right where I pointed. {Cap(keeper)} heard me!", "I only wished for rain. I never thought I'd get rain.", "Look at it come down. I'm taking the credit." }; break;
-                    case SimCore.NudgeKind.Grove: options = new[] { "A grove, right where I pointed. I'm going to name every tree.", $"{Cap(keeper)} planted my trees! Mind the roots.", "Trees. Actual trees. Where I said." }; break;
-                    case SimCore.NudgeKind.Herd: options = new[] { "They came! I asked, and they came.", "Look who turned up. I asked for them by kind.", $"{Cap(keeper)} heard me. Look at them go." }; break;
-                    case SimCore.NudgeKind.Channel: options = new[] { "A channel, exactly there. I'm going to go and stand in it.", $"The water's coming through. {Cap(keeper)} heard me!", "I wished for water and the ground just opened. Lovely." }; break;
-                    default: options = new[] { "I wished and it came. I'm still blinking." }; break;
-                }
-            string text = Pick(wish.id + (int)wish.state, options);
-            if (!Allowed(text, sim)) return null;
-            return new PeopleQuote { lineNo = 0, speakerId = wish.notableId, text = text };
-        }
-
-        /// <summary>What someone awake says at night when somebody else's wish lands (the wisher is asleep and says theirs on waking).</summary>
-        public static PeopleQuote WishWitness(SimCore sim, int witnessId, Wish wish)
-        {
-            if (sim == null || wish == null || !Alive(sim, witnessId)) return null;
-            string[] options = { "Something new turned up out there. Somebody's wish, I'd bet.", "Did you see that? Somebody asked and somebody answered." };
-            string text = Pick(wish.id, options);
-            return Allowed(text, sim) ? new PeopleQuote { lineNo = 0, speakerId = witnessId, text = text } : null;
-        }
     }
 }

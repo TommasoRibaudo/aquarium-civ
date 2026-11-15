@@ -264,10 +264,7 @@ namespace AquariumCiv.View
         {
             switch (id)
             {
-                case RelicId.SkyCrumb: mb.Ico(new Vector3(0, y + 0.1f, 0), 0.13f, new Vector3(1.25f, 0.8f, 1f), new Color(0.58f, 0.33f, 0.14f), 0.2f, Palette.Canvas); break; // the nibbled heel
                 case RelicId.KeeperDoll: PegDoll.KeeperDoll(mb, new Vector3(0, y, 0), 2.1f); break; // #185: one doll, three places
-                case RelicId.Lens:
-                    mb.Prism(new Vector3(0, y + 0.06f, 0), 0.04f, 0.04f, 0.3f, 8, PegDoll.Brass, Quaternion.Euler(-70f, 0, 0), true, true, Palette.GlassEdge); break;
                 case RelicId.LeftSandal:
                     mb.Box(new Vector3(0, y + 0.02f, 0), new Vector3(0.14f, 0.04f, 0.22f), Palette.Accents[0]); break;
                 case RelicId.FestivalMask:

@@ -20,16 +20,13 @@ namespace AquariumCiv.View
     /// <item><b>Front glass.</b> Sets <see cref="LifePlanner.GlassSide"/> from the camera's yaw when a view day turns (never
     /// mid-day: it re-plans the day).</item>
     /// <item><b>Relic moments.</b> When the sim finds a relic while the box is watched (<see cref="SimCore.RelicFound"/>, not
-    /// in a catch-up), its moment is staged (<see cref="LifePlanner.StartRelicMoment"/>); the Lens waits for dusk, an era moment
-    /// first plays out. The Festival Mask's is the festival's (MomentPlayer, #91). The lines said in a moment show on the
+    /// in a catch-up), its moment is staged (<see cref="LifePlanner.StartRelicMoment"/>); an era moment first plays out. The Festival Mask's is the festival's (MomentPlayer, #91). The lines said in a moment show on the
     /// one caption with the speaker's name, ring and speech mark (#327 Option B, <see cref="ShowMeDirector.SayOrWait"/>); a line that
     /// finds the word busy waits its turn.</item>
     /// <item><b>Tapping the glass.</b> A tap on the box outside clean mode and camera mode is the Keeper knocking: the people
-    /// react as their stage does (<see cref="KeeperGesture.TapGlass"/>), and once the taps stop the sim is told how many
-    /// (<see cref="SimCore.KeeperTapped"/>); in stage 3 with the Lens a scholar walks over and knocks back as often
-    /// (<see cref="LifePlanner.TapBack"/>).</item>
-    /// <item><b>Relics in the world.</b> <see cref="RelicProps"/>: the Sky Crumb, the Keeper Doll on its post, the Lens on its
-    /// tripod, an heir's Sandal on the remembering stone.</item>
+    /// react as their stage does (<see cref="KeeperGesture.TapGlass"/>). (#718: nobody knocks back any more.)</item>
+    /// <item><b>Relics in the world.</b> <see cref="RelicProps"/>: the Keeper Doll on its post, an heir's Sandal on the
+    /// remembering stone.</item>
     /// </list>
     /// Debug: static <c>Debug*</c> methods (the debug panel, `script eval`).
     /// </summary>
@@ -66,11 +63,10 @@ namespace AquariumCiv.View
 
         /// <summary>The relic moment staged last, and its cast (tests, debug).</summary>
         public RelicMomentInfo LastMoment { get; private set; }
-        /// <summary>Relics whose moment waits (the Lens for dusk, an era moment playing).</summary>
+        /// <summary>Relics whose moment waits (an era moment playing).</summary>
         public IReadOnlyList<string> Pending => pending;
-        /// <summary>The last knock the sim was told of (taps) and who tapped back (-1 = nobody).</summary>
+        /// <summary>The last knock's taps.</summary>
         public int LastTaps { get; private set; }
-        public int LastTapBack { get; private set; } = -1;
         public int Knocks { get; private set; }
 
         static SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : SimLayoutSource.Find()?.Sim;
@@ -148,7 +144,6 @@ namespace AquariumCiv.View
             lastMonth = month;
             PlayPending(sim, planner, now);
             HandleTaps(sim, planner, now);
-            UpdateTapBackSound(planner, now);
             SayLines(planner, now);
             if (props != null) props.Sync(sim, planner, Time.unscaledDeltaTime);
             if (stash != null) stash.Sync(planner);
@@ -158,7 +153,6 @@ namespace AquariumCiv.View
         // ---------------- relic moments ----------------
         void PlayPending(SimCore sim, LifePlanner planner, ViewTime now)
         {
-            if (props != null) props.CrumbHeld = pending.Contains(RelicId.SkyCrumb);
             if (pending.Count == 0) return;
             var mp = MomentPlayer.Instance;
             if (mp != null && mp.Playing) return; // the era moment first
@@ -167,56 +161,12 @@ namespace AquariumCiv.View
                 var id = pending[i];
                 var def = RelicMoments.For(id);
                 if (def == null || !sim.HasRelic(id)) { pending.RemoveAt(i--); continue; }
-                // The Lens at dusk (§1.5): it waits for its hour (any time from then until night).
+                // A moment with an hour waits for it (any time from then until night).
                 if (def.preferredHour >= 0f && (now.hour < def.preferredHour - 0.25f || now.hour > LifeClock.Night + 1f)) continue;
-                if (id == RelicId.SkyCrumb && !CrumbDue(sim)) continue; // #147: after what made it has landed, so the two don't read as one event
                 pending.RemoveAt(i--);
-                crumbAt = -1f;
                 Play(planner, id, now);
                 return; // one at a time
             }
-        }
-
-        float crumbAt = -1f, crumbArrival;
-
-        /// <summary>What someone says as the crumb lands, by belief stage (1, 2, 3). Written by the agent (tester run 7): the user reads them.</summary>
-        public static readonly string[][] CrumbLines =
-        {
-            new[] { "What was that?!", "Back! Get back!" },
-            new[] { "It fell from up there!", "Did you see that?!" },
-            new[] { "Note the hour. Note the spot.", "It came down at noon?" },
-        };
-
-        /// <summary>The line said for the last crumb (tests), or null.</summary>
-        public string LastCrumbLine { get; private set; }
-
-        /// <summary>The lump is down: the first grown-up awake on view says so.</summary>
-        public void CrumbLanded(SimCore sim)
-        {
-            var pv = PeopleView.Find();
-            var show = ShowMeDirector.Instance;
-            if (pv == null || pv.Planner == null || show == null) return;
-            int stage = Mathf.Clamp(pv.Planner.BeliefStageSeen, 1, CrumbLines.Length) - 1;
-            string line = CrumbLines[stage][(sim.State.seed & int.MaxValue) % CrumbLines[stage].Length];
-            foreach (var a in pv.Activities)
-            {
-                if (!a.who.IsNotable || a.kind == ActivityKind.Sleep || a.kind == ActivityKind.None || !pv.TryGetDollTop(a.who, out _)) continue;
-                show.SayOrWait(line, a.who, 3f, LineKind.Crumb); // #327: busy, it waits its turn rather than vanishing
-                LastCrumbLine = line;
-                Debug.Log($"[Crumb] {a.who} says: {line}");
-                return;
-            }
-        }
-
-        /// <summary>#147: has the wait after the shaping that made the crumb passed? Starts counting the first time it's asked.</summary>
-        bool CrumbDue(SimCore sim)
-        {
-            if (crumbAt < 0f)
-            {
-                crumbArrival = ShapingView.Instance != null ? ShapingView.Instance.LastArrivalSeconds : 0f;
-                crumbAt = Time.unscaledTime + CrumbFall.Delay(sim.FindRelic(RelicId.SkyCrumb)?.cause, crumbArrival);
-            }
-            return Time.unscaledTime >= crumbAt;
         }
 
         RelicMomentInfo Play(LifePlanner planner, string id, ViewTime now)
@@ -225,7 +175,7 @@ namespace AquariumCiv.View
             if (info != null)
             {
                 LastMoment = info;
-                if (props != null) props.MomentStarted(id, crumbArrival);
+                if (props != null) props.MomentStarted(id);
                 Sfx.Play(CueLibrary.Discovery); // #96: a relic's moment begins ("look at this")
                 NudgeTo(planner, info.spot);
                 Debug.Log($"[GlassVoice] the {SimCore.RelicName(id)} moment: {info.cast.Count} people, {now.hour:0.00}h to {info.end:0.00}h");
@@ -234,7 +184,7 @@ namespace AquariumCiv.View
         }
 
 
-        /// <summary>A relic moment or a tap-back is happening off-screen or too small to see: a gentle nudge there (user
+        /// <summary>A relic moment is happening off-screen or too small to see: a gentle nudge there (user
         /// 2026-10-30, #92). Counted for tests.</summary>
         public int Nudges { get; private set; }
 
@@ -363,7 +313,7 @@ namespace AquariumCiv.View
                     else if (quick && pressWorld) AnswerGround(pressPos); // tester run 9: through the open top there's no glass to knock, and a tap on the land did nothing at all
                 }
             }
-            if (taps > 0 && t - lastTapTime > TapGap) FinishKnock(sim, planner, now);
+            if (taps > 0 && t - lastTapTime > TapGap) FinishKnock();
         }
 
         /// <summary>One tap on the glass: the people look up (by stage) at once; the count goes to the sim when the taps stop.</summary>
@@ -380,42 +330,11 @@ namespace AquariumCiv.View
             DeerView.Instance?.KnockAtScreen(pressPos);   // #425: and the deer look up, then bolt
         }
 
-        /// <summary>#96: the knocks back line up with the doll's Knock (one every half second, the hit mid-swing); a
-        /// scholar who never starts knocking within <see cref="KnockBackGiveUp"/> real seconds stays silent.</summary>
-        public const float KnockBackFirst = 0.25f, KnockBackGap = 0.5f, KnockBackGiveUp = 60f;
-        PersonRef tapBackWho;
-        int tapBackCount;
-        float tapBackSince;
-        /// <summary>Knocks back sounded so far (tests, debug).</summary>
-        public int KnockBacksSounded { get; private set; }
-
-        void UpdateTapBackSound(LifePlanner planner, ViewTime now)
+        void FinishKnock()
         {
-            if (tapBackCount <= 0) return;
-            if (Time.unscaledTime - tapBackSince > KnockBackGiveUp) { tapBackCount = 0; return; }
-            if (planner.Plan(tapBackWho, now).kind != ActivityKind.TapBack) return;
-            for (int i = 0; i < tapBackCount; i++) Sfx.Play(CueLibrary.KnockBack, -3f, 1f, KnockBackFirst + i * KnockBackGap);
-            KnockBacksSounded += tapBackCount;
-            tapBackCount = 0;
-        }
-
-        void FinishKnock(SimCore sim, LifePlanner planner, ViewTime now)
-        {
-            int n = taps;
+            LastTaps = taps;
             taps = 0;
             Knocks++;
-            LastTaps = n;
-            // stage 3 with the Lens: a scholar the planner can stage knocks back; the sim credits it (the first one makes a
-            // card) only when it really plays (tester batch 2: a credit with nobody walking over)
-            LastTapBack = planner.AnswerKnock(now, n);
-            // #96: a scholar knocks back from inside: as many soft knocks, a little after (the people turn first)
-            // #96: the knocks back sound when the scholar's fist reaches the glass (UpdateTapBackSound), not now
-            if (LastTapBack >= 0)
-            {
-                tapBackWho = PersonRef.Notable(LastTapBack); tapBackCount = n; tapBackSince = Time.unscaledTime;
-                ShowMeDirector.Instance?.KnockHeard(tapBackWho);
-                NudgeTo(planner, planner.GlassPlace);
-            }
         }
 
         // ---------------- debug (the debug panel, `script eval`) ----------------
@@ -425,29 +344,9 @@ namespace AquariumCiv.View
             var pv = PeopleView.Find();
             var p = pv != null ? pv.Planner : null;
             if (g == null || p == null) return "glass: not running";
-            return string.Format(CultureInfo.InvariantCulture, "glass: belief {0} {1} · side {2} · waiting {3} · knocks {4} (last {5}, back {6})",
+            return string.Format(CultureInfo.InvariantCulture, "glass: belief {0} {1} · side {2} · waiting {3} · knocks {4} (last {5})",
                 p.BeliefStageSeen, p.BeliefLaterSeen ? "later" : "early", p.GlassSide, g.pending.Count == 0 ? "none" : string.Join(",", g.pending),
-                g.Knocks, g.LastTaps, g.LastTapBack);
-        }
-
-        /// <summary>Debug (#147): the Sky Crumb falls now, bounce and smudge, found or not.</summary>
-        public static string DebugDropCrumb()
-        {
-            var sim = Sim;
-            if (sim == null) return "glass: not running";
-            if (!sim.HasRelic(RelicId.SkyCrumb) && sim.DebugGiveRelic(RelicId.SkyCrumb) == null) return "no crumb";
-            sim.FindRelic(RelicId.SkyCrumb).foundMonth = sim.State.month;
-            return DebugPlayMoment(RelicId.SkyCrumb);
-        }
-
-        /// <summary>Debug (#147, #138): the big lump is eaten: its last piece on the stone by the fire.</summary>
-        public static string DebugCrumbEaten()
-        {
-            var sim = Sim;
-            if (sim == null) return "glass: not running";
-            if (!sim.HasRelic(RelicId.SkyCrumb) && sim.DebugGiveRelic(RelicId.SkyCrumb) == null) return "no crumb";
-            sim.FindRelic(RelicId.SkyCrumb).foundMonth = sim.State.month - CrumbFall.EatenMonths;
-            return "the crumb is eaten";
+                g.Knocks, g.LastTaps);
         }
 
         /// <summary>Debug: give the relic if it isn't found yet, then play its moment now (whatever the hour).</summary>
@@ -473,7 +372,7 @@ namespace AquariumCiv.View
             g.pending.Remove(id); // after: giving the relic queues its own moment, and this one is it
             if (r == null) return $"nobody can play the {SimCore.RelicName(id)}";
             g.LastMoment = r.moment;
-            if (g.props != null) g.props.MomentStarted(id, g.crumbArrival);
+            if (g.props != null) g.props.MomentStarted(id);
             g.NudgeTo(pv.Planner, r.moment.spot);
             return $"ritual: the {SimCore.RelicName(id)}, {r.moment.cast.Count} people, {r.bubbles.Count} symbol bubbles until {r.moment.end:0.00}h";
         }
@@ -487,26 +386,14 @@ namespace AquariumCiv.View
             return n == 0 ? "nobody near enough to come" : $"{n} at the glass";
         }
 
-        /// <summary>Debug: the Keeper taps the glass <paramref name="n"/> times (the player's path: reactions, then the sim and
-        /// the tap-back if the stage has one).</summary>
+        /// <summary>Debug: the Keeper taps the glass <paramref name="n"/> times (the player's path: the people react).</summary>
         public static string DebugKnock(int n = 3)
         {
             var g = Instance; var sim = Sim; var pv = PeopleView.Find();
             if (g == null || sim == null || pv == null || pv.Planner == null) return "glass: not running";
             for (int i = 0; i < n; i++) g.Tap(pv.Planner, pv.Now);
-            g.FinishKnock(sim, pv.Planner, pv.Now);
-            return g.LastTapBack >= 0 ? $"{sim.FindNotable(g.LastTapBack)?.FullName} taps back {n}" : $"knocked {n}: nobody taps back (belief {pv.Planner.BeliefStageSeen}{(pv.Planner.BeliefLaterSeen ? " later" : "")})";
-        }
-
-        /// <summary>Debug: a scholar (or any adult) taps back now, whatever the stage.</summary>
-        public static string DebugTapBack(int n = 3)
-        {
-            var sim = Sim; var pv = PeopleView.Find();
-            if (sim == null || pv == null || pv.Planner == null) return "no people";
-            int id = sim.DebugTapBack(n);
-            if (id < 0 || !pv.Planner.TapBack(pv.Now, id, n)) return "nobody to tap back";
-            if (Instance != null) { Instance.tapBackWho = PersonRef.Notable(id); Instance.tapBackCount = n; Instance.tapBackSince = Time.unscaledTime; }
-            return $"{sim.FindNotable(id)?.FullName} taps back {n}";
+            g.FinishKnock();
+            return $"knocked {n} (belief {pv.Planner.BeliefStageSeen}{(pv.Planner.BeliefLaterSeen ? " later" : "")})";
         }
 
         /// <summary>Debug: the front glass (0 = -z, 1 = +x, 2 = +z, 3 = -x), or -1 = the camera's now.</summary>

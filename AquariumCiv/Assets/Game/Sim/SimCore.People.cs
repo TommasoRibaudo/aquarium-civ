@@ -98,8 +98,6 @@ namespace AquariumCiv.Sim
         public List<PersonTie> mentors = new();         // mentor and apprentices
         public List<PersonStory> recentStories = new(); // newest first, at most SimCore.CardStories
         public List<PersonStory> bestStories = new();   // by salience, at most SimCore.CardStories
-        public Wish wish;                               // their open wish, or null
-        public string wishText = "";
         public List<PersonRelic> relics = new();
         public PeopleQuote quote;                       // a line in their voice for the belief stage now (the dead: their last words kept)
         public bool pinned, canPin;
@@ -469,11 +467,6 @@ namespace AquariumCiv.Sim
             c.recentStories = mine.AsEnumerable().Reverse().Take(CardStories).Select(e => StoryOf(e, n.id)).ToList();
             c.bestStories = forBest.OrderByDescending(e => e.salience).ThenByDescending(e => e.month).ThenByDescending(e => e.id)
                 .Take(CardStories).Select(e => StoryOf(e, n.id)).ToList();
-
-            // wish
-            c.wish = n.alive ? State.wishes?.FirstOrDefault(w => w.state == WishState.Open && w.notableId == n.id) : null;
-            if (c.wish != null)
-                c.wishText = State.chronicle.FirstOrDefault(e => e.id == c.wish.entryId)?.text ?? $"{n.name} hopes for a {ShapingToolName(c.wish.kind)}.";
 
             // relics
             foreach (var r in FoundRelics)

@@ -89,7 +89,6 @@ namespace AquariumCiv.View.Shaping
     /// <item><see cref="RouteFingers"/>, <see cref="BeginGesture"/>, <see cref="EndGesture"/>: one finger = tool, two = camera.</item>
     /// <item><see cref="PlaceAt"/>: the tool lands (through <see cref="ShapingShow.Place"/>); <see cref="Feedback"/> says what happened.</item>
     /// <item><see cref="TakeBackList"/>, <see cref="TakeBack"/>: undo while the people haven't used it.</item>
-    /// <item><see cref="ArmForWish"/>, <see cref="Confirm"/>: the Wish card's Give, pre-armed at the wished spot.</item>
     /// </list>
     /// It writes to the sim only through the show/sim placing and take-back calls, never draws dice, and never changes the
     /// economy. It holds no clock: the UI fades toasts itself.
@@ -105,14 +104,6 @@ namespace AquariumCiv.View.Shaping
         /// <summary>True while the finger is mid-gesture with the tool (a rub, a drag, a flick).</summary>
         public bool GestureActive { get; private set; }
         public TrayFeedback Feedback { get; private set; }
-
-        /// <summary>A wish's spot the tool is pre-armed at (the Wish card's Give), or none.</summary>
-        public bool HasPending { get; private set; }
-        public float PendingX { get; private set; }
-        public float PendingZ { get; private set; }
-        public int PendingWishId { get; private set; } = -1;
-        /// <summary>The notable the pending gift will be credited to (-1 = none).</summary>
-        public int PendingNotableId { get; private set; } = -1;
 
         int seq;
 
@@ -204,7 +195,7 @@ namespace AquariumCiv.View.Shaping
 
         /// <summary>What the finger does with the tool in hand, or empty.</summary>
         public string BannerHint(SimCore sim) =>
-            !InHand ? "" : HasPending ? "Tap to give it here, or drag it elsewhere." : GestureHint(Armed, sim.ShapingToolName(Armed));
+            !InHand ? "" : GestureHint(Armed, sim.ShapingToolName(Armed));
 
         /// <summary>The banner as one line ("Shower: Tap the ground..."), or empty.</summary>
         public string Banner(SimCore sim) => InHand ? BannerTitle(sim) + ": " + BannerHint(sim) : "";
@@ -225,11 +216,10 @@ namespace AquariumCiv.View.Shaping
             Mode = TrayMode.Armed;
             Armed = kind;
             GestureActive = false;
-            ClearPendingSpot();
             return true;
         }
 
-        /// <summary>Cancel: the tool goes back to the tray (nothing was spent). A pending wish stays open in the sim.</summary>
+        /// <summary>Cancel: the tool goes back to the tray (nothing was spent).</summary>
         public void Cancel() => Cancel(true);
 
         void Cancel(bool toTray)
@@ -237,11 +227,8 @@ namespace AquariumCiv.View.Shaping
             bool had = Mode == TrayMode.Armed;
             Armed = "";
             GestureActive = false;
-            ClearPendingSpot();
             if (had && toTray) Mode = TrayMode.Open;
         }
-
-        void ClearPendingSpot() { HasPending = false; PendingWishId = -1; PendingNotableId = -1; PendingX = PendingZ = 0f; }
 
         // ================================================================== fingers
 
@@ -276,8 +263,7 @@ namespace AquariumCiv.View.Shaping
                 Say(TrayFeedbackKind.Failed, ground, ShapingShow.FailCue);
                 return new SimCore.ShapeResult { fail = SimCore.ShapeFail.Unknown };
             }
-            int credit = HasPending ? PendingNotableId : -1;
-            var r = show.Place(sim, kind, x, z, credit);
+            var r = show.Place(sim, kind, x, z, -1);
             Finish(sim, kind, r);
             return r;
         }
@@ -292,8 +278,8 @@ namespace AquariumCiv.View.Shaping
             }
             int left = sim.ShapingChargesWhole;
             Say(TrayFeedbackKind.Placed, $"{Cap(sim.ShapingToolName(kind))} placed. {(left == 1 ? "1 charge" : left + " charges")} left", ShapingShow.PlaceCue(kind), r.nudge.id);
-            if (StayArmedAfterPlace && left > 0 && sim.CanShape(kind) == SimCore.ShapeFail.None) { GestureActive = false; ClearPendingSpot(); }
-            else { Armed = ""; GestureActive = false; ClearPendingSpot(); Mode = TrayMode.Closed; }
+            if (StayArmedAfterPlace && left > 0 && sim.CanShape(kind) == SimCore.ShapeFail.None) { GestureActive = false; }
+            else { Armed = ""; GestureActive = false; Mode = TrayMode.Closed; }
         }
 
         // ================================================================== take back
@@ -329,48 +315,6 @@ namespace AquariumCiv.View.Shaping
             return true;
         }
 
-        // ================================================================== the wish hook
-
-        /// <summary>The Wish card's Give: opens shaping mode with the wish's tool in hand, pre-armed at the wished spot
-        /// (<see cref="PendingX"/>, <see cref="PendingZ"/>). The player confirms with <see cref="Confirm"/>, or Cancels (the wish
-        /// stays open). A tool that can't be used says why. False for a wish that isn't open or can't be given.</summary>
-        public bool ArmForWish(SimCore sim, int wishId)
-        {
-            var w = sim.FindWish(wishId);
-            if (w == null || w.state != WishState.Open) return false;
-            var fail = sim.CanGiveWish(wishId);
-            if (fail != SimCore.ShapeFail.None) { Say(TrayFeedbackKind.Failed, ReasonText(w.kind, fail), ShapingShow.FailCue); return false; }
-            Mode = TrayMode.Armed;
-            Armed = w.kind;
-            GestureActive = false;
-            HasPending = true;
-            PendingWishId = wishId;
-            PendingNotableId = w.notableId;
-            PendingX = w.x;
-            PendingZ = w.z;
-            return true;
-        }
-
-        /// <summary>The player drags the pre-armed spot elsewhere.</summary>
-        public void MovePending(float x, float z) { if (HasPending) { PendingX = x; PendingZ = z; } }
-
-        /// <summary>Confirm the pre-armed gift at <see cref="PendingX"/>/<see cref="PendingZ"/>: the sim's own wish call when the
-        /// spot is the wish's (the wish becomes Given), else a plain placing credited to the wisher (the sim meets the wish
-        /// when a gift of its tool stands). The wish's own call is not routed through the show, so its next <see cref="ShapingShow.Sync"/> picks the shaping up (and plays its Placed event).</summary>
-        public SimCore.ShapeResult Confirm(SimCore sim, ShapingShow show)
-        {
-            if (!HasPending) return new SimCore.ShapeResult { fail = SimCore.ShapeFail.Unknown };
-            var w = sim.FindWish(PendingWishId);
-            string kind = Armed;
-            if (w != null && Math.Abs(w.x - PendingX) < 1e-4f && Math.Abs(w.z - PendingZ) < 1e-4f)
-            {
-                var r = sim.GiveWish(PendingWishId);
-                Finish(sim, kind, r);
-                return r;
-            }
-            return PlaceAt(sim, show, PendingX, PendingZ);
-        }
-
         // ================================================================== debug
 
         /// <summary>One line for the debug panel: the mode, the tool in hand, the charges, each tool's state.</summary>
@@ -378,7 +322,7 @@ namespace AquariumCiv.View.Shaping
         {
             var c = Charges(sim);
             var tools = string.Join(", ", Tools(sim).Select(t => $"{t.kind}:{(t.enabled ? "ok" : t.fail.ToString())} {t.standing}/{t.cap}"));
-            return $"tray {Mode} armed={(Armed.Length == 0 ? "-" : Armed)}{(HasPending ? $" wish#{PendingWishId}@{PendingX:0.0},{PendingZ:0.0}" : "")} charges {c.text} +{c.refill:0.00} | {tools} | takeback {TakeBackList(sim).Count}";
+            return $"tray {Mode} armed={(Armed.Length == 0 ? "-" : Armed)} charges {c.text} +{c.refill:0.00} | {tools} | takeback {TakeBackList(sim).Count}";
         }
 
         // ================================================================== helpers

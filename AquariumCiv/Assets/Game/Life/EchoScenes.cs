@@ -228,11 +228,6 @@ namespace AquariumCiv.Life
                     Beat(d, RelicCast.Grown, 0.5f, 1f, ActivityKind.Cheer, RelicWhere.Spot);
                     break;
                 }
-                case "tapback":
-                    sc.kind = SceneKind.TapBack; sc.where = EchoWhere.Glass; sc.otherId = -1;
-                    Beat(d, RelicCast.Owner, 0f, 0.6f, ActivityKind.TapBack, RelicWhere.Spot, faces: true);
-                    Beat(d, RelicCast.Owner, 0.6f, 1f, ActivityKind.WriteDown, RelicWhere.Spot, Prop.Slate, faces: true);
-                    break;
                 case "lost":
                     // Lost in the hills: they point the way they went.
                     sc.kind = SceneKind.Lost; sc.otherId = -1;
@@ -280,11 +275,9 @@ namespace AquariumCiv.Life
         /// <summary>The relic card's gesture (the same as the planner's relic echo, #92).</summary>
         public static (ActivityKind kind, Prop prop, bool faces) RelicGesture(string relicId) => relicId switch
         {
-            RelicId.SkyCrumb => (ActivityKind.Taste, Prop.Crumb, false),
             RelicId.FestivalMask => (ActivityKind.Dance, Prop.Mask, true),
             RelicId.KeeperDoll => (ActivityKind.Point, Prop.None, false),
             RelicId.LeftSandal => (ActivityKind.LopsidedDance, Prop.Sandal, false),
-            RelicId.Lens => (ActivityKind.LookThroughLens, Prop.Lens, false),
             _ => (ActivityKind.Point, Prop.None, false),
         };
 

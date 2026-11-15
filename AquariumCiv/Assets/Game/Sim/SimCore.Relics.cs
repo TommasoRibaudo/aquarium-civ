@@ -561,23 +561,7 @@ namespace AquariumCiv.Sim
             return true;
         }
 
-        // ---------- the tap-back (Choice 9 ★) ----------
-
-        /// <summary>
-        /// The Keeper tapped the glass <paramref name="taps"/> times. In stage 3's later half (the Lens is up) a scholar taps
-        /// back the same number of times: returns their id (the view plays it), or -1. The first tap-back makes a card.
-        /// </summary>
-        public int KeeperTapped(int taps) => TapBack(taps, false);
-
-        // #718 (user 2026-11-14: shaping-only text is deleted): the tap-back is gone. It needed the Lens (stage 3's later half),
-        // which no box makes now. These stay as no-ops until the Editor pass removes their callers (LifePlanner.Glass, GlassVoice).
-        int TapBack(int taps, bool force) => -1;
-
-        /// <summary>#718: always empty (the tap-back is gone).</summary>
-        public List<int> TapBackCandidates(int taps) => new List<int>();
-
-        /// <summary>#718: does nothing (the tap-back is gone).</summary>
-        public void CreditTapBack(int scholarId, int taps) { }
+        // #718 (the user, 2026-11-14: the text only shaping makes is deleted): the tap-back (Choice 9) is gone with the Lens.
 
         // ---------- the era moment's pick ----------
         /// <summary>Carry a found relic to the next box (the era moment's pick of 3; #86's CompleteBox calls this). False if
@@ -673,8 +657,5 @@ namespace AquariumCiv.Sim
             if (later) GlassRelicFound(relic);
             else State.storyFlags.Remove("relic:" + relic);
         }
-
-        /// <summary>Debug: a scholar (or any adult) taps back now, whatever the stage. Returns who, or -1.</summary>
-        public int DebugTapBack(int taps = 3) => TapBack(taps, true);
     }
 }

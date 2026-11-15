@@ -14,8 +14,7 @@ namespace AquariumCiv.View.ShowMe
     /// </summary>
     public static partial class PeopleVoice
     {
-        /// <summary>The bank's story lines (kind C) in the speaker's own words, by line number. Line 39 (the tap-back count)
-        /// stays the narrator's.</summary>
+        /// <summary>The bank's story lines (kind C) in the speaker's own words, by line number.</summary>
         public static readonly IReadOnlyDictionary<int, string> BankFirstPerson = new Dictionary<int, string>
         {
             [4] = "I moved the tents back from the edge of the sky. Just a little. Just in case.",
@@ -182,9 +181,6 @@ namespace AquariumCiv.View.ShowMe
                     "I'm new here. Everyone waves. I like it.",
                     "They gave me a bowl of soup before they asked my name. I'm staying.",
                     "I don't know where anything is yet. Everyone points. It's lovely."); break;
-                case "tapback": text = Pick(v,
-                    $"{Cap(keeper)} knocked. I knocked back. I wrote it down.",
-                    $"{Cap(keeper)} knocked, so I knocked. Politely. Same number of times."); break;
                 case "death":
                 case "role_death":
                 {

@@ -340,17 +340,6 @@ namespace AquariumCiv.Tests
             Assert.IsNull(sim.DebugPlayRitual("nope"));
         }
 
-        [Test]
-        public void TheFeastCallbackCountsTheSeats()
-        {
-            var sim = WithChoice("village_harvest", 0);
-            ChronicleEntry e;
-            var told = new List<string>();
-            while ((e = sim.DebugFireCallbackNow()) != null) told.Add(e.text);
-            Assert.IsTrue(told.All(t => !t.Contains("{")), string.Join(" / ", told));
-            Assert.IsTrue(told.Any(t => t.Contains("seats now")), string.Join(" / ", told));
-        }
-
         // ---------- #718: the shaping-only text is gone ----------
 
         [Test]
@@ -365,8 +354,9 @@ namespace AquariumCiv.Tests
             var n = old.State.notables.First(x => x.alive);
             old.State.wishes.Add(new Wish { id = 1, notableId = n.id, kind = SimCore.NudgeKind.Rain, month = old.State.month, state = WishState.Open });
             var back = new SimCore(new SimConfig(), JsonUtility.FromJson<SimState>(JsonUtility.ToJson(old.State)));
-            for (int m = 0; m < SimCore.WishLapseMonths + 1; m++) back.Step();
-            Assert.AreNotEqual(WishState.Open, back.State.wishes.Single().state, "an old open wish closes quietly");
+            back.Step();
+            Assert.AreNotEqual(WishState.Open, back.State.wishes.Single().state, "an old open wish closes quietly, at once (#718 Editor pass)");
+            Assert.IsFalse(back.ReturnCardsCapped(0, 7).cards.Any(c => c.lead.kind == "wish"), "and is never a card");
         }
 
         [Test]
@@ -383,7 +373,8 @@ namespace AquariumCiv.Tests
             Assert.IsNull(sim.FindRelic(RelicId.SkyCrumb)); Assert.IsNull(sim.FindRelic(RelicId.Lens));
             Assert.IsNull(sim.DebugGiveRelic(RelicId.SkyCrumb)); Assert.IsNull(sim.DebugGiveRelic(RelicId.Lens));
             CollectionAssert.AreEquivalent(new[] { RelicId.FestivalMask, RelicId.KeeperDoll, RelicId.LeftSandal }, RelicId.All, "the book's three");
-            Assert.IsEmpty(sim.TapBackCandidates(3)); Assert.AreEqual(-1, sim.KeeperTapped(3));
+            Assert.IsNull(typeof(SimCore).GetMethod("KeeperTapped"), "#718: the tap-back is gone");
+            Assert.IsNull(typeof(SimCore).GetMethod("DebugForceWish"), "#718: no wish can be made");
             Assert.IsFalse(sim.State.threads.Any(t => t.source == ThreadSource.Gift), "no gift teaser");
             Assert.AreEqual("cloth", sim.DollProp);
             foreach (int no in new[] { 9, 10, 13, 19, 20, 32, 33, 34, 39 }) Assert.IsFalse(SimCore.LineBank.Any(l => l.no == no), $"bank line {no}");

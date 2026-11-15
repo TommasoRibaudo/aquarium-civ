@@ -27,10 +27,9 @@ namespace AquariumCiv.Life
             /// <summary>#109: a stay doing a move's loop where it is (filling the buckets at the well), not a move from wherever
             /// they are to <see cref="place"/> (a layer's carry to the green).</summary>
             public bool still;
-            /// <summary>#92: facing the front glass; walking there carrying <see cref="prop"/> (a staged beat); a count (knocks).</summary>
+            /// <summary>#92: facing the front glass; walking there carrying <see cref="prop"/> (a staged beat). (#718: the knocks' count went with the tap-back.)</summary>
             public bool faces, carries;
             public bool hasPoint; public float mx, mz; // #197: an intercept
-            public int count;
             public bool Moving => ActivityInfo.IsMove(kind) && from != place && !from.IsNone;
         }
 
@@ -525,7 +524,7 @@ namespace AquariumCiv.Life
                 var a = outList[i - 1];
                 var c = outList[i];
                 if (a.kind != c.kind || a.place != c.place || a.from != c.from || a.prop != c.prop || a.partner != c.partner || a.src != c.src ||
-                    a.chronicleId != c.chronicleId || a.copies != c.copies || a.faces != c.faces || a.count != c.count || ActivityInfo.IsMove(a.kind)) continue;
+                    a.chronicleId != c.chronicleId || a.copies != c.copies || a.faces != c.faces || ActivityInfo.IsMove(a.kind)) continue;
                 a.end = c.end;
                 outList[i - 1] = a;
                 outList.RemoveAt(i);

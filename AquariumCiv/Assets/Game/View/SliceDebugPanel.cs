@@ -436,7 +436,7 @@ namespace AquariumCiv.View
             if (Btn("Earn every book page")) last = BookView.DebugEarnAll();
             if (Btn("Open book")) { last = BookView.DebugOpen(); DebugDock.Active = DebugDock.None; }
             EndRow();
-            // What the town wants (#181), the said list (#120), a wish granted (#191), a baby (#192), a gathering (#190).
+            // What the town wants (#181), the said list (#120), a baby (#192), a gathering (#190).
             Row();
             foreach (AquariumCiv.View.ShowMe.WantCase want in System.Enum.GetValues(typeof(AquariumCiv.View.ShowMe.WantCase)))
                 if (Btn(want.ToString())) last = ShowMeDirector.DebugWant(want);
@@ -451,10 +451,6 @@ namespace AquariumCiv.View
             if (Btn("Stalls")) last = StallProps.DebugStock();
             if (Btn("Keeper Doll")) last = GlassVoice.DebugPlayMoment(AquariumCiv.Sim.RelicId.KeeperDoll);
             if (Btn("Start a ritual now")) last = GlassVoice.DebugStartRitual();
-            if (Btn("Drop crumb")) last = GlassVoice.DebugDropCrumb();
-            if (Btn("Crumb eaten")) last = GlassVoice.DebugCrumbEaten();
-            if (Btn("Grant a wish")) last = WishPayoffView.DebugGrant();
-            if (Btn("Gift glow")) last = WishPayoffView.DebugGlow();
             if (Btn("Baby")) last = PeopleView.DebugBaby();
             if (Btn("Bicker")) last = PeopleView.DebugRunIn(true);
             if (Btn("Chat")) last = PeopleView.DebugRunIn(false);

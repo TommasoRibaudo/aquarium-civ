@@ -25,7 +25,6 @@ namespace AquariumCiv.Tests
         static SimCore AfterABig(int seed = 5, bool newborn = true)
         {
             var sim = NewSim(seed, Cfg());
-            sim.WishesOn = false; // an open wish holds the shared slot for up to 24 months: this test is about the choices
             sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => Way("w" + i)).ToArray();
             for (int m = 0; m < 36; m++) sim.Advance(1.0 / 12);
             var big = sim.DebugRaiseDilemma("w0");
@@ -304,7 +303,6 @@ namespace AquariumCiv.Tests
         public void TheCheatMakesANewbornAndRaisesTheNaming()
         {
             var sim = NewSim(5, Cfg());
-            sim.WishesOn = false;
             for (int m = 0; m < 36; m++) sim.Advance(1.0 / 12);
             var d = sim.DebugRaiseNaming();
             Assert.IsNotNull(d);
