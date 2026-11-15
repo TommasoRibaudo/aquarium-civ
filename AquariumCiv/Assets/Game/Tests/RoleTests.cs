@@ -285,7 +285,7 @@ namespace AquariumCiv.Tests
                 if (next == null) continue; // nobody free to name; the spring contest or the crowd fills it
                 named++;
                 var line = sim.State.chronicle.Last(e => e.kind == "role_named");
-                Assert.AreEqual($"Before the end, {priest.FullName} named {next.FullName} the new priest. {next.FullName} has been practising the blessing on the goats.", line.text);
+                Assert.AreEqual($"Before the end, {priest.FullName} named {next.FullName} the new priest. {next.FullName} has been practising the blessing on the fields.", line.text); // #716
             }
             Assert.GreaterOrEqual(named, 3);
         }

@@ -307,7 +307,7 @@ namespace AquariumCiv.Sim
             Assign(seat, ranked[0]);
             var runnerUp = ranked.Count > 1 ? ranked[1] : null;
             if (rule == RoleRule.WorkContest && runnerUp != null)
-                RoleLine("role_masterwork", $"{ranked[0].FullName} and {runnerUp.FullName} each built a chimney to prove who should be master builder. {ranked[0].FullName}'s is still standing.", 0.65f + RivalBonus(ranked[0], runnerUp), ranked[0], runnerUp, seat);
+                RoleLine("role_masterwork", $"{ranked[0].FullName} and {runnerUp.FullName} each built a house to prove who should be master builder. {ranked[0].FullName}'s roof still keeps the rain out.", 0.65f + RivalBonus(ranked[0], runnerUp), ranked[0], runnerUp, seat); // #716 [est]
             else if (rule == RoleRule.Inheritance && prev != null)
                 RoleLine("role_won", $"With no one of {prev.FullName}'s blood left to take the title, the notables chose {ranked[0].FullName} as {RoleIn(RoleType.Lord)}.", 0.75f, ranked[0], prev, seat);
             else
@@ -343,7 +343,7 @@ namespace AquariumCiv.Sim
             string[] ways =
             {
                 "went home and shut the door very loudly",
-                "spent the evening telling the goats it was rigged",
+                "spent the evening telling the fire it was rigged", // #716 [est]
                 "took a very long walk round the pond",
             };
             return ways[(int)(RoleRoll(29, loser.id, 0) * ways.Length) % ways.Length];
@@ -423,7 +423,7 @@ namespace AquariumCiv.Sim
                 .ThenBy(c => c.id).FirstOrDefault();
             if (next == null) return false;
             Assign(seat, next);
-            RoleLine("role_named", $"{(prev.alive ? "" : "Before the end, ")}{prev.FullName} named {next.FullName} the new priest. {next.FullName} has been practising the blessing on the goats.", 0.72f, next, prev, seat);
+            RoleLine("role_named", $"{(prev.alive ? "" : "Before the end, ")}{prev.FullName} named {next.FullName} the new priest. {next.FullName} has been practising the blessing on the fields.", 0.72f, next, prev, seat); // #716 [est]
             return true;
         }
 
@@ -438,7 +438,10 @@ namespace AquariumCiv.Sim
                 .ThenBy(c => c.id).First();
             if (pick == keep) return; // kept on, no line
             Assign(seat, pick);
-            string flavour = seat.role == RoleType.Captain ? $"The watch is {pick.FullName} and a very large dog." : $"{pick.FullName} promised everyone a fair price, and mostly kept it.";
+            var watchDog = Dogs.FirstOrDefault(d => DogStageOf(d) != DogStage.Pup); // #716 [est]: a real dog, or none
+            string flavour = seat.role == RoleType.Captain
+                ? (watchDog != null ? $"The watch is {pick.FullName} and {watchDog.name}." : $"The watch is {pick.FullName} and one lantern.")
+                : $"{pick.FullName} promised everyone a fair price, and mostly kept it.";
             RoleLine("role_appointed", $"Lord {lord.FullName} made {pick.FullName} {seat.role}. {flavour}", 0.55f, pick, lord, seat);
         }
 

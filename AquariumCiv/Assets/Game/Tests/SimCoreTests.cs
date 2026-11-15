@@ -54,16 +54,16 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(758657440u, Fingerprint(sim.State), "slice world fingerprint"); // #715: the weather and trait stories left the story stream; #82fix: quarrels gated on the box (text only); #67: job_fill lines; #74: the first "lost" story is the Left Sandal's (text only)
+            Assert.AreEqual(200304047u, Fingerprint(sim.State), "slice world fingerprint"); // #716: office and role lines (text only); #715: the weather and trait stories left the story stream; #82fix: quarrels gated on the box (text only); #67: job_fill lines; #74: the first "lost" story is the Left Sandal's (text only)
             var noRelics = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             noRelics.RelicsOn = false;
             noRelics.Advance(48);
-            Assert.AreEqual(758657440u, Fingerprint(noRelics.State), "the same world without #74's relics: only the text moved");
+            Assert.AreEqual(200304047u, Fingerprint(noRelics.State), "the same world without #74's relics: only the text moved");
             var before = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             before.CardsOn = false;
             before.RelicsOn = false;
             before.Advance(48);
-            Assert.AreEqual(758657440u, Fingerprint(before.State), "the same world with #59's text swaps off"); // #715: the swapped lines (trait stand-ins, the strange light) are gone, so the same as with them on
+            Assert.AreEqual(200304047u, Fingerprint(before.State), "the same world with #59's text swaps off"); // #715: the swapped lines (trait stand-ins, the strange light) are gone, so the same as with them on
         }
 
         [Test]

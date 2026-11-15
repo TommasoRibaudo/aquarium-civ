@@ -116,7 +116,10 @@ namespace AquariumCiv.Tests
                     }
                 }
                 TestContext.WriteLine($"{trait}: {string.Join(", ", counts[trait].Select(kv => $"{kv.Key} {kv.Value}"))}");
-                Assert.GreaterOrEqual(counts[trait].Values.Sum(), 5, $"{trait}: a chief's term over 3 × 45 years");
+                // #716: a line names only what the box has. A camp has no weathervane or cart (the tinkerer's lines wait for the
+                // village and the town), and no Keeper's tree with the ecology off (the dreamer keeps only the map).
+                int least = trait == "the tinkerer" ? 0 : trait == "the dreamer" ? 1 : 5;
+                Assert.GreaterOrEqual(counts[trait].Values.Sum(), least, $"{trait}: a chief's term over 3 × 45 years");
                 CollectionAssert.IsSubsetOf(counts[trait].Keys.ToList(), SimCore.TermKindsOf(trait).ToList(), trait);
             }
             // The user's examples: the cheerful leader feasts and sings, the stern one keeps it tidy, the quarrelsome rows.

@@ -124,12 +124,10 @@ namespace AquariumCiv.Sim
                 flavor = new TermFlavor { mirth = 0.45f, feasts = 0.25f, quiet = -0.15f, tidiness = -0.1f },
                 stories = new[]
                 {
-                    new TermStory("term_prank", 2f, "{0}, the {5}'s {1}, ended a speech at the {2} with a joke about the goats. Even the goats laughed.",
-                        "On the orders of {0}, the first day of spring is now Hat Day. {3} wore three."),
-                    new TermStory("term_feast", 1f, "{0} the {1} held a feast day with games at the {2}. {3} won the sack race by falling over the line.",
-                        "{0}, the {5}'s {1}, declared a day of games at the {2}. {3} is still champion of the egg-and-spoon."),
+                    new TermStory("term_prank", 2f, "{0}, the {5}'s {1}, ended a speech at the {2} with a joke. Even {3} laughed, and they never laugh."), // #716 [est]; Hat Day cut
+                    new TermStory("term_feast", 1f, "{0} the {1} held a day of games at the {2}. {3} won the race by falling over the line."), // #716 [est]; egg-and-spoon cut
                 },
-                teaser = "{0} is planning something for Hat Day. Nobody knows what.",
+                teaser = "{0} is planning a joke. Everyone is being careful.", // #716 [est]
             },
             ["the grump"] = new TraitTerm
             {
@@ -137,7 +135,8 @@ namespace AquariumCiv.Sim
                 stories = new[]
                 {
                     new TermStory("term_tidy", 2f, "Under {1} {0}, someone sweeps the {2} every morning and nobody laughs after dark.",
-                        "{0}, the {5}'s {1}, made a rule: lamps out early. The {5} has never slept so well, or so grumpily."),
+                        "@camp|{0}, the {5}'s {1}, made a rule: the fire goes low early. The {5} has never slept so well, or so grumpily.", // #716 [est]
+                        "@!camp|{0}, the {5}'s {1}, made a rule: lamps out early. The {5} has never slept so well, or so grumpily."),
                     new TermStory("term_complaint", 1.2f, "{0} the {1} complained about the noise from {3}'s house for a whole season.",
                         "{0}, the {5}'s {1}, sent {3} home from the {2} for whistling."),
                     new TermStory("term_row", 0.6f, "{0} the {1} and {3} argued about {6} at the {2} until {7}.",
@@ -176,8 +175,9 @@ namespace AquariumCiv.Sim
                 {
                     new TermStory("term_announce", 2f, "{0}, the {5}'s {1}, made an announcement at the {2} every morning. Most of them were about the weather.",
                         "{0} the {1} called the whole {5} to the {2} to say a roof was fixed. It was {3}'s roof."),
-                    new TermStory("term_feast", 0.5f, "{0} the {1} held a feast at the {2}. They could be heard on the far side of the glass.",
-                        "{0}, the {5}'s {1}, gave a toast at the {2} so loud the ducks took off."),
+                    new TermStory("term_feast", 0.5f, "@pond|{0} the {1} held a feast at the {2}. They could be heard at the pond.", // #716 [est]
+                        "@!pond|{0} the {1} held a feast at the {2}. They could be heard at the far edge of the {5}.", // #716 [est]
+                        "@ducks|{0}, the {5}'s {1}, gave a toast at the {2} so loud the ducks took off."),
                 },
                 teaser = "{0} has an announcement for tomorrow. Everyone will hear it.",
             },
@@ -196,8 +196,8 @@ namespace AquariumCiv.Sim
                 flavor = new TermFlavor { invention = 0.45f, tidiness = -0.15f },
                 stories = new[]
                 {
-                    new TermStory("term_device", 2f, "The {2} sprouted a weathervane, a bell and a little crank. {0} the {1} isn't finished.",
-                        "{0}, the {5}'s {1}, built a cart that steers itself, mostly into the pond."),
+                    new TermStory("term_device", 2f, "@town|The {2} sprouted a weathervane, a bell and a little crank. {0} the {1} isn't finished.", // #716: town only
+                        "@!camp,pond|{0}, the {5}'s {1}, built a cart that steers itself, mostly into the pond."), // #716: village and town, with the pond
                 },
                 teaser = "Something by the {2} has started ticking. {0} says it's fine.",
             },
@@ -206,10 +206,9 @@ namespace AquariumCiv.Sim
                 flavor = new TermFlavor { wonder = 0.45f, invention = 0.1f, tidiness = -0.1f },
                 stories = new[]
                 {
-                    new TermStory("term_plan", 1.5f, "{0}, the {5}'s {1}, announced a tower tall enough to see over the glass. They built the first step.",
-                        "{0} the {1} drew a map of the {5} as it will be in a hundred years. It has a lot of bridges."),
-                    new TermStory("term_pilgrim", 1.5f, "{0} the {1} led a walk up the hill to wave at the sky. {3} swears something waved back.",
-                        "{0}, the {5}'s {1}, spent a night on the hill watching the sky, with {3} holding the blanket."),
+                    new TermStory("term_plan", 1.5f, "{0} the {1} drew a map of the {5} as it will be in a hundred years. It has a lot of bridges."), // #716: the tower over the glass cut
+                    new TermStory("term_pilgrim", 1.5f, "@tree|{0} the {1} led everyone to the Keeper's tree to wave at the sky. {3} swears something waved back.", // #716 [est]
+                        "@tree|{0}, the {5}'s {1}, spent a night under the Keeper's tree watching the sky, with {3} holding the blanket."), // #716 [est]
                 },
                 teaser = "{0} has been staring up at the sky again, making plans.",
             },
@@ -218,10 +217,10 @@ namespace AquariumCiv.Sim
                 flavor = new TermFlavor { adventure = 0.45f, caution = -0.2f, gathering = 0.05f },
                 stories = new[]
                 {
-                    new TermStory("term_expedition", 2f, "{0}, the {5}'s {1}, led an expedition to the far edge, where the world turns to glass. They came back with stories.",
+                    new TermStory("term_expedition", 2f, "{0}, the {5}'s {1}, walked the whole edge of the glass in one day. They came back with stories.", // #716 [est]
                         "{0} the {1} took {3} and {4} on a long hunt. They came back muddy and very proud."),
                 },
-                teaser = "{0} wants to see what's past the far edge of the {5}.",
+                teaser = "{0} wants to walk the whole edge of the {5}.", // #716 [est]
             },
             ["the gossip"] = new TraitTerm
             {
@@ -242,7 +241,8 @@ namespace AquariumCiv.Sim
                 flavor = new TermFlavor { caution = 0.45f, quiet = 0.3f, adventure = -0.25f, tidiness = 0.1f },
                 stories = new[]
                 {
-                    new TermStory("term_lanterns", 2f, "{0}, the {5}'s {1}, had extra lanterns hung round the {2}, and a fence put round the fence.",
+                    new TermStory("term_lanterns", 2f, "@!camp|{0}, the {5}'s {1}, had extra lanterns hung round the {2}, and a fence put round the fence.",
+                        "@camp|{0}, the {5}'s {1}, had a ring of stones put round the fire, and then a second ring.", // #716 [est]
                         "{0} the {1} had everyone home before dark, just in case."),
                 },
                 teaser = "{0} has been counting the lanterns. And then counting them again.",
@@ -273,7 +273,7 @@ namespace AquariumCiv.Sim
         /// " {0} the {1} ...". Text only: the story still happened by the story stream's own dice.</summary>
         static readonly Dictionary<(string kind, string trait), string> TermCodas = new()
         {
-            // #715: the storm, rainbow and lost-in-the-hills codas went with their stories; no sack race
+            // #715/#716: the storm, rainbow and lost-in-the-hills codas went with their stories; no sack race
             [("festival", "the singer")] = " {0} the {1} sang until the stars came out.",
             [("festival", "the joker")] = " {0} the {1} organised a race, and {3} won it by falling over the line.", // #715 [est]
             [("festival", "the grump")] = " {0} the {1} went to bed early.",
@@ -361,9 +361,9 @@ namespace AquariumCiv.Sim
             if (!TraitTerms.TryGetValue(h.trait ?? "", out var t)) return null;
             bool rival = Alive(h.rivalId) != null;
             // A holder tells a kind's lines in turn; once they've told them all, the kind rests longer each round (#61: a
-            // 40-year term had "made an announcement every morning" three times).
-            int Rest(TermStory st) => TermFreshYears * (1 + 2 * ((State.chronicle.Count(e => e.kind == st.kind && e.notableId == h.id) + PrunedTold(st.kind, h.id)) / st.lines.Length));
-            var options = t.stories.Where(st => Fresh(st.kind, h.id, Rest(st)) && (st.Others == 0 || TermOthers(h, st.Others, 24) != null)).ToList();
+            // 40-year term had "made an announcement every morning" three times). #716: only the lines whose thing is in the box.
+            int Rest(TermStory st) => TermFreshYears * (1 + 2 * ((State.chronicle.Count(e => e.kind == st.kind && e.notableId == h.id) + PrunedTold(st.kind, h.id)) / Math.Max(1, TermLinesNow(st).Length)));
+            var options = t.stories.Where(st => TermLinesNow(st).Length > 0 && Fresh(st.kind, h.id, Rest(st)) && (st.Others == 0 || TermOthers(h, st.Others, 24) != null)).ToList();
             if (options.Count == 0) return null;
             // A quarrelsome holder with a living rival rows more (notable-roles §4: rivalries ×1.5 [est]).
             float W(TermStory st) => st.weight * (st.kind == "term_row" && rival ? 1.5f : 1f);
@@ -373,14 +373,55 @@ namespace AquariumCiv.Sim
             var others = chosen.Others == 0 ? null : TermOthers(h, chosen.Others, 24);
             // The holder's lines of a kind take turns, so a long term doesn't repeat itself.
             int told = State.chronicle.Count(e => e.kind == chosen.kind && e.notableId == h.id) + PrunedTold(chosen.kind, h.id);
-            string line = chosen.lines[told % chosen.lines.Length];
+            var now = TermLinesNow(chosen);
+            string line = now[told % now.Length];
             if (chosen.couple && line.Contains("{4}"))
             {
                 others = TermCouple(h, 26); // never a parent and child, the married, or the holder's own spouse (#61)
                 if (others == null) return null;
             }
-            return TermLine(chosen.kind, FillTerm(line, h, seat, others, 27), h.id, line.Contains("{3}") ? others[0].id : -1, SeatBuilding(seat.role)?.id ?? -1);
+            string text = FillTerm(line, h, seat, others, 27);
+            // #716: a kind left with one line in this box must not say the same sentence again (the next round waits)
+            var lastOfKind = State.chronicle.LastOrDefault(e => e.kind == chosen.kind && e.notableId == h.id);
+            if (lastOfKind != null && lastOfKind.text == LandWords(text)) return null;
+            return TermLine(chosen.kind, text, h.id, line.Contains("{3}") ? others[0].id : -1, SeatBuilding(seat.role)?.id ?? -1);
         }
+
+        /// <summary>#716: a term line may name what it needs, "@gate,gate|text": camp, !camp, town, pond, !pond, ducks, tree (the
+        /// Keeper's tree, grown). A line whose thing isn't in the box is never told.</summary>
+        bool TermGateHolds(string gate)
+        {
+            bool not = gate.StartsWith("!");
+            string g = not ? gate.Substring(1) : gate;
+            bool has = g switch
+            {
+                "camp" => State.era == Era.Camp,
+                "town" => State.era == Era.Town,
+                "pond" => OpenWater, // the slice always has its pond; a living land once it holds water (never the placement map)
+                "ducks" => EcoDucks > 0,
+                "tree" => KeeperTreeGrown,
+                _ => false,
+            };
+            return has != not;
+        }
+
+        bool TermLineHolds(string line)
+        {
+            if (!line.StartsWith("@")) return true;
+            int bar = line.IndexOf('|');
+            foreach (var g in line.Substring(1, bar - 1).Split(',')) if (!TermGateHolds(g)) return false;
+            return true;
+        }
+
+        /// <summary>The line without its gate.</summary>
+        public static string TermLineText(string line) => line.StartsWith("@") ? line.Substring(line.IndexOf('|') + 1) : line;
+
+        /// <summary>The story's lines that hold in this box now, gates stripped.</summary>
+        string[] TermLinesNow(TermStory st) => st.lines.Where(TermLineHolds).Select(TermLineText).ToArray();
+
+        /// <summary>Every term line, coda and teaser as written (gates left on), for the content tests (#716).</summary>
+        public static IEnumerable<string> AllTermText() =>
+            TraitTerms.Values.SelectMany(t => t.stories.SelectMany(s => s.lines).Append(t.teaser)).Concat(TermCodas.Values);
 
         /// <summary>A chronicle line with an id from the term lines' own counter (so the shared ids don't shift).</summary>
         ChronicleEntry TermLine(string kind, string text, int notableId, int otherId, int buildingId)

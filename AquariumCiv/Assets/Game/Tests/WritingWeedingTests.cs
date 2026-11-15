@@ -164,6 +164,97 @@ namespace AquariumCiv.Tests
             }
         }
 
+        // ---------- #716: office and role lines name only things in the box ----------
+
+        static readonly string[] Missing = { "goat", "sheep", "chimney", "hat day", "sack race", "egg-and-spoon", "turns to glass", "see over the glass", "the hill", "very large dog" };
+
+        /// <summary>A source file of the sim, found from the Unity project root (the Editor's working folder) or the repo (dotnet test).</summary>
+        static string SimSource(string file)
+        {
+            foreach (var root in new[] { System.IO.Directory.GetCurrentDirectory(), TestContext.CurrentContext.TestDirectory })
+                for (var d = new System.IO.DirectoryInfo(root); d != null; d = d.Parent)
+                    foreach (var rel in new[] { "Assets/Game/Sim/" + file, "AquariumCiv/Assets/Game/Sim/" + file })
+                    {
+                        var p = System.IO.Path.Combine(d.FullName, rel);
+                        if (System.IO.File.Exists(p)) return System.IO.File.ReadAllText(p);
+                    }
+            Assert.Fail("source not found: " + file);
+            return null;
+        }
+
+        [Test]
+        public void NoOfficeOrRoleLineNamesAThingTheBoxNeverHas()
+        {
+            foreach (var t in SimCore.AllTermText())
+                foreach (var w in Missing) StringAssert.DoesNotContain(w, t.ToLowerInvariant(), t);
+            foreach (var file in new[] { "SimCore.Office.cs", "SimCore.Roles.cs" })
+            {
+                // the tables and inline lines, comments left out
+                var code = string.Join("\n", SimSource(file).Split('\n').Select(l => { int c = l.IndexOf("//"); return c >= 0 ? l.Substring(0, c) : l; }));
+                foreach (var w in Missing) StringAssert.DoesNotContain(w, code.ToLowerInvariant(), file);
+            }
+        }
+
+        static (SimCore sim, Notable chief) CampChief(int seed, string trait, bool ecology = false)
+        {
+            var cfg = new SimConfig { ecology = ecology };
+            var sim = ecology ? new SimCore(cfg, SimCore.NewWorld(seed, cfg)) : NewSim(seed, cfg);
+            var chief = sim.HolderOf(RoleType.Chief);
+            Assume.That(chief, Is.Not.Null);
+            chief.trait = trait; chief.age = 20f; chief.lifespan = 200f;
+            return (sim, chief);
+        }
+
+        /// <summary>Every term line this chief tells over <paramref name="years"/> years, asked for every season.</summary>
+        static List<string> TermLines(SimCore sim, int years)
+        {
+            var told = new List<string>();
+            for (int m = 0; m < years * SimConfig.MonthsPerYear; m++)
+            {
+                sim.Step();
+                if (m % 3 == 0 && sim.DebugTermStory(RoleType.Chief) is ChronicleEntry e) told.Add(e.text);
+            }
+            told.AddRange(sim.State.chronicle.Where(e => e.kind.StartsWith("term_")).Select(e => e.text));
+            return told;
+        }
+
+        [Test]
+        public void ACampTinkererHasNoDeviceLine_TheWeathervaneIsTownOnly()
+        {
+            var (sim, _) = CampChief(7, "the tinkerer");
+            Assert.IsNull(sim.DebugTermStory(RoleType.Chief), "no device line is true of a camp");
+            Assert.IsEmpty(TermLines(sim, 3).Where(t => t.Contains("weathervane") || t.Contains("cart")));
+        }
+
+        [Test]
+        public void ACampGrumpPutsTheFireLowNotTheLamps()
+        {
+            var (sim, _) = CampChief(7, "the grump");
+            var lines = TermLines(sim, 12);
+            Assert.IsEmpty(lines.Where(t => t.Contains("lamps out")), "no lamps in a camp");
+            Assume.That(lines.Any(t => t.Contains("made a rule")));
+            Assert.IsTrue(lines.Where(t => t.Contains("made a rule")).All(t => t.Contains("the fire goes low early")));
+        }
+
+        [Test]
+        public void TheDreamersWalkNeedsTheKeepersTree_TheLoudToastNeedsDucks()
+        {
+            var (dreamer, _) = CampChief(7, "the dreamer"); // ecology off: no Keeper's tree, no ducks
+            Assert.IsEmpty(TermLines(dreamer, 12).Where(t => t.Contains("Keeper's tree") || t.Contains("over the glass")));
+            var (loud, _) = CampChief(7, "the loud");
+            var lines = TermLines(loud, 12);
+            Assert.IsEmpty(lines.Where(t => t.Contains("ducks")), "no ducks on the pond, no toast that scares them");
+            Assert.IsEmpty(lines.Where(t => t.Contains("far side of the glass")));
+        }
+
+        [Test]
+        public void ACampWorrierRingsTheFireWithStones()
+        {
+            var (sim, _) = CampChief(7, "the worrier");
+            var lines = TermLines(sim, 12);
+            Assert.IsEmpty(lines.Where(t => t.Contains("lanterns hung")), "the lantern line is the village's");
+        }
+
         // ---------- #715: the story stream ----------
 
         /// <summary>The story stream's kinds (SimCore.Story.cs), the kept ones and the dropped ones.</summary>
