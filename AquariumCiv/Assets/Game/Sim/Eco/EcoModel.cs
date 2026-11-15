@@ -63,7 +63,7 @@ namespace AquariumCiv.Sim.Eco
             st.treeCell = -1; st.treeProgress = 0f; st.treeWeeds = 0f; st.treeStage = 0; st.keeperMistings = 0; st.treeWilting = false;
             st.campGateMonth = st.villageGateMonth = -1;
             st.milestoneKeys = new List<string>(); st.milestoneMonths = new List<long>();
-            st.jarOn = true; st.jars = new List<LifeJarEntry>(); st.thicketA = st.thicketB = -1; st.thicketRadius = 0f; // #417: every jar starts shut
+            st.jarOn = true; st.jars = new List<LifeJarEntry>(); st.thicketA = st.thicketB = -1; st.thicketRadius = 0f; st.thickets = new List<Thicket>(); // #417: every jar starts shut
             new EcoModel(st, land, t).Count();
         }
 
@@ -638,7 +638,7 @@ namespace AquariumCiv.Sim.Eco
                 default: p = 0f; break;
             }
             if (Cv(c) != EcoCover.Bush) p *= 1f + t.wateredTake * Watered(c); // #569: a seed takes where the mister's water fell (not on the berry thicket: it stays at its cap)
-            if (st.thicketA >= 0) p *= 1f - t.thicketChoke * ThicketZone(c); // #385: a berry thicket chokes the seedlings, so it stays a thicket
+            if (Ts.Count > 0) p *= 1f - t.thicketChoke * ThicketZone(c); // #385: a berry thicket chokes the seedlings, so it stays a thicket
             return roll < p;
         }
 

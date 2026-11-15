@@ -468,6 +468,10 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Give 3 bushes")) { sim.DebugGiveBushes(3); last = Done($"pouch: {sim.BushesInPouch} bushes"); }
                 if (GUILayout.Button("Next civ step")) { int n = sim.DebugNextCivStep(); last = Done(n > 0 ? $"a civ step: pouch {sim.SeedsInPouch} seeds, {sim.BushesInPouch} bushes" : "both pouches are full: the step waits"); }
                 GUILayout.EndHorizontal();
+                // ---- #728: thickets as a list ----
+                var ths = new System.Collections.Generic.List<(int cell, float radius, int bushes)>(); sim.BushThickets(ths);
+                GUILayout.Label($"thickets: {ths.Count} " + string.Join(" · ", ths.Select(x => $"{x.bushes} bushes r {x.radius:0.00}")));
+                if (GUILayout.Button("Place a thicket by the camp (uses a pouch bush)")) { int c = sim.DebugPlaceThicketNearCamp(); last = Done(c < 0 ? "no valid ground (or the cap)" : $"thicket {sim.BushThicketCount} placed at cell {c}"); }
             }
             // ---- end #724 ----
             // ---- #420-#422: deer, ducks, fish; floors, shy, restraint (placed-life spec §10) ----
