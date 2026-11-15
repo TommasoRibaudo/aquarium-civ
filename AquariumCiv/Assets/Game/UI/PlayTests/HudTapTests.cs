@@ -103,7 +103,7 @@ namespace AquariumCiv.GameUI.PlayTests
             Assert.Greater(list.childCount, 0, "it says something: a row per office, or that there are none yet");
             yield return Tap(root, "offices-close");
             yield return Tap(root, "hud-settings");
-            Assert.AreEqual(GameHud.Settings, hud.OpenSheet, "the mark beside it opens Settings");
+            Assert.AreEqual(GameHud.Settings, hud.OpenSheet, "the mark in the corner opens Settings");
             EndHud();
         }
 
@@ -134,7 +134,7 @@ namespace AquariumCiv.GameUI.PlayTests
             Assert.IsFalse(FeedbackUI.Instance.IsOpen);
 
             // The HUD's own Feedback button opens it too.
-            yield return Tap(root, "hud-feedback");
+            yield return Tap(FeedbackUI.Instance.PillRoot, "hud-feedback");
             for (int i = 0; i < 6 && !FeedbackUI.Instance.IsOpen; i++) yield return null;
             Assert.IsTrue(FeedbackUI.Instance.IsOpen);
             yield return null; yield return null;
@@ -166,7 +166,7 @@ namespace AquariumCiv.GameUI.PlayTests
             yield return null;
             foreach (var name in new[] { "hud-title", "hud-settings", "hud-history", "hud-shape", "hud-feedback" })
             {
-                var e = root.Q(name);
+                var e = name == "hud-feedback" ? FeedbackUI.Instance.PillRoot.Q(name) : root.Q(name);
                 float pixel = Mathf.Max(0.5f, e.panel.visualTree.layout.width / Screen.width); // UI Toolkit snaps to physical pixels: a tiny Game view reads 141.64 for 144
                 Assert.GreaterOrEqual(e.layout.height, GameUiPanel.MinTarget - pixel, $"{name} is tall enough (layout {e.layout.size}, panel {e.panel.visualTree.layout.size}, screen {Screen.width}x{Screen.height}, min-height {e.resolvedStyle.minHeight})");
                 Assert.GreaterOrEqual(e.layout.width, GameUiPanel.MinTarget - pixel, $"{name} is wide enough");

@@ -79,7 +79,7 @@ B12 (#424).
 |---|---|---|---|
 | **Berry thicket** | — | meadow ≥ **10 %** | The first jar. Today's first-rabbit point (`rabbitsAtMeadow` 0.10) |
 | **Rabbits** | thicket placed | meadow ≥ **15 %** | Rabbit tracks show only after rabbits are placed (D3) |
-| **Deer** | rabbits placed (the camp) | ≥ **5 grown trees** (the Keeper's tree counts) | Earlier than the village's 8 (Q2) |
+| **Deer** | rabbits placed (the camp) | ≥ **12 grown trees in company** (each with 4 others within 0.3 u; #690, was 5 grown trees) | A wood, not a few trees; scattered trees never count |
 | **Ducks** | rabbits placed (the camp) | pond ≥ **12 cells** | Earlier than the village's 20 (Q2) |
 | **Fish** | ducks placed ≥ **6 months** ago | reeds ≥ **6 cells** (`cReeds`) | The reeds the ducks bring are the fish's shelter |
 | **Wolves** | deer placed | deer ≥ **5** for a full game year, wood ≥ **20 grown-tree cells**, and **12 den spots** ≥ **1.5 u** from the fire (§5.6; #643, 2026-11-13: one spot made a glow too small to find) | Predators come after their prey |

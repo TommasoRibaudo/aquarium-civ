@@ -45,7 +45,7 @@ namespace AquariumCiv.Sim
             var c = new BuildingCardInfo
             {
                 buildingId = b.id, type = b.type, title = BuildingTitle(b.type, State.era), whatItIs = BuildingBlurb(b.type, State.era),
-                year = YearNo(b.foundedMonth),
+                year = YearNo(BuiltMonthOf(b)),
             };
             c.yearLine = $"Built in year {c.year}.";
             var by = b.builderId > 0 ? FindNotable(b.builderId) : null;
@@ -57,6 +57,26 @@ namespace AquariumCiv.Sim
                 c.builderLine = role != null ? $"Built by {by.FullName}, the {role}." : $"Built by {by.FullName}.";
             }
             return c;
+        }
+
+        /// <summary>The month a standing building counts as built, for its card (#689). Its own founding month, except:
+        /// (1) the camp's things (tent, gathering grounds, woodpile) are rebuilt in place as the village's house, farm and
+        /// lumbermill at the era change, so those read as built then, not in the camp years; (2) an old save with month 0
+        /// takes its lot's month when the lot came later. Lot months and History's replay are untouched.</summary>
+        public long BuiltMonthOf(Building b)
+        {
+            long m = b.foundedMonth;
+            if (m <= 0 && b.lotId > 0)
+            {
+                var lot = State.settle?.lots?.Find(l => l.id == b.lotId);
+                if (lot != null && lot.foundedMonth > 0) m = lot.foundedMonth;
+            }
+            if (State.era >= Era.Village && (b.type == BuildingType.Hut || b.type == BuildingType.Farm || b.type == BuildingType.Lumbermill))
+            {
+                long village = EraStartMonth(Era.Village);
+                if (village > 0 && m < village) m = village;
+            }
+            return m;
         }
 
         /// <summary>The building's name as the people call it (types are roles; a camp's Farm is its gathering grounds).</summary>

@@ -32,7 +32,7 @@ namespace AquariumCiv.Sim
 
         static DilemmaOptionDef Name(int n) => new DilemmaOptionDef
         {
-            label = "{n" + n + "}", hint = n == 1 ? "{a}'s name for the baby." : "{b}'s name for the baby.",
+            touch = "call it {n" + n + "}", label = "{n" + n + "}", hint = n == 1 ? "{a}'s name for the baby." : "{b}'s name for the baby.",
             done = "The Keeper named the baby {n" + n + "}.",
             prop = ConsequenceKind.NamePeg, propAt = PropAnchor.Home,
         };
@@ -59,9 +59,9 @@ namespace AquariumCiv.Sim
             letDone = "{n} told the story at the fire.",
             options = new[]
             {
-                new DilemmaOptionDef { label = "{a}", hint = "{a} tells it slow, with all the voices.", done = "The Keeper picked {a} to tell the story.",
+                new DilemmaOptionDef { touch = "{a} tells it", label = "{a}", hint = "{a} tells it slow, with all the voices.", done = "The Keeper picked {a} to tell the story.",
                     prop = ConsequenceKind.Feather, propAt = PropAnchor.Home },
-                new DilemmaOptionDef { label = "{b}", hint = "{b} tells it short, and gets a laugh.", done = "The Keeper picked {b} to tell the story.",
+                new DilemmaOptionDef { touch = "{b} tells it", label = "{b}", hint = "{b} tells it short, and gets a laugh.", done = "The Keeper picked {b} to tell the story.",
                     prop = ConsequenceKind.Feather, propAt = PropAnchor.Home },
             },
         };

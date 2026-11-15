@@ -26,12 +26,13 @@ set -u
 export UNITY_NO_PAGER=1 UNITY_NO_BANNER=1
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROJ="${PROJ:-F:/GameDev/AquariumCiv}"
+export UNITY_PROJECT_PATH="${UNITY_PROJECT_PATH:-$PROJ}"  # two Editors open: every unity call targets PROJ
 OUT="${OUT:-$PROJ/Temp/agent/test-runs}"
 READY_WAIT_S="${READY_WAIT_S:-300}"
 RUN_LIMIT_S="${RUN_LIMIT_S:-2400}"
 POLL_S="${POLL_S:-10}"
 STALL_S="${STALL_S:-180}"
-LOG="${LOCALAPPDATA:-}/Unity/Editor/Editor.log"
+LOG="${EDITOR_LOG:-${LOCALAPPDATA:-}/Unity/Editor/Editor.log}"
 editor_pid() { timeout 60 unity status --project-path "$PROJ" --format json 2>/dev/null | grep -oE '"pid": *[0-9]+' | head -1 | grep -oE '[0-9]+'; }
 log_size() { wc -c < "$LOG" 2>/dev/null || echo 0; }
 stalled() { echo "== $1: STALLED ($2) - batch stopped" | tee -a "$OUT/summary.txt"; echo "$st" > "$OUT/$1.status.json"; exit 3; }

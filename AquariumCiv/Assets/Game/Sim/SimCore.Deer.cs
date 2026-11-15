@@ -1,5 +1,6 @@
 using System;
 using AquariumCiv.Sim.Eco;
+using AquariumCiv.Sim.Settle;
 
 namespace AquariumCiv.Sim
 {
@@ -29,6 +30,8 @@ namespace AquariumCiv.Sim
         public int EcoDeerFawns => EcologyOn ? State.eco.deerFawns : 0;
         /// <summary>What the wood holds now (1 per 3 grown trees, 3 to 8).</summary>
         public int EcoDeerCap => EcologyOn ? EcoM.DeerCap : 0;
+        /// <summary>#690: the grown trees standing in a wood (the deer jar opens at <see cref="EcoTuning.jarDeerWood"/>).</summary>
+        public int EcoWoodTrees => EcologyOn ? EcoM.WoodTrees() : 0;
         /// <summary>How many deer dolls to show: the sim count, capped for the phone.</summary>
         public int EcoDeerShown(int cap = DeerHerd.DefaultCap) => DeerHerd.Shown(EcoDeerCount, cap);
         /// <summary>Where the herd lives now: the placed cell, or the far side of the wood while it is shy (#422). -1 with no deer.</summary>
@@ -54,7 +57,34 @@ namespace AquariumCiv.Sim
         public void EcoDeerRefresh(DeerHerd.Field field)
         {
             if (!EcologyOn) return;
-            field.Refresh(State.eco.cover, EcoGround, State.eco.seed, EcoDeerHome, State.eco.deerStags, EcoRabbitBlocked());
+            field.Refresh(State.eco.cover, EcoGround, State.eco.seed, EcoDeerHome, State.eco.deerStags, EcoDeerBlocked());
+            var g = EcoGround; // #699: the deer are shy of the camp, and walk round the fire and the tents
+            field.SetCamp(g.campX, g.campZ, DeerCampMargin);
+        }
+
+        readonly bool[] deerBlocked = new bool[EcoLand.N];
+        /// <summary>#699: how far from the camp's fire the deer keep (box units): past the racks (0.62 out), the pot and the seats. Shyer than the rabbits.</summary>
+        public const float DeerCampMargin = 0.9f;
+
+        /// <summary>#699: the cells the deer keep off: what the rabbits keep off (lots, tents, the green) and everything within <see cref="DeerCampMargin"/>
+        /// of the fire. Null when nothing is settled. The array is reused.</summary>
+        public bool[] EcoDeerBlocked()
+        {
+            var b = EcoRabbitBlocked();
+            if (b == null) return null;
+            var g = EcoGround;
+            for (int c = 0; c < EcoLand.N; c++) deerBlocked[c] = b[c] || Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), g.campX, g.campZ) < DeerCampMargin;
+            return deerBlocked;
+        }
+
+        /// <summary>#699: a key that changes when the deer's blocked ground does (a new tent or lot): the view refreshes its field then.</summary>
+        public int EcoDeerGroundKey()
+        {
+            var b = EcoDeerBlocked();
+            if (b == null) return 0;
+            int h = 17;
+            for (int c = 0; c < b.Length; c++) if (b[c]) h = h * 31 + c;
+            return h;
         }
 
         // ---------- the deer hunt (Life/LifePlanner.DeerHunt.cs plans it; this settles it) ----------

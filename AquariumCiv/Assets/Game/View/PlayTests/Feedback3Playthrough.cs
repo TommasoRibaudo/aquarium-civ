@@ -41,7 +41,7 @@ namespace AquariumCiv.View.PlayTests
             if (FirstCrowd == null)
             {
                 FirstCrowd = $"[{d.LastWho ?? "-"}] {d.LastLine}";
-                ScreenCapture.CaptureScreenshot("F:/GameDev/AquariumCiv/Temp/agent/f3_d_crowd_caption.png");
+                ScreenCapture.CaptureScreenshot(UnityEngine.Application.dataPath + "/../Temp/agent/f3_d_crowd_caption.png");
             }
         }
     }

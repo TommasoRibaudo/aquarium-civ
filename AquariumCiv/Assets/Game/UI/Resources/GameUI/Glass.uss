@@ -360,6 +360,7 @@
 }
 .kg-dots { flex-direction: row; justify-content: center; flex-shrink: 0; }
 .kg-page-dot { width: 19.25px; height: 19.25px; margin: 0 8.25px; border-radius: 50%; background-color: var(--dot-off); }
+.kg-dots--many > .kg-page-dot { width: 13.75px; height: 13.75px; margin: 0 4.4px; }
 .kg-page-dot--on { background-color: var(--timber); }
 .kg-pips { flex-direction: row; align-items: center; }
 .kg-pip { width: 33px; height: 33px; margin-right: 11px; border-width: 4px; border-color: var(--timber); border-radius: 50%; }
@@ -592,7 +593,7 @@
 .hud-corner { flex-direction: row; align-items: center; flex-shrink: 0; }
 .hud-icon { width: 144px; height: 144px; min-width: 144px; }
 .hud-icon--quiet { opacity: 0.72; }
-.hud-top--backed .hud-disc { background-color: var(--quiet-backing); }
+/* #707: no backing behind the round buttons; they draw in the title's ink (GameHud.ApplyIconInk) */
 .hud-icon:active .hud-disc, .hud-title:active .hud-disc { background-color: var(--pressed-fill); }
 .hud-icon--shot { transition-duration: 0s; }
 .hud-icon.hud-icon--shot:active { background-color: rgba(0, 0, 0, 0); scale: 1 1; }

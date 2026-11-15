@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AquariumCiv.Life;
+using AquariumCiv.Sim;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -42,7 +43,13 @@ namespace AquariumCiv.View
         bool pokeBig;
         int fireSeed;
         GameObject potGo;
-        Mesh potMesh, bubbleMesh, steamMesh;
+        Mesh steamMesh;
+        readonly Mesh[] potMeshes = new Mesh[StewKindCount], bubbleMeshes = new Mesh[StewKindCount];   // #676: one per kind, built the first time it shows
+        MeshFilter potFilter;
+        readonly MeshFilter[] bubbleFilters = new MeshFilter[3];
+        /// <summary>#676: the kind the pot shows now.</summary>
+        public StewKind Stew { get; private set; } = StewKind.Thin;
+        const int StewKindCount = 4;
         readonly Transform[] bubbles = new Transform[3];
         GameObject steamGo;
         Material steamMat;
@@ -167,30 +174,32 @@ namespace AquariumCiv.View
 
         /// <summary>The pot, on its stones beside the fire (camp only). Call once a frame after <see cref="Step"/>. #676: while it shows it
         /// simmers: a slow wisp of steam (more in <paramref name="winter"/>) and a few bubbles that swell and pop on the stew.</summary>
-        public void DrawPot(Transform parent, Material material, bool show, Func<float, float, float> heightAt, bool winter = false)
+        public void DrawPot(Transform parent, Material material, bool show, Func<float, float, float> heightAt, bool winter = false, StewKind stew = StewKind.Berries)
         {
             show &= HasFire;
             if (!show) { if (potGo != null) potGo.SetActive(false); return; }
             if (potGo == null)
             {
-                potMesh = BuildPot();
                 potGo = new GameObject("Camp stew pot") { hideFlags = HideFlags.DontSave };
                 potGo.transform.SetParent(parent, false);
-                potGo.AddComponent<MeshFilter>().sharedMesh = potMesh;
+                potFilter = potGo.AddComponent<MeshFilter>();
                 var mr = potGo.AddComponent<MeshRenderer>();
                 mr.sharedMaterial = material;
-                bubbleMesh = BuildBubble();
                 for (int i = 0; i < bubbles.Length; i++)
                 {
                     var b = new GameObject("Stew bubble") { hideFlags = HideFlags.DontSave };
                     b.transform.SetParent(potGo.transform, false);
-                    b.AddComponent<MeshFilter>().sharedMesh = bubbleMesh;
+                    bubbleFilters[i] = b.AddComponent<MeshFilter>();
                     var br = b.AddComponent<MeshRenderer>();
                     br.sharedMaterial = material;
                     br.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                     bubbles[i] = b.transform;
                 }
             }
+            Stew = stew;   // #676: the look follows what the camp has
+            potFilter.sharedMesh = PotMeshFor(stew);
+            var bm = BubbleMeshFor(stew);
+            for (int i = 0; i < bubbleFilters.Length; i++) bubbleFilters[i].sharedMesh = bm;
             var p = Pot;
             potGo.transform.localPosition = new Vector3(p.x, heightAt(p.x, p.y), p.y);
             potGo.SetActive(true);
@@ -294,18 +303,25 @@ namespace AquariumCiv.View
         public void Destroy()
         {
             if (potGo != null) UnityEngine.Object.Destroy(potGo);
-            if (potMesh != null) UnityEngine.Object.Destroy(potMesh);
-            if (bubbleMesh != null) UnityEngine.Object.Destroy(bubbleMesh);
+            for (int i = 0; i < StewKindCount; i++)
+            {
+                if (potMeshes[i] != null) UnityEngine.Object.Destroy(potMeshes[i]);
+                if (bubbleMeshes[i] != null) UnityEngine.Object.Destroy(bubbleMeshes[i]);
+                potMeshes[i] = null; bubbleMeshes[i] = null;
+            }
             if (steamMesh != null) UnityEngine.Object.Destroy(steamMesh);
             if (steamMat != null) UnityEngine.Object.Destroy(steamMat);
-            potGo = null; potMesh = null; bubbleMesh = null; steamMesh = null; steamMat = null; steamGo = null;
+            potGo = null; potFilter = null; steamMesh = null; steamMat = null; steamGo = null;
         }
 
         /// <summary>The stew's middle above the pot's foot, where the bubbles sit (AddStewPot's dome for the camp pot).</summary>
         const float StewTop = 0.108f;
 
         /// <summary>A soot-dark clay pot on three legs over a ring of stones (0.14 tall: bigger than life a little, like every prop).</summary>
-        static Mesh BuildPot()
+        Mesh PotMeshFor(StewKind k) => potMeshes[(int)k] != null ? potMeshes[(int)k] : (potMeshes[(int)k] = BuildPot(LookOf(k)));
+        Mesh BubbleMeshFor(StewKind k) => bubbleMeshes[(int)k] != null ? bubbleMeshes[(int)k] : (bubbleMeshes[(int)k] = BuildBubble(LookOf(k)));
+
+        static Mesh BuildPot(StewLook look)
         {
             var mb = new MeshBuilder(3650) { jitter = 0.02f };
             for (int i = 0; i < 5; i++)
@@ -319,16 +335,16 @@ namespace AquariumCiv.View
                 mb.Prism(new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 0.06f, 0.006f, 0.005f, 0.075f, 5, Palette.Bark, // #676: up to the belly, not through the stew
                     Quaternion.AngleAxis(12f, new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a))));
             }
-            AddStewPot(mb, 0.045f, 0.04f, 0.052f, 0.06f, 3651);
+            AddStewPot(mb, 0.045f, 0.04f, 0.052f, 0.06f, 3651, look);
             var mesh = mb.ToMesh("Camp_StewPot");
             mesh.hideFlags = HideFlags.DontSave;
             return mesh;
         }
 
-        static Mesh BuildBubble()
+        static Mesh BuildBubble(StewLook look)
         {
             var mb = new MeshBuilder(3652);
-            mb.Ico(Vector3.zero, 0.008f, new Vector3(1f, 0.7f, 1f), StewBubble, 0.05f);   // #676 (tester): big and light enough to read up close
+            mb.Ico(Vector3.zero, 0.008f, new Vector3(1f, 0.7f, 1f), look.bubble, 0.05f);   // #676 (tester): big and light enough to read up close
             var mesh = mb.ToMesh("Camp_StewBubble");
             mesh.hideFlags = HideFlags.DontSave;
             return mesh;
@@ -337,8 +353,9 @@ namespace AquariumCiv.View
         /// <summary>#676 (playtest: "a light clay pot with a flat orange disc"): the soot-dark pot body (black at the foot, iron-brown up top),
         /// a lip that catches the light, and a domed, uneven brown stew with bits of root, meat and greens. Shared with the left-behind stew pot
         /// (ConsequenceProps), so the two read as the same pot. The body runs from <paramref name="baseY"/> up <paramref name="height"/>.</summary>
-        public static void AddStewPot(MeshBuilder mb, float baseY, float rBottom, float rTop, float height, int seed)
+        public static void AddStewPot(MeshBuilder mb, float baseY, float rBottom, float rTop, float height, int seed, StewLook look = null)
         {
+            look ??= Legacy;
             var rng = new System.Random(seed);
             const int sides = 11;
             float midR = (rBottom + rTop) * 0.5f, h2 = height * 0.5f, top = baseY + height;
@@ -368,13 +385,13 @@ namespace AquariumCiv.View
                 ring[i] = new Vector3(Mathf.Cos(a) * inR, stewEdge + (float)rng.NextDouble() * height * 0.05f, Mathf.Sin(a) * inR);
             }
             for (int i = 0; i < sides; i++)
-                mb.TriC(mid, ring[(i + 1) % sides], ring[i], StewMid, StewEdge, StewEdge);
+                mb.TriC(mid, ring[(i + 1) % sides], ring[i], look.mid, look.edge, look.edge);
             // bits: root, meat, greens and a pale tuber, half sunk in the broth
-            Color[] bits = { StewRoot, StewMeat, StewGreen, StewTuber, StewRoot, StewMeat, StewGreen };
+            var bits = look.bits;
             for (int i = 0; i < bits.Length; i++)
             {
                 float a = i * 2.39996f + 0.3f, r = inR * (0.2f + 0.6f * (i / (float)bits.Length));
-                float br = rTop * (0.14f + (float)rng.NextDouble() * 0.06f);
+                float br = rTop * (look.bitSize + (float)rng.NextDouble() * 0.06f);
                 float y = Mathf.Lerp(mid.y, stewEdge, r / inR) - br * 0.15f;
                 mb.Ico(new Vector3(Mathf.Cos(a) * r, y, Mathf.Sin(a) * r), br, new Vector3(1f, 0.6f, 1f), bits[i], 0.25f);
             }
@@ -385,5 +402,35 @@ namespace AquariumCiv.View
             StewMid = new Color(0.50f, 0.27f, 0.12f), StewEdge = new Color(0.33f, 0.17f, 0.08f), StewBubble = new Color(0.80f, 0.62f, 0.42f),
             StewRoot = new Color(0.90f, 0.50f, 0.16f), StewMeat = new Color(0.45f, 0.22f, 0.16f), StewGreen = new Color(0.36f, 0.55f, 0.20f),
             StewTuber = new Color(0.86f, 0.77f, 0.56f);
+
+        /// <summary>#676: how a stew looks: the broth (middle, toward the rim), the lumps that float in it (one colour each, in ring order), their
+        /// size (fraction of the rim radius), and the bubbles' colour.</summary>
+        public sealed class StewLook
+        {
+            public Color mid, edge, bubble;
+            public Color[] bits;
+            public float bitSize = 0.14f;
+        }
+
+        static readonly StewLook Legacy = new StewLook { mid = StewMid, edge = StewEdge, bubble = StewBubble, bits = new[] { StewRoot, StewMeat, StewGreen, StewTuber, StewRoot, StewMeat, StewGreen } };
+
+        static readonly StewLook[] Looks =
+        {
+            // Thin: pale watery broth, two greens
+            new StewLook { mid = new Color(0.58f, 0.52f, 0.38f), edge = new Color(0.40f, 0.35f, 0.25f), bubble = new Color(0.82f, 0.78f, 0.66f), bits = new[] { StewGreen, StewTuber } },
+            // Berries: a purple-red broth with round dark berries and a few orange roots
+            new StewLook { mid = new Color(0.52f, 0.15f, 0.26f), edge = new Color(0.34f, 0.09f, 0.18f), bubble = new Color(0.78f, 0.40f, 0.52f), bitSize = 0.11f,
+                bits = new[] { new Color(0.30f, 0.07f, 0.22f), new Color(0.62f, 0.12f, 0.20f), StewRoot, new Color(0.30f, 0.07f, 0.22f), new Color(0.62f, 0.12f, 0.20f), StewTuber, new Color(0.30f, 0.07f, 0.22f), StewRoot } },
+            // Fish: a pale golden-grey broth with pinkish-white chunks, silver skin and a sprig of green
+            new StewLook { mid = new Color(0.66f, 0.58f, 0.38f), edge = new Color(0.46f, 0.41f, 0.28f), bubble = new Color(0.90f, 0.86f, 0.70f), bitSize = 0.15f,
+                bits = new[] { new Color(0.92f, 0.82f, 0.74f), new Color(0.62f, 0.67f, 0.70f), new Color(0.92f, 0.82f, 0.74f), StewGreen, new Color(0.62f, 0.67f, 0.70f), new Color(0.92f, 0.82f, 0.74f), new Color(0.92f, 0.82f, 0.74f), StewTuber } },
+            // Rabbit: a deep brown gravy with dark meat chunks, orange roots and a green
+            new StewLook { mid = new Color(0.40f, 0.20f, 0.10f), edge = new Color(0.26f, 0.12f, 0.06f), bubble = new Color(0.70f, 0.50f, 0.34f), bitSize = 0.16f,
+                bits = new[] { new Color(0.58f, 0.32f, 0.22f), StewRoot, new Color(0.58f, 0.32f, 0.22f), StewGreen, new Color(0.58f, 0.32f, 0.22f), StewRoot, new Color(0.50f, 0.26f, 0.18f) } },
+        };
+
+        /// <summary>#676: the look of each stew kind (the camp pot reads it; the EditMode test checks they differ).</summary>
+        public static StewLook LookOf(StewKind k) => Looks[(int)k];
+
     }
 }

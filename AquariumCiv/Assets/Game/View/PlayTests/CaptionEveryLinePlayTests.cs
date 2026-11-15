@@ -22,7 +22,7 @@ namespace AquariumCiv.View.PlayTests
     public class CaptionEveryLinePlayTests : PlayTestBase
     {
         const int Seed = 1234;
-        const string Look = "F:/GameDev/AquariumCiv/Temp/agent/327/";
+        static readonly string Look = UnityEngine.Application.dataPath + "/../Temp/agent/327/";
         static SimCore Sim => GameClock.Instance.ActiveSim;
         static ShowMeDirector Director => ShowMeDirector.Instance;
         static BoxCamera Cam => Camera.main.GetComponent<BoxCamera>();

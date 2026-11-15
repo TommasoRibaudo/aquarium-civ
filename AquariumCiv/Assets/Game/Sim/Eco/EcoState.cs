@@ -36,6 +36,8 @@ namespace AquariumCiv.Sim.Eco
         public int rabbitArrivalCell = -1;
         public bool rabbitArrivalSeen;
         public int rabbitsCaught;
+        /// <summary>#676: the view day a hunt last brought a rabbit home (-1 never): the camp pot makes rabbit stew that day and the next.</summary>
+        public long rabbitCatchDay = -1;
         /// <summary>#283: hides drying by the fire (one per catch; #284 turns them into tents and takes them with TakeHides), all hides ever
         /// taken, and the hunt resolver's mark: on view day <see cref="huntDay"/> the first <see cref="huntDone"/> hunts are settled.</summary>
         public int hidesDrying, hidesTotal;

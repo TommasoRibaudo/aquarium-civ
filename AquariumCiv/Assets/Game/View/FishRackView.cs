@@ -69,11 +69,15 @@ namespace AquariumCiv.View
             if (sim == null || !sim.EcologyOn || box == null || box.Root == null || pv == null || pv.Planner == null) { Hide(); return; }
             if (rootSeen != box.Root) { holder = null; rack = null; key = 0; rootSeen = box.Root; }
             var planner = pv.Planner;
-            planner.ResolveFishChain(pv.Now);
-            planner.ResolveEggGathers(pv.Now); // #574: the egg gather's take is settled here, once per gather (same per-frame hook)
+            if (!ReplayGate.Active) // #669: a replay moves nothing in the sim
+            {
+                planner.ResolveFishChain(pv.Now);
+                planner.ResolveEggGathers(pv.Now); // #574: the egg gather's take is settled here, once per gather (same per-frame hook)
+            }
             if (!planner.TryGetFishRack(pv.Now, out var look)) { Hide(); return; }
             bool wanted = sim.FishingWater || look.Fish > 0 || sim.FishInBasket > 0 || sim.FishInPile > 0;
             if (!wanted) { Hide(); return; }
+            if (!ReplayGate.Shows(sim.ThingSince("rack"))) { Hide(); return; } // #669: not built yet in the replayed month
             int k = 17;
             k = k * 31 + look.fresh; k = k * 31 + look.dry;
             k = k * 31 + Mathf.RoundToInt(look.x * 200f); k = k * 31 + Mathf.RoundToInt(look.z * 200f);
@@ -85,6 +89,7 @@ namespace AquariumCiv.View
                 key = k;
             }
             rack.SetActive(true);
+            if (!ReplayGate.Active) sim.NoteThing("rack"); // #669: the month it was first seen standing
             FreshShown = look.fresh; DryShown = look.dry;
         }
 

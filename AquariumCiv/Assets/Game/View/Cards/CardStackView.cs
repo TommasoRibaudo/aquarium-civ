@@ -320,6 +320,7 @@ namespace AquariumCiv.View
         {
             if (on == barUp) return;
             barUp = on;
+            hud?.SetBarClear(on ? GameUiPanel.ToastOverStrip : 0f); // #563: a toast rides above the bar, never under it
             showBar.pickingMode = on ? PickingMode.Position : PickingMode.Ignore; // a leaving bar takes no taps
             if (on) GlassMotion.Show(showBar, GlassMotion.SlideOff, null, GlassMotion.SlideMs);
             else GlassMotion.Hide(showBar, GlassMotion.SlideOff, GlassMotion.SlideMs);
@@ -654,7 +655,7 @@ namespace AquariumCiv.View
             if (model != null && model.DilemmaShowMe())
             {
                 // The choice scene (#224) took it: the sheet slides off so the people can be touched, the bar keeps the ask.
-                showBar.Set(ChoiceNote, null); // the ask itself is said in the box, by the one who asks
+                showBar.Set(ChoiceSceneView.Instance != null ? ChoiceSceneView.Instance.AskLine : ChoiceNote, null); // #706: names the options; the ask itself is said in the box, by the one who asks
                 showingPlace = true;
                 choiceUp = true;
                 return;
@@ -835,7 +836,7 @@ namespace AquariumCiv.View
             head.EnableInClassList("cards-head--alone", true);
             headline.AddToClassList("cards-ask");
             card.AddToClassList("cards-dilcard");
-            string words = f.dilemmaChosen < 0 ? v.question
+            string words = f.dilemmaChosen < 0 ? (string.IsNullOrEmpty(v.speaker) ? v.question : $"{v.speaker} asks: {v.question}")
                 : f.dilemmaLetThem ? $"The Keeper let the people decide. They chose {v.options[f.dilemmaChosen].label}."
                 : f.dilemmaLapsed ? $"The people chose {v.options[f.dilemmaChosen].label} themselves."
                 : $"The Keeper chose {v.options[f.dilemmaChosen].label}.";
@@ -861,7 +862,7 @@ namespace AquariumCiv.View
         }
 
         static string PlaceIcon(DilemmaView v, DilemmaOptionView o) =>
-            !string.IsNullOrEmpty(o.buildingType) ? "hill" : v.kind switch
+            !string.IsNullOrEmpty(o.icon) ? o.icon : !string.IsNullOrEmpty(o.buildingType) ? "hill" : v.kind switch
             {
                 DilemmaKind.Tradition => "scroll",
                 DilemmaKind.Strangers => "herd",

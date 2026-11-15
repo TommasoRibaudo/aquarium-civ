@@ -59,7 +59,8 @@ namespace AquariumCiv.View.PlayTests
     public abstract class PlayTestBase : InputTestFixture
     {
         protected const string ScenePath = "Assets/Game/Scenes/Slice.unity";
-        protected const string Shots = "F:/GameDev/AquariumCiv/Temp/agent/";
+        /// <summary>The running project's own Temp/agent folder (a worktree's shots stay in the worktree).</summary>
+        protected static string Shots => Application.dataPath + "/../Temp/agent/";
         protected Touchscreen touch;
         protected int touchId = 1;
         protected readonly List<string> errors = new();
@@ -167,7 +168,7 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return new WaitForEndOfFrame();
             var tex = ScreenCapture.CaptureScreenshotAsTexture();
-            Directory.CreateDirectory(Shots);
+            Directory.CreateDirectory(Path.GetDirectoryName(Shots + name + ".png")); // a name may carry a folder ("night/...")
             File.WriteAllBytes(Shots + name + ".png", tex.EncodeToPNG());
             UnityEngine.Object.Destroy(tex);
         }

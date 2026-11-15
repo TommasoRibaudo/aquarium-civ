@@ -22,7 +22,7 @@ namespace AquariumCiv.View.PlayTests
     [Category("NewStartPhone")]
     public class NewStartPhonePlaythrough : PlayTestBase
     {
-        const string Dir = Shots + "night/";
+        static string Dir => Shots + "night/";
         static SimCore Sim => GameClock.Instance.ActiveSim;
         static FirstRunView Run => FirstRunView.Instance;
         static NewStartView View => NewStartView.Instance;

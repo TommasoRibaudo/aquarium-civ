@@ -49,6 +49,10 @@ namespace AquariumCiv.View
         [System.NonSerialized] public bool HandDriven;
 
         public ViewTime Now => now;
+        /// <summary>#696 diagnosis: called when a doll whose plan says asleep is drawn shown, with the code path that did it.</summary>
+        public static System.Action<string> SleeperShown;
+        /// <summary>#698 diagnosis: called when a non-baby doll is hidden by <c>Drive</c> itself (an activity of None, or a plan place with no position).</summary>
+        public static System.Action<string> HideReason;
         /// <summary>The hour the box shows, also before the first tick (<see cref="Now"/> is midnight then).</summary>
         public float ViewHour => clockStarted ? now.hour : startHour;
         public LifePlanner Planner => planner;
@@ -144,6 +148,8 @@ namespace AquariumCiv.View
         readonly List<Solid> solids = new();
         /// <summary>#189: how much faster than the plan the drawn doll may catch up with where it should be.</summary>
         const float DrawnSlack = 0.35f;
+        /// <summary>#698: a drawn doll this near its tent's spot is in (hidden at once); further off it walks there first.</summary>
+        const float TentArrived = 0.04f;
         /// <summary>Tester run 9: catching up with the plan: the least extra speed, and how it grows with the gap (per second) on the way and into a slot.</summary>
         const float CatchLeast = 0.03f, CatchWalking = 1f, CatchArriving = 3f;
         /// <summary>Tester run 9: under this speed a doll hasn't really got a way to face, and turns at <see cref="SlowTurn"/> at the most (degrees a second).</summary>
@@ -375,7 +381,7 @@ namespace AquariumCiv.View
             // #365 B9: the bowls round the fire, who pokes it, the pot beside it
             meals.Step(acts, time, pl => planner.Positions.TryGetPosition(pl, out float mx, out float mz) ? new Vector2(mx, mz) : (Vector2?)null, planner.StageOf, planner.JobOf,
                 k => dolls.TryGetValue(k, out var md) && md.placed ? md.pos : (Vector2?)null);
-            meals.DrawPot(peopleRoot, Box.SolidMaterial, camp && planner.FireNow != CampFireStage.None /* #656: no pot by a fire that isn't lit */, (mx, mz) => Box.SurfaceHeight(mx, mz), LifeClock.SeasonOf(now.day) == Season.Winter); // #676: it simmers
+            meals.DrawPot(peopleRoot, Box.SolidMaterial, camp && planner.FireNow != CampFireStage.None /* #656: no pot by a fire that isn't lit */, (mx, mz) => Box.SurfaceHeight(mx, mz), LifeClock.SeasonOf(now.day) == Season.Winter, sim.StewOn(now.day)); // #676: it simmers, with what the camp has
             seen.Clear();
             claimed.Clear();
             restTaken.Clear();
@@ -451,6 +457,7 @@ namespace AquariumCiv.View
                 || (LifeSpot != null && LifeSpot(a, now, out x, out z, out huntFace))); // #427: a placed-life scene holds them (the dawn drink: stop and watch)
             if (hunting || tenting) hidden = false;
             else if (!planner.PositionAt(a.who, now, out x, out z) && !planner.Positions.TryGetPosition(a.place, out x, out z)) hidden = true;
+            if (hidden && stage == LifeStage.Kid && HideReason != null) HideReason($"{a.who} hidden by Drive: kind {a.kind} place {a.place.kind} moving {a.moving} (kind None, or no position for the plan: #698 diagnosis)");
             var spot = new Vector2(x, z);
             var target = spot;
             Vector2? face = null;
@@ -525,6 +532,12 @@ namespace AquariumCiv.View
                 if (away.sqrMagnitude < 1e-6f) away = Vector2.right;
                 target = rk + away.normalized * ScrapeReach; face = rk;
             }
+            // #684: a woodcutter at a living land's tree stands so the axe's blade lands on the trunk at chop height (it struck the ground beside it), the two of a tree on opposite sides
+            if (!hidden && !a.moving && !a.enRoute && a.kind == ActivityKind.Chop && a.place.kind == PlaceKind.Woods && plannerSim != null && plannerSim.EcologyOn)
+            {
+                target = DollMotion.ChopStand(spot, Hash01(a.who.Key, 7) * Mathf.PI * 2f + a.slot * Mathf.PI, out var chopFace);
+                face = chopFace;
+            }
             // sign-off 2026-11-14 (2nd run): resting at the fire (a sit, a nap, a meal, a story), on one of the laid-out bedrolls, one each
             if (!hidden && !a.moving && !a.enRoute && CampBedrolls.Count > 0 && a.place.kind is PlaceKind.Fire or PlaceKind.Green
                 && a.kind is ActivityKind.SitOut or ActivityKind.SitTogether or ActivityKind.ListenStory or ActivityKind.Listen or ActivityKind.Nap or ActivityKind.Eat
@@ -550,7 +563,17 @@ namespace AquariumCiv.View
             float targetSpeed = dt > 0f && d.placed ? (spot - d.lastSpot).magnitude / dt : 0f;
             if (targetSpeed > pace * 3f) targetSpeed = pace;
             d.lastSpot = spot;
-            bool jump = !d.placed || d.wasHidden || dt <= 0f || snapAll;
+            bool inTent = !a.moving && !a.enRoute && DollMotion.StyleOf(a.kind) == DollStyle.Hidden; // #696: asleep or indoors: nobody sees them, so a changed slot is taken at once, not walked to
+            // #698: ...but a doll still DRAWN out in the open (a play group, a chase, held it past the plan's walk to bed) is seen: it walks the rest
+            // of the way to the tent, and goes in on arriving, it does not vanish on the spot.
+            bool tentWalk = false; // #698: still on its way to the tent, drawn walking (never Hidden) until it is there
+            if (inTent && d.placed && !d.pose.hidden && !snapAll && dt > 0f)
+            {
+                // where it is heading: its slot, or the place's middle when the way to the slot is blocked (a lot in between): that middle is "there"
+                var tentGoal = a.moving || Clear(d.pos, target) ? target : spot;
+                if ((tentGoal - d.pos).sqrMagnitude > TentArrived * TentArrived) { inTent = false; tentWalk = true; }
+            }
+            bool jump = !d.placed || d.wasHidden || dt <= 0f || snapAll || inTent;
             if (jump) d.pos = target;
             else if (playing) d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Min(0.75f, playCue.speed * 1.15f + 0.15f + (target - d.pos).magnitude * 3f) * dt); // #358: the game's pace (a run in tag), catching up fast
             else if (paired) d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Min(0.75f, pairCue.speed * 1.1f + (target - d.pos).magnitude * 1.5f) * dt); // #363: the pair's pace
@@ -578,13 +601,16 @@ namespace AquariumCiv.View
             // #362: a crouched creep (0.1 u/s) is faster than the walk threshold, but it is a stalk, not a walk
             bool keepsHunchStyle = hunting && (a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.Bolt or HuntPhase.PullSpear or HuntPhase.PickUp or HuntPhase.HoldUp
                 || DeerBeats.Crouched(a.hunt)); // #426
-            if (walking && style != DollStyle.Hop && !keepsHunchStyle) style = a.kind == ActivityKind.RunOver || (stage == LifeStage.Kid && a.kind == ActivityKind.Play) ? DollStyle.Run : DollStyle.Walk;
+            if (walking && !inTent && style != DollStyle.Hop && !keepsHunchStyle) style = a.kind == ActivityKind.RunOver || (stage == LifeStage.Kid && a.kind == ActivityKind.Play) ? DollStyle.Run : DollStyle.Walk;
+            if (tentWalk && !hidden) style = DollStyle.Walk; // #698: asleep or indoors by the plan but still out in the open: a walk, not a vanish
             if (hidden) style = DollStyle.Hidden;
             if (!walking && !hidden) style = BerryMotion.Retarget(style, a.kind, a.place.kind); // #361: berries and roots you can see
             if (playing) style = playCue.style; // #358
             if (d.atTower && !walking) style = d.towerStyle; // #404
             if (toddling) style = DollStyle.Toddle; // 2026-11-06: it toddles, walking or not
             if (started && !walking) style = startCue.style; // #656/#677: the scene's pose (stand, set down, pick up)
+            if (HideReason != null && style == DollStyle.Hidden && !hidden && stage != LifeStage.Baby && (target - d.pos).sqrMagnitude > 0.5f * 0.5f) HideReason($"{a.who} drawn Hidden {(target - d.pos).magnitude:0.00} u short of its target: walking {walking} speed {d.speed:0.000} inTent {inTent} jump {jump} moving {a.moving} enRoute {a.enRoute} kind {a.kind} at {a.place.kind} hour {now.hour:0.00} drawn {d.drawn} pos {d.pos} target {target} timeScale {timeScale}"); // #698 diagnosis
+            if (SleeperShown != null && a.kind == ActivityKind.Sleep && !a.moving && style != DollStyle.Hidden) SleeperShown($"{a.who} asleep but drawn {style}: walking {walking} speed {d.speed:0.00} hidden {hidden} playing {playing} paired {paired} toddling {toddling} started {started} tower {d.atTower} drawn {d.drawn} target {target} slot {a.slot}"); // #696 diagnosis
             if (!walking && !hidden && !started && style == DollStyle.Lift && a.kind == ActivityKind.Prepare && a.place.kind == PlaceKind.Stash && a.prop == LifeProp.Basket) style = DollStyle.SortBasket; // sign-off 2026-11-14
             if (!walking && !hidden && !started && style == DollStyle.SitWeave && a.prop == LifeProp.Hide) style = DollStyle.Mend; // sign-off 2026-11-14: a bedroll mended
             // #656/#677: hungry, shown, never punished: now and then someone stops and looks up at the sky
@@ -1538,6 +1564,15 @@ namespace AquariumCiv.View
             var pv = Find();
             if (pv == null || pv.planner == null) return "no people";
             return pv.planner.ForceRunIn(bicker ? ActivityKind.Argue : ActivityKind.Chat, pv.now);
+        }
+
+        /// <summary>Debug (#697/#696): make one replan happen the way <paramref name="trigger"/> would (see <see cref="LifePlanner.ReplanTriggers"/>); the
+        /// people must keep what they are doing: the sleepers stay in their tents, the walkers finish their walk.</summary>
+        public static string DebugReplan(string trigger)
+        {
+            var pv = Find();
+            if (pv == null || pv.planner == null) return "no people";
+            return pv.planner.DebugTrigger(trigger);
         }
 
         /// <summary>Debug (#360): "Water run now": three adults draw water at dawn, and the clock goes to the walk out.</summary>

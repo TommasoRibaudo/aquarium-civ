@@ -337,7 +337,7 @@ namespace AquariumCiv.View.PlayTests
             var title = root.Q<GlassButton>("hud-title");
             Assert.AreEqual(ColorOf("#00000000"), title.resolvedStyle.backgroundColor, "no pill");
             Assert.IsNotNull(root.Q("hud-settings").Q<GlassIcon>(), "a settings mark, beside the name");
-            Assert.Less(root.Q("hud-feedback").resolvedStyle.opacity, 1f, "Feedback is quieter");
+            Assert.IsNotNull(FeedbackUI.Instance?.Pill, "the Feedback pill is drawn by FeedbackUI, over every panel (#702)");
 
             // Rule 7: Clean's state shows, and clean mode ends with the word back
             hud.SetCleanMode(true);
@@ -378,7 +378,7 @@ namespace AquariumCiv.View.PlayTests
             Assume.That(stack.Model.Mode, Is.EqualTo(CardStackMode.Peek), "needs a return with stories");
             yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-peek"));
             yield return Frames(4);
-            yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-skip"));
+            stack.Model.Close(); // the back gesture leaves the stories waiting; Skip all answers the stack and clears the dot (#561)
             yield return Frames(6);
             var hud = GameHud.Instance;
             Assert.IsTrue(stack.Model.HistoryDot, "stories wait");
@@ -490,9 +490,9 @@ namespace AquariumCiv.View.PlayTests
             cam.FlyTo(new Vector3(0f, 2.2f, 0f), 0.55f, 0.2f);
             yield return new WaitForSecondsRealtime(0.6f);
             Assert.IsTrue(hud.OffHome);
-            // #604: the title has no pill any more (its ink follows the light); the round buttons keep their backing off home
+            // #604: the title has no pill any more (its ink follows the light); #707: nor behind the round buttons
             Assert.AreEqual(0f, hud.Root.Q("hud-title-text").resolvedStyle.backgroundColor.a, "no pill behind the name");
-            Assert.IsTrue(hud.Root.Query(className: "hud-disc").ToList().Any(d => d.resolvedStyle.backgroundColor.a > 0f), "the round buttons keep a backing");
+            Assert.IsFalse(hud.Root.Query(className: "hud-disc").ToList().Any(d => d.resolvedStyle.backgroundColor.a > 0f), "no backing behind the round buttons");
             AssertNoErrors("backing");
         }
 

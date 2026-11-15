@@ -139,7 +139,9 @@ namespace AquariumCiv.Sim.Eco
 
         // #417 the life jar (placed-life spec §3, §4.3; all [est] until #434). Each jar opens on its land condition once the rung below is placed.
         public float jarThicketMeadow = 0.10f, jarRabbitsMeadow = 0.15f; // meadow share for the thicket's jar, the rabbits'
-        public int jarDeerTrees = 5, jarDucksPond = 12;                   // grown trees (the Keeper's counts) for the deer; pond cells for the ducks
+        public int jarDeerTrees = 5, jarDucksPond = 12;                   // jarDeerTrees: the old gate (#690: unused, jarDeerWood replaces it); pond cells for the ducks
+        // #690 [est] the deer want a wood: jarDeerWood grown trees that each have jarWoodCompany other grown trees within jarWoodReach cells.
+        public int jarDeerWood = 12, jarWoodReach = 3, jarWoodCompany = 4;
         /// <summary>#618 [est]: a frozen pond is big enough for people on the ice (fishing through holes, kids sliding) at this many open-water
         /// cells (the village gate's "water at the surface"); a smaller pond only ices over as a look, and nobody walks on it.</summary>
         public int iceActivityCells = 20;

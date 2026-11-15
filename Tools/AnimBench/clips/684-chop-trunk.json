@@ -1,0 +1,74 @@
+{
+ "name": "684-chop-trunk",
+ "notes": "#573 two woodcutters at ONE grown wild tree (the cap is two to a tree), each with their own tempo (pace 0.92 / 1.08, as PeopleView now varies it) and phase so they never strike together; then chopper A is done and walks off carrying a Log to the stash. NOT drawn here (view FX in Unity, ChopLogsView / HitFx): chips on every hit, a log lying on the ground every 4th hit, the logs lifted when the carry starts. AnimLab shows those.",
+ "duration": 5.0,
+ "fps": 30,
+ "warmup": 1,
+ "camera": {
+  "view": "default",
+  "focus": [
+   0.2,
+   0.05
+  ],
+  "span": 0.9
+ },
+ "sheet": {
+  "from": 0.5,
+  "to": 4.5,
+  "frames": 24,
+  "columns": 6
+ },
+ "knownGaps": [
+  "endBeat",
+  "react",
+  "hitNear"
+ ],
+ "objects": [
+  {
+   "id": "tree",
+   "kind": "tree",
+   "pos": [
+    0.2,
+    0.05
+   ]
+  }
+ ],
+ "dolls": [
+  {
+   "id": "chopA",
+   "seed": 5731,
+   "role": "woodcutter",
+   "activity": "Chop",
+   "prop": "Axe",
+   "pace": 0.92,
+   "pos": [
+    -0.0009,
+    -0.0491
+   ],
+   "face": [
+    0.9907,
+    0.0808
+   ],
+   "target": "tree",
+   "dur": 5.0
+  },
+  {
+   "id": "chopB",
+   "seed": 5732,
+   "role": "woodcutter",
+   "activity": "Chop",
+   "prop": "Axe",
+   "pace": 1.08,
+   "pos": [
+    0.4009,
+    0.1491
+   ],
+   "face": [
+    -0.5907,
+    0.0192
+   ],
+   "target": "tree",
+   "dur": 5.0
+  }
+ ]
+}

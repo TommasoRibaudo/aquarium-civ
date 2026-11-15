@@ -325,7 +325,7 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return OpenSlice(750, 1334, seed: 9506);
             var fb = FeedbackUI.Instance;
-            yield return Tap(Root, "hud-feedback");
+            yield return Tap(FeedbackUI.Instance.PillRoot, "hud-feedback");
             yield return Until(() => fb.IsOpen, 3f);
             yield return new WaitForSecondsRealtime(0.5f);
             var sheet = fb.Root.Q("fb-sheet");
@@ -488,7 +488,7 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(0.4f);
 
             var fb = FeedbackUI.Instance;
-            yield return Tap(Root, "hud-feedback");
+            yield return Tap(FeedbackUI.Instance.PillRoot, "hud-feedback");
             yield return Until(() => fb.IsOpen, 3f);
             yield return new WaitForSecondsRealtime(0.5f);
             yield return Shot(at + "feedback-empty");

@@ -58,6 +58,24 @@ namespace AquariumCiv.View
             return sim == null ? "no sim" : null;
         }
 
+        /// <summary>#700: lays path tier under a rack (the fish rack, or the hide rack) so it stands on a path; the rack moves off it at the next quiet moment.</summary>
+        public static string DoPathOverRack(bool hide)
+        {
+            var e = Need(out var s); if (e != null) return e;
+            var map = s.Settlement?.Map; var planner = PeopleView.Find()?.Planner;
+            if (map == null || planner == null || !planner.FirePoint(out float fx, out float fz)) return "no settled camp";
+            float a = hide ? RackSites.Hide(s, fx, fz) : RackSites.Fish(s, fx, fz);
+            float dist = hide ? LifePlanner.HideFrameDistance : FishRackSpot.Distance, hl = hide ? 0.3f : 0.3f, hd = hide ? 0.22f : 0.14f;
+            float ux = Mathf.Cos(a), uz = Mathf.Sin(a), cx = fx + ux * dist, cz = fz + uz * dist, n = 0;
+            for (float along = -hl; along <= hl; along += 0.03f)
+                for (float across = -hd; across <= hd; across += 0.03f)
+                {
+                    int c = AquariumCiv.Sim.Settle.SiteMap.CellAt(cx + ux * across - uz * along, cz + uz * across + ux * along);
+                    if (c >= 0 && map.tier[c] < AquariumCiv.Sim.Settle.PathNet.PathTier) { map.tier[c] = AquariumCiv.Sim.Settle.PathNet.PathTier; n++; }
+                }
+            return Done((hide ? "hide rack" : "fish rack") + ": path laid over it (" + n + " cells); it moves at night or when empty");
+        }
+
         public static string DoRelic(string id) { var e = Need(out var s); if (e != null) return e; var r = s.DebugGiveRelic(id); return Done(r == null ? "no " + id : "relic " + id); }
         public static string DoLoseSandal() { var e = Need(out var s); if (e != null) return e; return Done(s.DebugLoseSandal() != null ? "sandal lost" : "nobody to lose it"); }
         public static string DoSandalYears() { var e = Need(out var s); if (e != null) return e; return Done(s.DebugSkipSandalYears(20) ? "sandal lost 20 years longer" : "no lost sandal"); }
@@ -142,6 +160,13 @@ namespace AquariumCiv.View
                 if (GUILayout.Toggle(tl.Clock.SpeedIndex == i, ReplayClock.Speeds[i] + "x", GUI.skin.button)) tl.SetSpeed(i); // steps scale with a short history (#670)
             GUILayout.EndHorizontal();
             if (GUILayout.Button("Back to now")) last = TimeLapseView.DebugClose();
+            // #669: the replay draws only what stood then (rack, pile, hide frame, props, camps, relics by their month)
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Year 1")) last = TimeLapseView.DebugSeek(0f);
+            if (GUILayout.Button("Year 2")) last = TimeLapseView.DebugSeek(Mathf.Min(1f, end));
+            if (GUILayout.Button("Now")) last = TimeLapseView.DebugSeek(end);
+            GUILayout.EndHorizontal();
+            GUILayout.Label("replay gate: month " + ReplayGate.Month + (ReplayGate.AtPresent ? " (now)" : ""));
         }
 
         void FirstRunGui()
@@ -282,6 +307,26 @@ namespace AquariumCiv.View
             if (Section("Camp props (fb4 #540)"))
                 if (GUILayout.Button("Camp props: show all (rack, every prop)")) last = ConsequenceCheats.ShowCampProps();
             // ---- end fb4 #540 ----
+            // ---- #700: a path grows over a rack ----
+            if (Section("Path over the rack (#700)"))
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Path over the fish rack")) last = DoPathOverRack(false);
+                if (GUILayout.Button("Path over the hide rack")) last = DoPathOverRack(true);
+                GUILayout.EndHorizontal();
+                GUILayout.Label("The rack moves at night or when empty; press Bedtime (clock to 20:00) to see it go.");
+            }
+            // ---- end #700 ----
+            // ---- #676: the camp pot's stew kind (from what the camp has) ----
+            if (Section("Stew pot (#676)"))
+            {
+                GUILayout.BeginHorizontal();
+                foreach (var sk in new[] { StewKind.Fish, StewKind.Rabbit, StewKind.Berries, StewKind.Thin })
+                    if (GUILayout.Button("Stew: " + sk))
+                        last = Done(sim.EcologyOn ? $"stew is now {sim.DebugStew(sk)} (the pot shows at a lit camp fire; use Dusk / Fire cheats to see it)" : "needs the ecology");
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #676 ----
             if (Section("Staged moments (#370)")) { var line = StagedMoments.Gui(); if (line != null) last = line; } // #370
             // ---- #373: the Keeper's choices page and the hand pins ----
             if (Section("Keeper's choices (#373)"))
@@ -293,6 +338,26 @@ namespace AquariumCiv.View
                 }
             }
             // ---- end #373 ----
+            // ---- #697/#696: force each replan trigger; sleepers must stay hidden in the tent, walkers must finish their walk ----
+            if (Section("Replans (#697/#696)"))
+            {
+                GUILayout.Label("Force a replan; nobody may turn round or come out of bed.");
+                var rp = PeopleView.Find();
+                if (rp != null && rp.Planner != null) GUILayout.Label($"kept at the last replan: {rp.Planner.PinnedSleepers} asleep, {rp.Planner.PinnedWalkers} walking, {rp.Planner.PinnedStanding} standing");
+                var trig = AquariumCiv.Life.LifePlanner.ReplanTriggers;
+                for (int i = 0; i < trig.Length; i += 3)
+                {
+                    GUILayout.BeginHorizontal();
+                    for (int k = i; k < i + 3 && k < trig.Length; k++)
+                        if (GUILayout.Button("force replan (" + trig[k] + ")")) last = PeopleView.DebugReplan(trig[k]);
+                    GUILayout.EndHorizontal();
+                }
+                if (rp != null && rp.Planner != null && GUILayout.Button(rp.Planner.ReplanLog == null ? "Log every replan to the console" : "Stop logging replans"))
+                    rp.Planner.ReplanLog = rp.Planner.ReplanLog == null ? (System.Action<string>)(m => Debug.Log("[replan] " + m)) : null;
+                if (GUILayout.Button("Bedtime: clock to 20:00")) last = PeopleView.DebugSetHour(20f);
+                if (GUILayout.Button("Mid-evening walk: clock to 17:30")) last = PeopleView.DebugSetHour(17.5f);
+            }
+            // ---- end #697/#696 ----
             // ---- #417: the life jar (placed-life spec §10); "place" opens a shut jar and places by the camp, no ghost ----
             if (sim.EcologyOn && Section("Life jar (#417)"))
             {
@@ -300,6 +365,9 @@ namespace AquariumCiv.View
                 GUILayout.Label(string.Join(" · ", all.Select(s => s + " " + sim.JarStateOf(s))));
                 if (GUILayout.Button("Ready every species")) last = Done($"{sim.DebugJarsReady()} jars opened");
                 if (GUILayout.Button("Lock all jars (#570: see the greyed list)")) last = Done($"{sim.DebugLockJars()} jars shut"); // #570
+                // ---- #690: a dense wood, so the deer jar opens by the real gate (scattered trees would not) ----
+                if (GUILayout.Button("Dense wood: 25 trees far from the fire (#690)")) last = Done(sim.DebugGrowFarWood() ? $"a wood: {sim.EcoWoodTrees} trees in company; deer jar {sim.JarStateOf(AquariumCiv.Sim.Eco.LifeSpecies.Deer)}" + (sim.JarNeed(AquariumCiv.Sim.Eco.LifeSpecies.Deer) is { Length: > 0 } need ? " (" + need + ")" : "") : "no room for a wood");
+                // ---- end #690 ----
                 GUILayout.Label("village line: " + (sim.VillageWaitsLine is { Length: > 0 } vl ? vl : "(none)")); // #570
                 for (int i = 0; i < all.Length; i += 3)
                 {
@@ -315,6 +383,17 @@ namespace AquariumCiv.View
                 // ---- #519: the ducks and the fish keep to the water you can see ----
                 if (GUILayout.Button("Pond dries now (ducks/fish leave, #519)")) last = Done(EcoDebug.PondDries()); // tester feedback 3: the water goes on screen at once
                 // ---- end #519 ----
+                // ---- #703: winter ducks (the duck jar is shut while the pond is ice) ----
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Winter ducks: freeze + open duck jar")) // opens every shut jar, then the ice: Ducks reads shut with its ice line
+                {
+                    sim.DebugJarsReady(); AquariumCiv.Sim.Eco.PondIce.Force = true;
+                    last = Done("ice on; ducks jar: " + sim.JarStateOf(AquariumCiv.Sim.Eco.LifeSpecies.Ducks) + " / " + (sim.JarNeed(AquariumCiv.Sim.Eco.LifeSpecies.Ducks) ?? "(no line)"));
+                }
+                if (GUILayout.Button("Thaw (jar opens)")) { AquariumCiv.Sim.Eco.PondIce.Force = false; last = Done("thaw; ducks jar: " + sim.JarStateOf(AquariumCiv.Sim.Eco.LifeSpecies.Ducks)); }
+                if (GUILayout.Button("Ice by season")) { AquariumCiv.Sim.Eco.PondIce.Force = null; last = Done("ice follows the calendar"); }
+                GUILayout.EndHorizontal();
+                // ---- end #703 ----
                 // #423: the life tool in hand (glow, ghost, tap to place), for a ready jar
                 var hudL = GameHud.Instance;
                 GUILayout.BeginHorizontal();
@@ -352,6 +431,9 @@ namespace AquariumCiv.View
                         if (dv.Scarers.Count > 0) { dv.Scarers.Clear(); last = Done("nobody by the deer"); }
                         else if (dv.TryGetDeer(0, out var d0, out _)) { dv.Scarers.Add(new Vector2(d0.x + 0.25f, d0.z)); last = Done("someone stands by the deer: heads up, then they walk off"); }
                     }
+                    // #699: a deer on a path straight through the fire (it should go round, and keep its shy distance)
+                    if (dv != null && GUILayout.Button("Deer at the camp (#699)"))
+                        last = Done(sim.Config.settle && dv.DebugAcrossTheFire(sim.EcoGround.campX, sim.EcoGround.campZ) ? "a deer sets off across the camp: it should go round the fire" : "no deer shown or no camp");
                     if (sim.WolvesPlaced && GUILayout.Button("Wolves: first howl again")) { sim.State.eco.firstHowlHeard = false; last = Done("the first howl plays at the next dusk"); }
                     GUILayout.EndHorizontal();
                     var sdv = StoryDirectorView.Instance;

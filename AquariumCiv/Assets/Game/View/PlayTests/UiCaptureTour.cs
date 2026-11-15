@@ -776,7 +776,7 @@ namespace AquariumCiv.View.PlayTests
             var sender = FeedbackSender.Ensure();
             typeof(FeedbackSender).GetField("token", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(sender, ""); // never reaches GitHub
             var fb = FeedbackUI.Instance;
-            yield return Tap(Hud.Root, "hud-feedback");
+            yield return Tap(FeedbackUI.Instance.PillRoot, "hud-feedback");
             yield return Until(() => fb.IsOpen, 3f);
             yield return Frames(6);
             yield return Cap("3.8-feedback-empty", fb.IsOpen);

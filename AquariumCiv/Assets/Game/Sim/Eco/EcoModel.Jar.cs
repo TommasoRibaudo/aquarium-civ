@@ -126,7 +126,7 @@ namespace AquariumCiv.Sim.Eco
             {
                 case LifeSpecies.Thicket: return st.treeCell >= 0 && MeadowFrac >= t.jarThicketMeadow; // 2026-11-14: the seed is in the ground first
                 case LifeSpecies.Rabbits: return MeadowFrac >= t.jarRabbitsMeadow;
-                case LifeSpecies.Deer: return st.cTrees >= t.jarDeerTrees;      // the Keeper's own grown tree counts
+                case LifeSpecies.Deer: return WoodTrees() >= t.jarDeerWood;      // #690: a wood (grown trees close together), not a few trees
                 case LifeSpecies.Ducks: return st.cPond >= t.jarDucksPond;
                 case LifeSpecies.Fish:
                 {
@@ -281,6 +281,15 @@ namespace AquariumCiv.Sim.Eco
         public bool cheatBareGround;
         bool MeadowOk(EcoCover c) => IsMeadow(c) || (cheatBareGround && c == EcoCover.Bare);
 
+        /// <summary>#703: the ducks' jar is shut while the pond is frozen (winter, or the debug ice, with some water): the wild ducks are
+        /// away then (#618), so a placing would send them off at once and the Keeper would pay for nothing. The jar keeps its state
+        /// (Ready stays Ready, a placed flock stays placed); SimCore reads it as shut and the need line says why. Opens by itself at the thaw.</summary>
+        public bool IceShut(LifeSpecies s, long month) => !cheatPlaceOnIce && s == LifeSpecies.Ducks && st.cPond > 0 && (PondIce.Force ?? PondIce.Winter(month));
+
+        /// <summary>Debug only (SimCore.DebugPlaceNearCamp, the "place X here" cheat and the scripted worlds): the placing goes through on the ice.
+        /// The Keeper's own tap never sets it.</summary>
+        public bool cheatPlaceOnIce;
+
         /// <summary>The species can be placed on this cell now: its jar is Ready and the ground is valid.</summary>
         public bool CanPlace(LifeSpecies s, int cell, Func<int, bool> settled = null)
             => JarStateOf(s) == JarState.Ready && GroundOk(s, cell, settled);
@@ -386,7 +395,7 @@ namespace AquariumCiv.Sim.Eco
         public bool Place(LifeSpecies s, int cell, long month, Func<int, bool> settled, out bool restock)
         {
             restock = false;
-            if (!CanPlace(s, cell, settled)) return false;
+            if (IceShut(s, month) || !CanPlace(s, cell, settled)) return false; // #703: nothing is spent on a frozen pond
             var j = Jar(s);
             restock = j.placings > 0;
             j.state = (int)JarState.Placed; j.placings++; j.placedCell = cell; j.placedMonth = month;

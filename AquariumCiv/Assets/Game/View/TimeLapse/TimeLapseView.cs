@@ -37,11 +37,12 @@ namespace AquariumCiv.View
         readonly System.Collections.Generic.List<Behaviour> hiddenLife = new();
 
         /// <summary>#669 (playtest): the replay draws the land as it was each year, but the berries and the animals were today's (berries
-        /// with no bush, rabbits before they came): no record keeps them by year, so they step out of the replay, like the people.</summary>
+        /// with no bush, rabbits before they came): no record keeps where they stood by year, so they step out of the replay, like the
+        /// people (the call: hidden, not guessed). Things with a placing or building time ask <see cref="ReplayGate"/> instead.</summary>
         void HideLiveLife()
         {
             hiddenLife.Clear();
-            foreach (var b in new Behaviour[] { BushView.Instance, RabbitView.Instance, DeerView.Instance, WolfView.Instance })
+            foreach (var b in new Behaviour[] { BushView.Instance, RabbitView.Instance, DeerView.Instance, WolfView.Instance, LifeArrivalView.Instance })
                 if (b != null && b.enabled) { b.enabled = false; hiddenLife.Add(b); }
         }
         float shownPos = -1f;
@@ -124,6 +125,7 @@ namespace AquariumCiv.View
             Active = false;
             externalTick = false;
             Src.Replay = null;
+            ReplayGate.Clear(); // #669
             Box.deferAO = false;
             Box.FlushAo();
             shownKey = -1;
@@ -178,6 +180,8 @@ namespace AquariumCiv.View
         {
             lastShowTime = Time.unscaledTime;
             Box.deferAO = true;
+            ReplayGate.Set((long)Mathf.FloorToInt(position * SimConfig.MonthsPerYear + 0.001f), position >= Lapse.EndPosition - 0.0005f); // #669
+            foreach (var b in hiddenLife) if (b != null) b.enabled = ReplayGate.AtPresent; // #669 (tester run 1): at the timeline's end the box is today's, berries and rabbits too
             var s = Lapse.Scrub(position);
             var near = s.Nearest;
             var other = near == s.a ? s.b : s.a;

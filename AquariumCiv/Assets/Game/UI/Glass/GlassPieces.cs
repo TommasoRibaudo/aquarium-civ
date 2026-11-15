@@ -15,6 +15,7 @@ namespace AquariumCiv.GameUI
     [UxmlElement]
     public partial class GlassPageDots : VisualElement
     {
+        public const int ManyDots = 10;
         public GlassPageDots() : this(0, 0) { }
         public GlassPageDots(int count, int at)
         {
@@ -26,6 +27,7 @@ namespace AquariumCiv.GameUI
         public void Set(int count, int at)
         {
             Clear();
+            EnableInClassList("kg-dots--many", count > ManyDots); // #563: 17 cards would run past a small phone sheet
             for (int i = 0; i < count; i++)
             {
                 var d = new VisualElement { pickingMode = PickingMode.Ignore };
@@ -435,8 +437,23 @@ namespace AquariumCiv.GameUI
         public void Set(string text, string by = null)
         {
             line.text = text ?? "";
+            line.style.width = StyleKeyword.Auto; line.style.alignSelf = StyleKeyword.Null;
+            schedule.Execute(BalanceLine).ExecuteLater(16); // #562: once laid out at its widest, narrowed so the last line is never one word
             who.text = by ?? "";
             who.style.display = string.IsNullOrEmpty(by) ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        void BalanceLine()
+        {
+            float wide = line.layout.width;
+            if (float.IsNaN(wide) || wide <= 1f || string.IsNullOrEmpty(line.text) || ClassListContains("kg-caption--panel")) return;
+            float Tall(float w) => line.MeasureTextSize(line.text, w, VisualElement.MeasureMode.AtMost, 0f, VisualElement.MeasureMode.Undefined).y;
+            float tall = Tall(wide), one = Tall(100000f);
+            if (tall < one * 1.5f) return;
+            float lo = wide * 0.45f, hi = wide;
+            for (int i = 0; i < 7; i++) { float mid = (lo + hi) * 0.5f; if (Tall(mid) > tall + 0.5f) lo = mid; else hi = mid; }
+            line.style.alignSelf = Align.Center;
+            line.style.width = Mathf.Ceil(hi) + 1f;
         }
 
         /// <summary>The line's label, so a screen can give it the name its play tests use.</summary>

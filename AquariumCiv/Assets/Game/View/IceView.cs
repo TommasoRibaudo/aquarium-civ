@@ -191,8 +191,18 @@ namespace AquariumCiv.View
                 var col = deep < 0.5f ? Color.Lerp(IceRim, IceMid, deep * 2f) : Color.Lerp(IceMid, IceDeep, (deep - 0.5f) * 2f);
                 if (Terrain.Hash3(box.seed + 618, c, 2) < 0.06f) col = Color.Lerp(col, IceSnow, 0.4f); // a drift of snow on the ice
                 col = new Color(col.r + v, col.g + v, col.b + v * 0.6f);
-                var a = new Vector3(x - h, iceY, z - h); var b = new Vector3(x - h, iceY, z + h); var cc = new Vector3(x + h, iceY, z + h); var d = new Vector3(x + h, iceY, z - h);
-                if (Vector3.Cross(b - a, cc - a).y > 0f) mb.Quad(a, b, cc, d, col); else mb.Quad(d, cc, b, a, col);
+                // #701: the ice is cut like the water sheet (BoxView.EcoWaterMesh): only the pieces whose corners lie under the level by the
+                // margin, so its edge is the water's edge, inside the dug bank, never a whole bank cell over the dirt.
+                const int Sub = 3;
+                float step = 2f * h / Sub;
+                for (int sj = 0; sj < Sub; sj++)
+                    for (int si = 0; si < Sub; si++)
+                    {
+                        float x0 = x - h + si * step, x1 = x0 + step, z0 = z - h + sj * step, z1 = z0 + step;
+                        if (!box.WaterPieceUnder(x0, z0, x1, z1)) continue;
+                        var a = new Vector3(x0, iceY, z0); var b = new Vector3(x0, iceY, z1); var cc = new Vector3(x1, iceY, z1); var d = new Vector3(x1, iceY, z0);
+                        if (Vector3.Cross(b - a, cc - a).y > 0f) mb.Quad(a, b, cc, d, col); else mb.Quad(d, cc, b, a, col);
+                    }
             }
             sheetMesh = mb.ToMesh("Ice");
             sheetMesh.hideFlags = HideFlags.DontSave;

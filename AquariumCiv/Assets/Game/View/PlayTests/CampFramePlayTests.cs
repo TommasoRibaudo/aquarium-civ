@@ -19,7 +19,7 @@ namespace AquariumCiv.View.PlayTests
     [Category("CampFrame")]
     public class CampFramePlayTests : PlayTestBase
     {
-        const string Dir = Shots + "t1camera/";
+        static string Dir => Shots + "t1camera/";
         static BoxCamera Rig => Camera.main.GetComponent<BoxCamera>();
 
         [UnityTest, Timeout(180000)]

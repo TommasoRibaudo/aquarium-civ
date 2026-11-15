@@ -50,6 +50,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoBushCountTests.cs" /><!-- #385 bush count -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/LifeJarTests.cs" /><!-- #417 the life jar -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/PlacedLifeTests.cs" /><!-- #420-#422 deer, ducks, fish, floors, restraint -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/DeerCampTests.cs" /><!-- #699 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/WolfPackTests.cs" /><!-- #437 the wolf pack -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DogLineTests.cs" /><!-- #438 the dog line -->
     <Compile Include="../../AquariumCiv/Assets/Game/Life/Tests/WolfContactTests.cs" /><!-- #437 no wolf plan has contact, against the real planner -->
@@ -57,7 +58,9 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Life/Tests/CampSpreadTests.cs" /><!-- #521 the first camp days spread out -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/NewStartTests.cs" /><!-- #656/#677 the carried stock, wild wood, the fire, hunger -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoPacingTests.cs" /><!-- #569 the mister waters the forest -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/DuckJarIceTests.cs" /><!-- #703 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/JarNeedTests.cs" /><!-- #570 what is missing, in words -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/DeerWoodTests.cs" /><!-- #690 the deer want a wood -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoWetTests.cs" /><!-- P8 polish 266 sim half, 271 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoSeenTests.cs" /><!-- P8 polish 281 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoRabbitTests.cs" /><!-- P8 polish 282 -->
@@ -72,6 +75,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/RunAheadTests.cs" /><!-- #97 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CrowdNameTests.cs" /><!-- #148 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/WorldLogicTests.cs" /><!-- #188, #147, #154, #160 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/BuildingYearTests.cs" /><!-- #689 -->
     <!-- #87: the save and the clock's decisions are pure C# on a JsonUtility shim, so their tests run here too -->
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/SaveStore.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/ClockLogic.cs" />

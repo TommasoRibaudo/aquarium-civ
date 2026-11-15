@@ -13,7 +13,7 @@ namespace AquariumCiv.View.PlayTests
     [Explicit("Screenshots for the eye: run by hand"), Category("Fb5Glass")]
     public class Fb5GlassShots : PlayTestBase
     {
-        const string Dir = "F:/GameDev/AquariumCiv/Temp/agent/fb5/577/";
+        static readonly string Dir = UnityEngine.Application.dataPath + "/../Temp/agent/fb5/577/";
         static BoxCamera Rig => Camera.main.GetComponent<BoxCamera>();
 
         IEnumerator Shot(string name)

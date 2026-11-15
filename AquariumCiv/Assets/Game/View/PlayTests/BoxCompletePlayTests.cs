@@ -25,7 +25,7 @@ namespace AquariumCiv.View.PlayTests
     public class BoxCompletePlayTests : InputTestFixture
     {
         const string ScenePath = "Assets/Game/Scenes/Slice.unity";
-        const string Shots = "F:/GameDev/AquariumCiv/Temp/agent/";
+        static readonly string Shots = UnityEngine.Application.dataPath + "/../Temp/agent/";
         string savePath, backup;
         readonly List<string> errors = new();
         Touchscreen touch;
@@ -249,7 +249,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(Shown(ui.Q("visit-banner")));
             foreach (var n in new[] { "hud-title", "hud-settings", "hud-feedback", "hud-photo", "hud-history", "shelf-open" })
             {
-                var h = hudRoot.Q(n) ?? ui.Q(n);
+                var h = hudRoot.Q(n) ?? ui.Q(n) ?? FeedbackUI.Instance?.PillRoot?.Q(n);
                 if (h == null || !Shown(h)) continue;
                 Assert.IsFalse(bannerRect.Overlaps(h.worldBound), $"the visit banner {bannerRect} covers {n} {h.worldBound}");
             }

@@ -358,7 +358,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(Choice.BoxBarUp, "the bar invites the touch without opening the card");
             var bar = Choice.UiRoot.Q("choice-bar");
             Assert.IsTrue(Shown(bar), "choice-bar on screen");
-            Assert.AreEqual(CardStackView.ChoiceNote, bar.Q<Label>("choice-bar-text").text);
+            Assert.AreEqual(Choice.AskLine, bar.Q<Label>("choice-bar-text").text); // #706: names the options
             var let = Choice.UiRoot.Q("choice-let");
             Assert.IsTrue(Shown(let) && let.pickingMode == PickingMode.Position, "Let them decide on the bar");
             Assert.GreaterOrEqual(let.worldBound.height, 121f - 1f, "44 pt tall (tester run 2 E)");
@@ -386,6 +386,45 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsFalse(Choice.BoxBarUp, "the bar goes with the scene");
             Assert.IsFalse(GameHud.Instance.ToolsLaneTaken, "and History comes back");
             AssertNoErrors("held choice staged");
+        }
+
+        /// <summary>Tester run 2 (playtest 1 batch 2): a toast raised while a choice waits in the box rides over the choice's bar AND the
+        /// "Let them decide" button above it (#563 cleared the bar only). Measured on screen at two phone sizes.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator AToastDuringAChoiceClearsTheBarAndTheLetButton_1179x2556() { yield return ToastOverChoice(1179, 2556); }
+
+        [UnityTest, Timeout(600000)]
+        public IEnumerator AToastDuringAChoiceClearsTheBarAndTheLetButton_1080x1920() { yield return ToastOverChoice(1080, 1920); }
+
+        IEnumerator ToastOverChoice(int w, int h)
+        {
+            yield return OpenBox(w, h);
+            DilemmaCheats.Toggle(true);
+            Dilemma d = null;
+            for (int i = 0; i < 4 && d == null; i++)
+            {
+                d = Sim.DebugRaiseDilemma("camp_fire");
+                if (d == null) { SimLayoutSource.DebugSkipYears(1f); yield return null; }
+            }
+            Assert.IsNotNull(d);
+            GameClock.DebugAway(24);
+            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Waiting && Choice.BoxBarUp, 90f);
+            yield return Frames(20);
+            var hud = GameHud.Instance;
+            var bar = Choice.UiRoot.Q("choice-bar");
+            var let = Choice.UiRoot.Q("choice-let");
+            Assert.IsTrue(Shown(bar) && Shown(let), $"{w}x{h}: the bar and the button are up");
+            hud.Toast("A toast over the choice bar test", 60f, true);
+            yield return Frames(30);
+            var toast = hud.Root.Q("hud-toast");
+            Assert.IsTrue(Shown(toast), $"{w}x{h}: the toast is on screen");
+            yield return Shot($"toast-over-choice-{w}x{h}");
+            Assert.IsFalse(toast.worldBound.Overlaps(bar.worldBound), $"{w}x{h}: toast {toast.worldBound} clear of the bar {bar.worldBound}");
+            Assert.IsFalse(toast.worldBound.Overlaps(let.worldBound), $"{w}x{h}: toast {toast.worldBound} clear of Let them decide {let.worldBound}");
+            Assert.LessOrEqual(toast.worldBound.yMax, Mathf.Min(bar.worldBound.yMin, let.worldBound.yMin) + 0.5f, $"{w}x{h}: the toast sits over both");
+            var peekEl = Cards.Root.panel.visualTree.Q("cards-peek");
+            if (Shown(peekEl)) Assert.IsFalse(toast.worldBound.Overlaps(peekEl.worldBound), $"{w}x{h}: toast {toast.worldBound} clear of the card peek {peekEl.worldBound}");
+            AssertNoErrors("toast over choice");
         }
 
         /// <summary>t3-choice (tester run 2 D): a choice raised while the player watches: the peek switches to it with the "?" mark,
@@ -420,6 +459,80 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(Model.PeekIs(d.entryId), "still one touch away on the peek");
             Assert.AreEqual(DilemmaState.Open, d.state, "never resolves unseen");
             AssertNoErrors("live choice");
+        }
+
+        // ================================================================== #706
+
+        /// <summary>#706: a choice answered by touch marks each option in the box: a halo and a 1-3 word tag of what touching it does, the
+        /// question line in the bar naming both. A real touch on one answers, and the marks go.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator EachOptionIsMarkedWithWhatTouchingItDoesAndTheMarksGoOnAnAnswer()
+        {
+            yield return OpenBox(1179, 2556);
+            yield return ToTheCard("camp_travellers");
+            var d = Sim.OpenDilemma;
+            yield return ShowTheChoice("newcomers");
+            var expect = new[] { "take them in", "camp apart" };
+            Assert.AreEqual("Touch one: take them in, or camp apart.", Choice.AskLine);
+            Assert.AreEqual(Choice.AskLine, Cards.Root.Q("cards-showme-bar").Q<Label>().text, "the bar names the options");
+            yield return Until(() => Choice.TagAt(0, out _) && Choice.TagAt(1, out _), 10f);
+            for (int i = 0; i < 2; i++)
+            {
+                var tag = Choice.UiRoot.Q("choice-tag-" + i);
+                Assert.IsTrue(Shown(tag), "tag " + i + " is up");
+                Assert.AreEqual(expect[Choice.Stage.sides[i].option], tag.Q<Label>().text, "tag " + i + " says what touching it does");
+                Assert.Greater(Choice.HaloAlpha(i), 0.5f, "halo " + i);
+                Assert.GreaterOrEqual(tag.worldBound.xMin, ChoiceSceneView.TagGutter - 1f, "inside the left gutter");
+                Assert.LessOrEqual(tag.worldBound.xMax, Choice.UiRoot.worldBound.width - ChoiceSceneView.TagGutter + 1f, "inside the right gutter");
+            }
+            yield return Shot("706-newcomers-1179x2556");
+            AssertApart("newcomers", out _);
+            Assert.IsTrue(Choice.TryScreenOf(0, out var at));
+            yield return TapAt(at);
+            yield return Frames(3);
+            Assert.AreEqual(DilemmaState.Answered, d.state, "a real touch answers");
+            Assert.AreEqual(DilemmaPath.Box, d.path);
+            Assert.AreEqual(ChoiceSceneView.Phase.Reacting, Choice.State);
+            yield return Until(() => !Shown(Choice.UiRoot.Q("choice-tag-0")) && !Shown(Choice.UiRoot.Q("choice-tag-1")), 3f);
+            Assert.IsFalse(Shown(Choice.UiRoot.Q("choice-tag-0")) || Shown(Choice.UiRoot.Q("choice-tag-1")), "the tags go once it is answered");
+            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Idle, ChoiceScenes.ReactSeconds + 6f);
+            yield return Frames(3); // End() destroys at the end of its frame
+            Assert.AreEqual(0, ChoiceObjects(), "no halo or traveller left");
+            AssertNoErrors("newcomers marks");
+        }
+
+        /// <summary>#706: every other touch choice shows its marks too (shots <c>706-*</c> at 1179x2556): the four kinds and the three small ones.</summary>
+        [UnityTest, Timeout(900000)]
+        public IEnumerator EveryTouchChoiceIsMarked()
+        {
+            yield return OpenBox(1179, 2556);
+            DilemmaCheats.Toggle(true);
+            var all = new[] { "camp_fire", "camp_winter", "camp_remember", "village_headman", "village_spring", "village_harvest", "village_hill_family",
+                              "small_naming", "small_story", "small_supper" };
+            foreach (var id in all)
+            {
+                var d = id.StartsWith("small_") ? (id == "small_naming" ? Sim.DebugRaiseNaming() : Sim.DebugRaiseSmall(id == "small_story" ? SmallChoices.Story : SmallChoices.Supper))
+                                                : Sim.DebugRaiseDilemma(id);
+                if (d == null) { Debug.Log("[706] " + id + " can't be raised in this box (era): skipped"); continue; }
+                ChoiceSceneView.DebugWatch = true;
+                Assert.IsTrue(ChoiceSceneView.DebugStage().StartsWith("choice:"), id + " stages");
+                yield return Until(() => Choice.State == ChoiceSceneView.Phase.Waiting && Choice.Stage != null && Choice.Stage.defId == d.defId && Shown(Choice.UiRoot.Q("choice-tag-0")) && Shown(Choice.UiRoot.Q("choice-tag-1")), 60f);
+                yield return Frames(4);
+                for (int i = 0; i < 2; i++)
+                {
+                    var tag = Choice.UiRoot.Q("choice-tag-" + i);
+                    Assert.IsTrue(Shown(tag), id + " tag " + i);
+                    var words = tag.Q<Label>().text;
+                    Assert.IsFalse(string.IsNullOrWhiteSpace(words), id + " tag " + i + " has words");
+                    Assert.LessOrEqual(words.Split(' ').Length, 4, id + ": 1-3 words (and a name): " + words);
+                }
+                yield return new WaitForSecondsRealtime(1f);
+                yield return Shot("706-" + id + "-1179x2556");
+                Sim.DebugLapseDilemma();
+                ChoiceSceneView.DebugWatch = false;
+                yield return Until(() => Choice.State == ChoiceSceneView.Phase.Idle, 5f);
+            }
+            AssertNoErrors("every touch choice");
         }
 
         public override void TearDown()

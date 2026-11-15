@@ -19,7 +19,7 @@ namespace AquariumCiv.View.PlayTests
     [Explicit("Screenshots for the eye: run by hand"), Category("Fb10Shots")]
     public class Fb10Shots : Fb5SeasonShots
     {
-        const string Out = "F:/GameDev/AquariumCiv/Temp/agent/fb10/";
+        static readonly string Out = UnityEngine.Application.dataPath + "/../Temp/agent/fb10/";
         static SimCore S => GameClock.Instance.ActiveSim;
 
         IEnumerator Snap(string name)
