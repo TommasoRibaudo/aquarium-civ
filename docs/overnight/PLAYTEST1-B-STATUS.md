@@ -18,7 +18,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [ ] 12 · #706 merged (open for look sign-off)
 - [ ] 13 · #705 specced, built and clipped, on its branch
 - [ ] 15 · #655 numbers in the issue (if time)
-- [ ] Design proposals for #708, #709, #710 + #658, #687 written (open-questions.md + issue comments)
+- [~] Design proposals for #708, #709, #710 + #658, #687 written (open-questions.md + issue comments)
 - [ ] Every issue's *Done when* ticked with evidence, or listed as short after 4 rounds
 - [ ] Batched Editor pass green (EditMode 10 assemblies, PlayMode classes, smoke); failures fixed or noted as baseline
 - [ ] `Playtest1BPlaythrough` + the touch play-through done, every beat looked at
@@ -32,4 +32,11 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 ## Log
 - 2026-11-14 ~19:30 · run started (orchestrator in the session opened at F:\GameDev); worktree pt1b at d0c2008. C: 97% full (19 GB free) — watch editor-health exit 2.
 
+- 19:25 · design proposals (#708 #709 #710+#658 #687) by a Sonnet docs worker: 86092c4, merged 4d32530 into p9/playtest1-b. Still to do: copy them into open-questions.md (§6) and post the issue comments.
+- 19:30 · F:\GameDev holds p9/signoff with the Editor of the other session (Dev, idle). Rather than use it, I seeded pt1b's Library by robocopy (2.4 GB) and made the Editor scripts take PROJ/EDITOR_LOG/LOCK/UNITY_LIB (b8253e4, tooling.md entry). The second Editor opens on F:/GameDev-wt/pt1b/AquariumCiv with its own log Editor-pt1b.log. The lock for it is F:\GameDev-wt\pt1b\.agent-editor.lock.
+- 19:20 · #697→#696 Sonnet worker started (lane A, F:\GameDev-wt97, vs/697-696-replans).
+
 ## Round logs
+### #697/#696
+- round 1: started 19:20.
+
