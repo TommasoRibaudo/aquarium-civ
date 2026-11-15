@@ -275,6 +275,8 @@ namespace AquariumCiv.Life
                     int k = (int)(H(3, day, 914) % (uint)adults);
                     foreach (var p in people)
                         if (p.Adult && k-- == 0) { dayFireKeeper = p; break; }
+                    if (d.tellerPicked && dayFireKeeper == d.teller) // #717: tonight's teller tells; the next grown-up keeps the fire
+                        foreach (var p in people) if (p.Adult && p != d.teller) { dayFireKeeper = p; break; }
                 }
             }
             PlanGlassVisits(d); // #92
@@ -1207,6 +1209,7 @@ namespace AquariumCiv.Life
         /// pairs and couples sit together; single friends court (rules 7, 8).</summary>
         void Relationships(Person p, DayInfo d, List<Seg> list)
         {
+            if (d.tellerPicked) return; // #717: tonight everyone at the fire listens to the Keeper's pick
             if (EveningBusy(p)) return;
             if (d.supper == SupperPick.Pot || (d.supper == SupperPick.Baskets && StyleOf(p, d) != EveningStyle.Gather)) return; // #589: everyone eats together / the family eats at home
             var f = p.friend;
