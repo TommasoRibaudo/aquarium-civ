@@ -107,7 +107,7 @@ deer jar (`jarDeerTrees`) and the village (`villageTrees`)? As written they do, 
 1. **Bushes:** A1, A2 or A3? (A3 keeps #663 open; A1/A2 close it with an answer.)
 2. **Trees:** B1, B2 or B3, and how many seeds?
 3. **Tool:** may it pluck **grown** trees? What is its name? Does a plucked thicket bush stay gone for a while?
-4. **Phase:** this is new feature work in the Polish phase ("no new features"): now, or after Polish?
+4. ~~**Phase:**~~ Decided 2026-11-14: it goes with the current Polish milestone (#724, #726-#732).
 5. When picked: update `decisions.md` (one thicket, one seed) and `placed-life.md` §5.1, `keepers-hands.md` §3.3 and §5.7.
 
 ## 8. Picked (the user, 2026-11-14): B3 trees, A3 bushes, one tool
@@ -115,7 +115,7 @@ deer jar (`jarDeerTrees`) and the village (`villageTrees`)? As written they do, 
 > if you do more the thicket are gradually smaller (even shrinking when player is placing a lot)."
 
 Recorded in `decisions.md` (2026-11-14). The shape below is a proposal built from that sentence; numbers are [est] and are
-tuned with `EcoBushCountTests` and the pacing lab. Still open: the tool's name, whether it plucks grown trees, the phase (§7).
+tuned with `EcoBushCountTests` and the pacing lab. Still open: the tool's name, whether it plucks grown trees (§7). Phase: with the current Polish milestone.
 
 ### 8.1 Earning (trees and bushes)
 - Two counters on the Keeper: **seeds** (each plants one normal tree seedling) and **bushes** (each plants one bush). Both are
