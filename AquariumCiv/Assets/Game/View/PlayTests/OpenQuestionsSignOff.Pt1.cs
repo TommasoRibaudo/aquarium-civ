@@ -166,6 +166,7 @@ namespace AquariumCiv.View.PlayTests
             }
             if (pinnedHere && GameClock.Instance != null && Sim != null) { Sim.Unpin(); pinnedHere = false; }
             if (pv != null) pv.timeScale = 1f;
+            CloseLoosePt1b(); // batch 2: the ice cheat, a choice on stage
         }
 
         /// <summary>At the end of the walk: the player's own sound sliders come back (#648 may have set the defaults).</summary>

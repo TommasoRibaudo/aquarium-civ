@@ -292,9 +292,11 @@ namespace AquariumCiv.View.PlayTests
             // playtest 1 (#643-#680) and the new start (#656, #677): the stops are in OpenQuestionsSignOff.Pt1.cs
             ["#643"] = Pt1("#643"), ["#644"] = Pt1("#644"), ["#645"] = Pt1("#645"), ["#647"] = Pt1("#647"), ["#648"] = Pt1("#648"),
             ["#649"] = Pt1("#649"), ["#650"] = Pt1("#650"), ["#651"] = Pt1("#651"), ["#652"] = Pt1("#652"), ["#654"] = Pt1("#654"),
-            ["#657"] = Pt1("#657"), ["#659"] = Pt1("#659"), ["#669"] = Pt1("#669"), ["#670"] = Pt1("#670"), ["#672"] = Pt1("#672"),
-            ["#673"] = Pt1("#673"), ["#674"] = Pt1("#674"), ["#680"] = Pt1("#680"), ["#675"] = Pt1("#675"), ["#676"] = Pt1("#676"),
-            ["#665"] = Pt1("#665"), ["#671"] = Pt1("#671"), ["#656"] = Pt1("#656"), ["#677"] = Pt1("#677"), ["#658"] = Pt1("#658"),
+            ["#657"] = Pt1("#657"), ["#659"] = Pt1("#659"), ["#669"] = Pt1b("#669"), ["#670"] = Pt1("#670"), ["#672"] = Pt1("#672"),
+            ["#673"] = Pt1("#673"), ["#674"] = Pt1("#674"), ["#680"] = Pt1("#680"), ["#675"] = Pt1("#675"), ["#676"] = Pt1b("#676"),
+            ["#665"] = Pt1("#665"), ["#671"] = Pt1("#671"),
+            ["#707"] = Pt1b("#707"), ["#704"] = Pt1b("#704"), ["#701"] = Pt1b("#701"), ["#706"] = Pt1b("#706"), ["#703"] = Pt1b("#703"), ["#700"] = Pt1b("#700"), ["#700+"] = Pt1b("#700+"),
+            ["#705"] = Pt1b("#705"), ["#690"] = Pt1b("#690"), ["#656"] = Pt1("#656"), ["#677"] = Pt1("#677"), ["#658"] = Pt1("#658"),
             ["#569"] = Fb5("#569"), ["#570"] = Fb5("#570"), ["#571"] = Fb5("#571"), ["#572"] = Fb5("#572"), ["#573"] = Fb5("#573"),
             ["#574"] = Fb5("#574"), ["#575"] = Fb5("#575"), ["#576"] = Fb5("#576"), ["#577"] = Fb5("#577"), ["#578"] = Fb5("#578"),
         };
@@ -397,7 +399,10 @@ namespace AquariumCiv.View.PlayTests
             void Stage(Item it, string section, string subTitle, bool addTextIfNone)
             {
                 bool any = false;
-                foreach (var key in KeysOf(it.Title))
+                foreach (var key0 in KeysOf(it.Title))
+                {
+                    string key = key0;
+                    if (used.Contains(key) && staged.ContainsKey(key + "+")) key += "+"; // the issue's second item (#700: a look stop, then the animation)
                     if (staged.TryGetValue(key, out var stops) && used.Add(key))
                     {
                         any = true;
@@ -408,7 +413,10 @@ namespace AquariumCiv.View.PlayTests
                             list.Add(s);
                         }
                     }
+                }
                 if (any || !addTextIfNone) return;
+                // an older bullet for an issue a newer one already staged (batch 2 re-asks #669 #671 #676): no second "not staged" stop
+                if (KeysOf(it.Title).Any(k => staged.ContainsKey(k))) return;
                 list.Add(new Stop
                 {
                     Section = section, Sub = subTitle, Kind = Kind.Look, Name = it.Title, Slug = Slug(it.Title), Judge = it.Text,
@@ -421,7 +429,7 @@ namespace AquariumCiv.View.PlayTests
                 string secShort = ShortSection(sec.Title);
                 foreach (var sub in sec.Subs)
                 {
-                    bool look = sub.Title.Contains("Sign-offs"), calls = sub.Title.Contains("Calls I made") || sub.Title.Contains("Polish noted");
+                    bool look = sub.Title.Contains("Sign-offs") || sub.Title.Contains("sign-offs"), calls = sub.Title.Contains("Calls I made") || sub.Title.Contains("Polish noted");
                     string subShort = sub.Title.Length == 0 ? "" : (look ? "Look" : calls ? sub.Title.Replace(" without you", "").Replace(", not fixed", "") : sub.Title);
                     if (look) foreach (var it in sub.Items) Stage(it, secShort, subShort, true);
                     else if (calls)
