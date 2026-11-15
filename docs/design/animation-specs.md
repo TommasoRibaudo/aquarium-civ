@@ -1,4 +1,4 @@
-# Animation spec sheets: B1–B26, the staged moments and placed life (A3, #356; P9, #416)
+# Animation spec sheets: B1–B27, the staged moments and placed life (A3, #356; P9, #416)
 
 Status: **draft, waiting for the user** (2026-11-06). One beat sheet per animation of the Visit loop. Design:
 [visit-loop.md](visit-loop.md) §2.6 and §4; research [17](../research/17-readable-life-animations.md) §4 (the eight
@@ -1306,6 +1306,41 @@ trots off, tail up.*
 | Rule | either way the pen is safe from then on; wolves never take from a guarded pen |
 | 3-s read | "wolves circling the duck pen at night" |
 | Cheat | **"Wolves at the pen now"** |
+
+## B27. A path comes: the rack is taken down and set up again (#700)
+
+*A path has grown over a rack. At a quiet hour two people lift the fish off, pull the poles, carry them a few steps and plant them again on free ground; the old spot is left bare.*
+
+**Status: spec only. Not built; waits for the user's sign-off.** The rule that decides *when* and *where* (never on a path cell, move at night or when empty, the nearest free angle) is built: `Life/RackSites.cs`. Until this beat exists the rack simply stands on its new spot at that moment. Applies to the fish rack (B16.c, `Life/FishRackSpot.cs`) and the hide rack (`Life/LifePlanner.Tents.cs`, `HideFrame`); the beat is the same, only the loads differ.
+
+### B27.a The take-down and rebuild
+| | |
+|---|---|
+| When | the first quiet hour after a path covers any cell of the rack (`RackSites`): at dusk or in the night block (`LifeClock` Evening, 17:00-20:00, or Night), or by day when the rack holds nothing. Never while someone is hanging or taking down. Once per move; two racks do it one after the other, never at the same time |
+| Actors | 2 grown-ups: the rack-keeper (`Life/LifePlanner.FishChain.cs` `RackKeeper`, or the hide scraper) as `Lifter`, and the nearest idle grown-up as `Carrier`. Others in the block keep their own plans |
+| Props | the rack in 3 parts: the ridge pole (`Pole`, 0.4 u, carried on the shoulder by two) and two A-frames (`Frame`, 0.14 u, one under each arm); fish and hides go to the basket first, or to the stash pile if the rack was dry |
+| Antic | both turn to the rack and stop 0.12 u from it; the Lifter rubs the back of the neck (arm z 80, 0.4 s) and looks at the path, then at the rack, then at the free ground (3 head turns, yaw +-40, 0.3 s each): "here is the problem, there is the answer" |
+| Take down | fish and hides come off one at a time (as the take-down beat, `FishRackSpot.TakeFraction`; arm x 150, 0.5 s each) into the basket. Then the ridge pole is lifted off both frames (`Back` ease, 0.6 s, the bar rises 0.1 u and **tips** 15 deg): the empty frames `Jolt` once. Each frame is pulled up (crouch 0.04 u, arm x 120 -> 40, `Snap` 0.15 s): the frame leaves the ground with a `Dust` puff and a small dark hole stays |
+| Contact | the last frame leaving the ground: `hit` once, 3 `Dust` puffs, 4 `Grass` blades |
+| Carry | Lifter takes the ridge pole on one shoulder (arm x 160), Carrier takes both frames (one under each arm, a slight lean back); they walk to the new spot at 0.25 u/s, in step (`Lead`/`Side`), 0.3-1.0 u. The basket is carried by whoever is free, or set down at the old spot and fetched |
+| Plant | at the new spot: Carrier sets a frame down (crouch, `Squash` 0.2 s) and presses it in with both hands (`Jolt` 8 Hz tau 0.12 s, `Dust` 2); the second frame the same, 0.5 u apart (the bar's length) |
+| Raise | both lift the ridge pole to the frames together (arm x 170, `Back` 0.5 s) and **drop it into place**: the bar `Jolt`s, the frames wobble 4 deg, 5 Hz, tau 0.2 s. The Lifter tugs it twice to test it |
+| End beat | the fish or hides go back on, one at a time (the existing hang beat, `FishRackSpot.HangFraction`); the Lifter steps back with hands on hips (arm z 70) and nods, and the Carrier waves a hand at the old spot, now bare: "there, out of the way" |
+| Old spot | the poles' holes show for the rest of the day (4 dark dots, 0.02 u), then the grass closes over them |
+| Timing | take-down 5-6 s, carry 3-8 s by distance, plant 4 s, raise 3 s, re-hang by count: about 20 s real. Fits in one 0.5 view hour at dusk. By day it is allowed only when empty and then skips the hang |
+| Close shot | start 2 u from the fire at the default camera; the old spot, the path and the new spot all in frame (they are within 1.2 u of each other) |
+| 3-s read | "they took the rack down and put it up somewhere else" |
+| De-sync | Carrier starts 0.3 s after the Lifter; the two walk with step offsets (0.9-1.1) as `Lead`/`Side` |
+| Cheats | **"Path over the fish rack"** / **"Path over the hide rack"** (`View/SimDebugPanel.cs`, `// #700`), then "Bedtime: clock to 20:00" |
+| Tests | P1 (a hand within 0.11 u of a pole at the lift and at the plant), P2 (the frames `Jolt` within 0.2 s of the lift and of the plant), P5 (one `EndBeat`: the re-hang), P8 (every contact held >= 0.1 s; offsets >= 0.025 u). Plan tests: the rack's new centre is never on a path cell (`RackPathTests`); only one rack beat at a time; nobody is tied to the rack by their own duty during it |
+
+### B27.b If a move is hurried or unseen (rules, not a second beat)
+| | |
+|---|---|
+| The Keeper is looking away or the box is paused | the beat still runs on the plan's clock; on return the rack is already planted (the view catches up as for every beat) |
+| The game was closed | the rack simply stands on its new spot on load; no beat |
+| No free nearby spot | it keeps its old spot, and the beat does not run (a rack on a path is better than none) |
+
 
 ### Placed life: hard in code
 

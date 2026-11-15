@@ -26,18 +26,26 @@ namespace AquariumCiv.Life
         /// <summary>The rack's angle (<see cref="CampSpots.FishRackAngle"/>): clear of the hide rack, the stash, the stone, the pot and the seats.</summary>
         public static float AngleFor(float fx, float fz, int seed) => CampSpots.FishRackAngle(fx, fz, HideAngleAt(fx, fz, seed));
 
+        /// <summary>#700: the rack's angle as the camp stands it now: off the path cells, moved at a quiet moment (<see cref="RackSites"/>).</summary>
+        public static float AngleFor(AquariumCiv.Sim.SimCore sim, float fx, float fz) => RackSites.Fish(sim, fx, fz);
+
         /// <summary>A point <paramref name="radius"/> from the fire towards the rack.</summary>
-        public static void At(float fx, float fz, int seed, float radius, out float x, out float z)
+        public static void At(float fx, float fz, int seed, float radius, out float x, out float z) => At(fx, fz, AngleFor(fx, fz, seed), radius, out x, out z);
+
+        /// <summary>A point <paramref name="radius"/> from the fire at the rack's angle <paramref name="a"/>.</summary>
+        public static void At(float fx, float fz, float a, float radius, out float x, out float z)
         {
-            float a = AngleFor(fx, fz, seed);
             x = fx + (float)Math.Cos(a) * radius;
             z = fz + (float)Math.Sin(a) * radius;
         }
 
         /// <summary>The rack's centre and the unit direction along its bar.</summary>
         public static void Frame(float fx, float fz, int seed, out float x, out float z, out float dirX, out float dirZ)
+            => Frame(fx, fz, AngleFor(fx, fz, seed), out x, out z, out dirX, out dirZ);
+
+        /// <summary>The same for a rack at angle <paramref name="a"/>.</summary>
+        public static void Frame(float fx, float fz, float a, out float x, out float z, out float dirX, out float dirZ)
         {
-            float a = AngleFor(fx, fz, seed);
             float ux = (float)Math.Cos(a), uz = (float)Math.Sin(a);
             x = fx + ux * Distance; z = fz + uz * Distance;
             dirX = -uz; dirZ = ux;

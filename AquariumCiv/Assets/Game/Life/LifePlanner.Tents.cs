@@ -86,8 +86,7 @@ namespace AquariumCiv.Life
         {
             x = z = dirX = dirZ = 0f;
             if (!sim.EcologyOn || !FirePoint(out float fx, out float fz)) return false;
-            float a = (H(0, 0, 410) >> 8) * (1f / 16777216f) * 6.2831853f;
-            a = CampSpots.RackAngle(fx, fz, a, HideFrameDistance); // fb4 #540: off the stash, the crumb's stone and the pot
+            float a = RackSites.Hide(sim, fx, fz); // fb4 #540: off the stash, the crumb's stone and the pot; #700: and off the paths
             float ux = (float)Math.Cos(a), uz = (float)Math.Sin(a);
             x = fx + ux * HideFrameDistance; z = fz + uz * HideFrameDistance;
             dirX = -uz; dirZ = ux; // the bar runs across the line from the fire
@@ -99,6 +98,7 @@ namespace AquariumCiv.Life
         public int HideFramePoints(ViewTime now, List<(float x, float z)> into)
         {
             into?.Clear();
+            RackSites.Observe(sim, now); // #700: a rack moves off a path at night or when empty
             if (!HideFrame(out float cx, out float cz, out float dx, out float dz)) return 0;
             int n = HidesOnFrame(now), shown = Math.Min(n, HideFrameMax);
             if (into != null)
