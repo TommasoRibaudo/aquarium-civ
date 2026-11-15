@@ -32,7 +32,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 ## Extra queue (user, 2026-11-15: chain more well-defined easy todos tonight)
 Picked: open Polish issues with a clear Done-when, no `needs:user`, not out of scope, not built yet.
 - [x] #689 (merged; smoke in the batched pass) a village house's card says the year it was built (lane A, vs/689-built-year)
-- [ ] #690 deer only when the wood is dense (lane A, vs/690-dense-wood; wolves' chain #437 checked)
+- [x] #690 (merged; smoke in the batched pass) deer only when the wood is dense (lane A, vs/690-dense-wood; wolves' chain #437 checked)
 - [ ] #684 axe meets the trunk (user: probably fixed; check first, close if so)
 - [ ] #561 Skip all clears the History dot (check still true first)
 - [ ] #638 TelemetryPlayTests finger wipe (90-min time box)
@@ -67,6 +67,9 @@ Skipped: #560/#672 (built in #678, waiting for a phone check), #660–#662 (insi
 - 2026-11-14 23:15 · #698 merged (760c9d3) after 3 rounds
 
 ## Round logs
+
+### #690
+- round 1 (lane A): WoodTrees (grown tree with 4+ others within 3 cells); jar at 12. 8-seed lab: deer jar ~8 game years later (y23–29), wolf jar same year. SimTests 1947/1947. Accepted. Call for the user: numbers [est], deer scenes arrive later.
 
 ### #689
 - round 1 (lane A): cause = the camp tent rebuilt in place as the house kept its camp month; card reads BuiltMonthOf (village start for hut/farm/lumbermill; old month-0 saves take the lot month). SimTests 1947/1947. Accepted.
