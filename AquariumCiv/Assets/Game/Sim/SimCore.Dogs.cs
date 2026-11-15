@@ -69,6 +69,8 @@ namespace AquariumCiv.Sim
 
         // ---------- the first dog (the book) ----------
         public int FirstDogId => EcologyOn ? State.eco.firstDogId : -1;
+        /// <summary>#719: a grown dog's name (the people's lines name it), or "" when the box has none.</summary>
+        public string GrownDogName => Dogs.FirstOrDefault(d => DogStageOf(d) != DogStage.Pup)?.name ?? "";
         public string FirstDogName => EcologyOn ? State.eco.firstDogName : "";
         public int FirstDogKeeperId => EcologyOn ? State.eco.firstDogKeeperId : -1;
         /// <summary>The first dog's keeper's full name as it was when the pup came home (kept even after they die).</summary>

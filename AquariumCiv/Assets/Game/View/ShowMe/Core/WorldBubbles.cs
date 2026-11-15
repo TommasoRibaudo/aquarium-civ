@@ -189,7 +189,7 @@ namespace AquariumCiv.View.ShowMe
             if (HeldNow != null)
             {
                 var lines = PeopleVoice.MomentLines(HeldNow.kind, HeldNow.personA, HeldNow.personB,
-                    HeldNow.kind == MomentKind.Ritual ? sim.RitualOfEntry(HeldNow.entryId) : null, PeopleVoice.KeeperName(sim)); // #721
+                    HeldNow.kind == MomentKind.Ritual ? sim.RitualOfEntry(HeldNow.entryId) : null, PeopleVoice.KeeperName(sim), sim.State.era); // #721, #719
                 for (int i = 0; i < lines.Count; i++)
                     yield return Make($"held:{HeldNow.id}:{i}", lines[i].text, lines[i].speaker, BubbleSource.Moment, -1, 0);
                 yield break;
@@ -220,9 +220,15 @@ namespace AquariumCiv.View.ShowMe
             {
                 var e = chron[i];
                 if (e.month < from) break;
-                if (e.salience < rules.storyMinSalience || !SimCore.ShownAsCard(e)) continue;
-                if (!string.IsNullOrEmpty(e.quote))
-                    yield return Make($"entry:{e.id}:q", e.quote, e.speakerId, BubbleSource.StoryQuote, e.id, 0);
+                if (e.salience < rules.storyMinSalience || sim.MomentHidesCard(e)) continue; // a ceremony watched live tells itself
+                if (SimCore.ShownAsCard(e))
+                {
+                    // #719: one telling per story. A carded story's bubble is its card quote, if it has one; never the story voice too.
+                    if (!string.IsNullOrEmpty(e.quote))
+                        yield return Make($"entry:{e.id}:q", e.quote, e.speakerId, BubbleSource.StoryQuote, e.id, 0);
+                    continue;
+                }
+                // History-only lines (never a card): the one it is about says it in their own words.
                 var v = PeopleVoice.StoryLine(sim, e);
                 if (v != null) yield return Make($"entry:{e.id}:v", v.text, v.speakerId, BubbleSource.StoryVoice, e.id, 0);
             }

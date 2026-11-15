@@ -33,7 +33,7 @@ namespace AquariumCiv.View.ShowMe
         /// chief; a ritual's leader). Deterministic order; the caller says each at most once a moment. #721: a ritual's lines are its
         /// own (<paramref name="ritual"/>, <see cref="RitualKind"/>); <paramref name="keeper"/> is how the stage names the Keeper.
         /// All ritual lines are [est] until the user signs them off.</summary>
-        public static List<(string text, int speaker)> MomentLines(MomentKind kind, int a, int b, string ritual = null, string keeper = "the Keeper")
+        public static List<(string text, int speaker)> MomentLines(MomentKind kind, int a, int b, string ritual = null, string keeper = "the Keeper", Era era = Era.Camp)
         {
             var l = new List<(string, int)>();
             switch (kind)
@@ -66,7 +66,7 @@ namespace AquariumCiv.View.ShowMe
                 case MomentKind.Festival:
                     l.Add(("Save me a dance!", -1));
                     l.Add(("There's plenty. Eat up!", -1));
-                    l.Add(("Pass the bread, please.", -1));
+                    l.Add((era == Era.Camp ? "Pass the berries, please." : "Pass the bread, please.", -1)); // #719 [est]: the camp has no bread
                     l.Add(("Thank you for the fire.", -1));
                     l.Add(("This stew is the best yet.", -1));
                     l.Add(("Round again! Round again!", -1));
@@ -88,11 +88,14 @@ namespace AquariumCiv.View.ShowMe
                     break;
                 case MomentKind.NewLeader:
                     if (a >= 0) l.Add(("I'll do my best for all of us.", a));
-                    l.Add(("Long live the new chief!", -1));
+                    l.Add(($"Long live the new {LeaderWord(era)}!", -1)); // #719 [est]: the era's own leader
                     l.Add(("A good seat. Wear it well.", -1));
                     break;
             }
             return l;
         }
+
+        /// <summary>#719: the leader the era has (camp: chief, village: headman, town: lord).</summary>
+        public static string LeaderWord(Era era) => era switch { Era.Village => "headman", Era.Town => "lord", _ => "chief" };
     }
 }

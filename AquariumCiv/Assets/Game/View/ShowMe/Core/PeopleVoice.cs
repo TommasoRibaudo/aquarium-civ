@@ -18,16 +18,11 @@ namespace AquariumCiv.View.ShowMe
         public static readonly IReadOnlyDictionary<int, string> BankFirstPerson = new Dictionary<int, string>
         {
             [4] = "I moved the tents back from the edge of the sky. Just a little. Just in case.",
-            [6] = "I touched the edge of the sky. It was cold. I'm not scared of it.",
             [11] = "The Bright One sneezed last spring. I heard it. Half the camp believes me.",
-            [12] = "I dreamt I climbed to the edge of the sky and knocked. Something knocked back.",
             [21] = "The Keeper looks in at all hours. It isn't polite. I combed my hair anyway.",
             [25] = "The Keeper hums while working. Prove me wrong.",
-            [26] = "I've been practising a wink for the Keeper. Nearly got it.",
             [35] = "I made a mirror for signalling the Keeper. It works. Probably.",
             [36] = "I can tell the time from the glass's shadow now. Ask me.",
-            [37] = "I dreamt of a city beyond the glass. I've drawn a map of it.",
-            [38] = "The Keeper has a cat. I'm only saying what I heard.",
         };
 
         /// <summary>Words the people never say (§5.1 "Never stated").</summary>
@@ -129,50 +124,6 @@ namespace AquariumCiv.View.ShowMe
                             "The Keeper sends, we build. I wrote it all down.",
                             "The Keeper sent something and we put it to use. I have notes.");
                     break;
-                case "invention": text = Pick(v,
-                    "I made a thing. It mostly works.",
-                    "I invented something today. Ask me what it's for tomorrow.",
-                    "Nobody asked for it, and now nobody can do without it."); break;
-                case "giant_turnip": text = Pick(v,
-                    "That turnip? Grew it myself. Talked to it every morning.",
-                    "I knew that turnip was special. I told it so, daily.",
-                    "Biggest turnip anyone's seen. I'm trying to be humble about it."); break;
-                case "prank": text = Pick(v,
-                    "Nobody can prove it was me.",
-                    "I was nowhere near the well. Ask anyone who isn't looking at me.",
-                    "It was funny, though. Admit it was funny."); break;
-                case "song": text = Pick(v,
-                    "I made up a song. You'll be humming it by supper.",
-                    "That song stuck, didn't it? I'm very sorry. Slightly.",
-                    "I've got a new song. It has a part where you clap."); break;
-                case "brave": text = Pick(v,
-                    "I wasn't scared. Much.",
-                    "I did it before I thought about it. That's the secret.",
-                    "My knees were shaking. They were just warming up."); break;
-                case "kind": text = Pick(v,
-                    "It was nothing. Anyone would have.",
-                    "Please don't make a fuss. All right, a small fuss.",
-                    "I only did what was in front of me."); break;
-                case "dreamer": text = Pick(v,
-                    "I had the strangest dream. I'll tell you at supper.",
-                    "I dreamt I could fly. I woke up on the floor, so close.",
-                    "I dreamt of a table as long as the river. Everyone had a seat."); break;
-                case "lazy": text = Pick(v,
-                    "I'm resting. It's harder than it looks.",
-                    "I'm saving my energy. For what, I'll know when it comes.",
-                    "I'm thinking about getting up. It's going well."); break;
-                case "loud": text = Pick(v,
-                    "WHAT? I'm not shouting.",
-                    "I only have the one volume. It's a good volume.",
-                    "Did I say that too loudly? Sorry. Sorry! Sorry."); break;
-                case "lost": text = Pick(v,
-                    "I got lost in the hills. The hills started it.",
-                    "I wasn't lost. I was finding a longer way.",
-                    "Every path looked like the right one. That was the problem."); break;
-                case "found": text = Pick(v,
-                    "Lost and found. Mostly found.",
-                    "They found me before I'd finished getting lost. Rude.",
-                    "I knew the way home all along. I just wanted the view."); break;
                 case "elder": text = Pick(v,
                     "I'm not old. I'm early.",
                     "I've seen it all before. Not this exact bit, but near it.",

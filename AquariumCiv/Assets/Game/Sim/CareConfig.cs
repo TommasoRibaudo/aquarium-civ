@@ -32,13 +32,5 @@ namespace AquariumCiv.Sim
 
         public bool MoodShows(SimCore sim) => sim.MessLevel > moodShowsAbove;
         public bool Cheers(SimCore sim) => sim.MessLevel < cheerBelow;
-
-        // Wistful or comic, never a demand on the player: the people react to their world, they don't scold the Keeper.
-        public static readonly string[] MoodLines =
-        {
-            "I miss the sun...", "Found a sock bigger than my house.", "The weeds are taller than me now!",
-            "Is it evening already?", "My crops are squinting.", "Something green crept into my garden.",
-        };
-        public static readonly string[] CheerLines = { "Look at that sky!", "Sunshine!", "I can see the hills again!", "Back to work, the light's back!" };
     }
 }

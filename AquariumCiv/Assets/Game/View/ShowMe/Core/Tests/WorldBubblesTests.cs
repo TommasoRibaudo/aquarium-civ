@@ -205,5 +205,65 @@ namespace AquariumCiv.View.ShowMe.Tests
             wb.Reset();
             Assert.AreEqual(a.key, wb.Next(0, PeopleMoment.Glass)?.key);
         }
+
+        // ---------- #719: the people's words ----------
+
+        /// <summary>#719: one telling per story. Over two hours in every stage, a story that is a card is never also told in the story
+        /// voice (only its card quote may be a bubble); the voice is for lines that are never cards.</summary>
+        [TestCase(Era.Camp, 1, 1)]
+        [TestCase(Era.Village, 7, 2)]
+        [TestCase(Era.Town, 1234, 3)]
+        public void ACardedStoryIsNeverAlsoToldInTheStoryVoice(Era era, int seed, int stage)
+        {
+            var sim = Believing(era, seed, stage, false);
+            var wb = new WorldBubbles(sim, NoWarmUp);
+            var got = Play(wb);
+            foreach (var (_, b) in got.Where(x => x.b.source == BubbleSource.StoryVoice))
+            {
+                var e = sim.State.chronicle.First(c => c.id == b.entryId);
+                Assert.IsFalse(SimCore.ShownAsCard(e), $"{e.kind} \"{e.text}\" is a card: its bubble is its quote, never the voice too");
+            }
+            var byEntry = got.Where(x => x.b.entryId >= 0).GroupBy(x => x.b.entryId);
+            foreach (var g in byEntry) Assert.AreEqual(1, g.Count(), $"entry {g.Key} told once");
+        }
+
+        /// <summary>#719: no Pip, goat, whiskers, cat, library or Keeper's lamp in the bank or the trait lines; the new leader is the
+        /// era's; the camp's festival has no bread; the grump's dog is a real dog or none.</summary>
+        [Test]
+        public void ThePeoplesWordsNameOnlyWhatTheBoxHas()
+        {
+            var banned = new[] { "pip", "goat", "whiskers", "cat", "library", "keeper's lamp" };
+            IEnumerable<string> words(string t) => System.Text.RegularExpressions.Regex.Split(t.ToLowerInvariant(), "[^a-z']+");
+            foreach (var t in SimCore.LineBank.Select(l => l.text).Concat(PeopleVoice.TraitLines.SelectMany(l => new[] { l.text, l.without ?? "" }))
+                         .Concat(PeopleVoice.BankFirstPerson.Values))
+            {
+                foreach (var w in banned.Where(x => !x.Contains(' '))) Assert.IsFalse(words(t).Contains(w), $"\"{t}\" says {w}");
+                StringAssert.DoesNotContain("Keeper's lamp", t);
+            }
+            Assert.That(PeopleVoice.MomentLines(MomentKind.NewLeader, -1, -1, era: Era.Village).Select(x => x.text), Has.Member("Long live the new headman!"));
+            Assert.That(PeopleVoice.MomentLines(MomentKind.NewLeader, -1, -1, era: Era.Town).Select(x => x.text), Has.Member("Long live the new lord!"));
+            Assert.That(PeopleVoice.MomentLines(MomentKind.NewLeader, -1, -1, era: Era.Camp).Select(x => x.text), Has.Member("Long live the new chief!"));
+            Assert.That(PeopleVoice.MomentLines(MomentKind.Festival, -1, -1, era: Era.Camp).Select(x => x.text), Has.No.Member("Pass the bread, please."));
+            var village = Believing(Era.Village, 7, 2, false);
+            var grump = PeopleVoice.TraitLines.Single(l => l.id == "grump2");
+            string said = PeopleVoice.TraitText(village, grump);
+            if (string.IsNullOrEmpty(village.GrownDogName)) Assert.AreEqual("The Keeper looks in at supper. Rude, but I don't mind.", said);
+            else StringAssert.Contains(village.GrownDogName, said);
+            var town = Believing(Era.Town, 1234, 3, false);
+            string loud = PeopleVoice.TraitText(town, PeopleVoice.TraitLines.Single(l => l.id == "loud3"));
+            Assert.AreEqual(town.Count(BuildingType.Market) > 0, loud != null, "the market line only with a market");
+        }
+
+        /// <summary>#719: a bank line that names a child ("Not you, {kid}") is said only with a living child, and with their name.</summary>
+        [Test]
+        public void AKidsNameIsARealChildOrTheLineIsNotSaid()
+        {
+            var camp = Believing(Era.Camp, 1, 1, false);
+            bool kid = camp.State.notables.Any(n => n.alive && n.age >= 4f && n.age < SimCore.AdultAge);
+            var three = camp.LinesNow().FirstOrDefault(l => l.no == 3);
+            Assert.AreEqual(kid, three != null, "line 3 only with a child");
+            foreach (var n in camp.State.notables.Where(n => n.age < SimCore.AdultAge)) n.age = 30f;
+            Assert.IsFalse(camp.LinesNow().Any(l => l.text.Contains("{kid}")), "no child: the lines that name one are not said");
+        }
     }
 }
