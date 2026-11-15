@@ -259,7 +259,7 @@ namespace AquariumCiv.View
             refreshT -= dt;
             if (refreshT > 0f && fieldKey != int.MinValue) return;
             refreshT = 0.8f;
-            int key = (int)(sim.State.month / 3) * 7919 + sim.EcoDeerHome * 31 + sim.EcoDeerStags * 7 + box.TreeSpots.Count;
+            int key = (int)(sim.State.month / 3) * 7919 + sim.EcoDeerHome * 31 + sim.EcoDeerStags * 7 + box.TreeSpots.Count + sim.EcoDeerGroundKey() * 13; // #699: a new tent changes it
             if (key == fieldKey) return;
             fieldKey = key;
             sim.EcoDeerRefresh(Field);
@@ -333,6 +333,7 @@ namespace AquariumCiv.View
             {
                 float step = Mathf.Min(dist, Mathf.Max(speed, day.act == DeerAct.Walk ? DeerHerd.WalkSpeed * 1.2f : speed) * dt);
                 at2 += dv / dist * step;
+                { float sx = at2.x, sz = at2.y; Field.Steer(s.cur.x, s.cur.z, ref sx, ref sz, s.id); at2 = new Vector2(sx, sz); } // #699: round the fire and the tents
                 float want = Mathf.Atan2(dv.x, dv.y) * Mathf.Rad2Deg;
                 s.yaw = Mathf.MoveTowardsAngle(s.yaw, want, (bolting ? 540f : 200f) * dt);
             }
@@ -462,6 +463,20 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Is deer <paramref name="id"/> a hunt's target being held now (tests)?</summary>
+        /// <summary>#699 cheat: deer 0 stands <paramref name="out"/> from the camp's fire on one side and walks to the other, straight through it
+        /// (it should go round). False with no camp or no deer. <paramref name="fireX"/>/<paramref name="fireZ"/>: box-local.</summary>
+        public bool DebugAcrossTheFire(float fireX, float fireZ, float outDist = 1.3f)
+        {
+            foreach (var s in slots.Values)
+            {
+                if (s.doll == null || !s.doll.go.activeSelf) continue;
+                s.cur = box.land.OnGround(fireX - outDist, fireZ); s.yaw = 90f;
+                s.off = true; s.offTo = new Vector2(fireX + outDist, fireZ); s.clearT = -30f; s.alertT = -1f; s.boltT = -1f;
+                return true;
+            }
+            return false;
+        }
+
         public bool IsHuntTarget(int id) { foreach (var p in hunts) if (!p.white && p.targetId == id) return true; return false; }
 
         /// <summary>Where a shown deer stands now (box-local), by id. False when not shown.</summary>
