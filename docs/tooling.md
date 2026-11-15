@@ -888,3 +888,6 @@ Killing a `Tools/run-tests.sh` mid-run can leave `unity command test status` rep
 
 ### 2026-11-15 · Play tests wrote shots into the main checkout from a worktree
 23 test and agent-tool files had `F:/GameDev/AquariumCiv/Temp/agent/...` hard-coded, so a run in a worktree Editor wrote (and overwrote) shots in the main checkout. They now use `Application.dataPath + "/../Temp/agent/..."` (the running project). New shot code: use `PlayTestBase.Shots` or that expression, never an absolute path.
+
+### 2026-11-15 · An Editor restart wipes Temp/agent
+Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or any restart) deletes every shot and AnimLab sheet under `Temp/agent/`. Copy evidence the user or the orchestrator must see out of `Temp` (to the scratchpad or `Tools/AnimBench/out/`) before a restart, or re-render after.

@@ -7,7 +7,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [x] 1 · #697 → #696 cause written in both issues; merged (b043834 + 74e22c4); close after the batched pass
 - [x] 2 · #699 merged (lane A; Unity check pending)
 - [x] 3 · #703 merged (lane A; jar look in Unity pending) — call: jar shut while frozen
-- [~] 4 · #700 rule merged 969c8b2 (racks + Keeper's fire props); spec B27 written; beat not built (needs user sign-off)
+- [x] 4 · #700 rule merged 969c8b2; beat B27 built on vs/700-beat (9ed15c4) for sign-off only
 - [x] 5 · #698 merged 760c9d3 (cause: tent-bound doll drawn Hidden short of its slot when the way was blocked; original tester vanish not reproduced directly)
 - [x] 6 · #669 merged (buildings too) — call: live animals and berries hidden in a replay (no per-year record); rack/pile/frame recorded from first live sight
 - [x] 7 · #702 merged (1ada892)
@@ -103,6 +103,7 @@ Skipped: #560/#672 (built in #678, waiting for a phone check), #660–#662 (insi
 - round 1: accepted (lane A). Unity checks in the batched pass.
 
 ### #700
+- beat round 1 (vs/700-beat 9ed15c4): RackMove plan + beats + cheat "Rack moves now"; RackMoveTests 24/24, RackPath 6/6, FishChain 13/13, RackMovePlay pass, smoke 2/2. Spec timing (0.5 view h) wrong: ~22 s real. AnimLab sheets lost to an Editor restart (Temp wiped); re-render on the walkthrough branch.
 - round 1: ConsequenceProps not wired, full SimTests not finished → round 2.
 
 ### #703
