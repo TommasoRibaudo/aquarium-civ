@@ -46,6 +46,8 @@ namespace AquariumCiv.Life
         FeedFire, ScrapeHide,
         /// <summary>#700 (B27): two grown-ups take a rack down, carry it and set it up again (the whole beat is one activity, <see cref="LifePlanner.TryGetRackRole"/> says the rest). Appended.</summary>
         MoveRack,
+        /// <summary>#705 (B28): at the home's washing line, plucking the dry cloths into a basket. Appended so the older values keep their numbers.</summary>
+        TakeInWashing,
     }
 
     /// <summary>Broad groups, for the busy share (rule 4) and the job report.</summary>
@@ -319,7 +321,7 @@ namespace AquariumCiv.Life
                 case ActivityKind.Sleep: case ActivityKind.Nap: case ActivityKind.SitOut: case ActivityKind.Stretch:
                 case ActivityKind.Eat: case ActivityKind.Toddle: case ActivityKind.Indoors:
                     return ActivityGroup.Rest;
-                case ActivityKind.SweepStep: case ActivityKind.HangWashing: case ActivityKind.MoveRack: case ActivityKind.ChopKindling: case ActivityKind.MindBabies:
+                case ActivityKind.SweepStep: case ActivityKind.HangWashing: case ActivityKind.MoveRack: case ActivityKind.TakeInWashing: case ActivityKind.ChopKindling: case ActivityKind.MindBabies:
                     return ActivityGroup.Chore;
                 case ActivityKind.Carry: case ActivityKind.FetchWater: case ActivityKind.RollBarrel: case ActivityKind.TipLoad:
                     return ActivityGroup.Carry;

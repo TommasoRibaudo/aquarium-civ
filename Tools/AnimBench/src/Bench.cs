@@ -328,6 +328,20 @@ namespace AnimBench
                 rackPlan.Stand(rackRole, rackSince, out float rsx, out float rsz, out float rmx, out float rmz, out _);
                 plan = new Vector2(rsx, rsz); rackFace = new Vector2(rmx, rmz);
             }
+            // #705: at a washing line: on its out side at the cloth the beat is at (PeopleView.LaundryStand), facing the cord; the side step is part of the beat
+            Vector2? lineFace = null;
+            if (seg.AtLine != null && ObjectById(seg.AtLine) is ObjectState lo)
+            {
+                float yawL = lo.Spec.Yaw * Mathf.Deg2Rad;
+                var along = new Vector2(Mathf.Cos(yawL), Mathf.Sin(yawL)); var outD = new Vector2(along.y, -along.x);
+                int n = Mathf.Max(1, seg.Count);
+                float at = seg.Activity == ActivityKind.TakeInWashing
+                    ? AquariumCiv.Life.Laundry.SlotAlong(AquariumCiv.View.LaundryBeats.PluckingCloth(since, n), n)
+                    : AquariumCiv.View.LaundryBeats.HangAlong(since, n, 1f);
+                var c = new Vector2(lo.Spec.Pos.x, lo.Spec.Pos.z);
+                plan = c + along * at + outD * AquariumCiv.Life.Laundry.StandOut;
+                lineFace = plan - outD;
+            }
             var prev = d.Pos;
             bool jump = !d.Placed || dt <= 0f;
             d.Pos = plan;
@@ -335,7 +349,7 @@ namespace AnimBench
             d.Speed = Mathf.Lerp(d.Speed, inst, dt > 0f ? 1f - Mathf.Exp(-dt * 10f) : 1f);
             d.Placed = true;
             if (d.Speed > Bench.WalkStarts) d.Walking = true; else if (d.Speed < Bench.WalkStops) d.Walking = false;
-            bool walking = d.Walking && rackPlan == null; // #700: the carry's legs are part of the beat's pose
+            bool walking = d.Walking && rackPlan == null && !lineFace.HasValue; // #700 carry legs; #705 side step: part of the beat
 
             var style = seg.Style;
             var kind = seg.Activity ?? ActivityKind.None;
@@ -353,6 +367,7 @@ namespace AnimBench
                 case FaceKind.Ref: face = Resolve(seg.Face.Ref); break;
             }
             if (rackFace.HasValue) face = rackFace;
+            if (lineFace.HasValue) face = lineFace;
             float want = d.Yaw;
             if (jump) d.Velocity = Vector2.zero;
             else d.Velocity = Vector2.Lerp(d.Velocity, (d.Pos - prev) / dt, 1f - Mathf.Exp(-dt * Bench.VelocityRate));

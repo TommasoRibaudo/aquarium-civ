@@ -603,7 +603,7 @@ namespace AquariumCiv.Life
         static string Verb(ActivityKind k) => k switch
         {
             ActivityKind.Nap => "napping", ActivityKind.SitOut => "sitting out", ActivityKind.Stretch => "stretching", ActivityKind.Eat => "eating",
-            ActivityKind.SweepStep => "sweeping the step", ActivityKind.MoveRack => "moving the rack", ActivityKind.HangWashing => "hanging out the washing", ActivityKind.ChopKindling => "chopping kindling",
+            ActivityKind.SweepStep => "sweeping the step", ActivityKind.MoveRack => "moving the rack", ActivityKind.HangWashing => "hanging out the washing", ActivityKind.TakeInWashing => "taking the washing in", ActivityKind.ChopKindling => "chopping kindling",
             ActivityKind.MindBabies => "minding the babies", ActivityKind.Gather => "gathering", ActivityKind.Stalk => "waiting for game",
             ActivityKind.Fish => "fishing", ActivityKind.Chop => "chopping wood", ActivityKind.Saw => "sawing planks", ActivityKind.StackWood => "splitting and stacking wood",
             ActivityKind.Knap => "knapping tools", ActivityKind.Cook => "tending the pot", ActivityKind.Hoe => "hoeing", ActivityKind.Sow => "sowing seed",

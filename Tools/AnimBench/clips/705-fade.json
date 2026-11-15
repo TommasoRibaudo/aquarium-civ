@@ -1,0 +1,17 @@
+{
+  "name": "705-fade",
+  "notes": "#705 B28.d: nobody free by the 2 h mark: the cloths fold up (scale y 1 to 0.2 over 0.8 s) and vanish with the stakes. Hung cloths dry first.",
+  "duration": 8,
+  "fps": 30,
+  "warmup": 1,
+  "camera": { "view": "default", "focus": [0.0, -0.04], "span": 0.85 },
+  "sheet": { "from": 0.2, "to": 7.8, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.3, "reactSeconds": 0.2 },
+  "knownGaps": ["react", "arcs", "hitNear", "endBeat", "hold", "P1", "P2", "P5", "P8", "neighbours"],
+  "objects": [
+    { "id": "line", "kind": "line", "pos": [0.0, 0.0, 0.0], "yaw": 0, "state": { "start": -8.2, "chore": 7.2, "stay": 6.0, "cloths": 4, "taken": 0, "fadeAt": 5.0, "seed": 5 } }
+  ],
+  "dolls": [
+    { "id": "far", "seed": 13, "camp": false, "timeline": [ { "t": 0.0, "dur": 8.0, "hidden": true, "style": "Stand", "pos": [0.0, -0.2] } ] }
+  ]
+}

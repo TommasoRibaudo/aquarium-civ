@@ -32,6 +32,8 @@ namespace AquariumCiv.View
         FeedFire, ScrapeHide, SortBasket, Mend,
         // #700 (B27, View/Beats/RackMoveBeats.cs): the rack taken down and set up again; the pose is laid over by RackMoveBeats.Apply
         RackMove,
+        // #705 (B28, View/Beats/LaundryBeats.cs): hanging out the washing, taking it in
+        HangWash, TakeInWash,
     }
 
     /// <summary>
@@ -78,7 +80,8 @@ namespace AquariumCiv.View
             ActivityKind.Play or ActivityKind.Snowball => DollStyle.Hop, // #358: Play is a play group's (KidPlayDirector); Hop is what a kid out of one shows
             ActivityKind.Toddle => DollStyle.Toddle, ActivityKind.Dance => DollStyle.RingDance, // #358
             ActivityKind.SweepStep or ActivityKind.Sweep => DollStyle.Sweep,
-            ActivityKind.HangWashing or ActivityKind.HangFish => DollStyle.Hang, // #543
+            ActivityKind.HangFish => DollStyle.Hang, // #543
+            ActivityKind.HangWashing => DollStyle.HangWash, ActivityKind.TakeInWashing => DollStyle.TakeInWash, // #705 (B28)
             ActivityKind.TakeDownFish => DollStyle.Lift, // #543
             ActivityKind.Pray => DollStyle.Pray, // fb4 #566
             ActivityKind.MoveRack => DollStyle.RackMove, // #700
@@ -360,6 +363,8 @@ namespace AquariumCiv.View
                 }
 
                 // sign-off 2026-11-14 (#651/#677): the camp's hand work, told on what you can see (ChoreBeats)
+                case DollStyle.HangWash: LaundryBeats.Hang(ref p, since, count); break; // #705: count = the line's cloths
+                case DollStyle.TakeInWash: LaundryBeats.TakeIn(ref p, since, count); break;
                 case DollStyle.FeedFire: ChoreBeats.Feed(ref p, ChoreBeats.Clock(ChoreBeats.FeedBeat, t, pace)); break;
                 case DollStyle.ScrapeHide: ChoreBeats.Scrape(ref p, ChoreBeats.Clock(ChoreBeats.ScrapeBeat, t, pace)); break;
                 case DollStyle.SortBasket: ChoreBeats.Sort(ref p, ChoreBeats.Clock(ChoreBeats.SortBeat, t, pace)); break;

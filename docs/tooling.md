@@ -891,7 +891,12 @@ Killing a `Tools/run-tests.sh` mid-run can leave `unity command test status` rep
 
 ### 2026-11-15 · An Editor restart wipes Temp/agent
 Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or any restart) deletes every shot and AnimLab sheet under `Temp/agent/`. Copy evidence the user or the orchestrator must see out of `Temp` (to the scratchpad or `Tools/AnimBench/out/`) before a restart, or re-render after.
-### 2026-11-15 � #700 rack move beat: a plan object in AnimLab, and two traps
+### 2026-11-15 · #700 rack move beat: a plan object in AnimLab, and two traps
 - **A multi-person beat with moving props is one pure plan.** `Life/RackMove.cs` (`RackMovePlan`: clock, stands, parts) is what the game, AnimBench (`"atRack": "<object id>", "role": "Lifter|Carrier"` on a segment; object `"kind": "rackmove"` with `state` kind/fx/fz/oldAngle/newAngle/cargo/fresh/start) and AnimLab (`LabObject.rack`, `RackMoveMesh.Build` each frame) all run. Clips: `Tools/AnimBench/clips/700-*.json`.
 - **Tent plans from the arrival can still be "running" at 10:00 in a PlayMode test** (a rule that waits on `tentPlans` never started): guard on the kind of thing that needs it (hides only).
 - **`Assert.AreNotEqual` has no float tolerance overload**; use `Assert.Greater(Mathf.Abs(a - b), eps)`.
+
+### 2026-11-15 · #705 washing line: AnimLab/AnimBench line objects, and two planner traps
+- **A new prop that is a mesh (not a PropKind) goes into AnimLab as an object kind.** `"kind": "line"` with `"state": {start, chore, stay, cloths, taken, fadeAt, seed}` (clip seconds; `fadeAt` is a clip time, -1 none) draws the game's own `LaundryLines.Build` through `LaundryView.LookReal` (prep.py copies the state into `lab.json` as `line`, `LabObject.line`). A doll stands at it with `"atLine": "<id>"` on a segment (`count` = its cloths); AnimBench does what `PeopleView.LaundryStand` does (the side steps are part of the beat, so the style stays `HangWash`). AnimBench draws the line as a grey dot: look at AnimLab's sheet. Clips: `Tools/AnimBench/clips/705-*.json`.
+- **Crowd people have negative keys.** Planner code that means "nobody" with `-1` or `>= 0` matches the crowd member whose key is -1. `LaundryLine.NoTaker` is `int.MinValue`.
+- **Offline compile after a merge can fail on a stale `Library/ScriptAssemblies` copy** (`GameHud` lacked a method that the source has): name `AquariumCiv.Game AquariumCiv.Game.UI` before `AquariumCiv.View` in the offline-csc list.

@@ -1,4 +1,4 @@
-# Animation spec sheets: B1–B27, the staged moments and placed life (A3, #356; P9, #416)
+# Animation spec sheets: B1–B28, the staged moments and placed life (A3, #356; P9, #416)
 
 Status: **draft, waiting for the user** (2026-11-06). One beat sheet per animation of the Visit loop. Design:
 [visit-loop.md](visit-loop.md) §2.6 and §4; research [17](../research/17-readable-life-animations.md) §4 (the eight
@@ -1341,6 +1341,70 @@ trots off, tail up.*
 | The game was closed | the rack simply stands on its new spot on load; no beat |
 | No free nearby spot | it keeps its old spot, and the beat does not run (a rack on a path is better than none) |
 
+## B28. Hanging out the washing: a line, cloths, and the taking-in (#705)
+
+*She lifts a wet cloth from a basket, shakes it out, pins it to a line, smooths it flat, and steps to the next. When she goes the cloths stay, drying, for a while; then someone takes them in.*
+
+**Status: spec only. Not built; waits for the user's sign-off, then an AnimLab clip, before it goes into `dev`.** Today `ActivityKind.HangWashing` (`Life/LifePlanner.Day.cs:976`, one of the four `DawnChores`; `ChoreProp` gives `Prop.Cloth`) plays `DollStyle.Hang` (`View/DollMotion.cs:508`, #543): both arms swing at x 140 +-25 over 1.6 s with a bundle in the hand and nothing to hang it on. A playtester saw someone miming cloth, and nothing left behind (private note feedback#61). The place is already `SlotSpots.HomeSpot.Line` (0.3 u along the wall from the door, 0.1 u out); this beat gives that place a prop. The same line serves the weaver's `Alt(... HangWashing ...)` (`LifePlanner.Work.cs:361`). Precedent for "left behind for the session": `View/CampBedrolls.cs` (#651).
+
+### B28.a The line and the cloths (the prop)
+| | |
+|---|---|
+| Line | a cord 0.55 u long between two dark-wood stakes 0.17 u high (0.014 u thick), so a doll's raised hand (arm x 150, reach about 0.2 u) reaches it. At the home's `Line` spot, **parallel to the wall**, 0.1 u out. One line per home, shared by housemates |
+| Cloths | 4 (up to 5 in a big home), each a flat quad **0.11 w x 0.13 h u** hanging from the cord with a 0.012 u fold at the top, 0.03 u apart. Muted, no two neighbours alike: ochre, faded blue, undyed linen, dull rust. Never white (it reads as paper on grass, as the first bedrolls did), never saturated. One is small (a kid's shirt, 0.08 x 0.09 u) |
+| Pins | a 0.015 u dark dot at each cloth's top corners |
+| Basket | a low wicker basket (0.05 u) on the ground at the near stake, a wad of the cloth colours at the rim. Present only while the chore runs; the doer carries it in after |
+| Where (rule) | the `Line` spot, swapped to the door's other side (`blockSide`) and then out in front when blocked, by the same checks as the kindling block. **Never on a path cell**: the path test #700 added (`CampSpots`, `Life/RackSites.cs`) applies, and a line whose cord would cross a path takes the other side of the door. Never under a tent's roof edge; never within 0.12 u of the fire, a rack or another line |
+| On a phone | at the default camera 1 u is 120-140 px, so a cloth is about 14-16 px wide and 17-19 px tall (the small one about 11 px), the cord about 70 px: a row of coloured patches that reads as washing. **Trade-off:** a cloth is about 0.6 of a doll tall (a real shirt is nearer 0.3), so it is oversized; we pick the readable size over true scale, as the doll itself is oversized. Each cloth >= 0.11 u wide, the line clear of the tent's shadow; at a close zoom the cloths scale with the doll
+
+### B28.b The beats (one doll, per cloth; 3 cloths in the dawn window)
+| | |
+|---|---|
+| Approach | she arrives at the near stake with the basket (`PropSlot.Hand`) and sets it down (`Squash` 0.15 s), facing the line. The stakes and cord `Pop` into place (0.25 s) so the eye sees the line put up |
+| Lift | bend to the basket (lean 25, 0.25 s), arm x 60 -> 110: the cloth comes up **wet and heavy**, sagging 0.03 u from her fingers (`Wobble` 12 deg, 3 Hz, tau 0.4 s) |
+| Shake | stand, both arms x 130 -> 150 -> 130 (`Snap` 0.12 s): the cloth snaps out flat; `Droplets` of 3 |
+| Reach | both arms x 160-170, the cloth up against the cord (`Out` 0.3 s); head back (pitch +10) |
+| Contact | **pin**: right hand x 175 -> 150 (`Snap` 0.08 s), `hit`, the cloth latches to its pin dot with a one-frame `Jolt` of 0.01 u. A second pin 0.25 s later, `hit` again: the cloth is now a flat rectangle |
+| Hold | 0.12 s, hand on the cloth (P8) |
+| Smooth | one hand sweeps the cloth top to bottom (arm x 150 -> 100, 0.4 s, `Smooth`) while the other holds the cord; the fold flattens as it passes |
+| Step | side step 0.1 u (0.3 s), back to the basket for the next cloth. After the last cloth: shake both hands dry (arm z 40, 2 Hz, 0.5 s) and take up the empty basket |
+| End beat | the line **full, swaying** (4 deg, 0.6 Hz, tau 3 s); she looks at it, one nod (pitch -8), and carries the basket in or on to her next block. P5: one `EndBeat` |
+| Timing | per cloth: lift 0.6 + shake 0.35 + reach 0.3 + pin 0.35 + smooth 0.4 + step 0.4 = 2.4 s real; 3 cloths 7 s. The chore today is 0.35-0.55 view hours (3.5-5.5 s at dawn's 10 s per hour): **stretch it to 0.7 h** when the home can have a line (`HomeChoreTurn`, still inside the home's dawn window); the 4th cloth only if the window is longer |
+| De-sync | the doer starts 0.2-0.5 s late by key hash; cloth colour order is hashed by the home's key, so two lines differ |
+| 3-s read | "someone pegging washing on a line" |
+
+### B28.c States of the line
+| State | When | Look |
+|---|---|---|
+| Empty line | no chore today, or taken in | **nothing drawn**: a bare cord is a line of pixels and a question. Stakes exist only while the chore runs and cloths hang |
+| Going up | during B28.b | stakes and cord at the Approach, one cloth at each Contact |
+| Hung | after she leaves | all cloths in place, swaying 4 deg at 0.6 Hz. Colour **dries**: 70% brightness wet to 100% dry, linear over the stay, so time passing reads |
+| Taken in | the stay's end | B28.d |
+
+### B28.d How long they stay, and who takes them in
+| | |
+|---|---|
+| Stay | **1 view hour after she leaves** (about 16 s real at work hours; 60 game minutes), and never past 17:00. Fewer is a blink: one view minute is 0.27 s real, so "a few game minutes" read literally would look like a glitch. This is the shortest stay that reads as "left behind" |
+| Who | the doer if she is home, else a **housemate** idle at the door (`Indoors` or door-sitting) at the stay's end: she walks out (0.6 s), plucks the cloths right to left (arm x 160 -> 60, 0.3 s each; each `Pop`s into the basket), carries them in; the stakes `Pop` out after the last. 3 cloths: about 4 s real |
+| Nobody free | nobody in reach by the 2 h mark: **a quiet fade**: the cloths fold up (scale y 1 -> 0.2 over 0.8 s) and vanish with the stakes. Why: a plan never waits on laundry (it is a chore, not a duty), and a fade is kinder to the eye than a pop. The same fade covers a paused, hidden or unwatched box |
+| Not seen | the beat runs on the plan's clock; on return the line is in whatever state the clock says (as B27.b) |
+
+### B28.e Night, rain, winter
+| | |
+|---|---|
+| Night | the line is **never** up at night: a dawn chore, in by 17:00. A line left overnight reads as forgotten |
+| Rain, storm, snow | no hanging on a wet day (`Weather.KeeperRain`, `Storm`, `Snow`): that day's chore is `SweepStep` (the swap `WithWood` makes for kindling). If rain starts while cloths hang, the doer or a housemate takes them in at their next free moment (B28.d's taking-in, no hurry), else the quiet fade. Fog is dry: the line stays, cloths dimmed |
+| Winter | no hanging (cloths freeze stiff): the chore is `SitOut` or `SweepStep` |
+| Kids | a kid beside the doer may hand her the next cloth (B7.b) once per chore; never needed |
+
+### B28.f Cheats, the AnimLab clip, tests
+| | |
+|---|---|
+| Cheats | **"Laundry now"** (`View/SimDebugPanel.cs`, `// #705`): the home nearest the camera centre does the chore at once, with the stay shown at 16 s. **"Take in the washing"** (end the stay now) |
+| Clip (AnimLab) | three shots, front view, default camera and a close zoom: (1) B28.b for two cloths in real time, ending on the full swaying line; (2) the hung line at 4 x speed: wet to dry, the walk out, the plucking and the carry in; (3) the fade. Plus a **still at the default camera, phone-size render (1179 x 2556)** to judge whether four patches read as washing, and prop renders of the line (front, side, from above) |
+| Sign-off | the user sees: cloths on the line during the chore and after it; the pin, the smooth and the taking-in each once; a row of muted patches that reads as washing at the default camera |
+| Tests | P1 (a hand within 0.1 u of the cord at each pin), P2 (the cloth `Jolt`s within 0.2 s of the pin), P5, P8 (contacts held >= 0.1 s; offsets >= 0.025 u). Plan tests: the line is never on a path cell; no hanging on rain, storm, snow or in winter; no line at 17:00; the taker is the doer or a housemate; the chore stays inside the dawn window |
+
 
 ### Placed life: hard in code
 
@@ -1388,3 +1452,4 @@ trots off, tail up.*
 2. **Hit-stop**: a 0.1 s freeze on the key beats (spear lands, fish yanked, tag, dip, found, tree lands), or none?
 3. **A kid tumbles** in the rabbit chase (falls over in a puff of grass, gets up laughing): cute, or too much? **Decided 2026-11-06: sometimes (about 1 chase in 4).**
 4. **Felling** (B10): build it now (keepers-hands §8.3 says yes) or wait until the town era needs it?
+5. **The washing's stay** (B28.d): 1 view hour (about 16 s real) after she leaves, then a housemate takes it in or it fades. Is that "a few game minutes", or longer? And no hanging in rain, snow or winter: right?

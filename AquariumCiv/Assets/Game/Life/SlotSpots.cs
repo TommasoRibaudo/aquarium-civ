@@ -33,7 +33,7 @@ namespace AquariumCiv.Life
         public static HomeSpot SpotFor(ActivityKind k) => k switch
         {
             ActivityKind.ChopKindling or ActivityKind.StackWood => HomeSpot.Block,
-            ActivityKind.HangWashing => HomeSpot.Line,
+            ActivityKind.HangWashing or ActivityKind.TakeInWashing => HomeSpot.Line,
             ActivityKind.Play or ActivityKind.Toddle or ActivityKind.Snowball => HomeSpot.Front,
             _ => HomeSpot.Door,
         };

@@ -143,6 +143,10 @@ def make_lab(clip_path, bench_dir, lab_path):
         if o["kind"] == "rackmove":  # #700: the rack move's plan, from the clip's state (AnimLabBuilder draws the rack from it)
             st = (clip_objs.get(o["id"], {}) or {}).get("state", {}) or {}
             entry["rack"] = [float(st.get(k, 0)) for k in ("kind", "fx", "fz", "oldAngle", "newAngle", "cargo", "fresh", "start", "seed")]
+        if o["kind"] == "line":  # #705: the washing line's timings, in clip seconds (AnimLabBuilder draws it from these)
+            st = (clip_objs.get(o["id"], {}) or {}).get("state", {}) or {}
+            entry["line"] = [float(st.get("start", 0)), float(st.get("chore", 7)), float(st.get("stay", 8)), float(st.get("cloths", 3)),
+                             float(st.get("fadeAt", -1)), float(st.get("taken", 1)), float(st.get("seed", 3))]
         objects.append(entry)
     lab = {
         "format": "animlab/1", "clip": os.path.splitext(os.path.basename(clip_path))[0], "request": os.path.abspath(clip_path),
