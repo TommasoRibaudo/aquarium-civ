@@ -93,6 +93,7 @@ namespace AquariumCiv.View.PlayTests
             PeopleView.DebugSetHour(20f);
             pv.timeScale = 0.5f;
             yield return Frames(4);
+            var why = new HashSet<string>(); PeopleView.SleeperShown = m => { if (why.Count < 6) why.Add($"{pv.Now}: {m}"); };
             var asleepSince = new HashSet<int>(); var hiddenOnce = new HashSet<int>(); var shown = new Dictionary<int, List<string>>(); // a doll still walking the last steps into the tent is shown while the plan already says asleep; once it was hidden it must stay so
             var trig = LifePlanner.ReplanTriggers.Where(t => t != "month").ToArray(); // a month forced every 2 s runs the sim days ahead of the view, and a view day taken at once is a new plan on purpose (a catch-up): the month has its own cases in ReplanKeepsPlansPlayTests
             int next = 0, shots = 0, frames = 0, visibleFrames = 0;
@@ -129,6 +130,7 @@ namespace AquariumCiv.View.PlayTests
             }
             File.WriteAllLines(Out + "night-replans.txt", lines);
             TestContext.WriteLine($"frames {frames}, slept {asleepSince.Count}, replans logged {lines.Count}, forced {next}, reached {pv.Now}, screenshots {shots}");
+            Debug.Log("WATCH-WHY " + string.Join(" || ", why)); PeopleView.SleeperShown = null;
             Debug.Log($"WATCH-NIGHT visible-while-asleep frames {visibleFrames}: " + string.Join(" || ", shown.Select(kv => kv.Key + ": " + string.Join("; ", kv.Value))));
             Assert.AreEqual(0, visibleFrames, "a sleeper was shown again: " + string.Join(" || ", shown.Select(kv => kv.Key + ": " + string.Join("; ", kv.Value))));
             Assert.Greater(asleepSince.Count, 3, "people went to bed");
