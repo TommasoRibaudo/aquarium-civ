@@ -40,7 +40,7 @@ namespace AquariumCiv.View
                         House(mb, Front(hd), hw, hd, wallH, roofH, Wall(p.seed), RoofColor(p.roof, p.seed, p.era), p.chimney, true, storeys, Phase(p.seed));
                     }
                     break;
-                case PieceKind.Fire: if (p.variant == SimLayout.GrassFireVariant) { GrassFire(mb, Vector3.zero, Phase(p.seed)); GrassHeap(mb, GrassHeapAt); } else Firepit(mb, Vector3.zero, true, Phase(p.seed)); break;
+                case PieceKind.Fire: if (p.variant == SimLayout.GrassFireVariant) { GrassFire(mb, Vector3.zero, Phase(p.seed)); GrassHeap(mb, GrassHeapAt); } else { Firepit(mb, Vector3.zero, true, Phase(p.seed)); if (camp) LogStack(mb, GrassHeapAt); } break; // sign-off 2026-11-14: the logs it is fed from
                 case PieceKind.Well:
                     if (town) Fountain(mb, Vector3.zero, p.seed);
                     else Well(mb, Vector3.zero, !camp);
@@ -441,6 +441,20 @@ namespace AquariumCiv.View
                 var q = Quaternion.Euler(0f, i * 47f + 10f, -72f + i * 9f);
                 mb.Prism(p + new Vector3(-0.03f + i * 0.02f, 0.02f, -0.01f + (i % 2) * 0.02f), 0.0035f, 0.0028f, 0.11f, 4, Palette.Bark, q);
             }
+        }
+
+        /// <summary>Sign-off 2026-11-14 (ChoreBeats.Feed at the log fire): a small stack of split logs beside the camp's fire, where the
+        /// grass heap lies for a grass fire: three logs below, two above, crosswise to the line from the fire.</summary>
+        public static void LogStack(MeshBuilder mb, Vector3 p)
+        {
+            float yaw = Mathf.Atan2(p.x, p.z) * Mathf.Rad2Deg + 90f;
+            var r = Quaternion.Euler(0f, yaw, 0f);
+            for (int row = 0; row < 2; row++)
+                for (int i = 0; i < 3 - row; i++)
+                {
+                    var c = p + r * new Vector3(0f, 0.016f + row * 0.026f, (i - (2 - row) * 0.5f) * 0.03f);
+                    Log(mb, c, 0.014f, 0.13f, yaw, (i + row) % 2 == 0 ? Palette.Bark : Palette.WoodLight);
+                }
         }
 
         public static void GrassFire(MeshBuilder mb, Vector3 p, float phase)

@@ -161,29 +161,30 @@ namespace AquariumCiv.Life
             return Fetch(c, WaterPlace);
         }
 
-        /// <summary>The cook at the fire: the pot stirred; at the grass fire (sign-off 2026-11-14) the cook also keeps it fed, turn about
-        /// (an armful from the heap pushed in: ChoreBeats.Feed), so the fire is tended by feeding it, not by a stir over the flames.</summary>
+        /// <summary>The cook at the fire: the pot stirred, and turn about the fire fed (sign-off 2026-11-14: an armful of grass from the heap
+        /// for the grass fire, a log from the stack for the log fire: ChoreBeats.Feed), so the fire is tended by feeding it, never by a
+        /// stir over the flames.</summary>
         Work CookAtFire()
         {
-            if (FireNow != CampFireStage.GrassAndTwig) return W(fire, ActivityKind.Cook, Prop.Stick, Prop.Buckets, fire, 0.2f);
+            if (FireNow == CampFireStage.None) return W(fire, ActivityKind.Cook, Prop.Stick, Prop.Buckets, fire, 0.2f);
             return Alt(W(fire, ActivityKind.FeedFire, Prop.Stick, Prop.Buckets, fire, 0.2f), fire, ActivityKind.Cook, Prop.Stick, 0.45f);
         }
 
         /// <summary>Sign-off 2026-11-14 (#651, the user's pick of the proposal): the camp's hand work, each at a real thing, never at an
         /// empty fire spot: scraping a hide at the rack (while hides hang there drying), sorting the basket at the pile (once the land gives
-        /// food), mending a bedroll at the tent. One of what the camp has, per person and day, so a camp shows a mix. With none of
+        /// food), mending a bedroll by the fire (once there is one; the mended ones stay laid out there, CampBedrolls). One of what the camp has, per person and day, so a camp shows a mix. With none of
         /// them (no tent yet), sitting where the camp is.</summary>
         Work CampHandWork(Person p, DayInfo d)
         {
             bool scrape = sim != null && sim.HidesDrying > 0 && HideFrame(out _, out _, out _, out _); // only with a hide on the rack to scrape
             bool sort = sim != null && sim.LandGivesFood && sim.StockSetDown;
-            bool mend = !p.home.IsNone;
+            bool mend = FireNow != CampFireStage.None; // by the fire, so only once there is one
             int n = (scrape ? 1 : 0) + (sort ? 1 : 0) + (mend ? 1 : 0);
             if (n == 0) return W(gather, ActivityKind.SitOut, Prop.None, Prop.None, default, 0f);
             int pick = (int)(H(p.key, d.day, 652) % (uint)n);
             if (scrape && pick-- == 0) return W(Place.Land(PlaceKind.HideRack), ActivityKind.ScrapeHide, Prop.Hammerstone, Prop.None, default, 0f);
             if (sort && pick-- == 0) return W(stash, ActivityKind.Prepare, Prop.Basket, Prop.None, default, 0f);
-            return W(p.home, ActivityKind.Weave, Prop.Hide, Prop.None, default, 0f);
+            return W(fire, ActivityKind.Weave, Prop.Hide, Prop.None, default, 0f); // sign-off 2026-11-14 (2nd run): by the fire only
         }
 
         long idleDay = long.MinValue;
