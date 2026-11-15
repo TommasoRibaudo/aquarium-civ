@@ -11,7 +11,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [ ] 5 · #698 merged
 - [ ] 6 · #669 merged (buildings too)
 - [x] 7 · #702 merged (1ada892)
-- [ ] 8 · #707 merged (open for look sign-off)
+- [x] 8 · #707 merged 2d1156e (open for look sign-off)
 - [ ] 9 · #704 merged (open for look sign-off)
 - [ ] 10 · #701 merged (open for look sign-off)
 - [ ] 11 · #676 stew by kind merged (open for look sign-off)
@@ -41,10 +41,15 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - 20:08 · #707 (+#649 gear) worker started in the Editor folder, vs/707-hud-top.
 - 20:40 · #697/#696 round 1 (lane A) accepted: 53a139d; my SimTests run 1921/1921; diff read (pin moved into ClearDays, keeps sleep/walk segment, standing → short walk). Merged b043834. Cause posted on both issues. #696 not reproducible headless (base passes night tests; unprotected paths were direct ClearDays). Lane B part (ReplanKeepsPlansPlayTests 20 cases, LifePlannerTests, TentSleepers, 10 game min watched, smoke) after #707.
 - 20:42 · lane A started in parallel: #699 (F:\GameDev-wt99), #703 (703; call ★ jar shut while frozen), #700 (700; rule + spec only).
+- 21:05 · #707 round 1 accepted: 0df81b6; HudTopRowPlay 1/1, UI 6/6, Settings 10/10, pill 1/1, Glass 14/14, smoke 2/2 on rerun (1st run failed 'rain button' FirstRun — flake? check in batched pass). Looked at day/night crops: one look, no backing, title ink. #649 gear already a gear (72c9a6c). Walkthrough stop: off-home readability of bare icons. Merged 2d1156e.
+- 21:07 · #697/#696 round 2 (Editor play check) sent to the same worker on vs/697-696-play.
 
 ## Round logs
 ### #702
 - round 1: all boxes ticked with evidence; accepted.
+
+### #707
+- round 1: accepted; look sign-off pending (off-home icon contrast to check).
 
 ### #697/#696
 - round 1: all lane A boxes ticked; #696 guard tests didn't fail on base (noted). Lane B verification pending.
