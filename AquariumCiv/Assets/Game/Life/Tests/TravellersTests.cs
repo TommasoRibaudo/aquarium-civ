@@ -196,7 +196,7 @@ namespace AquariumCiv.Life.Tests
             Assume.That(d, Is.Not.Null);
             Assert.IsTrue(sim.AnswerDilemma(d.id, 1, DilemmaPath.Card));
             var g = sim.ApartOf(d);
-            Assert.IsTrue(g.joins);
+            Assert.IsFalse(g.joins, "#714: a camp of their own, for good");
             int lines(string t) => sim.State.chronicle.Count(e => e.text.Contains(t));
             Assert.AreEqual(0, lines("first full load"));
             Assert.IsTrue(sim.ApartBringsWood(g.id));
@@ -210,18 +210,16 @@ namespace AquariumCiv.Life.Tests
         }
 
         [Test]
-        public void ThePileGrowsQuickerWhileTheWoodLeanLastsAndTheCarryIsPacedByIt()
+        public void ThePileGrowsAtTheUsualPaceAndTheCarryIsPacedByIt()
         {
             var sim = Plain(7531, 72);
             var d = Raise(sim);
             Assume.That(d, Is.Not.Null);
             Assert.IsTrue(sim.AnswerDilemma(d.id, 1, DilemmaPath.Card));
             var g = sim.ApartOf(d);
-            float leaning = sim.ApartWoodRate(g);
-            Assert.AreEqual(1.5f, leaning, 1e-4f, "wood x1.5 while the lean lasts");
-            for (int m = 0; m < SimCore.NudgeMonths + 2; m++) sim.Step();
             float after = sim.ApartWoodRate(g);
-            Assert.AreEqual(1f, after, 1e-4f, "back to the usual pace");
+            Assert.AreEqual(1f, after, 1e-4f, "#714: no lean, the usual pace");
+            float leaning = 1.5f; // a quicker rate still paces the carry quicker (the view's rule)
             // the view's carry cycle: loads set down in ten minutes of real time
             int Loads(float rate)
             {
@@ -262,13 +260,50 @@ namespace AquariumCiv.Life.Tests
         // ---- 3. they join
 
         [Test]
-        public void WhenTheVillageIsMadeTheyWalkInAndJoin()
+        public void ACampOfTheirOwnStaysApartWhenTheVillageIsMade()
         {
+            // #714: "a camp of their own" is here or there, for good: they never walk in
             var sim = Plain(7531, 72);
             var d = Raise(sim);
             Assume.That(d, Is.Not.Null);
             Assert.IsTrue(sim.AnswerDilemma(d.id, 1, DilemmaPath.Card));
             var g = sim.ApartOf(d);
+            Assert.IsTrue(sim.ForceNextEra());
+            Assert.AreEqual(Era.Village, sim.State.era);
+            for (int m = 0; m < 12; m++) sim.Step();
+            Assert.AreEqual(0, g.joinState, "still their own camp");
+            CollectionAssert.Contains(sim.State.apartGroups, g);
+            Assert.IsTrue(g.members.All(n => !sim.State.notables.Contains(n)), "not the settlement's");
+        }
+
+        [Test]
+        public void TheTravellersTheAskNamesAreTheOnesWhoComeEitherWay()
+        {
+            // #714: {t1} and {t2} are fixed when it is raised, and they are the people made by either answer
+            for (int opt = 0; opt < 2; opt++)
+            {
+                var sim = Plain(7531, 72);
+                var d = Raise(sim);
+                Assume.That(d, Is.Not.Null);
+                Assert.IsFalse(string.IsNullOrEmpty(d.strangerA)); Assert.IsFalse(string.IsNullOrEmpty(d.strangerB));
+                Assert.AreNotEqual(d.strangerA, d.strangerB);
+                string q = sim.QuestionOf(d);
+                StringAssert.Contains(d.strangerA, q); StringAssert.Contains(d.strangerB, q);
+                int before = sim.State.notables.Count;
+                Assert.IsTrue(sim.AnswerDilemma(d.id, opt, DilemmaPath.Card));
+                var made = opt == 1 ? sim.ApartOf(d).members.ToList() : sim.State.notables.Skip(before).ToList();
+                CollectionAssert.AreEquivalent(new[] { d.strangerA, d.strangerB }, made.Select(n => n.name).ToArray(), $"option {opt}");
+                var done = sim.State.chronicle.Single(e => e.id == d.answerEntryId).text;
+                StringAssert.Contains(d.strangerA, done); StringAssert.Contains(d.strangerB, done);
+            }
+        }
+
+        [Test]
+        public void ATravellersCampThatJoinsWalksInWhenTheVillageIsMade()
+        {
+            // the join machinery stays for camps made to join (the debug panel's travellers)
+            var sim = Plain(7531, 72);
+            var g = sim.DebugSettlersArrive(ApartKind.WoodsCamp, true);
             Assert.AreEqual(0, g.joinState, "camping in the camp era");
             var people = g.members.ToList();
             int pop = sim.State.population;
@@ -285,7 +320,6 @@ namespace AquariumCiv.Life.Tests
             CollectionAssert.Contains(sim.State.apartGroups, g, "still there until they have walked in");
             Assert.IsTrue(sim.FinishApartJoin(g.id), "the view walks them in");
             CollectionAssert.DoesNotContain(sim.State.apartGroups, g, "the apart group is gone");
-            Assert.IsNull(sim.ApartOf(d));
             Assert.IsTrue(people.All(n => sim.State.notables.Contains(n)), "they are villagers' notables now");
             Assert.AreEqual(pop + people.Count(n => n.alive), sim.State.population, "and counted");
             StringAssert.Contains("walked in to the green", sim.State.chronicle.Last(e => e.kind == "newcomer").text);

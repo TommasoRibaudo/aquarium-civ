@@ -143,14 +143,22 @@ namespace AquariumCiv.Sim
             return true;
         }
 
-        /// <summary>"Let them decide": the people answer the white stag themselves (a hash of the box's seed, never the economy's dice).
-        /// Returns whether they hunted it; false too when no choice waits.</summary>
+        /// <summary>"Let them decide": the people answer the white stag themselves. #714: one rule, the chief's trait (the same as the
+        /// choice's "Let them decide", <see cref="WhiteStagPeopleHunt"/>). Returns whether they hunted it; false too when no choice waits.</summary>
         public bool WhiteStagLetThemDecide()
         {
             if (!WhiteStagChoiceDue) return false;
-            bool hunt = Settle.Terrain.Hash3(State.seed * 31 + 420, 7, (int)(State.eco.whiteStagMonth & 0x7fffffff)) < 0.5f;
+            bool hunt = WhiteStagPeopleHunt();
             ResolveWhiteStag(hunt);
             return hunt;
+        }
+
+        /// <summary>#714: what the people do with the white stag when the Keeper leaves it to them: a gentle or dreaming chief
+        /// (<see cref="LifeChoices.LetBeTraits"/>) lets it be, any other hunts it; with no leader at all, they let it be.</summary>
+        bool WhiteStagPeopleHunt()
+        {
+            var leader = Alive(SeatOf(LeaderOf(State.era))?.holderId ?? -1) ?? RulingNotable();
+            return leader != null && Array.IndexOf(LifeChoices.LetBeTraits, leader.trait) < 0;
         }
 
         /// <summary>Raises what the placed life did this step: the white stag, the fletched arrows, the rulings (EcoTell calls this).</summary>

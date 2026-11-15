@@ -108,7 +108,7 @@ docs can be edited in parallel). Keys are chronicle kinds, dilemma ids and callb
 | The first dog and its line | `lost_pup`, dog lines (first dog, litter, grey muzzle, guard), `role_appointed` captain (with a dog) |
 | Wolves, the meat rack | `wolf_thief`, `wolf_kill`, white wolf moment |
 | Deer, the white stag, the chief's antlers | `white_stag` (antlers over the chief's tent), restraint rulings |
-| The travellers' camp | `camp_travellers` opt 1, `travellers_coal`, `travellers_wave`, first-load line |
+| The travellers' camp | `camp_travellers` opt 1, `travellers_notch` (now the coal line), `travellers_wave`, first-load line |
 | The far-shore family, their boat | `village_hill_family`, `hill_*` callbacks, the lookout tower |
 | The pond | `village_hill_family`, sandal loss, office feast lines (gated), `remember_stone_polish` |
 | Feather posts | `camp_fire` (feather), feather pole |

@@ -60,8 +60,9 @@ namespace AquariumCiv.Sim
             return d.land == "meadow" ? ApartKind.MeadowCamp : d.land == "pond" ? ApartKind.PondCamp : kind;
         }
 
-        /// <summary>How fast their pile grows against the usual: the wood lean (x1.5, <c>NudgeWood</c>) while it lasts. The view paces the carries by it.</summary>
-        public float ApartWoodRate(ApartGroup g) => NudgeWood;
+        /// <summary>How fast their pile grows against the usual. #714: no choice leans the box any more, so always the usual pace (1).
+        /// The view paces the carries by it.</summary>
+        public float ApartWoodRate(ApartGroup g) => 1f;
 
         /// <summary>The group by id, or null.</summary>
         public ApartGroup ApartGroupById(int id) => State.apartGroups?.FirstOrDefault(x => x.id == id);
@@ -146,9 +147,12 @@ namespace AquariumCiv.Sim
 
         // ---------------------------------------------------------------- debug (the debug panel)
 
-        /// <summary>The travellers' group (one that joins, with someone alive), made with a woods camp if none stands.</summary>
+        /// <summary>The travellers' group (one that joins, else #714 a camp of their own from the choice, with someone alive), made with a
+        /// woods camp if none stands.</summary>
         ApartGroup DebugTravellers() =>
-            State.apartGroups.FirstOrDefault(x => x.joins && x.AnyAlive && !x.tower) ?? DebugSettlersArrive(ApartKind.WoodsCamp, true);
+            State.apartGroups.FirstOrDefault(x => x.joins && x.AnyAlive && !x.tower)
+            ?? State.apartGroups.FirstOrDefault(x => x.AnyAlive && !x.tower && x.kind != ApartKind.ShoreHut)
+            ?? DebugSettlersArrive(ApartKind.WoodsCamp, true);
 
         /// <summary>Debug: make sure the travellers' camp stands and say which group it is (the view starts a carry; see ApartGroupsView.DebugCarryNow).</summary>
         public ApartGroup DebugTravellersBringWood() => DebugTravellers();
@@ -157,6 +161,7 @@ namespace AquariumCiv.Sim
         public ApartGroup DebugTravellersJoin()
         {
             var g = DebugTravellers();
+            g.joins = true; // #714: a camp of their own never joins by itself; the cheat makes it
             g.joinState = 1; g.joinMonth = State.month;
             return g;
         }

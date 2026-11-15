@@ -16,8 +16,8 @@ namespace AquariumCiv.Tests
             id = id, kind = DilemmaKind.WhichWay, cast = DilemmaCast.None, question = "The fields, or the woods?",
             options = new[]
             {
-                new DilemmaOptionDef { label = "the fields", hint = "h", lean = SimCore.Lean.Food },
-                new DilemmaOptionDef { label = "the woods", hint = "h", lean = SimCore.Lean.Craft },
+                new DilemmaOptionDef { label = "the fields", hint = "h", custom = "way:fields" },
+                new DilemmaOptionDef { label = "the woods", hint = "h", custom = "way:woods" },
             },
         };
 

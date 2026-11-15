@@ -18,7 +18,7 @@ namespace AquariumCiv.Tests
 
         static IEnumerable<DilemmaDef> Defs => DilemmaDefs.All;
 
-        static string Fill(string t) => (t ?? "").Replace("{a}", Name).Replace("{b}", Name).Replace("{p}", Name).Replace("{q}", Name).Replace("{place}", Place).Replace("{land}", "the meadow").Replace("{camp}", "out in the meadow") // #578: the longest of the three lands
+        static string Fill(string t) => (t ?? "").Replace("{t1}", Name).Replace("{t2}", Name).Replace("{y1}", Name).Replace("{y2}", Name).Replace("{a}", Name).Replace("{b}", Name).Replace("{p}", Name).Replace("{q}", Name).Replace("{place}", Place).Replace("{land}", "the meadow").Replace("{camp}", "out in the meadow") // #578: the longest of the three lands
             .Replace("{dead}", Name).Replace("{tree}", "a pole till a tree grows"); // #635: the longest tree words
 
         static IEnumerable<string> Questions(DilemmaDef d) => new[] { d.question }.Concat(d.askedBy?.Values ?? Enumerable.Empty<string>());
@@ -59,7 +59,7 @@ namespace AquariumCiv.Tests
                 foreach (var o in d.options)
                 {
                     string at = $"{d.id}/{o.label}";
-                    Assert.IsTrue(o.takesRole || o.lean.HasValue || o.strangers > 0 || !string.IsNullOrEmpty(o.custom), $"{at}: changes something");
+                    Assert.IsTrue(o.takesRole || o.strangers > 0 || !string.IsNullOrEmpty(o.custom), $"{at}: changes something");
                     if (d.kind == DilemmaKind.Who) Assert.IsTrue(o.takesRole && o.ties == DilemmaTies.RivalOrGrace, $"{at}: the pick takes the seat");
                     if (d.kind == DilemmaKind.Tradition) Assert.IsFalse(string.IsNullOrEmpty(o.custom), $"{at}: a tradition is a custom");
                     if (d.kind == DilemmaKind.Strangers) Assert.IsTrue(d.options.Any(x => x.strangers > 0), $"{d.id}: someone can arrive");
@@ -74,12 +74,10 @@ namespace AquariumCiv.Tests
                     }
                     if (d.kind != DilemmaKind.Who) Assert.IsTrue(o.favouredBy != null && o.favouredBy.Length > 0, $"{at}: a lapse can lean to it by the asker's trait");
                 }
-                // Both good: neither option stacks two economy effects over the other (a lean is food or wood: different, not more).
-                // (strangers who live apart are not the settlement's people: no economy effect)
-                var econ = d.options.Select(o => (o.lean.HasValue ? 1 : 0) + (o.strangers > 0 && string.IsNullOrEmpty(o.apart) ? 1 : 0)).ToArray();
-                Assert.LessOrEqual(System.Math.Abs(econ[0] - econ[1]), 1, d.id);
+                // Both good, and #714: no option changes the economy (no leans). Only strangers who join add hands; those who live
+                // apart are not the settlement's people.
+                var econ = d.options.Select(o => o.strangers > 0 && string.IsNullOrEmpty(o.apart) ? 1 : 0).ToArray();
                 Assert.IsTrue(econ.All(x => x <= 1), $"{d.id}: one economy effect at most per option");
-                if (d.options.All(o => o.lean.HasValue)) Assert.AreNotEqual(d.options[0].lean, d.options[1].lean, $"{d.id}: the two ways lean differently");
             }
         }
 
@@ -118,7 +116,7 @@ namespace AquariumCiv.Tests
             {
                 foreach (var t in PeoplesWords(d))
                 {
-                    Assert.IsFalse(Regex.IsMatch(t, "[0-9]"), $"{d.id}: never how much: \"{t}\"");
+                    Assert.IsFalse(Regex.IsMatch(Regex.Replace(t, @"\{[a-z]+[12]\}", ""), "[0-9]"), $"{d.id}: never how much: \"{t}\""); // #714: {t1} {y2} are names
                     // chronicle-and-history Choice 10 / §5.1: the people never name the box in the player's words; they say what their
                     // era believes (camp: the sky wall, the Bright One; village: the Keeper's window). Narrator lines may say "tank".
                     var m = Regex.Match(t.ToLowerInvariant(), @"\b(glass|tank|box|aquarium|player|phone|game)\b");
@@ -172,6 +170,8 @@ namespace AquariumCiv.Tests
                         var ok = new List<string> { "{place}" };
                         if (who) ok.AddRange(new[] { "{a}", "{b}", "{p}", "{q}" });
                         if (d.landWords) ok.AddRange(new[] { "{land}", "{camp}" }); // #578
+                        if (d.namesStrangers) ok.AddRange(new[] { "{t1}", "{t2}" }); // #714
+                        if (d.namesYoung) ok.AddRange(new[] { "{y1}", "{y2}" }); // #714
                         if (d.needsDeath) ok.Add("{dead}"); // #635: the latest death, kept when raised
                         if (d.options.Any(o => o.propAt == PropAnchor.Tree)) ok.Add("{tree}"); // #635
                         Assert.Contains(m.Value, ok, $"{d.id}: \"{t}\"");
@@ -208,7 +208,7 @@ namespace AquariumCiv.Tests
         }
 
         /// <summary>A fresh box with only this def: the month it is raised within 40 game years, or null.</summary>
-        static SimCore RaisedWithin40Years(DilemmaDef def, int seed)
+        internal static SimCore RaisedWithin40Years(DilemmaDef def, int seed)
         {
             var sim = NewSim(seed, new SimConfig { dilemmas = true });
             sim.DilemmaCatalog = new[] { def };
@@ -265,7 +265,6 @@ namespace AquariumCiv.Tests
                         Assert.AreEqual(people, box.State.notables.Count, $"{def.id}: not the settlement's people");
                         Assert.AreEqual(pop, box.State.population, def.id);
                     }
-                    if (o.lean.HasValue) Assert.IsTrue(box.State.dilemmaLeans.Any(l => l.lean == (int)o.lean.Value), def.id);
                     Assert.AreEqual(o.callbacks.Length, box.PendingCallbacks().Count, def.id);
                     ChronicleEntry e;
                     while ((e = box.DebugFireCallbackNow()) != null)

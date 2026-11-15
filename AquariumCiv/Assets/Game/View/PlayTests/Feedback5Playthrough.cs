@@ -444,11 +444,11 @@ namespace AquariumCiv.View.PlayTests
             Check("f", text.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0, $"the question's words name the {word}");
             Check("f", d.land != "woods" && d.land != "", $"with no woods the land is not the woods ('{d.land}')");
             yield return Snap("f_1_question");
-            // "full packs" by touch
+            // "a camp of their own" by touch
             yield return TapAt(GameUiPanel.ScreenCenter(view.Root.Q("cards-dil-answer-1")));
             yield return Frames(10);
             var g1 = sim.ApartOf(d);
-            Check("f", g1 != null && g1.joins, "full packs keeps them apart, and they will join at the village");
+            Check("f", g1 != null && !g1.joins, "a camp of their own keeps them apart, for good (#714)");
             yield return Settle(0.8f);
             yield return Snap("f_2_answered");
             if (view.Model.Mode == CardStackMode.Open) view.Model.Close();
