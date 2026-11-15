@@ -203,14 +203,6 @@ namespace AquariumCiv.Sim
             return "";
         }
 
-        // ---------- the era tag on trait lines (§4) ----------
-        /// <summary>The first era a trait line may be told in: the four that know too much are town-only (stage 3); every
-        /// other line, the stand-ins included, from the camp. (The stand-ins are only told before the town.)</summary>
-        public static Era TraitLineEra(string line) => TownOnlyLines.ContainsKey(line) ? Era.Town : Era.Camp;
-
-        /// <summary>Every trait line with its era tag, and its stand-in before the town where it has one.</summary>
-        public static IEnumerable<(string trait, string line, Era era, string standIn)> TraitLines() =>
-            TraitStories.SelectMany(kv => kv.Value.lines.Select(l => (kv.Key, l, TraitLineEra(l), TownOnlyLines.TryGetValue(l, out var s) ? s : null)));
 
         // ---------- hooks from the rest of the sim ----------
         /// <summary>A Keeper's action (SimCore.cs: wipe, prune; Nudges: every shaping). Counted for the doll.</summary>
@@ -272,9 +264,17 @@ namespace AquariumCiv.Sim
         /// tell it; a town tells it only if no earlier "lost" story came (so it is never missable).</summary>
         string SandalLossLine(Notable n)
         {
-            if (!RelicsOn || n == null || FindRelic(RelicId.LeftSandal) != null) return null;
-            return $"{n.FullName} lost a sandal crossing the stream. {n.FullName} has walked a little lopsided, with great dignity, ever since.";
+            if (!SandalLossDue || n == null) return null;
+            return $"{n.FullName} lost a sandal {SandalWhere}. {n.FullName} has walked a little lopsided, with great dignity, ever since.";
         }
+
+        /// <summary>#715: the box's one "lost" story, the Left Sandal's, is still to be told. Read from the chronicle only (not the
+        /// relics switch), so the story stream draws the same with the relics on or off.</summary>
+        bool SandalLossDue => Told("lost") == 0 && FindRelic(RelicId.LeftSandal) == null;
+
+        /// <summary>#715 [est]: where the sandal went, in the land's own words at the source (a living land has no stream; the
+        /// pond only once it holds water).</summary>
+        string SandalWhere => !EcologyOn ? "crossing the stream" : OpenWater ? "in the mud at the pond's edge" : "in the mud of the hollow";
 
         /// <summary>The Sandal's loss was told: seed the relic (owner, spot) to be found ≥ 20 years later.</summary>
         void SandalLost(Notable n, ChronicleEntry e)
@@ -753,7 +753,7 @@ namespace AquariumCiv.Sim
             if (existing != null) return existing;
             var n = State.notables.Where(x => x.alive && x.age >= AdultAge).OrderByDescending(x => x.age).ThenBy(x => x.id).FirstOrDefault();
             if (n == null) return null;
-            var e = RelicLine("lost", $"{n.FullName} lost a sandal crossing the stream. {n.FullName} has walked a little lopsided, with great dignity, ever since.", 0.6f, n.id, -1);
+            var e = RelicLine("lost", $"{n.FullName} lost a sandal {SandalWhere}. {n.FullName} has walked a little lopsided, with great dignity, ever since.", 0.6f, n.id, -1);
             SandalLost(n, e);
             return FindRelic(RelicId.LeftSandal);
         }

@@ -335,6 +335,7 @@ namespace AquariumCiv.Tests
         {
             var sim = NewSim(2);
             sim.Advance(5);
+            sim.State.relics.RemoveAll(r => r.id == RelicId.LeftSandal); // #715: the sandal story comes sooner now; this test sets its own
             sim.State.relics.Add(new Relic { id = RelicId.LeftSandal, foundMonth = sim.State.month, x = 0.7f, z = -0.4f, ownerId = sim.State.notables[0].id });
             sim.Advance(1);
             var stone = sim.State.history.shapes.Single(r => r.kind == "stone");

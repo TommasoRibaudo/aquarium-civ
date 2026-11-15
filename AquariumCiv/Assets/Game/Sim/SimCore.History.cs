@@ -200,7 +200,8 @@ namespace AquariumCiv.Sim
             long from = (int)era < Hist.eraStarts.Count ? Hist.eraStarts[(int)era] : 0;
             long to = (int)era + 1 < Hist.eraStarts.Count ? Hist.eraStarts[(int)era + 1] : long.MaxValue;
             var top = s.chronicle
-                .Where(e => e.month >= from && e.month < to && e.salience >= 0.5f && !ChapterSkips(e.kind) && e.kind != "era_festival" && e.kind != "era_cleared")
+                .Where(e => e.month >= from && e.month < to && e.salience >= 0.5f && !ChapterSkips(e.kind) && e.kind != "era_festival" && e.kind != "era_cleared"
+                            && Array.IndexOf(DroppedStoryKinds, e.kind) < 0) // #715: an old save's dropped kinds never title an era
                 .OrderByDescending(e => e.salience).ThenBy(e => e.month).ThenBy(e => e.id).FirstOrDefault();
             string noun = EraNoun(era);
             string fallback = $"The {char.ToUpperInvariant(noun[0])}{noun.Substring(1)} Years";
@@ -213,9 +214,10 @@ namespace AquariumCiv.Sim
             if (relic != null) return $"The Years of {relic}";
             string thing = top.kind switch
             {
-                "keeper" => "the Keeper's Hand", "storm" => "the Great Storm", "drought" => "the Dry Summer", "bumper" => "the Full Barns",
-                "lean_winter" => "the Hungry Winter", "snow" => "the Deep Snow", "fog" => "the Long Fog", "strange_light" => "the Strange Light",
-                "rainbow" => "the Rainbow", "festival" or "anniversary" => "the Feast", "sheep" => "the Wandering Sheep", "ducks" => "the Ducks",
+                // #715: no titles from the dropped kinds (storm, drought, bumper, fog, strange light, rainbow, sheep, ducks); titles an
+                // old save already wrote stay as they are (they are stored when the era ends)
+                "keeper" => "the Keeper's Hand", "lean_winter" => "the Hungry Winter", "snow" => "the Deep Snow",
+                "festival" or "anniversary" => "the Feast",
                 "peak-ready" => "the Full Glass", "sweepers" => "the Sweepers", "milestone" => "the Growing Crowd",
                 _ => null,
             };

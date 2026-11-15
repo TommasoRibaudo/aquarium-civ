@@ -23,7 +23,6 @@ namespace AquariumCiv.Sim
             void R(string from, string to) => sb.Replace(from, to);
 
             // ---- water: no stream on a living land; the pond only once it is there
-            R("lost a sandal crossing the stream", water ? "lost a sandal in the mud at the pond's edge" : "lost a sandal in the mud of the hollow");
             if (!water)
             {
                 R("A dry summer: the stream ran low and everyone shared their water.", "A dry summer: the ground cracked and everyone shared their water.");
@@ -43,9 +42,6 @@ namespace AquariumCiv.Sim
             R(" to save a kitten.", " to tie the cover back down.");
             R("took in a stray goat. It follows them everywhere now.", "took in a hurt bird and fed it until it flew.");
             R("called the goats home from the far side of the glass", "called the children home from the far side of the glass");
-            R("Someone danced with a goat, and the goat led.", "Someone danced with a broom, and the broom led.");
-            R("looking for the same lost goat. They found it together.", "looking for the same lost basket. They found it together.");
-            R(" over a goat", " over the warmest spot in the tent");
             R("smelled of wet dog", "smelled of wet hides");
             R("a goat", "the warmest spot in the tent"); // any quarrel or line left with a goat in it
 
@@ -54,7 +50,6 @@ namespace AquariumCiv.Sim
             {
                 R("the hut roof", "the tent poles");
                 R("the hut", "the tent");
-                R("a fence post", "a tent peg");
                 R("fixing a roof together", "fixing a tent together");
                 R("sharing the last apple", "sharing the last of the basket");
                 R("baked bread for every hearth after the storm", "shared out their supper at every tent after the storm");

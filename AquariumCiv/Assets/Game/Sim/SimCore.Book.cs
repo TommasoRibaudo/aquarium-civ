@@ -397,12 +397,7 @@ namespace AquariumCiv.Sim
                     s.teaserThreadId = t.id;
                     return t.teaser;
                 }
-                case ThreadSource.Slice:
-                {
-                    var t = NewThread(ThreadSource.Slice, "The kids are building a raft.", -1, -1);
-                    s.teaserThreadId = t.id;
-                    return t.teaser;
-                }
+                // #715: no slice-of-life teaser any more (the raft is gone): nothing to force
             }
             return null;
         }

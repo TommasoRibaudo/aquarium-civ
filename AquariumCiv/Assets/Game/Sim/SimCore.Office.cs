@@ -273,15 +273,13 @@ namespace AquariumCiv.Sim
         /// " {0} the {1} ...". Text only: the story still happened by the story stream's own dice.</summary>
         static readonly Dictionary<(string kind, string trait), string> TermCodas = new()
         {
-            [("storm", "the worrier")] = " {0} the {1} had them all counted in before the first gust.",
-            [("lost", "the brave")] = " {0} the {1} led the search party, which came home with firewood and a goat as well.",
+            // #715: the storm, rainbow and lost-in-the-hills codas went with their stories; no sack race
             [("festival", "the singer")] = " {0} the {1} sang until the stars came out.",
-            [("festival", "the joker")] = " {0} the {1} organised the sack race.",
+            [("festival", "the joker")] = " {0} the {1} organised a race, and {3} won it by falling over the line.", // #715 [est]
             [("festival", "the grump")] = " {0} the {1} went to bed early.",
             [("rivalry", "the kind")] = " {0} the {1} has promised to sort it out.",
             [("rivalry", "the gossip")] = " {0} the {1} told everyone by supper.",
             [("wedding", "the singer")] = " {0} the {1} sang them down the path.",
-            [("rainbow", "the lazy")] = " {0} the {1} made the afternoon off official.",
         };
 
         // ---------- queries for views and the planner ----------
@@ -412,7 +410,7 @@ namespace AquariumCiv.Sim
                 if (seat.holderId < 0 || seat.holderId == notableId || seat.holderId == otherId) continue;
                 var h = FindNotable(seat.holderId);
                 if (h == null || !h.alive || !TermCodas.TryGetValue((kind, h.trait ?? ""), out var coda)) continue;
-                return text + FillTerm(coda, h, seat, null, 28);
+                return text + FillTerm(coda, h, seat, coda.Contains("{3}") ? TermOthers(h, 1, 29) : null, 28); // #715: {3} is someone at the feast
             }
             return text;
         }

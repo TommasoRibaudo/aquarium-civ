@@ -239,16 +239,14 @@ namespace AquariumCiv.Tests
             var cards = sim.ReturnCardsCapped(-1, 50);
             Assert.IsTrue(cards.cards.Any(c => c.entries.Contains(lost) && c.entries.Contains(find)), "the loss and the find are one card");
 
-            // Later lost stories are the usual ones.
+            // #715: the sandal is the box's only "lost" story (no more lost in the hills)
             int before = sim.State.chronicle.Count(e => e.kind == "lost");
-            for (int i = 0; i < 400 && sim.State.chronicle.Count(e => e.kind == "lost") == before; i++)
+            for (int i = 0; i < 100; i++)
             {
                 sim.ForceStory();
                 sim.State.month += 7 * SimConfig.MonthsPerYear;
             }
-            var next = sim.State.chronicle.Last(e => e.kind == "lost");
-            StringAssert.Contains("got lost in the hills", next.text);
-            Assert.AreEqual("", next.relicId);
+            Assert.AreEqual(before, sim.State.chronicle.Count(e => e.kind == "lost"), "never lost in the hills");
         }
 
         [Test]
@@ -493,16 +491,6 @@ namespace AquariumCiv.Tests
             Assert.IsTrue(s.Found);
         }
 
-        [Test]
-        public void TraitLinesCarryAnEraTag()
-        {
-            var lines = SimCore.TraitLines().ToList();
-            Assert.AreEqual(4, lines.Count(l => l.era == Era.Town), "the four that know too much");
-            Assert.IsTrue(lines.Where(l => l.era == Era.Town).All(l => l.standIn != null));
-            Assert.IsTrue(lines.Where(l => l.era == Era.Camp).All(l => l.standIn == null));
-            Assert.AreEqual(Era.Town, SimCore.TraitLineEra("{0} invented a mirror for signalling the Keeper."));
-            Assert.AreEqual(Era.Camp, SimCore.TraitLineEra("{0} invented a bucket that pours itself."));
-        }
 
         // ---------- the economy ----------
         [TestCase(1)]

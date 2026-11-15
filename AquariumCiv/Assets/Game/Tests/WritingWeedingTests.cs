@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using AquariumCiv.Sim;
 using NUnit.Framework;
@@ -160,6 +161,91 @@ namespace AquariumCiv.Tests
                 foreach (var n in sim.State.notables) n.trait = trait;
                 Assert.IsTrue(sim.DebugWhiteStagNow());
                 Assert.AreEqual(hunt, sim.WhiteStagLetThemDecide(), trait);
+            }
+        }
+
+        // ---------- #715: the story stream ----------
+
+        /// <summary>The story stream's kinds (SimCore.Story.cs), the kept ones and the dropped ones.</summary>
+        public static readonly string[] StoryKinds =
+            new[] { "wedding", "friendship", "rivalry", "reconcile", "apprentice", "elder", "naming", "anniversary", "snow", "lost" }
+            .Concat(SimCore.DroppedStoryKinds).ToArray();
+
+        /// <summary>How many entries of each story kind a box tells in <paramref name="years"/> years, the eras advanced when ready.</summary>
+        public static Dictionary<string, int> StoryCounts(bool ecology, int seed, int years = 100)
+        {
+            var cfg = new SimConfig { ecology = ecology };
+            var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+            for (int m = 0; m < years * SimConfig.MonthsPerYear; m++)
+            {
+                sim.Step();
+                if (sim.State.eraReady) sim.AdvanceEra();
+            }
+            var c = StoryKinds.ToDictionary(k => k, k => 0);
+            foreach (var e in sim.State.chronicle) if (c.ContainsKey(e.kind)) c[e.kind]++;
+            return c;
+        }
+
+        [Test]
+        public void NoSliceOfLifeTeaser_AndTheRivalryTeaserSaysAgainOnlyOnARepeat()
+        {
+            var sim = NewSim(5);
+            for (int m = 0; m < 240; m++) { sim.Step(); sim.OpenTeaser(); if (sim.State.eraReady) sim.AdvanceEra(); }
+            Assert.IsFalse(sim.State.threads.Any(t => t.source == ThreadSource.Slice), "no slice-of-life teaser is ever opened");
+            foreach (var t in sim.State.threads) StringAssert.DoesNotContain("raft", t.teaser);
+
+            var box = NewSim(5);
+            var adults = box.State.notables.Where(n => n.alive && n.age >= SimCore.AdultAge).OrderBy(n => n.id).ToList();
+            foreach (var n in adults) { n.friendId = -1; n.rivalId = -1; n.partnerId = -1; }
+            var a = adults[0]; var b = adults[1];
+            a.rivalId = b.id; b.rivalId = a.id;
+            box.State.chronicle.Add(new ChronicleEntry { id = 900001, month = box.State.month, kind = "rivalry", text = "x", notableId = a.id, otherNotableId = b.id });
+            string first = box.OpenTeaser();
+            if (first != null && first.Contains("aren't speaking"))
+            {
+                StringAssert.EndsWith("aren't speaking.", first, "the first quarrel");
+                box.State.chronicle.Add(new ChronicleEntry { id = 900002, month = box.State.month, kind = "reconcile", text = "y", notableId = a.id, otherNotableId = b.id });
+                box.State.teaserThreadId = -1;
+                foreach (var t in box.State.threads) t.state = ThreadState.Died;
+                string again = box.OpenTeaser();
+                Assume.That(again, Does.Contain("aren't speaking"));
+                StringAssert.EndsWith("aren't speaking again.", again, "after they made up once");
+            }
+            else Assert.Inconclusive("another teaser came first: " + first);
+        }
+
+        [Test]
+        public void AnOldSaveWithDroppedStoryKindsLoadsAndKeepsThem()
+        {
+            var sim = NewSim(9);
+            sim.State.chronicle.Add(new ChronicleEntry { id = 900010, month = 3, kind = "storm", text = "A great storm rattled the glass.", salience = 0.5f });
+            sim.State.chronicle.Add(new ChronicleEntry { id = 900011, month = 4, kind = "invention", text = "Ada invented a bucket that pours itself.", salience = 0.62f });
+            var back = JsonUtility.FromJson<SimState>(JsonUtility.ToJson(sim.State));
+            var box = new SimCore(new SimConfig(), back);
+            for (int m = 0; m < 24; m++) box.Step();
+            Assert.IsTrue(box.State.chronicle.Any(e => e.kind == "storm" && e.text.Contains("storm")), "an old storm stays in History");
+            Assert.IsTrue(box.State.chronicle.Any(e => e.kind == "invention"));
+        }
+
+        [Test]
+        public void NoGoatsPiesOrSackRacesInTheStoryText()
+        {
+            var lines = SimCore.FestivalLines.Concat(SimCore.CampFestivalLines);
+            foreach (var t in lines) foreach (var w in new[] { "goat", "pies", "sack race" }) StringAssert.DoesNotContain(w, t);
+            var sim = NewSim(7);
+            for (int m = 0; m < 100 * 12; m++) { sim.Step(); if (sim.State.eraReady) sim.AdvanceEra(); }
+            foreach (var e in sim.State.chronicle.Where(e => StoryKinds.Contains(e.kind) || e.kind == "festival" || e.kind == "era_festival"))
+                foreach (var w in new[] { "goat", "pies", "sack race", "in the hills" }) StringAssert.DoesNotContain(w, e.text, e.kind);
+        }
+
+        [Test]
+        public void TheStoryStreamTellsNoneOfTheDroppedKinds_A100YearRun()
+        {
+            foreach (bool eco in new[] { true, false })
+            {
+                var counts = StoryCounts(eco, 7);
+                foreach (var k in SimCore.DroppedStoryKinds) Assert.AreEqual(0, counts.TryGetValue(k, out var n) ? n : 0, $"{k} (ecology {eco})");
+                Assert.Greater(counts.Values.Sum(), 10, "the stream still tells stories");
             }
         }
     }
