@@ -154,12 +154,19 @@ namespace AquariumCiv.Sim
         /// spot is in the hollow or the water.</summary>
         /// <summary>#378: the cell the Keeper's tree would really take for a press at (x, z): the cell itself, or the nearest cell
         /// clear of the glass and the hollow; -1 when there is none.</summary>
-        public int TreeCellFor(float x, float z) => EcologyOn ? EcoM.TreeCellFor(x, z) : -1;
+        public int TreeCellFor(float x, float z) => !EcologyOn ? -1 : State.eco.treeCell >= 0 ? EcoM.SeedCellFor(x, z, SettledCell) : EcoM.TreeCellFor(x, z); // #727: once the Keeper's tree stands, the answer is the earned seed's cell
 
+        /// <summary>#727: the Keeper's tree stands and a seed waits in the pouch (#726): the next planting makes a normal seedling.</summary>
+        public bool CanPlantSeed => EcologyOn && State.eco.treeCell >= 0 && EcoM.SeedsInPouch > 0 && EcoM.SeedAvailable;
+        /// <summary>#727: a planting is possible now, the Keeper's first tree or an earned seed. The kit's seed reads this (<see cref="CanPlantTree"/> is the first tree alone).</summary>
+        public bool CanPlantAnySeed => CanPlantTree || CanPlantSeed;
+
+        /// <summary>Plants the Keeper's tree at (x, z) (the first seed), or, once it stands, an earned seed from the pouch as a normal seedling (#727).
+        /// False, and nothing is spent, when there is no seed, or no valid ground.</summary>
         public bool PlantTree(float x, float z)
         {
             if (!EcologyOn) return false;
-            if (!EcoM.Plant(x, z, State.month)) return false;
+            if (!EcoM.Plant(x, z, State.month, SettledCell)) return false;
             CountKeeperAction(KeeperAction.Plant, false);
             EcoTell();
             return true;

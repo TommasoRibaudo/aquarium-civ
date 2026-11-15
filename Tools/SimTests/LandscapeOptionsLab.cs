@@ -64,5 +64,43 @@ namespace AquariumCiv.Tests
                 foreach (var l in rows) TestContext.Out.WriteLine("   " + l);
             }
         }
+
+        /// <summary>#727: the same measure at the EARNED pace (#726: a seed per era and per +5 people at the peak, at most 3 wait). The Active
+        /// Keeper plants each earned seed the month it is earned, on open ground round the Keeper's tree (an upper bound: a real Keeper waits
+        /// for the next visit). Reports when each seed was earned, the 10-tree gate and the village against the no-seed run.
+        /// dotnet test Tools/SimTests --filter EarnedSeeds_VillageYear</summary>
+        [Test, Explicit]
+        public void EarnedSeeds_VillageYear()
+        {
+            foreach (bool plant in new[] { false, true })
+            {
+                var vill = new List<float>(); var tr8 = new List<float>(); var rows = new List<string>();
+                foreach (int seed in PacingLab.Seeds)
+                {
+                    int planted = 0, earned = 0; var when = new List<string>();
+                    var r = PacingLab.Run(Habit.Active, seed, null, 40, false, sim =>
+                    {
+                        var e = sim.State.eco;
+                        if (e.seedSteps > earned) { for (int k = earned; k < e.seedSteps; k++) when.Add((sim.State.month / 12f).ToString("0.0")); earned = e.seedSteps; }
+                        if (!plant || e.treeCell < 0) return;
+                        while (sim.SeedsInPouch > 0)
+                        {
+                            bool ok = false;
+                            for (int k = 0; k < 40 && !ok; k++)
+                            {
+                                float a = Terrain.Hash3(seed * 17 + 5, planted, k) * MathF.PI * 2f, rr = 0.35f + 0.8f * Terrain.Hash3(seed * 17 + 6, planted, k);
+                                ok = sim.PlantTree(SiteMap.CXc(e.treeCell) + MathF.Cos(a) * rr, SiteMap.CZc(e.treeCell) + MathF.Sin(a) * rr);
+                            }
+                            if (!ok) break;
+                            planted++;
+                        }
+                    });
+                    vill.Add(r.village); tr8.Add(r.trees8);
+                    rows.Add($"seed {seed,2}: seeds earned at years [{string.Join(" ", when)}], planted {planted}  trees8 {PacingResult.F(r.trees8)}  village {PacingResult.F(r.village)}  era ready {PacingResult.F(r.eraReady)}  trees at end {r.trees}");
+                }
+                TestContext.Out.WriteLine($"{(plant ? "EARNED seeds planted" : "NO earned seeds planted")}: village {string.Join(" ", vill.Select(PacingResult.F))} | trees8 {string.Join(" ", tr8.Select(PacingResult.F))}");
+                foreach (var l in rows) TestContext.Out.WriteLine("   " + l);
+            }
+        }
     }
 }

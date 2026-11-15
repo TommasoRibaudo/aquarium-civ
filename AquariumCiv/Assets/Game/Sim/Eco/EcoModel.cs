@@ -340,15 +340,61 @@ namespace AquariumCiv.Sim.Eco
             return best;
         }
 
-        /// <summary>The seed goes into open ground, bare sand or meadow (not the hollow, not the water).</summary>
-        public bool Plant(float x, float z, long month)
+        /// <summary>The seed goes into open ground, bare sand or meadow (not the hollow, not the water). The first seed makes the Keeper's
+        /// tree (hand-built, tended: <see cref="EcoState.treeCell"/>). #727: every seed after it comes out of the pouch (#726) and makes a
+        /// normal wild-like seedling on valid open ground (<see cref="SeedCellFor"/>); the Keeper's tree is never replaced.
+        /// <paramref name="settled"/>: cells the settlement holds (lots, paths, the green); null = none.</summary>
+        public bool Plant(float x, float z, long month, Func<int, bool> settled = null)
         {
-            if (st.treeCell >= 0 || !SeedAvailable) return false;
+            if (!SeedAvailable) return false;
+            if (st.treeCell >= 0) return PlantEarnedSeed(x, z, settled);
             int c = TreeCellFor(x, z);
             if (c < 0) return false;
             st.treeCell = c; st.cover[c] = (byte)EcoCover.Seedling;
             Reach(EcoMilestones.TreePlanted, month);
             return true;
+        }
+
+        /// <summary>#727: an earned seed makes a Seedling at <see cref="SeedCellFor"/>; the same growth dice, the same mister as a wild one,
+        /// no extra care. Nothing is spent when there is no seed or no valid ground.</summary>
+        bool PlantEarnedSeed(float x, float z, Func<int, bool> settled)
+        {
+            if (st.seedsPouch <= 0) return false;
+            int c = SeedCellFor(x, z, settled);
+            if (c < 0 || !TakeSeed()) return false;
+            st.cover[c] = (byte)EcoCover.Seedling;
+            Count();
+            return true;
+        }
+
+        /// <summary>#727: a cell an earned seed may go into: open ground (bare, meadow), inside the tree bed (off the glass strip), off the
+        /// hollow, the yard, the ring round the fire, a thicket's area, the Keeper's tree and anything the settlement holds.</summary>
+        public bool SeedGroundOk(int c, Func<int, bool> settled = null)
+        {
+            if (c < 0 || c >= EcoLand.N || c == st.treeCell || !InTreeBed(c) || land.InBasin(c) || land.yard[c] || NearFire(c)) return false;
+            var cv = Cv(c);
+            if (cv != EcoCover.Bare && cv != EcoCover.Grass && cv != EcoCover.Tall) return false;
+            return ThicketZone(c) <= 0f && !(settled?.Invoke(c) ?? false);
+        }
+
+        /// <summary>#727: where an earned seed pressed at (x, z) really goes: that cell when it is valid, else the nearest valid cell
+        /// within a few cells (as <see cref="TreeCellFor"/>), else -1 (refused). The view shows the answer, so nothing jumps silently.</summary>
+        public int SeedCellFor(float x, float z, Func<int, bool> settled = null)
+        {
+            int c0 = SiteMap.CellAt(x, z);
+            if (c0 < 0) return -1;
+            if (SeedGroundOk(c0, settled)) return c0;
+            int i0 = SiteMap.I(c0), j0 = SiteMap.J(c0), best = -1, span = TreeEdgeMargin + 2;
+            float bestD = span * span + 0.5f;
+            for (int j = Math.Max(0, j0 - span); j <= Math.Min(SiteMap.NZ - 1, j0 + span); j++)
+                for (int i = Math.Max(0, i0 - span); i <= Math.Min(SiteMap.NX - 1, i0 + span); i++)
+                {
+                    int c = SiteMap.Index(i, j);
+                    if (!SeedGroundOk(c, settled)) continue;
+                    float d = (i - i0) * (i - i0) + (j - j0) * (j - j0);
+                    if (d < bestD) { bestD = d; best = c; }
+                }
+            return best;
         }
 
         /// <summary>Wiping the glass: grime and droplets come off.</summary>

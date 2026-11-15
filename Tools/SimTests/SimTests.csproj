@@ -60,6 +60,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Life/Tests/CampSpreadTests.cs" /><!-- #521 the first camp days spread out -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/NewStartTests.cs" /><!-- #656/#677 the carried stock, wild wood, the fire, hunger -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/LandscapePouchTests.cs" /><!-- #726 seeds and bushes earned -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/LandscapeSeedTests.cs" /><!-- #727 more trees from earned seeds -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoPacingTests.cs" /><!-- #569 the mister waters the forest -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DuckJarIceTests.cs" /><!-- #703 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/JarNeedTests.cs" /><!-- #570 what is missing, in words -->
