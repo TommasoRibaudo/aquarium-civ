@@ -12,8 +12,8 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - [x] 6 · #669 merged (buildings too) — call: live animals and berries hidden in a replay (no per-year record); rack/pile/frame recorded from first live sight
 - [x] 7 · #702 merged (1ada892)
 - [x] 8 · #707 merged 2d1156e (open for look sign-off)
-- [ ] 9 · #704 merged (open for look sign-off)
-- [ ] 10 · #701 merged (open for look sign-off)
+- [x] 9 · #704 merged (open for look sign-off)
+- [x] 10 · #701 merged (open for look sign-off) — short: small/grown pond shots unreachable on seed 4242 (pond floods to 424 cells); rule asserted on the mesh
 - [ ] 11 · #676 stew by kind merged (open for look sign-off)
 - [ ] 12 · #706 merged (open for look sign-off)
 - [ ] 13 · #705 specced, built and clipped, on its branch
@@ -56,6 +56,9 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - 2026-11-14 23:15 · #698 merged (760c9d3) after 3 rounds
 
 ## Round logs
+
+### #704 + #701 (one worker, one branch)
+- round 1: #704 cause = clearing outer band blended to fixed grassB; now ground colour. #701 cause = whole-cell water mesh; now 3×3 pieces under the level by 1.2 cm, ice shares it. EcoView 7/7, PondIce 7/7, EcoWater 1/1, PondLife 4/4, smoke 2/2, RimShots explicit pass. Shots looked at. Accepted with the small-pond gap noted.
 
 ### #669
 - round 1: ReplayGate + ThingSince; HistoryBuilt 1/1, TimeLapsePlay 5/5 (perf step 12.2 ms flaked once, passed alone), TimeLapseScreen 3/3, smoke 2/2, SimTests green. Shots looked at. Accepted.
