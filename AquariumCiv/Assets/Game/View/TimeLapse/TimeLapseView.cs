@@ -181,6 +181,7 @@ namespace AquariumCiv.View
             lastShowTime = Time.unscaledTime;
             Box.deferAO = true;
             ReplayGate.Set((long)Mathf.FloorToInt(position * SimConfig.MonthsPerYear + 0.001f), position >= Lapse.EndPosition - 0.0005f); // #669
+            foreach (var b in hiddenLife) if (b != null) b.enabled = ReplayGate.AtPresent; // #669 (tester run 1): at the timeline's end the box is today's, berries and rabbits too
             var s = Lapse.Scrub(position);
             var near = s.Nearest;
             var other = near == s.a ? s.b : s.a;

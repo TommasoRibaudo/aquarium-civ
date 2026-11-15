@@ -246,7 +246,8 @@ namespace AquariumCiv.Life
         bool DebugRackAt(Person p, ViewTime t, out PersonActivity a)
         {
             a = default;
-            if (debugRack.Count == 0 || !debugRack.TryGetValue(p.key, out var r)) return false;
+            // tester run 1: BasePlace below plans the plain day (PlanBase), which asks here again: without this guard the walk-in looped forever
+            if (huntBuilding || debugRack.Count == 0 || !debugRack.TryGetValue(p.key, out var r)) return false;
             if (t.hour >= r.until) { debugRack.Remove(p.key); return false; }
             if (t.hour < r.start) return false;
             // the duty's own times decide the beat: before it, the walk (a Carry with the basket / Walk); in it, the beat; after it, the carry to the pile
