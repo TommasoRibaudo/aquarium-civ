@@ -51,6 +51,8 @@ namespace AquariumCiv.View
         public ViewTime Now => now;
         /// <summary>#696 diagnosis: called when a doll whose plan says asleep is drawn shown, with the code path that did it.</summary>
         public static System.Action<string> SleeperShown;
+        /// <summary>#698 diagnosis: called when a non-baby doll is hidden by <c>Drive</c> itself (an activity of None, or a plan place with no position).</summary>
+        public static System.Action<string> HideReason;
         /// <summary>The hour the box shows, also before the first tick (<see cref="Now"/> is midnight then).</summary>
         public float ViewHour => clockStarted ? now.hour : startHour;
         public LifePlanner Planner => planner;
@@ -455,6 +457,7 @@ namespace AquariumCiv.View
                 || (LifeSpot != null && LifeSpot(a, now, out x, out z, out huntFace))); // #427: a placed-life scene holds them (the dawn drink: stop and watch)
             if (hunting || tenting) hidden = false;
             else if (!planner.PositionAt(a.who, now, out x, out z) && !planner.Positions.TryGetPosition(a.place, out x, out z)) hidden = true;
+            if (hidden && stage == LifeStage.Kid && HideReason != null) HideReason($"{a.who} hidden by Drive: kind {a.kind} place {a.place.kind} moving {a.moving} (kind None, or no position for the plan: #698 diagnosis)");
             var spot = new Vector2(x, z);
             var target = spot;
             Vector2? face = null;
@@ -557,7 +560,13 @@ namespace AquariumCiv.View
             bool inTent = !a.moving && !a.enRoute && DollMotion.StyleOf(a.kind) == DollStyle.Hidden; // #696: asleep or indoors: nobody sees them, so a changed slot is taken at once, not walked to
             // #698: ...but a doll still DRAWN out in the open (a play group, a chase, held it past the plan's walk to bed) is seen: it walks the rest
             // of the way to the tent, and goes in on arriving, it does not vanish on the spot.
-            if (inTent && d.placed && !d.pose.hidden && !snapAll && dt > 0f && (target - d.pos).sqrMagnitude > TentArrived * TentArrived) inTent = false;
+            bool tentWalk = false; // #698: still on its way to the tent, drawn walking (never Hidden) until it is there
+            if (inTent && d.placed && !d.pose.hidden && !snapAll && dt > 0f)
+            {
+                // where it is heading: its slot, or the place's middle when the way to the slot is blocked (a lot in between): that middle is "there"
+                var tentGoal = a.moving || Clear(d.pos, target) ? target : spot;
+                if ((tentGoal - d.pos).sqrMagnitude > TentArrived * TentArrived) { inTent = false; tentWalk = true; }
+            }
             bool jump = !d.placed || d.wasHidden || dt <= 0f || snapAll || inTent;
             if (jump) d.pos = target;
             else if (playing) d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Min(0.75f, playCue.speed * 1.15f + 0.15f + (target - d.pos).magnitude * 3f) * dt); // #358: the game's pace (a run in tag), catching up fast
@@ -587,12 +596,14 @@ namespace AquariumCiv.View
             bool keepsHunchStyle = hunting && (a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.Bolt or HuntPhase.PullSpear or HuntPhase.PickUp or HuntPhase.HoldUp
                 || DeerBeats.Crouched(a.hunt)); // #426
             if (walking && !inTent && style != DollStyle.Hop && !keepsHunchStyle) style = a.kind == ActivityKind.RunOver || (stage == LifeStage.Kid && a.kind == ActivityKind.Play) ? DollStyle.Run : DollStyle.Walk;
+            if (tentWalk && !hidden) style = DollStyle.Walk; // #698: asleep or indoors by the plan but still out in the open: a walk, not a vanish
             if (hidden) style = DollStyle.Hidden;
             if (!walking && !hidden) style = BerryMotion.Retarget(style, a.kind, a.place.kind); // #361: berries and roots you can see
             if (playing) style = playCue.style; // #358
             if (d.atTower && !walking) style = d.towerStyle; // #404
             if (toddling) style = DollStyle.Toddle; // 2026-11-06: it toddles, walking or not
             if (started && !walking) style = startCue.style; // #656/#677: the scene's pose (stand, set down, pick up)
+            if (HideReason != null && style == DollStyle.Hidden && !hidden && stage != LifeStage.Baby && (target - d.pos).sqrMagnitude > 0.5f * 0.5f) HideReason($"{a.who} drawn Hidden {(target - d.pos).magnitude:0.00} u short of its target: walking {walking} speed {d.speed:0.000} inTent {inTent} jump {jump} moving {a.moving} enRoute {a.enRoute} kind {a.kind} at {a.place.kind} hour {now.hour:0.00} drawn {d.drawn} pos {d.pos} target {target} timeScale {timeScale}"); // #698 diagnosis
             if (SleeperShown != null && a.kind == ActivityKind.Sleep && !a.moving && style != DollStyle.Hidden) SleeperShown($"{a.who} asleep but drawn {style}: walking {walking} speed {d.speed:0.00} hidden {hidden} playing {playing} paired {paired} toddling {toddling} started {started} tower {d.atTower} drawn {d.drawn} target {target} slot {a.slot}"); // #696 diagnosis
             if (!walking && !hidden && !started && style == DollStyle.Lift && a.kind == ActivityKind.Prepare && a.place.kind == PlaceKind.Stash && a.prop == LifeProp.Basket) style = DollStyle.SortBasket; // sign-off 2026-11-14
             if (!walking && !hidden && !started && style == DollStyle.SitWeave && a.prop == LifeProp.Hide) style = DollStyle.Mend; // sign-off 2026-11-14: a bedroll mended

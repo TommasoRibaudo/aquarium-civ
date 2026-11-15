@@ -24,10 +24,10 @@ namespace AquariumCiv.View.PlayTests
         static SimCore Sim => GameClock.Instance.ActiveSim;
         static PeopleView People => PeopleView.Find();
 
-        IEnumerator Grown(float hour)
+        IEnumerator Grown(float hour, float years = 8f)
         {
             yield return OpenSlice(seed: Seed);
-            SimLayoutSource.DebugSkipYears(8f);
+            SimLayoutSource.DebugSkipYears(years);
             yield return null;
             var born = new List<Notable>();
             for (int i = 0; i < 4; i++) { var n = Sim.DebugBirth(); Assert.IsNotNull(n, "a grown-up to be a parent"); born.Add(n); }
@@ -48,7 +48,8 @@ namespace AquariumCiv.View.PlayTests
 
         static float DistToPlan(PeopleView pv, PersonActivity a, Vector2 at)
         {
-            if (!pv.Planner.Positions.TryGetPosition(a.place, out float px, out float pz)) return 0f;
+            // the planner's own point for them now (a tent's door and slot), else the place's middle
+            if (!pv.Planner.PositionAt(a.who, pv.Now, out float px, out float pz) && !pv.Planner.Positions.TryGetPosition(a.place, out px, out pz)) return 0f;
             return (new Vector2(px, pz) - at).magnitude;
         }
 
@@ -150,5 +151,76 @@ namespace AquariumCiv.View.PlayTests
 
         [UnityTest, Timeout(300000)]
         public IEnumerator NearBedtime_TheChaseEnds_AndTheKidsWalkIntoTheTent() { yield return ChaseThenWatch(true, 90f); }
+
+        /// <summary>#698, the long run: a year-18 camp across many days at x4, the chase cheat fired again each time the last chase has ended
+        /// ITSELF (no Clear), every kid checked every frame: hidden only when its plan is asleep or indoors and it is within 0.6 u of that
+        /// place; never a jump over 1.2 dt + 0.25 u. Hides by Drive itself (activity None, no position) are logged with their reason.</summary>
+        [UnityTest, Explicit, Category("ChaseLong"), Timeout(1500000)]
+        public IEnumerator ChaseLong_NoKidVanishesAcrossManyChases()
+        {
+            bool prefWas = GameClock.EcologyPref;
+            GameClock.EcologyPref = true;
+            var reasons = new List<string>();
+            PeopleView.HideReason = r => { if (reasons.Count < 400) reasons.Add(r); };
+            try
+            {
+                yield return Grown(8f, 17f);
+                var pv = People;
+                var rv = RabbitView.Instance;
+                foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f) }) EcoDebug.MistBig(x, z);
+                var kids = pv.Planner.People.Where(w => pv.Planner.StageOf(w) == LifeStage.Kid).ToList();
+                Assert.GreaterOrEqual(kids.Count, 2, "kids in the box");
+                PeopleView.DebugSetHour(6f);
+                PeopleView.DebugSpeed(4f);
+                var log = new System.Text.StringBuilder();
+                var last = new Dictionary<int, Vector2>(); var was = new Dictionary<int, bool>();
+                int chases = 0, frames = 0, checks = 0, natural = 0; float lastT = Time.realtimeSinceStartup; var hours = new HashSet<int>();
+                float deadline = Time.realtimeSinceStartup + 1380f;
+                while (chases < 8 && Time.realtimeSinceStartup < deadline)
+                {
+                    Debug.Log("[698 long] " + EcoDebug.AddRabbits(3));
+                    yield return Until(() => !rv.SignPlaying && rv.Shown >= 1, 10f);
+                    string said = KidPlayDirector.Debug(PlayGame.ChaseRabbits);
+                    if (!said.StartsWith("ChaseRabbits")) { Debug.Log("[698 long] no chase: " + said); for (int i = 0; i < 120; i++) yield return null; continue; }
+                    chases++; hours.Add((int)pv.Now.hour);
+                    Debug.Log($"[698 long] chase {chases} at {pv.Now.hour:0.0} h: {said}");
+                    var members = kids.Where(k => pv.KidPlay.GameOf(k.Key, out _) != null).ToList();
+                    bool ended = false;
+                    float chaseEnd = Time.realtimeSinceStartup + 75f;
+                    while (Time.realtimeSinceStartup < chaseEnd)
+                    {
+                        yield return null;
+                        frames++;
+                        float dt = Time.realtimeSinceStartup - lastT; lastT = Time.realtimeSinceStartup;
+                        foreach (var k in kids)
+                        {
+                            var a = ActOf(pv, k);
+                            bool shown = pv.TryGetDollTransform(k, out _);
+                            pv.TryGetDollPosition(k, out var pos);
+                            if (was.TryGetValue(k.Key, out var ws) && frames > 30)
+                            {
+                                checks++;
+                                if (shown && ws && (pos - last[k.Key]).magnitude > 1.2f * dt + 0.25f) log.AppendLine($"JUMP {k} {(pos - last[k.Key]).magnitude:0.00} u in {dt * 1000:0} ms at {pv.Now.hour:0.00} h, chase {chases}, act {a.kind} moving {a.moving}");
+                                if (ws && !shown)
+                                {
+                                    float d = DistToPlan(pv, a, last[k.Key]);
+                                    bool intent = a.kind is ActivityKind.Sleep or ActivityKind.Indoors && !a.moving;
+                                    if (!intent) log.AppendLine($"VANISH {k} at ({last[k.Key].x:0.00},{last[k.Key].y:0.00}), {d:0.00} u from its plan's place; act {a.kind} {(a.moving ? "moving" : "still")} at {a.place.kind}, hour {pv.Now.hour:0.00}, chase {chases}, in a game {pv.KidPlay.GameOf(k.Key, out _) != null}");
+                                }
+                            }
+                            was[k.Key] = shown; last[k.Key] = pos;
+                        }
+                        if (!ended && !members.Any(m => pv.KidPlay.GameOf(m.Key, out _) != null)) { ended = true; natural++; chaseEnd = Time.realtimeSinceStartup + 6f; } // watch 6 s after it ends itself
+                        if (frames % 600 == 0) Debug.Log($"[698 long] {frames} frames, chase {chases}, hour {pv.Now.hour:0.0}");
+                    }
+                    if (!ended) Debug.Log($"[698 long] chase {chases} had not ended after 75 s");
+                }
+                Debug.Log($"[698 long] DONE chases {chases} (ended by themselves {natural}), frames {frames}, kid-frame checks {checks}, hours of day covered {string.Join(",", hours.OrderBy(h => h))} / Hide reasons from Drive ({reasons.Count}): {string.Join(" | ", reasons.Distinct().Take(8))} / {log}");
+                Assert.IsEmpty(log.ToString(), "a kid vanished or jumped");
+                Assert.IsEmpty(reasons, "Drive drew a kid Hidden >0.5 u short of its target: " + string.Join(" | ", reasons.Distinct().Take(3)));
+                Assert.GreaterOrEqual(chases, 8, "enough chases ran");
+            }
+            finally { PeopleView.HideReason = null; PeopleView.DebugSpeed(1f); GameClock.EcologyPref = prefWas; }
+        }
     }
 }
