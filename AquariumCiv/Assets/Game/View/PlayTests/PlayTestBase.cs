@@ -360,7 +360,7 @@ namespace AquariumCiv.View.PlayTests
                                 fault = $"{name} point {p} at depth {v.z:0.0} is outside near {c.nearClipPlane:0.0} far {c.farClipPlane:0} ({Pose(c)})";
                         }
             }
-            Hull(box.transform.TransformPoint, new Vector3(-Land.HX - 0.25f, -0.3f, -Land.HZ - 0.25f), new Vector3(Land.HX + 0.25f, Land.GlassTop + 0.05f, Land.HZ + 0.25f), "the box");
+            Hull(box.transform.TransformPoint, new Vector3(-Land.HX - 0.25f, -0.3f, Land.ZMin - 0.25f), new Vector3(Land.HX + 0.25f, Land.GlassTop + 0.05f, Land.ZMax + 0.25f), "the box");
             var shelf = box.transform.Find("Shelf");
             if (shelf != null)
                 foreach (Transform t in shelf)

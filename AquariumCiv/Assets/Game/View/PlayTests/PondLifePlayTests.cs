@@ -142,9 +142,9 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(Mathf.Min(PondLife.MaxDucks, Sim.EcoDucksShown()), pl.WantedDucks, "the placed ducks");
             // tester 2026-11-08: a grown flock (8 after a ten-year jump) is drawn whole, not 2
             Sim.State.eco.ducks = 8;
-            yield return Until(() => pl.DucksShown >= 8, 5f);
-            Assert.AreEqual(8, pl.WantedDucks, "the pond wants the whole wild flock");
-            Assert.AreEqual(8, pl.DucksShown, "and shows it");
+            yield return Until(() => pl.DucksShown >= Mathf.Min(8, AquariumCiv.Sim.AnimalBudget.Ducks), 5f);
+            Assert.AreEqual(Mathf.Min(8, AquariumCiv.Sim.AnimalBudget.Ducks), pl.WantedDucks, "the pond wants the whole wild flock the budget allows (#658: the 6 x 6 box holds fewer animals)");
+            Assert.AreEqual(Mathf.Min(8, AquariumCiv.Sim.AnimalBudget.Ducks), pl.DucksShown, "and shows it");
             string msg = EcoDebug.DucksNow();
             yield return Until(() => pl.DucksShown > 0, 5f);
             Assert.Greater(pl.DucksShown, 0, msg);

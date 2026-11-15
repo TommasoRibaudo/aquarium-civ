@@ -285,6 +285,53 @@ namespace AquariumCiv.Game
             return on ? "a new barren box (living land on)" : "a new box (living land off)";
         }
 
+        // ---------- #658: see an old box grow ----------
+        /// <summary>#658 debug: turns the box you are playing into what a v3 save held (the first 44 rows of every per-cell array, the land
+        /// history cut the same way), then loads that as the active box, so <see cref="BoxGrid.Grow"/> pads the back 16 rows exactly as an old save
+        /// does. The village stays where it was; a bare strip lies at the back. The box is a new SimCore (its views rebuild).</summary>
+        public static string DebugGrowFrom44()
+        {
+            var c = Instance;
+            if (c == null || c.Session == null || c.Session.sim == null) return "no box";
+            var live = c.Session.sim;
+            if (live.State.settle == null || live.State.settle.flags == null) return "this box has no settlement yet";
+            int old = BoxGrid.OldN;
+            var s = JsonUtility.FromJson<SimState>(JsonUtility.ToJson(live.State));
+            T[] Cut<T>(T[] a) => a == null ? null : System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Take(a, old));
+            var t = s.settle; var e = s.eco;
+            t.flags = Cut(t.flags); t.tier = Cut(t.tier); t.wear = Cut(t.wear); t.dirC = Cut(t.dirC); t.dirS = Cut(t.dirS);
+            t.lot = Cut(t.lot); t.ring = Cut(t.ring); t.pathMonth = Cut(t.pathMonth);
+            if (e != null && e.on && e.cover != null)
+            {
+                e.cover = Cut(e.cover); e.soil = Cut(e.soil); e.moisture = Cut(e.moisture);
+                e.wet = Cut(e.wet); e.puddle = Cut(e.puddle); e.sprout = Cut(e.sprout); e.watered = Cut(e.watered);
+                if (e.seen != null) e.seen = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Take(e.seen, (old + 7) / 8));
+            }
+            if (s.history != null && s.history.land != null)
+                foreach (var step in s.history.land)
+                {
+                    var full = new byte[AquariumCiv.Sim.Settle.SiteMap.N];
+                    int p = 0; var rle = Convert.FromBase64String(step.cover);
+                    for (int i = 0; i + 1 < rle.Length; i += 2) for (int n = 0; n < rle[i + 1]; n++) if (p < full.Length) full[p++] = rle[i];
+                    var o = new System.Collections.Generic.List<byte>();
+                    for (int i = 0; i < old;)
+                    {
+                        byte v = full[i]; int n = 1;
+                        while (i + n < old && full[i + n] == v && n < 255) n++;
+                        o.Add(v); o.Add((byte)n); i += n;
+                    }
+                    step.cover = Convert.ToBase64String(o.ToArray());
+                }
+            var grown = new SimCore(c.config, s); // the constructor grows it (BoxGrid.Grow)
+            c.Session.sim = grown;
+            var box = c.Session.shelf?.Active;
+            if (box != null) box.state = grown.State;
+            c.Session.newWorld = false;
+            c.Save();
+            c.ViewChanged?.Invoke();
+            return $"the box was cut to {old} cells (44 rows) and grown back: a bare strip lies at the back ({AquariumCiv.Sim.Settle.SiteMap.N} cells now)";
+        }
+
         // ---------- reset (#95) ----------
         /// <summary>The player confirmed Reset: the active box is gone and a new world takes its place, with its first run. Finished boxes stay on the shelf.</summary>
         public void ResetBox(int seed = 0)

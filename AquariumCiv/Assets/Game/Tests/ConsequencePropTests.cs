@@ -64,7 +64,7 @@ namespace AquariumCiv.Tests
                     Assert.IsTrue(p.placed, $"{at} seed {seed}: within a game year");
                     Assert.LessOrEqual(p.placedMonth - d.endMonth, SimCore.PropWithinMonths, $"{at} seed {seed}");
                     Assert.LessOrEqual(System.Math.Abs(p.x), Terrain.HX - Terrain.GlassMargin + 0.001f);
-                    Assert.LessOrEqual(System.Math.Abs(p.z), Terrain.HZ - Terrain.GlassMargin + 0.001f);
+                    Assert.IsTrue(Terrain.InZ(p.z, Terrain.GlassMargin - 0.001f), "inside the glass front and back");
                     Assert.IsNull(sim.ConsequencePropFor(d.id, 1), "only the option taken leaves its thing");
                     Assert.IsTrue(p.keeper);
                 }
@@ -103,7 +103,7 @@ namespace AquariumCiv.Tests
             foreach (var p in sim.ConsequenceProps)
             {
                 Assert.LessOrEqual(System.Math.Abs(p.x), Terrain.HX - Terrain.GlassMargin + 0.001f, p.kind);
-                Assert.LessOrEqual(System.Math.Abs(p.z), Terrain.HZ - Terrain.GlassMargin + 0.001f, p.kind);
+                Assert.IsTrue(Terrain.InZ(p.z, Terrain.GlassMargin - 0.001f), p.kind);
             }
         }
 

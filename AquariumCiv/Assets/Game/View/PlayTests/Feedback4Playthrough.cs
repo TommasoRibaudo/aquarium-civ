@@ -86,7 +86,7 @@ namespace AquariumCiv.View.PlayTests
         static bool CameraInBox(BoxCamera r)
         {
             var p = r.transform.position;
-            return CameraGlass.CameraInsideBox(p.x, p.y, p.z, Land.HX + BoxCameraMath.HullSide, Land.HZ + BoxCameraMath.HullSide, BoxCameraMath.ShelfY, Land.GlassTop, 0.3f);
+            return CameraGlass.CameraInsideBox(p.x, p.y, p.z - Land.CZ, Land.HX + BoxCameraMath.HullSide, Land.HZ + BoxCameraMath.HullSide, BoxCameraMath.ShelfY, Land.GlassTop, 0.3f);
         }
 
         // ---------------------------------------------------------------- a) the free pan (#538)

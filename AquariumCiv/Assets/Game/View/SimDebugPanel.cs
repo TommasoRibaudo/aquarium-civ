@@ -135,7 +135,7 @@ namespace AquariumCiv.View
                     return cam.FlyToBuilding(bid) ? "flying to building #" + bid : "no spot for building #" + bid;
                 }
                 case "point": cam.FlyTo(new Vector3(x, 0f, z), 0.6f); return $"flying to ({x:0.0}, {z:0.0})";
-                case "overview": cam.FlyTo(Vector3.zero, 1f); return "flying to the overview";
+                case "overview": cam.FlyTo(new Vector3(0f, 0f, Land.CZ), 1f); return "flying to the overview";
             }
             return "unknown " + what;
         }

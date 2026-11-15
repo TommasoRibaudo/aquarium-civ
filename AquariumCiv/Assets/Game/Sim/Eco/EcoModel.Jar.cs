@@ -361,7 +361,7 @@ namespace AquariumCiv.Sim.Eco
         {
             float R = t.thicketRadius * (1f + t.thicketEdge * 0.5f) + 1e-4f; // the ragged edge's widest reach
             float cx = SiteMap.CXc(centre), cz = SiteMap.CZc(centre);
-            if (MathF.Abs(cx) > Terrain.HX - R || MathF.Abs(cz) > Terrain.HZ - R) return false;
+            if (MathF.Abs(cx) > Terrain.HX - R || !Terrain.InZ(cz, R)) return false;
             int reach = (int)MathF.Ceiling(R / SiteMap.Cell);
             int i0 = SiteMap.I(centre), j0 = SiteMap.J(centre);
             for (int j = j0 - reach; j <= j0 + reach; j++)

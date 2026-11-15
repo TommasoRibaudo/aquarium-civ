@@ -74,7 +74,7 @@ namespace AquariumCiv.Life.Tests
                 Assert.IsFalse(PondShore.InFutureWater(sim, x, z, FeatherPoleSpots.WaterMargin), $"seed {seed}: dry for good");
                 Assert.IsFalse(map.Forest(c));
                 Assert.LessOrEqual(System.Math.Abs(x), Terrain.HX - ApartSpots.GlassMargin + 1e-3f);
-                Assert.LessOrEqual(System.Math.Abs(z), Terrain.HZ - ApartSpots.GlassMargin + 1e-3f);
+                Assert.IsTrue(Terrain.InZ(z, ApartSpots.GlassMargin - 1e-3f));
             }
         }
 

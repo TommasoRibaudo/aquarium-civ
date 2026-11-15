@@ -240,7 +240,7 @@ namespace AquariumCiv.View.Tests
                         }
                         last[d] = p;
                         Assert.LessOrEqual(Mathf.Abs(p.x), Land.HX - 0.1f, d.name);
-                        Assert.LessOrEqual(Mathf.Abs(p.z), Land.HZ - 0.1f, d.name);
+                        Assert.IsTrue(Land.InZ(p.z, 0.1f), d.name);
                     }
                     foreach (var a in people.Activities)
                     {

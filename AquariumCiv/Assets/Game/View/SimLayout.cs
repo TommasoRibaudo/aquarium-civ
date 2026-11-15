@@ -628,7 +628,7 @@ namespace AquariumCiv.View
 
         static bool TreeSpot(SiteMap map, Vector2 p)
         {
-            if (Mathf.Abs(p.x) > Land.HX - 0.14f || Mathf.Abs(p.y) > Land.HZ - 0.14f) return false;
+            if (Mathf.Abs(p.x) > Land.HX - 0.14f || !Land.InZ(p.y, 0.14f)) return false;
             int c = SiteMap.CellAt(p.x, p.y);
             if (c < 0 || map.Water(c) || map.Green(c)) return false;
             // A crown is ~0.2 u across: no lot within two cells (tester #33: a hut squeezed into the woods), no path or
@@ -667,7 +667,7 @@ namespace AquariumCiv.View
             void V(Vector2 p, float yaw, Era e, int seed, bool kid = false, PropKind prop = PropKind.None, PropSlot slot = PropSlot.Hand)
             {
                 if (L.villagers.Count >= budget) return;
-                if (Mathf.Abs(p.x) > Land.HX - 0.12f || Mathf.Abs(p.y) > Land.HZ - 0.12f || st.WaterAt(p.x, p.y)) return;
+                if (Mathf.Abs(p.x) > Land.HX - 0.12f || !Land.InZ(p.y, 0.12f) || st.WaterAt(p.x, p.y)) return;
                 L.Villager(p, yaw, e, seed, kid, -1, prop, slot);
             }
             Era greenEra = eraOf(null);

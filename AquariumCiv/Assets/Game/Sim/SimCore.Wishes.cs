@@ -164,7 +164,7 @@ namespace AquariumCiv.Sim
             for (int i = 0; i < 40; i++)
             {
                 x = (WishRoll(10 + i * 2, n.id) * 2f - 1f) * mx;
-                z = (WishRoll(11 + i * 2, n.id) * 2f - 1f) * mz;
+                z = Terrain.CZ + (WishRoll(11 + i * 2, n.id) * 2f - 1f) * mz;
                 bool wet = WetSpot(spec, x, z);
                 if (wantWater) { if (wet) return; continue; }
                 if (wet) continue;
@@ -175,7 +175,7 @@ namespace AquariumCiv.Sim
 
         Wish RaiseWish(Notable n, string kind, float x, float z)
         {
-            string dir = Math.Abs(x) >= Math.Abs(z) ? (x >= 0 ? "east" : "west") : (z >= 0 ? "north" : "south");
+            string dir = Math.Abs(x) >= Math.Abs(z - Terrain.CZ) ? (x >= 0 ? "east" : "west") : (z >= Terrain.CZ ? "north" : "south");
             string thing = kind switch
             {
                 NudgeKind.Rain => $"rain on the {dir} fields",

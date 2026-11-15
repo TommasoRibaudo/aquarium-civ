@@ -44,7 +44,7 @@ namespace AquariumCiv.View
             float best = float.MaxValue, hx = Land.HX + HullSide, hz = Land.HZ + HullSide;
             for (int i = 0; i < 8; i++)
             {
-                var c = new Vector3((i & 1) == 0 ? -hx : hx, (i & 2) == 0 ? ShelfY : Land.GlassTop + 0.1f, (i & 4) == 0 ? -hz : hz);
+                var c = new Vector3((i & 1) == 0 ? -hx : hx, (i & 2) == 0 ? ShelfY : Land.GlassTop + 0.1f, Land.CZ + ((i & 4) == 0 ? -hz : hz));
                 best = Mathf.Min(best, Vector3.Dot(c - pos, forward));
             }
             return best;
@@ -78,7 +78,7 @@ namespace AquariumCiv.View
         public static Vector3 ClampFocus(Vector3 target, float zoom)
         {
             var b = PanBounds(zoom);
-            return new Vector3(Mathf.Clamp(target.x, -b.x, b.x), target.y, Mathf.Clamp(target.z, -b.y, b.y));
+            return new Vector3(Mathf.Clamp(target.x, -b.x, b.x), target.y, Land.CZ + Mathf.Clamp(target.z - Land.CZ, -b.y, b.y));
         }
 
         /// <summary>Tester feedback 3: the pivot (at height <paramref name="pivotY"/>) to look at so the screen's middle ray, at this yaw and
@@ -94,7 +94,7 @@ namespace AquariumCiv.View
 
         /// <summary>#273: the same, against bounds the caller already drew in for its pose (<see cref="PanBoundsFor"/>).</summary>
         public static Vector3 ClampFocus(Vector3 target, Vector2 bound)
-            => new Vector3(Mathf.Clamp(target.x, -bound.x, bound.x), target.y, Mathf.Clamp(target.z, -bound.y, bound.y));
+            => new Vector3(Mathf.Clamp(target.x, -bound.x, bound.x), target.y, Land.CZ + Mathf.Clamp(target.z - Land.CZ, -bound.y, bound.y));
 
         public static float YawDegrees(float pixels, float screenHeight) => pixels / Mathf.Max(1f, screenHeight) * YawPerScreen;
         public static float PitchDegrees(float pixels, float screenHeight) => pixels / Mathf.Max(1f, screenHeight) * PitchPerScreen;
@@ -197,7 +197,7 @@ namespace AquariumCiv.View
         /// <summary>k: a little at full-box zoom (#146), fully open by zoom 0.5.</summary>
         public static float PanK(float zoom) => CameraReach.PanK(zoom);
 
-        /// <summary>#273: the most the target may be off the box centre in x and z. The same at every zoom: the pivot rests up to the glass's inner face.</summary>
+        /// <summary>#273: the most the target may be off the box centre (x = 0, z = <see cref="Land.CZ"/>) in x and z: every bound here is an OFFSET from that centre (#658), so callers clamp (z - CZ). The same at every zoom: the pivot rests up to the glass's inner face.</summary>
         public static Vector2 PanBounds(float zoom)
         {
             CameraGlass.PanBounds(Land.HX, Land.HZ, out float x, out float z);

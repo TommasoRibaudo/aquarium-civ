@@ -664,7 +664,7 @@ namespace AquariumCiv.View
             bool gazing = !a.moving && !a.enRoute && !hidden && !hunting && !tenting && !playing && GazesAtCamera(a.kind, a.place.kind) && CameraPlanePoint(out camPlane);
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
             target.x = Mathf.Clamp(target.x, -Land.HX + rim, Land.HX - rim);
-            target.y = Mathf.Clamp(target.y, -Land.HZ + rim, Land.HZ - rim);
+            target.y = Land.ClampZ(target.y, rim);
 
             // Chase the target: walks are continuous already (the planner's route); taking a slot on arrival glides at a
             // walking pace, never faster than the walk itself. Unseen (indoors) or a clock jump: just be there. A plan that

@@ -84,10 +84,12 @@ namespace AquariumCiv.View.Shaping
 
         /// <summary>The box's walkable inside (the glass margin kept).</summary>
         public static float MaxX => Terrain.HX - Terrain.GlassMargin;
-        public static float MaxZ => Terrain.HZ - Terrain.GlassMargin;
+        public static float MaxZ => Terrain.ZMax - Terrain.GlassMargin;
+        /// <summary>#658: the front glass (the land is not centred on z = 0: it runs ZMin to ZMax).</summary>
+        public static float MinZ => Terrain.ZMin + Terrain.GlassMargin;
 
         public static float ClampX(float x) => Math.Max(-MaxX, Math.Min(MaxX, x));
-        public static float ClampZ(float z) => Math.Max(-MaxZ, Math.Min(MaxZ, z));
+        public static float ClampZ(float z) => Math.Max(MinZ, Math.Min(MaxZ, z));
 
         public HerdSpecies Species => SpeciesOf(variant, level);
 
@@ -225,7 +227,7 @@ namespace AquariumCiv.View.Shaping
             foreach (int c in Disc(x, z, r))
             {
                 float cx = SiteMap.CXc(c), cz = SiteMap.CZc(c);
-                if (Math.Abs(cx) > MaxX - 0.1f || Math.Abs(cz) > MaxZ - 0.1f) continue;
+                if (Math.Abs(cx) > MaxX - 0.1f || cz < MinZ + 0.1f || cz > MaxZ - 0.1f) continue;
                 if (map != null && (fish ? !map.pond[c] : map.Water(c) || map.slope[c] > 0.45f)) continue;
                 // Grazing spots keep a step from the shore, so a deer never stands in the water.
                 if (map != null && !fish && NearWater(map, cx, cz, ShapingTuning.HerdSpread + 0.08f)) { shore.Add(c); continue; }
@@ -254,11 +256,11 @@ namespace AquariumCiv.View.Shaping
                 }
             if (fish) { entryX = spots[0].x; entryZ = spots[0].z; return; }
             // Deer run in from the nearest box edge, straight towards the spot.
-            float dl = x + MaxX, dr = MaxX - x, db = z + MaxZ, df = MaxZ - z;
+            float dl = x + MaxX, dr = MaxX - x, db = z - MinZ, df = MaxZ - z;
             float m = Math.Min(Math.Min(dl, dr), Math.Min(db, df));
             if (m == dl) { entryX = -MaxX; entryZ = z; }
             else if (m == dr) { entryX = MaxX; entryZ = z; }
-            else if (m == db) { entryX = x; entryZ = -MaxZ; }
+            else if (m == db) { entryX = x; entryZ = MinZ; }
             else { entryX = x; entryZ = MaxZ; }
         }
 

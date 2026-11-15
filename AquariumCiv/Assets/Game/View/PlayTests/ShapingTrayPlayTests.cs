@@ -382,7 +382,7 @@ namespace AquariumCiv.View.PlayTests
             float stripTop = Screen.height - Ui.Q("shaping-wish-bar").worldBound.yMin * toPixels;
             float lowest = float.MaxValue;
             foreach (float x in new[] { -Land.HX, Land.HX })
-                foreach (float z in new[] { -Land.HZ, Land.HZ })
+                foreach (float z in new[] { Land.ZMin, Land.ZMax })
                     lowest = Mathf.Min(lowest, Sv.ScreenOf(x, z).y);
             Assert.Greater(lowest, stripTop, $"the land's lowest corner clears the strip at {w}");
             Assert.AreEqual(GameHud.Instance.Root.Q("hud-shape").resolvedStyle.visibility, Visibility.Hidden, "the tools leave the lane to it");

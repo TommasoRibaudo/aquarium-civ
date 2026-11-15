@@ -67,7 +67,7 @@ namespace AquariumCiv.View
                 if (box != null && box.Root != null)
                 {
                     var l = box.Root.InverseTransformPoint(at);
-                    float x = Mathf.Clamp(l.x, -Land.HX + 0.3f, Land.HX - 0.3f), z = Mathf.Clamp(l.z, -Land.HZ + 0.3f, Land.HZ - 0.3f);
+                    float x = Mathf.Clamp(l.x, -Land.HX + 0.3f, Land.HX - 0.3f), z = Land.ClampZ(l.z, 0.3f);
                     at = box.Root.TransformPoint(new Vector3(x, box.SurfaceHeight(x, z), z));
                 }
                 at += Vector3.up * 0.06f;

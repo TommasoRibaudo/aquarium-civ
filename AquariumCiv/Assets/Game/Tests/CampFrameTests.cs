@@ -9,7 +9,7 @@ namespace AquariumCiv.Tests
 {
     public class CampFrameTests
     {
-        const float HX = 3f, HZ = 2.2f, G = 1f;
+        const float HX = 3f, HZ = AquariumCiv.Sim.Settle.Terrain.HZ, CZ = AquariumCiv.Sim.Settle.Terrain.CZ, G = 1f; // #658: the land is 6 x 6, centred on z = CZ
         static readonly float TanV = (float)Math.Tan(11.0 * Math.PI / 180.0); // the slice camera's 22 degree lens
         /// <summary>Phones: 1179x2556 (the user's), 1080x1920 (the tester's second size).</summary>
         static readonly float[] Aspects = { 1179f / 2556f, 1080f / 1920f };
@@ -17,7 +17,7 @@ namespace AquariumCiv.Tests
         /// <summary>BoxCamera.FitDistance: the whole box across the screen's width.</summary>
         static float Fit(float aspect)
         {
-            float diag = (float)Math.Sqrt(3.3 * 3.3 + 1.7 * 1.7 + 2.5 * 2.5);
+            float diag = (float)Math.Sqrt(3.3 * 3.3 + 1.7 * 1.7 + (HZ + 0.3) * (HZ + 0.3));
             return diag / (TanV * Math.Min(1f, aspect));
         }
 
@@ -30,7 +30,7 @@ namespace AquariumCiv.Tests
         {
             var camp = new List<CampFrame.Point> { P(0.5f, -1.2f, 3f), P(0.85f, -1.0f), P(0.2f, -0.8f), P(0.9f, -1.6f) };
             var dolls = new List<CampFrame.Point> { P(0.6f, -1.1f), P(0.4f, -1.3f), P(0.7f, -0.9f), P(0.3f, -1.0f), P(2.6f, 1.8f) };
-            var f = CampFrame.Frame(camp, dolls, HX, HZ);
+            var f = CampFrame.Frame(camp, dolls, HX, HZ, CZ);
             Assert.AreEqual(CampFrame.Source.Camp, f.source, f.ToString());
             Assert.AreEqual(0.55f, f.x, 0.25f); Assert.AreEqual(-1.2f, f.z, 0.25f);
             foreach (var c in camp) Assert.LessOrEqual(Dist(c, f), f.radius, "every tent is in the frame: " + f);
@@ -43,7 +43,7 @@ namespace AquariumCiv.Tests
         {
             var camp = new List<CampFrame.Point> { P(-2f, -1.5f, 3f), P(-1.7f, -1.3f) };
             var dolls = new List<CampFrame.Point> { P(1.8f, 1.2f), P(2.0f, 1.4f), P(1.9f, 1.0f), P(2.2f, 1.3f), P(-2f, -1.4f) };
-            var f = CampFrame.Frame(camp, dolls, HX, HZ);
+            var f = CampFrame.Frame(camp, dolls, HX, HZ, CZ);
             Assert.AreEqual(CampFrame.Source.Group, f.source, "fire and group don't fit one frame: the group wins: " + f);
             Assert.AreEqual(2.0f, f.x, 0.3f); Assert.AreEqual(1.2f, f.z, 0.3f);
         }
@@ -52,28 +52,28 @@ namespace AquariumCiv.Tests
         public void Frame_NoCamp_FramesTheGroup_AndNobody_TheBox()
         {
             var dolls = new List<CampFrame.Point> { P(-1f, 0.5f), P(-1.2f, 0.7f), P(-0.9f, 0.3f), P(2.5f, -1.9f) };
-            var f = CampFrame.Frame(new List<CampFrame.Point>(), dolls, HX, HZ);
+            var f = CampFrame.Frame(new List<CampFrame.Point>(), dolls, HX, HZ, CZ);
             Assert.AreEqual(CampFrame.Source.Group, f.source);
             Assert.AreEqual(-1.05f, f.x, 0.2f); Assert.AreEqual(0.5f, f.z, 0.2f);
-            var none = CampFrame.Frame(null, null, HX, HZ);
+            var none = CampFrame.Frame(null, null, HX, HZ, CZ);
             Assert.AreEqual(CampFrame.Source.Box, none.source);
-            Assert.AreEqual(0f, none.x); Assert.AreEqual(0f, none.z);
+            Assert.AreEqual(0f, none.x); Assert.AreEqual(CZ, none.z);
         }
 
         [Test]
         public void Frame_IsStable_ASmallShuffleOfFeetBarelyMovesIt_AndItStaysInsideTheLand()
         {
-            var camp = new List<CampFrame.Point> { P(2.9f, 2.1f, 3f), P(2.6f, 1.9f) }; // in the far corner
+            var camp = new List<CampFrame.Point> { P(2.9f, 3.6f, 3f), P(2.6f, 3.4f) }; // in the far back corner (#658: the back glass is at 3.8)
             var dolls = new List<CampFrame.Point>();
-            for (int i = 0; i < 8; i++) dolls.Add(P(2.7f + 0.1f * (i % 3), 1.8f + 0.1f * (i / 3)));
-            var a = CampFrame.Frame(camp, dolls, HX, HZ);
+            for (int i = 0; i < 8; i++) dolls.Add(P(2.7f + 0.1f * (i % 3), 3.3f + 0.1f * (i / 3)));
+            var a = CampFrame.Frame(camp, dolls, HX, HZ, CZ);
             var moved = new List<CampFrame.Point>();
             for (int i = 0; i < dolls.Count; i++) moved.Add(P(dolls[i].x + (i % 2 == 0 ? 0.03f : -0.03f), dolls[i].z + (i % 3 == 0 ? 0.03f : -0.02f)));
-            var b = CampFrame.Frame(camp, moved, HX, HZ);
+            var b = CampFrame.Frame(camp, moved, HX, HZ, CZ);
             Assert.Less(Math.Abs(a.x - b.x) + Math.Abs(a.z - b.z), 0.1f, $"{a} vs {b}");
-            Assert.AreEqual(a.ToString(), CampFrame.Frame(camp, dolls, HX, HZ).ToString(), "the same box gives the same frame");
+            Assert.AreEqual(a.ToString(), CampFrame.Frame(camp, dolls, HX, HZ, CZ).ToString(), "the same box gives the same frame");
             Assert.LessOrEqual(Math.Abs(a.x), HX - CampFrame.EdgeInset + 1e-4f);
-            Assert.LessOrEqual(Math.Abs(a.z), HZ - CampFrame.EdgeInset + 1e-4f);
+            Assert.LessOrEqual(Math.Abs(a.z - CZ), HZ - CampFrame.EdgeInset + 1e-4f);
         }
 
         // ---------------------------------------------------------------- the zoom
@@ -188,7 +188,7 @@ namespace AquariumCiv.Tests
         {
             var camp = new List<CampFrame.Point> { P(0f, 0f, 3f), P(1.0f, 0.3f), P(-1.0f, -0.4f), P(0.2f, 1.1f) };
             var dolls = new List<CampFrame.Point> { P(0.1f, 0.1f), P(0.3f, -0.2f), P(-0.2f, 0.3f), P(0.5f, 0.5f), P(-0.6f, -0.1f), P(1.9f, 1.0f), P(-1.8f, -1.2f) };
-            var f = CampFrame.Frame(camp, dolls, HX, HZ);
+            var f = CampFrame.Frame(camp, dolls, HX, HZ, CZ);
             Assert.LessOrEqual(f.radius, CampFrame.MaxRadius + 1e-4f, f.ToString());
             Assert.LessOrEqual(Dist(camp[0], f), f.radius, "the fire is in");
             for (int i = 0; i < 5; i++) Assert.LessOrEqual(Dist(dolls[i], f), f.radius, $"doll {i} at the fire is in: {f}");

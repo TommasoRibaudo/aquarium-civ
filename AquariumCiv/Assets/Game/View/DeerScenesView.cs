@@ -142,7 +142,7 @@ namespace AquariumCiv.View
                 if (away.sqrMagnitude < 1e-4f) away = Vector2.right;
                 away.Normalize();
                 float tx = whiteAt.x + away.x * LeaveRun, tz = whiteAt.z + away.y * LeaveRun;
-                tx = Mathf.Clamp(tx, -Land.HX + 0.15f, Land.HX - 0.15f); tz = Mathf.Clamp(tz, -Land.HZ + 0.15f, Land.HZ - 0.15f);
+                tx = Mathf.Clamp(tx, -Land.HX + 0.15f, Land.HX - 0.15f); tz = Land.ClampZ(tz, 0.15f);
                 leaveTo = box.land.OnGround(tx, tz);
             }
             lastState = state;
@@ -226,7 +226,7 @@ namespace AquariumCiv.View
                 if (v.magnitude >= MinOut) break;
                 if (v.sqrMagnitude < 1e-4f) v = Vector2.right;
                 v = v.normalized * (MinOut + 0.05f);
-                bx = Mathf.Clamp(fx + v.x, -Land.HX + 0.15f, Land.HX - 0.15f); bz = Mathf.Clamp(fz + v.y, -Land.HZ + 0.15f, Land.HZ - 0.15f);
+                bx = Mathf.Clamp(fx + v.x, -Land.HX + 0.15f, Land.HX - 0.15f); bz = Land.ClampZ(fz + v.y, 0.15f);
             }
             whiteAt = box.land.OnGround(bx, bz);
         }

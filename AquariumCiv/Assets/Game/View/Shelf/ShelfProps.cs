@@ -120,7 +120,7 @@ namespace AquariumCiv.View
         {
             var mb = new MeshBuilder(11) { jitter = 0.02f };
             float hx = Land.HX, hz = Land.HZ;
-            mb.Box(new Vector3(0, 0.06f, 0), new Vector3(hx * 2 + 0.3f, 0.12f, hz * 2 + 0.3f), Palette.Timber);
+            mb.Box(new Vector3(0, 0.06f, Land.CZ), new Vector3(hx * 2 + 0.3f, 0.12f, hz * 2 + 0.3f), Palette.Timber);
             Color top, under;
             switch (setting)
             {
@@ -129,8 +129,8 @@ namespace AquariumCiv.View
                 default: top = Palette.GrassA; under = Palette.Loam; break;
             }
             float slab = 0.9f * fill;
-            mb.Box(new Vector3(0, 0.12f + slab * 0.5f, 0), new Vector3(hx * 2, slab, hz * 2), under);
-            mb.Box(new Vector3(0, 0.12f + slab, 0), new Vector3(hx * 2 - 0.02f, 0.06f, hz * 2 - 0.02f), top);
+            mb.Box(new Vector3(0, 0.12f + slab * 0.5f, Land.CZ), new Vector3(hx * 2, slab, hz * 2), under);
+            mb.Box(new Vector3(0, 0.12f + slab, Land.CZ), new Vector3(hx * 2 - 0.02f, 0.06f, hz * 2 - 0.02f), top);
             float gy0 = 0.12f + slab;
             if (setting == BoxSetting.DesertOasis)
             {
@@ -147,11 +147,11 @@ namespace AquariumCiv.View
             float gy = Land.GlassTop;
             foreach (var sx in new[] { -1, 1 })
                 foreach (var sz in new[] { -1, 1 })
-                    mb.Box(new Vector3(sx * hx, gy * 0.5f, sz * hz), new Vector3(0.05f, gy, 0.05f), Palette.Frame);
-            mb.Box(new Vector3(0, gy, hz), new Vector3(hx * 2, 0.05f, 0.05f), Palette.Frame);
-            mb.Box(new Vector3(0, gy, -hz), new Vector3(hx * 2, 0.05f, 0.05f), Palette.Frame);
-            mb.Box(new Vector3(hx, gy, 0), new Vector3(0.05f, 0.05f, hz * 2), Palette.Frame);
-            mb.Box(new Vector3(-hx, gy, 0), new Vector3(0.05f, 0.05f, hz * 2), Palette.Frame);
+                    mb.Box(new Vector3(sx * hx, gy * 0.5f, Land.CZ + sz * hz), new Vector3(0.05f, gy, 0.05f), Palette.Frame);
+            mb.Box(new Vector3(0, gy, Land.ZMax), new Vector3(hx * 2, 0.05f, 0.05f), Palette.Frame);
+            mb.Box(new Vector3(0, gy, Land.ZMin), new Vector3(hx * 2, 0.05f, 0.05f), Palette.Frame);
+            mb.Box(new Vector3(hx, gy, Land.CZ), new Vector3(0.05f, 0.05f, hz * 2), Palette.Frame);
+            mb.Box(new Vector3(-hx, gy, Land.CZ), new Vector3(0.05f, 0.05f, hz * 2), Palette.Frame);
             var go = new GameObject("Body") { hideFlags = HideFlags.DontSave };
             go.transform.SetParent(parent, false);
             go.AddComponent<MeshFilter>().sharedMesh = mb.ToMesh("ShelfBoxBody");
@@ -199,14 +199,14 @@ namespace AquariumCiv.View
             var d = new GameObject("Museum" + b.index) { hideFlags = HideFlags.DontSave }.transform;
             d.SetParent(parent != null ? parent : root, false);
             d.localPosition = new Vector3(x, 0f, 0f);
-            float hz = Land.HZ;
+            float zBack = Land.ZMax, zFront = Land.ZMin; // #658: the back and front glass
             var mb = new MeshBuilder(21) { jitter = 0.01f };
-            mb.Box(new Vector3(0, 1.8f, hz + 0.35f), new Vector3(0.07f, 3.6f, 0.07f), PegDoll.Brass);
-            mb.Box(new Vector3(0, 3.55f, hz + 0.1f), new Vector3(0.07f, 0.07f, 0.6f), PegDoll.Brass);
+            mb.Box(new Vector3(0, 1.8f, zBack + 0.35f), new Vector3(0.07f, 3.6f, 0.07f), PegDoll.Brass);
+            mb.Box(new Vector3(0, 3.55f, zBack + 0.1f), new Vector3(0.07f, 0.07f, 0.6f), PegDoll.Brass);
             Part(d, "LampArm", mb.ToMesh("MuseumLamp"), Vector3.zero);
             var bulbMb = new MeshBuilder(22) { jitter = 0f };
             bulbMb.Ico(Vector3.zero, 0.13f, Vector3.one, Palette.Lamp, 0f);
-            var bulb = Part(d, "LampBulb", bulbMb.ToMesh("MuseumBulb"), new Vector3(0, 3.42f, hz - 0.1f));
+            var bulb = Part(d, "LampBulb", bulbMb.ToMesh("MuseumBulb"), new Vector3(0, 3.42f, zBack - 0.1f));
             var light = new GameObject("LampLight") { hideFlags = HideFlags.DontSave };
             light.transform.SetParent(bulb, false);
             var l = light.AddComponent<Light>();
@@ -216,7 +216,7 @@ namespace AquariumCiv.View
             // the brass plate on the base's front edge
             var pm = new MeshBuilder(23) { jitter = 0.005f };
             pm.Box(Vector3.zero, new Vector3(PlateW, PlateH, 0.06f), PegDoll.Brass);
-            var plate = Part(d, "Plate", pm.ToMesh("MuseumPlate"), new Vector3(0, 0.05f + PlateH * 0.5f, -hz - 0.3f));
+            var plate = Part(d, "Plate", pm.ToMesh("MuseumPlate"), new Vector3(0, 0.05f + PlateH * 0.5f, zFront - 0.3f));
             plate.localRotation = Quaternion.Euler(14f, 0, 0);
             string text = PlateLines(b);
             var tm = new GameObject("PlateText") { hideFlags = HideFlags.DontSave };
@@ -237,7 +237,7 @@ namespace AquariumCiv.View
                 var m2 = new MeshBuilder(30 + i) { jitter = 0.01f };
                 m2.Prism(Vector3.zero, 0.3f, 0.26f, 0.42f, 8, Palette.Plinth, topCol: Palette.PlinthTop);
                 Relic(m2, pl[i].relicId, 0.42f);
-                Part(d, "Plinth_" + pl[i].relicId, m2.ToMesh("Plinth"), new Vector3(px, 0.02f, -hz - 1.5f));
+                Part(d, "Plinth_" + pl[i].relicId, m2.ToMesh("Plinth"), new Vector3(px, 0.02f, zFront - 1.5f));
             }
             return d;
         }
@@ -345,7 +345,7 @@ namespace AquariumCiv.View
             }
             t = Mathf.Max(0.001f, Mathf.Clamp01(t));
             ruler.localScale = new Vector3(len * t, 1f, 1f);
-            ruler.localPosition = new Vector3(Land.HX + 0.1f + len * t * 0.5f, 0.95f, 0f);
+            ruler.localPosition = new Vector3(Land.HX + 0.1f + len * t * 0.5f, 0.95f, Land.CZ);
         }
 
         /// <summary>The founders as small peg dolls with bundles, standing at the old box's right edge.</summary>
@@ -373,7 +373,7 @@ namespace AquariumCiv.View
             float delay = i * 0.07f;
             float k = Mathf.Clamp01((u - delay) / (1f - delay));
             float mid = (i - (founders.Count - 1) * 0.5f);
-            float z = mid * Mathf.Lerp(0.3f, 0.5f, k);
+            float z = Land.CZ + mid * Mathf.Lerp(0.3f, 0.5f, k);
             founders[i].transform.localPosition = new Vector3(Mathf.Lerp(x0, x1, k), 0.95f, z);
             founders[i].transform.localRotation = Quaternion.Euler(0, k > 0f && k < 1f ? 90f : 180f, 0);
         }

@@ -166,18 +166,19 @@ namespace AquariumCiv.View
             float ground = at.y;
             if (!crumbPlanned)
             {
-                crumbPlan = CrumbFall.For(crumb.cause, crumbArrival, cx, cz, halfW, halfD, top - ground, sim.State.seed);
+                crumbPlan = CrumbFall.For(crumb.cause, crumbArrival, cx, cz - Land.CZ, halfW, halfD, top - ground, sim.State.seed);
                 crumbPlanned = true;
             }
             crumbDrop += dt;
             CrumbFall.At(crumbPlan, crumbDrop, out float x, out float y, out float z);
+            z += Land.CZ; // #658: the fall is planned round the box centre
             // The lump is wide: its middle stops that far inside the glass, while the mark stays where the plan's point is.
-            at = new Vector3(Mathf.Clamp(x, -halfW + CrumbClear, halfW - CrumbClear), ground + y, Mathf.Clamp(z, -halfD + CrumbClear, halfD - CrumbClear));
+            at = new Vector3(Mathf.Clamp(x, -halfW + CrumbClear, halfW - CrumbClear), ground + y, Mathf.Clamp(z, Land.CZ - halfD + CrumbClear, Land.CZ + halfD - CrumbClear));
             if (!crumbHit && crumbDrop >= crumbPlan.hitAt)
             {
                 crumbHit = true;
                 Sfx.Play(CueLibrary.Thump);
-                care?.Smudge(crumbPlan.wall, new Vector3(crumbPlan.hitX, ground + crumbPlan.hitY, crumbPlan.hitZ), crumbPlan.smudgeRadius, crumbPlan.smudgeStrength);
+                care?.Smudge(crumbPlan.wall, new Vector3(crumbPlan.hitX, ground + crumbPlan.hitY, crumbPlan.hitZ + Land.CZ), crumbPlan.smudgeRadius, crumbPlan.smudgeStrength);
                 // #210: bits break off where it hit; they cling to the glass, fall off it and scatter.
                 crumbBits = CrumbFall.Bits(crumbPlan, sim.State.seed);
                 crumbBitsT = crumbDrop - crumbPlan.hitAt;
@@ -232,6 +233,7 @@ namespace AquariumCiv.View
             {
                 var t = crumbBitParts[i];
                 CrumbFall.BitAt(crumbBits[i], crumbBitsT, halfW, halfD, out float x, out float y, out float z, out float flat, out float scale, out float yaw);
+                z += Land.CZ; // #658
                 bool on = !done && scale > 0.01f;
                 if (t.gameObject.activeSelf != on) t.gameObject.SetActive(on);
                 if (!on) continue;

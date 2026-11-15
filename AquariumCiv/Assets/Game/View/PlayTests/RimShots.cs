@@ -54,10 +54,15 @@ namespace AquariumCiv.View.PlayTests
             float y = v.Max(q => q.y), worst = float.MinValue; int checkedN = 0;
             foreach (var q in v)
             {
-                if (Mathf.Abs(q.x) >= Land.HX - 0.005f || Mathf.Abs(q.z) >= Land.HZ - 0.005f) continue; // on the glass: it runs on to the pane
+                if (Mathf.Abs(q.x) >= Land.HX - 0.005f || !Land.InZ(q.z, 0.005f)) continue; // on the glass: it runs on to the pane
                 if (q.y < y - 0.001f) continue; // a wall's foot
                 checkedN++;
                 worst = Mathf.Max(worst, box.land.Height(q.x, q.z));
+            }
+            foreach (var q in v)
+            {
+                Assert.LessOrEqual(Mathf.Abs(q.x), Land.HX + BoxView.WaterFace + 1e-4f, tag + ": no water past the land's edge (x)");
+                Assert.That(q.z, Is.InRange(Land.ZMin - BoxView.WaterFace - 1e-4f, Land.ZMax + BoxView.WaterFace + 1e-4f), tag + ": no water past the land's edge (z)");
             }
             Log($"{tag}: {checkedN} water vertices off the glass, highest ground under one {worst:0.000} vs level {y:0.000} (margin {BoxView.RimMargin})");
             Assert.Less(worst, y - BoxView.RimMargin + 0.001f, tag + ": water ends inside the bank");
@@ -84,7 +89,7 @@ namespace AquariumCiv.View.PlayTests
             Vector2 front = cells.OrderBy(p => p.y).First();
             Vector2 side = cells.OrderByDescending(p => p.x).First();
             Vector2 centre = new Vector2(cells.Average(p => p.x), cells.Average(p => p.y));
-            Vector2 glass = cells.OrderBy(p => Mathf.Min(Land.HX - Mathf.Abs(p.x), Land.HZ - Mathf.Abs(p.y))).First();
+            Vector2 glass = cells.OrderBy(p => Mathf.Min(Land.HX - Mathf.Abs(p.x), Land.GlassGapZ(p.y))).First();
             var spots = new List<(string, Vector2, float, float, float)> { ("a_whole", centre, Rig.Home.yaw, 50f, 0.32f), ("b_front", front, Rig.Home.yaw, 35f, 0.14f), ("c_side", side, Rig.Home.yaw + 40f, 35f, 0.14f) };
             if (wantGlass) spots.Add(("d_glass", glass, Rig.Home.yaw, 35f, 0.14f));
             foreach (var (n, at, yaw, pitch, zoom) in spots)
@@ -116,6 +121,55 @@ namespace AquariumCiv.View.PlayTests
             PondIce.Force = true;
             yield return new WaitForSecondsRealtime(4f);
             yield return Pond(Dir, "2ice", box, true);
+            PondIce.Force = null;
+            File.WriteAllText(Shots + Dir + "log.txt", log.ToString());
+        }
+
+        /// <summary>#701 round 2: the pond at the nearest pane from the walkthrough's camera and the default view, with each renderer toggled off in turn.</summary>
+        [UnityTest, Timeout(900000), Category("Rim701b")]
+        public IEnumerator GlassShots()
+        {
+            string Dir = "701b/" + (System.Environment.GetEnvironmentVariable("RIM_TAG") ?? "x") + "/";
+            Directory.CreateDirectory(Shots + Dir);
+            yield return Stage();
+            var box = Object.FindAnyObjectByType<BoxView>();
+            EcoDebug.WaterBreaksNow();
+            yield return new WaitForSecondsRealtime(12f);
+            EcoDebug.PondDries();
+            yield return new WaitForSecondsRealtime(1f);
+            EcoDebug.WaterBreaksNow();
+            yield return new WaitForSecondsRealtime(12f);
+            PondIce.Force = false;
+            yield return new WaitForSecondsRealtime(1.5f);
+            var cells = WaterCells(box);
+            Log($"{Sim.EcoPondCells} pond cells");
+            var glass = cells.OrderBy(p => Mathf.Min(Land.HX - Mathf.Abs(p.x), Land.GlassGapZ(p.y))).First();
+            Log("glass cell " + glass);
+            var edge = glass;
+            if (Land.HX - Mathf.Abs(glass.x) < Land.GlassGapZ(glass.y)) edge.x = Mathf.Sign(glass.x) * (Land.HX - 0.02f); else edge.y = Land.CZ + Mathf.Sign(glass.y - Land.CZ) * (Land.HZ - 0.02f);
+            foreach (var r in box.GetComponentsInChildren<MeshRenderer>(true))
+                if (r.enabled && r.gameObject.activeInHierarchy && !r.name.StartsWith("Chunk") && !r.name.StartsWith("Live")) Log("renderer " + r.name + " " + (r.sharedMaterial != null ? r.sharedMaterial.name + " q" + r.sharedMaterial.renderQueue : "-") + " b=" + r.bounds.center + r.bounds.size);
+            float yawSide = Rig.Home.yaw;
+            Rig.minZoom = 0.02f;
+            // the walkthrough's view (yaw square to the pane)
+            float yaw = Mathf.Abs(glass.x) > Mathf.Abs(glass.y - Land.CZ) * 1.0f && Land.HX - Mathf.Abs(glass.x) < Land.GlassGapZ(glass.y) ? (glass.x > 0 ? 90f : -90f) : (glass.y < Land.CZ ? 0f : 180f);
+            Log("yaw " + yaw + " home " + yawSide);
+            IEnumerator Both(string tag)
+            {
+                yield return Frame(box, edge, yawSide, 52f, 0.2f); yield return new WaitForSecondsRealtime(0.4f); yield return Shot(Dir + tag + "_walk_home");
+                yield return Frame(box, edge, yaw, 52f, 0.2f); yield return new WaitForSecondsRealtime(0.4f); yield return Shot(Dir + tag + "_walk_square");
+                yield return Frame(box, edge, yaw, 35f, 0.08f); yield return new WaitForSecondsRealtime(0.4f); yield return Shot(Dir + tag + "_low_square");
+                Rig.GoHome(0.01f); yield return new WaitForSecondsRealtime(1.5f); yield return Shot(Dir + tag + "_default");
+            }
+            yield return Both("a");
+            foreach (var nm in (System.Environment.GetEnvironmentVariable("RIM_OFF") ?? "Water,DampEarth,DampSheen,GlassFront,GlassBack,GlassLeft,GlassRight,Lid,Frame,Base").Split(','))
+            {
+                var rs = box.GetComponentsInChildren<MeshRenderer>(true).Where(r => r.name == nm).ToList();
+                Log("off " + nm + ": " + rs.Count);
+                foreach (var r in rs) r.enabled = false;
+                yield return Frame(box, edge, yaw, 52f, 0.2f); yield return new WaitForSecondsRealtime(0.4f); yield return Shot(Dir + "off_" + nm);
+                foreach (var r in rs) r.enabled = true;
+            }
             PondIce.Force = null;
             File.WriteAllText(Shots + Dir + "log.txt", log.ToString());
         }

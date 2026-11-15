@@ -97,7 +97,7 @@ namespace AquariumCiv.View
                 float ang = (a0 + b * (360f / n) + (H(c, 42 + b) - 0.5f) * 50f) * Mathf.Deg2Rad;
                 float d = (0.19f + 0.10f * H(c, 46 + b)) * s;
                 var q = p + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * d;
-                if (Mathf.Abs(q.x) > AquariumCiv.Sim.Settle.Terrain.HX - AquariumCiv.Sim.Settle.Terrain.GlassMargin || Mathf.Abs(q.y) > AquariumCiv.Sim.Settle.Terrain.HZ - AquariumCiv.Sim.Settle.Terrain.GlassMargin) continue;
+                if (!AquariumCiv.Sim.Settle.Terrain.InBox(q.x, q.y, AquariumCiv.Sim.Settle.Terrain.GlassMargin)) continue;
                 if (!Free(q, 0.025f, near)) continue;
                 var ib = MeshBuilder.Rent(seed * 7919 + c * 104729 + (20 + b) * 15485863);
                 int variant = (int)(H(c, 50 + b) * 3.99f);
@@ -220,6 +220,11 @@ namespace AquariumCiv.View
         /// and are 2 cm thick.</summary>
         public const float GlassInner = 0.062f;
 
+        /// <summary>#701 round 2: where the pond's sheet and its face at a pane end: 4 mm proud of the land's edge (the soil cut), not out at the
+        /// glass. The water stands on the cut face like the land does, so nothing of it hangs past the dug edge and the pane's own
+        /// thickness reads the same beside water as beside land.</summary>
+        public const float WaterFace = 0.004f;
+
         /// <summary>The pond: a flat sheet at the water level over the water cells and their neighbours; the ground above the
         /// water hides the sheet's square edge, so the shoreline is where the land meets the level. Where the water reaches the
         /// box's edge the sheet runs on to the glass (clamped there) and a wall of water stands from the ground up to the level,
@@ -244,7 +249,7 @@ namespace AquariumCiv.View
             if (ec.pondCells > 0)
             {
                 float y = ec.waterY, h = Site.Cell * 0.5f + 0.003f;
-                float HX = Land.HX, HZ = Land.HZ;
+                float HX = Land.HX;
                 for (int c = 0; c < Site.N; c++)
                 {
                     if (!ec.NearWater(c)) continue;
@@ -259,21 +264,21 @@ namespace AquariumCiv.View
                         {
                             float x0 = x - h + si * step, x1 = x0 + step, z0 = z - h + sj * step, z1 = z0 + step;
                             bool eL = i == 0 && si == 0 && land.Height(-HX + 0.001f, (z0 + z1) * 0.5f) < y, eR = i == Site.NX - 1 && si == Sub - 1 && land.Height(HX - 0.001f, (z0 + z1) * 0.5f) < y;
-                            bool eF = j == 0 && sj == 0 && land.Height((x0 + x1) * 0.5f, -HZ + 0.001f) < y, eB = j == Site.NZ - 1 && sj == Sub - 1 && land.Height((x0 + x1) * 0.5f, HZ - 0.001f) < y;
+                            bool eF = j == 0 && sj == 0 && land.Height((x0 + x1) * 0.5f, Land.ZMin + 0.001f) < y, eB = j == Site.NZ - 1 && sj == Sub - 1 && land.Height((x0 + x1) * 0.5f, Land.ZMax - 0.001f) < y;
                             if (!WaterPieceUnder(x0, z0, x1, z1)) continue; // at the glass too: the piece against the pane still ends inside the bank
-                            // At the box's edge the sheet goes on to the glass where the ground there is under the water, and no further.
-                            if (eL) x0 = -HX - GlassInner; if (eR) x1 = HX + GlassInner;
-                            if (eF) z0 = -HZ - GlassInner; if (eB) z1 = HZ + GlassInner;
-                            x0 = Mathf.Max(x0, -HX - GlassInner); x1 = Mathf.Min(x1, HX + GlassInner);
-                            z0 = Mathf.Max(z0, -HZ - GlassInner); z1 = Mathf.Min(z1, HZ + GlassInner);
+                            // At the box's edge the sheet ends on the soil cut's face (4 mm proud), where the ground there is under the water.
+                            if (eL) x0 = -HX - WaterFace; if (eR) x1 = HX + WaterFace;
+                            if (eF) z0 = Land.ZMin - WaterFace; if (eB) z1 = Land.ZMax + WaterFace;
+                            x0 = Mathf.Max(x0, -HX - WaterFace); x1 = Mathf.Min(x1, HX + WaterFace);
+                            z0 = Mathf.Max(z0, Land.ZMin - WaterFace); z1 = Mathf.Min(z1, Land.ZMax + WaterFace);
                             float depth = ec.waterY - land.Height((x0 + x1) * 0.5f, (z0 + z1) * 0.5f);
                             var col = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01(depth / 0.12f));
                             QuadUp(mb, new Vector3(x0, y, z0), new Vector3(x0, y, z1), new Vector3(x1, y, z1), new Vector3(x1, y, z0), col);
                             // The wall at the glass, seen through the pane: from the ground at the edge up to the level.
-                            if (eL) WaterWall(mb, new Vector2(-HX, z0), new Vector2(-HX, z1), -HX - GlassInner, new Vector3(-1, 0, 0), y, co);
-                            if (eR) WaterWall(mb, new Vector2(HX, z0), new Vector2(HX, z1), HX + GlassInner, new Vector3(1, 0, 0), y, co);
-                            if (eF) WaterWall(mb, new Vector2(x0, -HZ), new Vector2(x1, -HZ), -HZ - GlassInner, new Vector3(0, 0, -1), y, co);
-                            if (eB) WaterWall(mb, new Vector2(x0, HZ), new Vector2(x1, HZ), HZ + GlassInner, new Vector3(0, 0, 1), y, co);
+                            if (eL) WaterWall(mb, new Vector2(-HX, z0), new Vector2(-HX, z1), -HX - WaterFace, new Vector3(-1, 0, 0), y, co);
+                            if (eR) WaterWall(mb, new Vector2(HX, z0), new Vector2(HX, z1), HX + WaterFace, new Vector3(1, 0, 0), y, co);
+                            if (eF) WaterWall(mb, new Vector2(x0, Land.ZMin), new Vector2(x1, Land.ZMin), Land.ZMin - WaterFace, new Vector3(0, 0, -1), y, co);
+                            if (eB) WaterWall(mb, new Vector2(x0, Land.ZMax), new Vector2(x1, Land.ZMax), Land.ZMax + WaterFace, new Vector3(0, 0, 1), y, co);
                         }
                 }
             }
@@ -351,8 +356,8 @@ namespace AquariumCiv.View
         /// down, and reaches the top of the cut where the pond surfaces.</summary>
         Mesh EcoTableMesh()
         {
-            float HX = Land.HX, HZ = Land.HZ, table = layout.eco.tableY;
-            var corners = new[] { new Vector2(-HX, -HZ), new Vector2(HX, -HZ), new Vector2(HX, HZ), new Vector2(-HX, HZ) };
+            float HX = Land.HX, table = layout.eco.tableY;
+            var corners = new[] { new Vector2(-HX, Land.ZMin), new Vector2(HX, Land.ZMin), new Vector2(HX, Land.ZMax), new Vector2(-HX, Land.ZMax) };
             // The heights the damp is sampled at: coarse far under the table, fine around the fade.
             var ys = new List<float> { 0f };
             float lo = Mathf.Max(0.05f, table - 0.3f), hi = table + 0.12f;
