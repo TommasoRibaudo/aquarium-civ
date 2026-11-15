@@ -36,8 +36,8 @@ Picked: open Polish issues with a clear Done-when, no `needs:user`, not out of s
 - [x] #684 (merged; not fixed before: stroke ended at the ground; live stance still to watch) axe meets the trunk (user: probably fixed; check first, close if so)
 - [x] #561 (merged; call: Skip all dismisses the stack) Skip all clears the History dot (check still true first)
 - [x] #638 (merged; test drags started off the glass) TelemetryPlayTests finger wipe (90-min time box)
-- [ ] #562 small UI tidy from tester run 4 (check each still true)
-- [ ] #563 Keeper's dilemmas card and bar polish (check each still true)
+- [x] #562 (merged: lone-word captions balanced; 6 already fine, 2 not reproducible; tablet hint not checked) small UI tidy from tester run 4 (check each still true)
+- [x] #563 (merged: own icons, dots shrink, trait speaker named, toast above the bar; callback sheet height left for the user) Keeper's dilemmas card and bar polish (check each still true)
 Skipped: #560/#672 (built in #678, waiting for a phone check), #660–#662 (inside #668), needs:user and design issues, P10.
 
 ## Log
