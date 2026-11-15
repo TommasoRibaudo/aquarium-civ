@@ -372,6 +372,9 @@ namespace AquariumCiv.View
                         if (dv.Scarers.Count > 0) { dv.Scarers.Clear(); last = Done("nobody by the deer"); }
                         else if (dv.TryGetDeer(0, out var d0, out _)) { dv.Scarers.Add(new Vector2(d0.x + 0.25f, d0.z)); last = Done("someone stands by the deer: heads up, then they walk off"); }
                     }
+                    // #699: a deer on a path straight through the fire (it should go round, and keep its shy distance)
+                    if (dv != null && GUILayout.Button("Deer at the camp (#699)"))
+                        last = Done(sim.Config.settle && dv.DebugAcrossTheFire(sim.EcoGround.campX, sim.EcoGround.campZ) ? "a deer sets off across the camp: it should go round the fire" : "no deer shown or no camp");
                     if (sim.WolvesPlaced && GUILayout.Button("Wolves: first howl again")) { sim.State.eco.firstHowlHeard = false; last = Done("the first howl plays at the next dusk"); }
                     GUILayout.EndHorizontal();
                     var sdv = StoryDirectorView.Instance;

@@ -48,6 +48,8 @@ namespace AquariumCiv.Sim.Eco
             readonly List<int> drinks = new List<int>();
             readonly List<int> alive = new List<int>();
             int seed, home = -1, nextId, stags = 1;
+            bool[] keepOff;                  // #699: the cells the deer never step on (a copy of Refresh's blocked)
+            float campX, campZ, campR;       // #699: the camp's fire and how far the deer keep from it (0 = no camp)
 
             public int Seed => seed;
             public int HomeCell => home;
@@ -66,6 +68,7 @@ namespace AquariumCiv.Sim.Eco
             public void Refresh(byte[] cover, EcoLand land, int seed, int homeCell, int stagCount = 1, bool[] blocked = null)
             {
                 this.seed = seed; home = homeCell; stags = Math.Max(0, stagCount);
+                if (blocked == null) keepOff = null; else { if (keepOff == null || keepOff.Length != blocked.Length) keepOff = new bool[blocked.Length]; Array.Copy(blocked, keepOff, blocked.Length); }
                 range.Clear(); drinks.Clear();
                 if (cover == null || homeCell < 0 || homeCell >= cover.Length) return;
                 float hx = SiteMap.CXc(homeCell), hz = SiteMap.CZc(homeCell);
@@ -93,6 +96,66 @@ namespace AquariumCiv.Sim.Eco
                 }
                 edge.Sort((a, b) => { int k = a.d.CompareTo(b.d); return k != 0 ? k : a.c.CompareTo(b.c); });
                 for (int k = 0; k < edge.Count && k < 6; k++) drinks.Add(edge[k].c);
+            }
+
+            /// <summary>#699: the camp's fire and the shy distance the deer keep from it (the fire ring, the racks, the pot and the seats
+            /// all stand inside it). With <see cref="Refresh"/>'s blocked cells (lots, the tents) this is what <see cref="Steer"/> keeps off.</summary>
+            public void SetCamp(float fireX, float fireZ, float keepRadius)
+            {
+                campX = fireX; campZ = fireZ; campR = Math.Max(0f, keepRadius);
+                // the ring is the fire's own keep-off: the cell test is for the lots and tents outside it (a deer sliding along the ring must not be stopped by a cell it only touches)
+                if (keepOff != null) for (int c = 0; c < keepOff.Length; c++) if (keepOff[c] && Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), campX, campZ) < campR) keepOff[c] = false;
+            }
+            public float CampRadius => campR;
+
+            /// <summary>Is (x, z) ground the deer keep off: a blocked cell (a lot, a tent) or inside the camp's shy ring?</summary>
+            public bool KeptOff(float x, float z)
+            {
+                if (campR > 0f && Terrain.Dist(x, z, campX, campZ) < campR) return true;
+                int c = SiteMap.CellAt(x, z);
+                return keepOff != null && c >= 0 && keepOff[c];
+            }
+
+            /// <summary>#699: one step of a deer's walk, kept off the camp. A deer at (px, pz) that would step to (nx, nz) is turned along the
+            /// fire's shy ring (it goes round, never over the fire; <paramref name="salt"/> picks the side when it heads straight at it) and
+            /// slid along the edge of a blocked cell (a tent, a lot) instead of into it. A deer already inside may still walk out.
+            /// True when the step was changed.</summary>
+            public bool Steer(float px, float pz, ref float nx, ref float nz, int salt)
+            {
+                bool changed = false;
+                if (campR > 0f)
+                {
+                    float rx = nx - campX, rz = nz - campZ, len = MathF.Sqrt(rx * rx + rz * rz);
+                    float prev = Terrain.Dist(px, pz, campX, campZ);
+                    if (len < campR && len < prev + 1e-5f)
+                    {
+                        float vx = nx - px, vz = nz - pz, vl = MathF.Sqrt(vx * vx + vz * vz);
+                        float ux, uz;
+                        if (len < 1e-4f) { ux = vl > 1e-6f ? -vz / vl : 1f; uz = vl > 1e-6f ? vx / vl : 0f; }
+                        else { ux = rx / len; uz = rz / len; }
+                        float cross = ux * vz - uz * vx;
+                        float side = cross >= 0f ? 1f : -1f;
+                        if (MathF.Abs(cross) < 0.15f * vl) side = (salt & 1) == 0 ? 1f : -1f; // straight at it: a side of its own
+                        // slide along the ring toward the side, a step long, then back onto the ring
+                        float ex = campX + ux * campR - uz * side * vl, ez = campZ + uz * campR + ux * side * vl;
+                        float fx = ex - campX, fz = ez - campZ, fl = MathF.Sqrt(fx * fx + fz * fz);
+                        nx = campX + fx / fl * (campR + 0.002f); nz = campZ + fz / fl * (campR + 0.002f);
+                        changed = true;
+                    }
+                }
+                if (keepOff != null)
+                {
+                    int cn = SiteMap.CellAt(nx, nz), cp = SiteMap.CellAt(px, pz);
+                    if (cn >= 0 && keepOff[cn] && !(cp >= 0 && keepOff[cp]))
+                    {
+                        int cxn = SiteMap.CellAt(nx, pz), czn = SiteMap.CellAt(px, nz);
+                        if (cxn < 0 || !keepOff[cxn]) { nz = pz; }
+                        else if (czn < 0 || !keepOff[czn]) { nx = px; }
+                        else { nx = px; nz = pz; }
+                        changed = true;
+                    }
+                }
+                return changed;
             }
 
             static bool NearTree(byte[] cover, int c)
