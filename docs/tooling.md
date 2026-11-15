@@ -865,3 +865,11 @@ before the capture (`CancelFlight` + set + `Apply`), and wait for `LifeArrivalVi
 `auto-results.md` is written when the run starts (the header), so `until [ -f auto-results.md ]` returns after the first stop. Wait
 for the last stop's row instead (`grep -q "^| 22\." auto-results.md`). The AUTO range is read once at the start, so deleting AUTO
 mid-run is safe.
+
+### 2026-11-14 — checking a new doll move and prop without guessing
+AnimBench clip (scratchpad JSON, `style` + `prop`/`slot`, an object for the target) → `bash Tools/AnimBench/run.sh <clip> --no-video`
+for timing; `bash Tools/animlab.sh queue <clip>` + `render` for the game's real dolls and props (AnimLab draws no Front-slot props
+and keeps a basket in the right hand: judge those in play). A prop mesh alone: render `PegDoll.PropMesh(kind)` with an ortho camera
+into a RenderTexture from `script eval` (scratchpad `proprender.cs`). In-game close looks: a sign-off stop extra that steps the hours
+until someone does the activity, with the panel folded. The Life test assembly takes ~9 min in the Editor: run it offline with
+`dotnet test Tools/SimTests` instead.
