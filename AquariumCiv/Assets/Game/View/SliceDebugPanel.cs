@@ -424,11 +424,11 @@ namespace AquariumCiv.View
             if (Btn("Long sitting")) last = EveningTalkView.DebugLongSitting();
             EndRow();
             Row();
-            foreach (var kind in new[] { AquariumCiv.Sim.ThreadSource.Era, AquariumCiv.Sim.ThreadSource.Seat, AquariumCiv.Sim.ThreadSource.Couple, AquariumCiv.Sim.ThreadSource.Gift })
+            foreach (var kind in new[] { AquariumCiv.Sim.ThreadSource.Era, AquariumCiv.Sim.ThreadSource.Seat, AquariumCiv.Sim.ThreadSource.Couple }) // #718: no gift teaser
                 if (Btn(kind)) { last = EveningTalkView.DebugTeaser(kind); DebugDock.Active = DebugDock.None; }
             EndRow();
             Row();
-            foreach (var kind in new[] { AquariumCiv.Sim.ThreadSource.Rivalry, AquariumCiv.Sim.ThreadSource.Office, AquariumCiv.Sim.ThreadSource.Slice })
+            foreach (var kind in new[] { AquariumCiv.Sim.ThreadSource.Rivalry, AquariumCiv.Sim.ThreadSource.Office }) // #715: no slice-of-life teaser
                 if (Btn(kind)) { last = EveningTalkView.DebugTeaser(kind); DebugDock.Active = DebugDock.None; }
             EndRow();
             // The small book (#80): earn every page, open it.

@@ -199,7 +199,7 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator EachTeaserKindIsForcedFromTheDebugHook()
         {
             yield return Quiet();
-            foreach (var kind in new[] { ThreadSource.Era, ThreadSource.Seat, ThreadSource.Couple, ThreadSource.Gift, ThreadSource.Rivalry, ThreadSource.Slice })
+            foreach (var kind in new[] { ThreadSource.Era, ThreadSource.Seat, ThreadSource.Couple, ThreadSource.Rivalry }) // #715: no slice teaser; #718: no gift teaser
             {
                 string said = EveningTalkView.DebugTeaser(kind);
                 Assert.IsTrue(Talk.Open, kind + ": " + said);

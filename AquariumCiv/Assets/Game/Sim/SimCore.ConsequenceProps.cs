@@ -11,13 +11,16 @@ namespace AquariumCiv.Sim
     {
         public const string Feather = "feather", Baskets = "baskets", WoodpileRoof = "woodpile_roof", NameStone = "name_stone",
             CharmPole = "charm_pole", StewPot = "stew_pot", AxeStump = "axe_stump", Staff = "staff", FlourSacks = "flour_sacks",
-            RoofBird = "roof_bird", LongTable = "long_table", OfferingBasket = "offering_basket", GoatFence = "goat_fence",
+            RoofBird = "roof_bird", LongTable = "long_table", OfferingBasket = "offering_basket", ShoreBoat = "shore_boat",
             FishCrate = "fish_crate", NamePeg = "name_peg";
+
+        /// <summary>#714: the pond family's goat pen of old saves; it loads as <see cref="ShoreBoat"/> (EnsureDilemmaState).</summary>
+        public const string LegacyGoatFence = "goat_fence";
 
         public static readonly string[] All =
         {
             Feather, Baskets, WoodpileRoof, NameStone, CharmPole, StewPot, AxeStump, Staff, FlourSacks, RoofBird, LongTable,
-            OfferingBasket, GoatFence, FishCrate, NamePeg,
+            OfferingBasket, ShoreBoat, FishCrate, NamePeg,
         };
     }
 

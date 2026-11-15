@@ -154,16 +154,9 @@ namespace AquariumCiv.View
                     mb.Prism(new Vector3(0f, 0.04f, 0f), 0.055f, 0.07f, 0.07f, 8, Palette.Thatch, topCol: Palette.Straw);
                     mb.Ico(new Vector3(0f, 0.12f, 0f), 0.05f, new Vector3(1f, 0.5f, 1f), Palette.Accents[3], 0.08f);
                     break;
-                case ConsequenceKind.GoatFence: // a little pen of rails, gnawed at one corner
-                    foreach (int s in new[] { -1, 1 })
-                    {
-                        mb.Box(new Vector3(0f, 0.05f, s * 0.12f), new Vector3(0.26f, 0.012f, 0.012f), Palette.Bark);
-                        mb.Box(new Vector3(0f, 0.09f, s * 0.12f), new Vector3(0.26f, 0.012f, 0.012f), Palette.Bark);
-                        mb.Box(new Vector3(s * 0.13f, 0.05f, 0f), new Vector3(0.012f, 0.012f, 0.24f), Palette.WoodLight);
-                        foreach (int t in new[] { -1, 1 }) mb.Box(new Vector3(s * 0.13f, 0.05f, t * 0.12f), new Vector3(0.02f, 0.11f, 0.02f), Palette.Timber);
-                    }
-                    mb.Ico(new Vector3(0f, 0.04f, 0f), 0.05f, new Vector3(1.3f, 0.9f, 0.8f), Palette.Plaster, 0.06f);
-                    mb.Ico(new Vector3(0.07f, 0.08f, 0f), 0.025f, Vector3.one, Palette.Plaster, 0.05f);
+                case ConsequenceKind.ShoreBoat: // #714 [est, Editor pass]: the pond family's boat, upside down by the fire (a placeholder hull)
+                    mb.Ico(new Vector3(0f, 0.035f, 0f), 0.1f, new Vector3(1.6f, 0.4f, 0.6f), Palette.Bark, 0.04f);
+                    mb.Box(new Vector3(0f, 0.075f, 0f), new Vector3(0.28f, 0.012f, 0.014f), Palette.Timber); // the keel, on top
                     break;
                 case ConsequenceKind.FishCrate: // a crate with fish on the near shore
                     mb.Box(new Vector3(0f, 0.035f, 0f), new Vector3(0.16f, 0.07f, 0.1f), Palette.WoodLight);

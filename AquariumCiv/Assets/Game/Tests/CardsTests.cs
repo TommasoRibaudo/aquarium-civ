@@ -295,23 +295,6 @@ namespace AquariumCiv.Tests
             Assert.IsNull(sim.CurrentTeaser);
         }
 
-        [Test]
-        public void AnUnansweredGiftIsTeasedAndItsAnswerPaysOff()
-        {
-            var sim = Quiet(11);
-            var nudge = sim.PlaceNudge(SimCore.NudgeKind.Rain, 3);
-            var t = sim.OpenTeaserThread();
-            Assert.AreEqual(ThreadSource.Gift, t.source);
-            Assert.AreEqual("The gatherers keep checking the wet ground.", t.teaser);
-            long since = sim.State.month;
-            for (int m = 0; m < SimCore.NudgeMonths && !nudge.credited; m++) sim.Step();
-            Assert.IsTrue(nudge.credited);
-            var card = sim.ReturnCards(since, 24).cards.Single(c => c.paysOffTeaser);
-            Assert.AreEqual(CardKind.Keeper, card.kind);
-            Assert.AreEqual(nudge.buildingId, card.buildingId);
-            Assert.AreEqual(t.teaser, card.teaser);
-        }
-
         [TestCase(1)]
         [TestCase(7)]
         [TestCase(77)]
@@ -327,7 +310,7 @@ namespace AquariumCiv.Tests
                                   string.Join(", ", teasers.GroupBy(t => t.source).Select(g => $"{g.Key} {g.Count()}")));
             foreach (var t in paid.Take(6)) TestContext.WriteLine($"  \"{t.teaser}\" -> {sim.State.chronicle.First(e => e.id == t.payoffEntryId).text}");
 
-            Assert.Greater(said.Count, 90);
+            Assert.Greater(said.Count, 60); // #715: with nothing pending there is no teaser (the slice-of-life lines are gone)
             Assert.Greater(paid.Count, 0, "something teased came true");
             for (int i = 1; i < said.Count; i++) Assert.AreNotEqual(said[i - 1].line, said[i].line, "never the same one twice in a row");
             Assert.IsFalse(said.Any(x => x.era < Era.Town && x.line.ToLowerInvariant().Contains("glass")), "the people don't say glass before the town");
@@ -415,23 +398,6 @@ namespace AquariumCiv.Tests
             return texts;
         }
 
-        [Test]
-        public void TheFourLinesWaitForTheTown()
-        {
-            var sim = NewSim(21);
-            var camp = ForcedStories(sim, 120);
-            sim.ForceNextEra();
-            var village = ForcedStories(sim, 120);
-            sim.ForceNextEra();
-            var town = ForcedStories(sim, 200);
-
-            foreach (var line in camp.Concat(village))
-                foreach (var k in KnowTooMuch) StringAssert.DoesNotContain(k, line);
-            var early = camp.Concat(village).ToList();
-            foreach (var s in StandIns) Assert.IsTrue(early.Any(l => l.Contains(s)), $"stand-in told before the town: {s}");
-            foreach (var k in KnowTooMuch) Assert.IsTrue(town.Any(l => l.Contains(k)), $"told in the town: {k}");
-            Assert.IsFalse(early.Any(l => l.Contains("Keeper's lamp")));
-        }
 
         [TestCase(1)]
         [TestCase(7)]
@@ -453,19 +419,6 @@ namespace AquariumCiv.Tests
             Assert.Greater(early, 20);
         }
 
-        [Test]
-        public void TheStrangeLightIsTheKeepersLampOnceTheLampIsUsed()
-        {
-            var sim = NewSim(4);
-            sim.KeeperLampUsed();
-            foreach (var n in sim.State.notables) n.alive = false; // fewer options: the world's events come up more
-            for (int i = 0; i < 300 && !sim.State.chronicle.Any(e => e.kind == "strange_light"); i++)
-            {
-                sim.ForceStory();
-                sim.State.month += 21 * SimConfig.MonthsPerYear;
-            }
-            StringAssert.Contains("Keeper's lamp", sim.State.chronicle.Last(e => e.kind == "strange_light").text);
-        }
 
         // ---------- the economy, and saves ----------
         [TestCase(1)]
@@ -479,7 +432,7 @@ namespace AquariumCiv.Tests
             Watched(off, 120);
             Watched(on, 120, s => { s.OpenTeaser(); s.ReturnCards(s.State.month - 12, 1); });
             Assert.AreEqual(Era.Town, on.State.era);
-            Assert.Greater(on.State.threads.Count, 40); // #61: term lines rest longer once told, so fewer office teasers pay off and reopen
+            Assert.Greater(on.State.threads.Count, 30); // #715: fewer stories, fewer threads. #61: term lines rest longer once told, so fewer office teasers pay off and reopen
 
             // Same runtime: the economy, the dice and the notables are identical.
             Assert.AreEqual(JobTests.Economy(off.State), JobTests.Economy(on.State), "economy, dice and notables");

@@ -136,11 +136,13 @@ namespace AquariumCiv.Sim
 
         /// <summary>Good, neutral or sad, by story kind (§2.2: from the table, never the text). Unknown kinds are neutral.</summary>
         public static CardTone ToneOf(string kind) =>
-            KindTable.TryGetValue(kind ?? "", out var k) ? k.tone : kind != null && (kind.StartsWith("role_") || kind.StartsWith("term_")) ? CardTone.Good : CardTone.Neutral;
+            KindTable.TryGetValue(kind ?? "", out var k) ? k.tone : kind != null && (kind.StartsWith("role_") || kind.StartsWith("term_") || kind.StartsWith("ritual_")) ? CardTone.Good : CardTone.Neutral;
 
         /// <summary>The kind group: cards of the same group already chosen cost −0.15 each. "hidden" is never a card.</summary>
         public static string GroupOf(string kind) =>
-            KindTable.TryGetValue(kind ?? "", out var k) ? k.group : kind == null ? "other" : kind.StartsWith("role_") ? "role" : kind.StartsWith("term_") ? "office" : "other";
+            KindTable.TryGetValue(kind ?? "", out var k) ? k.group : kind == null ? "other" : kind.StartsWith("role_") ? "role" : kind.StartsWith("term_") ? "office"
+            : kind.StartsWith("ritual_") ? (Array.IndexOf(RitualKind.All, kind.Substring(7)) >= 0 ? "custom" : "hidden") // #721: a ritual is a card the first time only
+            : "other";
 
         /// <summary>§2.2 step 1: never a card: came of age, job changes under 0.5.</summary>
         public static bool ShownAsCard(ChronicleEntry e) =>
@@ -704,28 +706,14 @@ namespace AquariumCiv.Sim
                 break;
             }
 
-            // A gift not yet answered.
-            var gift = s.nudges.Where(n => !n.credited && s.month - n.month < NudgeMonths).OrderBy(n => n.id).FirstOrDefault();
-            if (gift != null)
-                yield return (ThreadSource.Gift, gift.kind switch
-                {
-                    NudgeKind.Grove => "People keep walking out to look at the new trees.",
-                    NudgeKind.Channel => "Everyone keeps going down to look at the new water.",
-                    // #61: every gift had the rain's line ("the gatherers", in a town, about an outcrop).
-                    NudgeKind.Herd => "People keep walking out to look at the new animals.",
-                    NudgeKind.Lamp => "Everyone keeps stopping to stand in the new light.",
-                    NudgeKind.Outcrop => "The craftsfolk keep going out to tap the new rock.",
-                    NudgeKind.Spring => "Everyone keeps going down to taste the new spring.",
-                    NudgeKind.DyeMeadow => "People keep walking through the new flowers, looking thoughtful.",
-                    _ => s.era == Era.Camp ? "The gatherers keep checking the wet ground." : "The farmers keep checking the wet ground.",
-                }, -1, -1, gift.id, "");
+            // #718: no gift teaser (shaping-only text, deleted)
 
             // A rivalry.
             foreach (var a in adults)
             {
                 var b = Alive(a.rivalId);
                 if (b == null || b.id < a.id || b.rivalId != a.id) continue;
-                yield return (ThreadSource.Rivalry, $"{a.FullName} and {b.FullName} aren't speaking again.", a.id, b.id, -1, "");
+                yield return (ThreadSource.Rivalry, $"{a.FullName} and {b.FullName} aren't speaking{(QuarrelledBefore(a.id, b.id) ? " again" : "")}.", a.id, b.id, -1, ""); // #715
                 break;
             }
 
@@ -733,51 +721,23 @@ namespace AquariumCiv.Sim
             string office = OfficeTeaser(out var holder);
             if (office != null) yield return (ThreadSource.Office, office, holder.id, -1, -1, "");
 
-            // Nothing pending: a slice of life in the people's own words for their glass stage (§5). Takes turns.
-            // Stage 3 says "glass" only once the Lens is set up (decisions 2026-10-29, #58; #61): its early lines are the wall.
-            var lines = GlassStage == 3 && !GlassNudged ? EarlyTownSliceLines : SliceLines[GlassStage - 1];
-            int told = s.threads.Count(t => t.source == ThreadSource.Slice);
-            var kid = adults.Count == 0 ? null : adults[told % adults.Count];
-            string line = lines[told % lines.Length].Replace("{0}", kid?.FullName ?? "Someone").Replace("{1}", seat);
-            yield return (ThreadSource.Slice, line, kid?.id ?? -1, -1, -1, "");
+            // #715 (research 21): nothing pending, no teaser. The 16 "slice of life" lines are gone: a teaser that nothing pays off
+            // is a broken promise, and the close uses its fixed line instead.
         }
 
-        /// <summary>Slices of life by glass stage (decisions 2026-10-29: camp, a bit scared of the glass; village, they play
-        /// with it and look for you; town, the scholars study it). Never "glass" before the town (Choice 10).</summary>
-        static readonly string[][] SliceLines =
+        /// <summary>#715: these two have quarrelled before (an earlier rivalry between them, or they made up once): the teaser may
+        /// say "again". No dice.</summary>
+        bool QuarrelledBefore(int a, int b)
         {
-            new[]
+            int rows = 0;
+            foreach (var e in State.chronicle)
             {
-                "The kids are building a raft.",
-                "The children dared each other to touch the edge of the sky. Nobody did.",
-                "{0} keeps looking up at the bright sky, then hurrying back to the {1}.",
-                "Someone heard a hum from the sky last night. Everyone slept close to the {1}.",
-            },
-            new[]
-            {
-                "The kids keep waving at the window, in case the Keeper waves back.",
-                "{0} swears the Keeper smiled at the new roof.",
-                "The children are playing Keeper-says at the {1}. The Keeper always wins.",
-                "The elders say the Keeper likes the new mill. Nobody knows how they know.",
-            },
-            new[]
-            {
-                "The astronomers have asked for a bigger lens.",
-                "{0} measured the glass again. It is still there, and still glass.",
-                "The scholars argue at the {1}: one Keeper, or many?",
-                "{0} has drawn a map with four edges. Each says: here be glass.",
-            },
-        };
-
-        /// <summary>Stage 3 before the Lens (relics-and-glass-voice.md line bank 29–31): the scholars study "the wall"; nobody
-        /// says glass, and there is no lens to ask a bigger one of.</summary>
-        static readonly string[] EarlyTownSliceLines =
-        {
-            "The scholars say the wall is not sky. It is a thing, and things can be measured.",
-            "{0} wants to measure the Keeper. The priest wants them to ask first.",
-            "The scholars argue at the {1}: one Keeper, or many?",
-            "{0} says if there's a room out there, there's a market out there.",
-        };
+                if (!(e.notableId == a && e.otherNotableId == b || e.notableId == b && e.otherNotableId == a)) continue;
+                if (e.kind == "reconcile") return true;
+                if (e.kind == "rivalry" && ++rows > 1) return true;
+            }
+            return false;
+        }
 
         // ---------- the glass stage ----------
         /// <summary>How the people understand the glass (§5.2, decisions 2026-10-29): 1 = the sky wall (camp: they gather

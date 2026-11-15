@@ -274,6 +274,7 @@ namespace AquariumCiv.Tests
             var lord = sim.Lord;
             Assert.IsNotNull(lord);
             // The lord has two grown children: the eldest inherits, the younger leads the founders.
+            foreach (var n in sim.State.notables) if (n.parentId == lord.id) n.parentId = -1; // #715: the box's own children of the lord vary with the story stream; this test sets its own two
             var heir = sim.DebugBirth(); heir.parentId = lord.id; heir.age = 24f; heir.lifespan = 200f;
             var younger = sim.DebugBirth(); younger.parentId = lord.id; younger.age = 19f; younger.lifespan = 200f;
             Assert.IsTrue(sim.ForcePeakReady());

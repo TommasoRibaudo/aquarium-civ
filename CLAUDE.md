@@ -71,6 +71,7 @@ Every time something runs in Unity (open, recompile, eval, tests, builds, import
   Their animations are **specced first and signed off by the user** (spec in `docs/design/animation-specs.md`, then
   the clip in the AnimLab review) before they merge.
 - Judge player-facing work against `docs/game-design-practices.md` (the design docs still win).
+- Player-facing text (choices, stories, bubbles) follows `docs/design/writing-events.md`: checklist, style guide, cast of things.
 - Editor helper tools live in `Assets/Editor/Agent/`.
 - Free assets only for now (KayKit CC0, Kenney CC0). Record source + license of every imported pack in `docs/assets-log.md`.
 - Unity CLI is beta: don't run `unity self-update`, `unity bug`, or plugin installs without asking.

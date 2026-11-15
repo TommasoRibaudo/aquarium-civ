@@ -44,20 +44,14 @@ namespace AquariumCiv.Sim
         public string land = "";            // #578: where the words put it ("woods", "meadow" or "pond"; "" = the woods), fixed when it is raised
         public string nameA = "", nameB = ""; // #372: a small choice's two offered words ({n1}, {n2}); empty = none
         public int deadId = -1;             // #635: a choice about the lost names the latest death when it was raised ({dead}); -1 = none
+        public string strangerA = "", strangerB = ""; // #714: the strangers' first names, fixed when it is raised ({t1}, {t2}); they are the ones made on the answer
+        public int youngA = -1, youngB = -1; // #714: the two young people the ask names ({y1}, {y2}); -1 = none
 
         /// <summary>The person option <paramref name="i"/> points at (-1 = none).</summary>
         public int PersonOf(int i) => i == 0 ? personA : i == 1 ? personB : -1;
         public int BuildingOf(int i) => i == 0 ? buildingA : i == 1 ? buildingB : -1;
     }
 
-    /// <summary>A lean an answer left on the box, like a nudge's (SimCore.Nudges.cs) but without a shaping behind it.</summary>
-    [Serializable]
-    public class DilemmaLean
-    {
-        public int lean;                    // (int)SimCore.Lean
-        public long fromMonth, untilMonth;
-        public int dilemmaId;
-    }
 
     /// <summary>What the view reads for one option: the words and the person or place it points at.</summary>
     public sealed class DilemmaOptionView
@@ -132,24 +126,18 @@ namespace AquariumCiv.Sim
         {
             var s = State;
             s.dilemmas ??= new List<Dilemma>();
-            s.dilemmaLeans ??= new List<DilemmaLean>();
             s.dilemmaCallbacks ??= new List<DilemmaCallback>();
             s.customs ??= new List<string>();
             s.apartGroups ??= new List<ApartGroup>();
             s.consequenceProps ??= new List<ConsequenceProp>();
             if (s.dilemmaNextId < 1) s.dilemmaNextId = 1;
+            // #714: an old save's goat pen is the pond family's boat now (the old leans in a save are ignored on load)
+            foreach (var p in s.consequenceProps) if (p.kind == ConsequenceKind.LegacyGoatFence) p.kind = ConsequenceKind.ShoreBoat;
         }
 
         /// <summary>True when a custom set by an answer is on the box ("burial:stone").</summary>
         public bool HasCustom(string key) => State.customs.Contains(key);
 
-        bool DilemmaLeaning(Lean l)
-        {
-            var ls = State.dilemmaLeans;
-            if (ls.Count == 0) return false;
-            foreach (var x in ls) if (x.lean == (int)l && State.month < x.untilMonth) return true;
-            return false;
-        }
 
         // ---------- hashes (no dice) ----------
         float DilemmaRoll(int salt, int id, long month)
@@ -212,6 +200,7 @@ namespace AquariumCiv.Sim
             ApartStep(); // the people who live apart age even if the switch is turned off later (nothing when there are none)
             if (!Config.dilemmas) return;
             CallbackStep(); // no dice: one due callback per month
+            RitualStep(); // #721: the kept rituals, each in its season (no dice)
             var open = OpenDilemma;
             if (open != null)
             {
@@ -347,6 +336,8 @@ namespace AquariumCiv.Sim
             if (State.era < def.minEra || State.era > def.maxEra) return "not in this era";
             if (!string.IsNullOrEmpty(def.needs) && !Has(def.needs)) return "a building it needs is missing";
             if (def.needsDeath && !AnyoneHasDied) return NobodyDiedWhy;
+            if (def.needsWildWood && NewStartOn && !FirstWildWoodReached) return "no wild wood yet"; // #714: the woodpile it asks about
+            if (def.namesYoung && YoungPair(out _, out _) == null) return "fewer than two young people";
             if (def.leaderElder || def.termEndingMonths > 0)
             {
                 var lseat = SeatOf(LeaderOf(State.era));
@@ -405,7 +396,9 @@ namespace AquariumCiv.Sim
         {
             if (string.IsNullOrEmpty(t)) return "";
             if (t.IndexOf('{') < 0) return t;
-            if (d.subjectId >= 0 || !string.IsNullOrEmpty(d.nameA)) t = SmallText(t, d);
+            if (d.subjectId >= 0 || !string.IsNullOrEmpty(d.nameA) || t.Contains("{who}")) t = SmallText(t, d);
+            if (t.Contains("{t1}") || t.Contains("{t2}")) t = t.Replace("{t1}", string.IsNullOrEmpty(d.strangerA) ? "one traveller" : d.strangerA).Replace("{t2}", string.IsNullOrEmpty(d.strangerB) ? "the other" : d.strangerB);
+            if (t.Contains("{y1}") || t.Contains("{y2}")) t = t.Replace("{y1}", FindNotable(d.youngA)?.name ?? "the young ones").Replace("{y2}", FindNotable(d.youngB)?.name ?? "their friend");
             return t.Replace("{a}", FindNotable(d.personA)?.name ?? "someone").Replace("{b}", FindNotable(d.personB)?.name ?? "someone")
                     .Replace("{place}", DilemmaPlace).Replace("{land}", LandWords(d)).Replace("{camp}", CampWords(d))
                     .Replace("{dead}", FindNotable(d.deadId)?.name ?? "the one we lost").Replace("{tree}", t.Contains("{tree}") ? CharmTreeWords : "");
@@ -487,6 +480,8 @@ namespace AquariumCiv.Sim
             var d = new Dilemma { id = id, defId = def.id, month = s.month, personA = a, personB = b, size = def.size, visits = 1, visitNo = s.visitCount, raisedHours = Math.Round(s.clockHours, 6) };
             if (def.landWords) d.land = PickLand(id);
             if (def.needsDeath) d.deadId = s.notables.Where(n => !n.alive).OrderByDescending(n => n.diedMonth).ThenByDescending(n => n.id).FirstOrDefault()?.id ?? -1;
+            if (def.namesStrangers) NameStrangers(d, def);
+            if (def.namesYoung && YoungPair(out var y1, out var y2) != null) { d.youngA = y1.id; d.youngB = y2.id; }
             PrepareSmall(d, def);
             var leader = Alive(SeatOf(LeaderOf(s.era))?.holderId ?? -1);
             if (def.askerNotLeader)
@@ -632,8 +627,9 @@ namespace AquariumCiv.Sim
                 }
             }
 
-            if (o.lean.HasValue)
-                s.dilemmaLeans.Add(new DilemmaLean { lean = (int)o.lean.Value, fromMonth = s.month, untilMonth = s.month + NudgeMonths, dilemmaId = d.id });
+            // #714: the young people the ask named are the ones sent (both); the Keeper's pick shows on their cards
+            if (d.state == DilemmaState.Answered && d.youngA >= 0)
+                foreach (var y in new[] { Alive(d.youngA), Alive(d.youngB) }) if (y != null) y.chosenByKeeper = true;
 
             if (o.ties == DilemmaTies.RivalOrGrace && chosen != null && other != null) UnchosenTies(d, chosen, other);
 
@@ -684,6 +680,7 @@ namespace AquariumCiv.Sim
             var made = new List<Notable>();
             for (int i = 0; i < count; i++)
             {
+                string named = i == 0 ? d.strangerA : i == 1 ? d.strangerB : null; // #714: the names the ask said
                 var n = new Notable
                 {
                     id = s.NextId(),
@@ -694,12 +691,45 @@ namespace AquariumCiv.Sim
                     lifespan = Config.lifespanMin + DilemmaRoll(80 + i, d.id, d.month) * (Config.lifespanMax - Config.lifespanMin),
                     bornMonth = s.month,
                 };
-                MakeNameUnique(n, local);
+                if (!string.IsNullOrEmpty(named)) n.name = named;
+                MakeNameUnique(n, local); // a named stranger keeps the name unless someone born since has taken it
                 s.notables.Add(n);
                 made.Add(n);
             }
             if (made.Count > 1) { made[0].partnerId = made[1].id; made[1].partnerId = made[0].id; }
             return made;
+        }
+
+        /// <summary>#714: the strangers' names for the ask, fixed when it is raised. The same hashes and the same uniqueness rule as
+        /// <see cref="MakeStrangers"/>, without making anyone (no ids are taken), so the ones made on the answer carry these names.</summary>
+        void NameStrangers(Dilemma d, DilemmaDef def)
+        {
+            int count = def.options.Max(o => o.strangers);
+            if (count < 1) return;
+            var s = State;
+            string family = NameData.Families[(int)(DilemmaRoll(50, d.id, d.month) * NameData.Families.Length) % NameData.Families.Length];
+            var local = new SimRandom((int)(DilemmaRoll(51, d.id, d.month) * 1_000_000f) + 1);
+            var temp = new List<Notable>();
+            for (int i = 0; i < Math.Min(2, count); i++)
+            {
+                var n = new Notable { id = -1, family = family, name = NameData.Given[(int)(DilemmaRoll(52 + i, d.id, d.month) * NameData.Given.Length) % NameData.Given.Length] };
+                MakeNameUnique(n, local);
+                s.notables.Add(n); temp.Add(n); // the second is unique against the first, as on the answer
+            }
+            foreach (var n in temp) s.notables.Remove(n);
+            d.strangerA = temp.Count > 0 ? temp[0].name : "";
+            d.strangerB = temp.Count > 1 ? temp[1].name : "";
+        }
+
+        /// <summary>#714: the two young people a choice about work names: living people who just came of age (16 to 19, the youngest
+        /// first); with fewer than two of them, the youngest adults. Null when there are not two adults at all.</summary>
+        Notable YoungPair(out Notable a, out Notable b)
+        {
+            a = b = null;
+            var pool = State.notables.Where(n => n.alive && n.age >= AdultAge).OrderBy(n => n.age >= 20f ? 1 : 0).ThenBy(n => n.age).ThenBy(n => n.id).Take(2).ToList();
+            if (pool.Count < 2) return null;
+            a = pool[0]; b = pool[1];
+            return a;
         }
 
         // ---------- debug ----------

@@ -243,7 +243,8 @@ namespace AquariumCiv.Sim
 
         /// <summary>The words of the name placeholders on a small card.</summary>
         string SmallText(string t, Dilemma d) =>
-            t.Replace("{n1}", d.nameA ?? "").Replace("{n2}", d.nameB ?? "").Replace("{child}", FindNotable(d.subjectId)?.name ?? "the baby");
+            t.Replace("{n1}", d.nameA ?? "").Replace("{n2}", d.nameB ?? "").Replace("{child}", FindNotable(d.subjectId)?.name ?? "the baby")
+             .Replace("{who}", FindNotable(d.subjectId)?.name ?? "One of the hunters"); // #714: who saw the wolves
 
         /// <summary>True if the Keeper named this person (the person card shows "chosen by the Keeper", C4).</summary>
         public bool NamedByKeeper(int notableId) => FindNotable(notableId)?.namedByKeeper ?? false;
