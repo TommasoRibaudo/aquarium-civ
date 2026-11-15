@@ -176,7 +176,7 @@ namespace AquariumCiv.View
             if (cam != null && !Playing && !ShelfOpen)
             {
                 cam.CancelFlight();
-                cam.target = new Vector3(0, 1f, 0); cam.zoom = 1f; cam.yaw = 28f; cam.pitch = 34f;
+                cam.target = new Vector3(0, 1f, Land.CZ); cam.zoom = 1f; cam.yaw = 28f; cam.pitch = 34f;
                 cam.enabled = false; cam.enabled = true;
                 cam.Apply();
             }
@@ -652,13 +652,13 @@ namespace AquariumCiv.View
         {
             switch (anchor)
             {
-                case MomentAnchor.Shelf: point = new MVec3(ShelfProps.SlotStep * 0.5f, 0.8f, 0.3f); return true;
-                case MomentAnchor.NewBox: point = new MVec3(ShelfProps.SlotStep, 1f, 0f); return true;
-                case MomentAnchor.Box: point = new MVec3(0f, 1f, 0f); return true;
+                case MomentAnchor.Shelf: point = new MVec3(ShelfProps.SlotStep * 0.5f, 0.8f, 0.3f + Land.CZ); return true;
+                case MomentAnchor.NewBox: point = new MVec3(ShelfProps.SlotStep, 1f, Land.CZ); return true;
+                case MomentAnchor.Box: point = new MVec3(0f, 1f, Land.CZ); return true;
             }
             var mp = MomentPlayer.Instance;
             if (mp != null && mp.TryGet(anchor, out point)) return true;
-            point = new MVec3(0f, 1f, 0f);
+            point = new MVec3(0f, 1f, Land.CZ);
             return true;
         }
 
@@ -678,7 +678,7 @@ namespace AquariumCiv.View
             int n = clock.Shelf.boxes.Count;
             float leftX = ShelfProps.SlotX(n - 2);
             float span = -leftX + 7f;
-            shelfPose = new CameraPose(new MVec3(leftX * 0.5f, 1f, 0.6f), 8f, 36f, Mathf.Max(1.4f, span / 6.8f));
+            shelfPose = new CameraPose(new MVec3(leftX * 0.5f, 1f, 0.6f + Land.CZ), 8f, 36f, Mathf.Max(1.4f, span / 6.8f));
             if (cam != null)
             {
                 cam.CancelFlight();
@@ -791,7 +791,7 @@ namespace AquariumCiv.View
             int k = 0;
             foreach (var b in shelf.boxes.Where(b => b.index != shown).OrderBy(b => b.index)) slots.Add((b.index, ShelfProps.SlotX(k++)));
             foreach (var s in slots)
-                if (Mathf.Abs(p.x - s.x) < 3.6f && Mathf.Abs(p.z) < 3f) { PickBox(s.index); return; }
+                if (Mathf.Abs(p.x - s.x) < 3.6f && Mathf.Abs(p.z - Land.CZ) < Land.HZ + 0.8f) { PickBox(s.index); return; }
         }
 
         static void ReadPointer(out bool down, out Vector2 pos)

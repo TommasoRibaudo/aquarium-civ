@@ -34,7 +34,7 @@ namespace AquariumCiv.View
     [ExecuteAlways]
     public class BoxCamera : MonoBehaviour
     {
-        public Vector3 target = new(0, 1.0f, 0);
+        public Vector3 target = new(0, 1.0f, Land.CZ);
         public float yaw = 28f, pitch = 34f;
         [Tooltip("Orbit stays in front of the box, so the shelf and wall behind it stay in view (tester #31).")]
         public float minYaw = -30f, maxYaw = 55f;
@@ -154,6 +154,7 @@ namespace AquariumCiv.View
         void Awake()
         {
             if (!Application.isPlaying) return;
+            if (Mathf.Abs(target.z) < 1e-4f) target.z = Land.CZ; // #658: scenes saved before the deeper box still hold target z = 0
             cam = GetComponent<Camera>();
             RenderPipelineManager.beginCameraRendering += FitDepthBeforeRender;
         }
@@ -385,7 +386,7 @@ namespace AquariumCiv.View
             if (cam == null) return;
             var t = transform;
             cam.nearClipPlane = BoxCameraMath.FitNear(t.position, t.forward, t.up, Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad), ShelfRowTop());
-            float d = Mathf.Max(Vector3.Distance(t.position, new Vector3(0f, 1f, 0f)), Vector3.Distance(t.position, target));
+            float d = Mathf.Max(Vector3.Distance(t.position, new Vector3(0f, 1f, Land.CZ)), Vector3.Distance(t.position, target));
             cam.farClipPlane = Mathf.Max(cam.farClipPlane, d + BoxCameraMath.FarPastFocus);
             var urp = UniversalRenderPipeline.asset;
             if (urp == null) return;
@@ -625,7 +626,7 @@ namespace AquariumCiv.View
             var w = followPeople.transform.TransformPoint(new Vector3(p.x, 0f, p.y));
             var bound = GlassBounds(zoom); // #273: a follow may centre anyone inside the glass; the spring stands down while code holds the camera
             HoldByCode(zoom);
-            float gx = Mathf.Clamp(w.x, -bound.x, bound.x), gz = Mathf.Clamp(w.z, -bound.y, bound.y);
+            float gx = Mathf.Clamp(w.x, -bound.x, bound.x), gz = Land.CZ + Mathf.Clamp(w.z - Land.CZ, -bound.y, bound.y);
             float k = 1f - Mathf.Exp(-FollowRate * dt);
             target.x += (gx - target.x) * k;
             target.z += (gz - target.z) * k;
@@ -691,7 +692,7 @@ namespace AquariumCiv.View
                 var bound = ViewBounds(zoom);
                 var d = g0 - g1;
                 target.x = BoxCameraMath.GlassStep(target.x, d.x, -bound.x, bound.x);
-                target.z = BoxCameraMath.GlassStep(target.z, d.z, -bound.y, bound.y);
+                target.z = Land.CZ + BoxCameraMath.GlassStep(target.z - Land.CZ, d.z, -bound.y, bound.y); // #658: bounds are offsets from the box centre
             }
             StayOnLand();
             panTravel += (pos - lastPos).magnitude;
@@ -706,7 +707,7 @@ namespace AquariumCiv.View
         {
             var bound = ViewBounds(zoom);
             target.x = BoxCameraMath.GlassStep(target.x, panVelocity.x * dt, -bound.x, bound.x);
-            target.z = BoxCameraMath.GlassStep(target.z, panVelocity.y * dt, -bound.y, bound.y);
+            target.z = Land.CZ + BoxCameraMath.GlassStep(target.z - Land.CZ, panVelocity.y * dt, -bound.y, bound.y); // #658: bounds are offsets from the box centre
             StayOnLand();
             panVelocity = BoxCameraMath.PanInertiaStep(panVelocity, dt);
         }
@@ -742,7 +743,7 @@ namespace AquariumCiv.View
                     var bound = ViewBounds(zoom);
                     var d = g0 - g1;
                     target.x = BoxCameraMath.GlassStep(target.x, d.x, -bound.x, bound.x);
-                    target.z = BoxCameraMath.GlassStep(target.z, d.z, -bound.y, bound.y);
+                    target.z = Land.CZ + BoxCameraMath.GlassStep(target.z - Land.CZ, d.z, -bound.y, bound.y); // #658: bounds are offsets from the box centre
                     panTravel += dm.magnitude;
                 }
             }
@@ -789,7 +790,7 @@ namespace AquariumCiv.View
         {
             var stop = BoxCameraMath.PanHardStop;
             target.x = Mathf.Clamp(target.x, -stop.x, stop.x);
-            target.z = Mathf.Clamp(target.z, -stop.y, stop.y);
+            target.z = Land.CZ + Mathf.Clamp(target.z - Land.CZ, -stop.y, stop.y);
         }
 
         bool GroundAt(Vector2 screenPoint, out Vector3 p)
@@ -804,7 +805,7 @@ namespace AquariumCiv.View
             if (codeHold && zoom > holdZoom + 0.05f) codeHold = false;
             var bound = codeHold ? GlassBounds(zoom) : ViewBounds(zoom); // held by a flight or a follow: only the glass and the hull limit it
             target.x = BoxCameraMath.Spring(target.x, -bound.x, bound.x, dt);
-            target.z = BoxCameraMath.Spring(target.z, -bound.y, bound.y, dt);
+            target.z = Land.CZ + BoxCameraMath.Spring(target.z - Land.CZ, -bound.y, bound.y, dt);
         }
 
         // #273: a flight or a follow may put the pivot past the view's limit (a person near a wall is centred); the spring waits until the player pans or zooms out.

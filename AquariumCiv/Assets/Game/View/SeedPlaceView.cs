@@ -134,10 +134,10 @@ namespace AquariumCiv.View
         {
             if (!GhostShown) { look?.Hide(); return; }
             var c = Ghost.Centre();
-            float y = box.land.Height(Mathf.Clamp(c.x, -Land.HX, Land.HX), Mathf.Clamp(c.z, -Land.HZ, Land.HZ)) + 0.002f;
+            float y = box.land.Height(Mathf.Clamp(c.x, -Land.HX, Land.HX), Land.ClampZ(c.z)) + 0.002f;
             look ??= new GhostLook(box.transform, "SeedGhost");
             // #609: the ghost's mound lies on the slope like the planted one
-            KeeperTreeKit.PadFit(box.land, Mathf.Clamp(c.x, -Land.HX, Land.HX), Mathf.Clamp(c.z, -Land.HZ, Land.HZ), out var tilt, out var lift);
+            KeeperTreeKit.PadFit(box.land, Mathf.Clamp(c.x, -Land.HX, Land.HX), Land.ClampZ(c.z), out var tilt, out var lift);
             look.Draw(GhostMesh(false), GhostMesh(true), new Vector3(c.x, y + lift, c.z), ghostScale * Ghost.Breath() * Ghost.Pop(), ghostFill, ghostEdge, tilt);
         }
 

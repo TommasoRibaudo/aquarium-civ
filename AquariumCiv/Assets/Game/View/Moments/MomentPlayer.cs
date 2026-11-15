@@ -608,7 +608,7 @@ namespace AquariumCiv.View
             switch (anchor)
             {
                 case MomentAnchor.Box:
-                    point = new MVec3(0f, 1f, 0f);
+                    point = new MVec3(0f, 1f, AquariumCiv.Sim.Settle.Terrain.CZ);
                     return true;
                 case MomentAnchor.Hearth:
                 case MomentAnchor.Square:

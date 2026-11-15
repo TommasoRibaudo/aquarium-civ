@@ -251,7 +251,7 @@ namespace AquariumCiv.View
             if (planner == null || c == null) return false;
             var fwd = box.transform.InverseTransformDirection(c.transform.forward);
             var right = box.transform.InverseTransformDirection(c.transform.right);
-            var st = planner.StageChoice(v, pv.Now, right.x, right.z, -fwd.x, -fwd.z, ChoiceScenes.WaitSeconds, Land.HX, Land.HZ);
+            var st = planner.StageChoice(v, pv.Now, right.x, right.z, -fwd.x, -fwd.z, ChoiceScenes.WaitSeconds, Land.HX, Land.HZ, Land.CZ);
             if (st == null) return false;
             ClearWorld();
             pv.ClearPins();
@@ -400,7 +400,7 @@ namespace AquariumCiv.View
         {
             var v = Sim?.ViewOfDilemma(d);
             if (v == null) return;
-            var st = planner.StageChoice(v, pv.Now, Stage.rx, Stage.rz, Stage.tx, Stage.tz, ChoiceScenes.WaitSeconds, Land.HX, Land.HZ);
+            var st = planner.StageChoice(v, pv.Now, Stage.rx, Stage.rz, Stage.tx, Stage.tz, ChoiceScenes.WaitSeconds, Land.HX, Land.HZ, Land.CZ);
             if (st == null) return;
             pv.ClearPins();
             Stage = st; // the same places and props: only the time runs on (and maybe a fresh worker by a stake)
@@ -971,7 +971,7 @@ namespace AquariumCiv.View
                 var before = t.pos;
                 t.pos = Vector2.MoveTowards(t.pos, goal, TravellerWalk * dt);
                 t.pos.x = Mathf.Clamp(t.pos.x, -Land.HX + 0.1f, Land.HX - 0.1f);
-                t.pos.y = Mathf.Clamp(t.pos.y, -Land.HZ + 0.1f, Land.HZ - 0.1f);
+                t.pos.y = Land.ClampZ(t.pos.y, 0.1f);
                 if (land.IsWater(t.pos.x, t.pos.y)) t.pos = before;
                 var vel = (t.pos - before) / Mathf.Max(dt, 1e-4f);
                 float speed = vel.magnitude;

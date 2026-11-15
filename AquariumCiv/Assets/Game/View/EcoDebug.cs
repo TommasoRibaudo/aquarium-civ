@@ -379,7 +379,7 @@ namespace AquariumCiv.View
         {
             var s = Sim;
             if (s == null || !s.EcologyOn) return "living land off";
-            float x = -AquariumCiv.Sim.Settle.Terrain.HX + 0.02f, z = AquariumCiv.Sim.Settle.Terrain.HZ - 0.02f;
+            float x = -AquariumCiv.Sim.Settle.Terrain.HX + 0.02f, z = AquariumCiv.Sim.Settle.Terrain.ZMax - 0.02f;
             int at = AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z), to = s.TreeCellFor(x, z);
             if (!s.PlantTree(x, z)) return "can't plant at the edge (no seed yet, or a tree stands)";
             return Refresh($"edge cell {at} -> tree cell {to}");

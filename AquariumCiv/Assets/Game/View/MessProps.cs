@@ -118,7 +118,7 @@ namespace AquariumCiv.View
             {
                 var p = PatchCentre.HasValue
                     ? PatchCentre.Value + new Vector2(Land.Hash3(i * 41 + k, 3, 17) * 2f - 1f, Land.Hash3(i * 53 + k, 9, 23) * 2f - 1f) * PatchRadius
-                    : new Vector2((Land.Hash3(i * 41 + k, 3, 17) * 2f - 1f) * (Land.HX - 0.5f), (Land.Hash3(i * 53 + k, 9, 23) * 2f - 1f) * (Land.HZ - 0.5f));
+                    : new Vector2((Land.Hash3(i * 41 + k, 3, 17) * 2f - 1f) * (Land.HX - 0.5f), Land.CZ + (Land.Hash3(i * 53 + k, 9, 23) * 2f - 1f) * (Land.HZ - 0.5f));
                 if (!box.FreeForProp(p, 0.22f) || Trodden(p)) continue;
                 bool clash = false;
                 for (int j = 0; j < MaxWeeds; j++) if (j != i && spotKnown[j] && (spots[j] - p).sqrMagnitude < (PatchCentre.HasValue ? 0.26f : 0.38f) * (PatchCentre.HasValue ? 0.26f : 0.38f)) { clash = true; break; }

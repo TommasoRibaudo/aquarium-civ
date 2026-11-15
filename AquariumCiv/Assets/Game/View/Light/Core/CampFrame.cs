@@ -56,7 +56,7 @@ namespace AquariumCiv.Lighting
         /// The frame for these camp points (the fire first and heaviest, tents, the stash) and dolls (where each stands now), in box
         /// units. Deterministic and order-stable: the same people in the same places give the same frame.
         /// </summary>
-        public static Result Frame(IReadOnlyList<Point> camp, IReadOnlyList<Point> dolls, float halfX, float halfZ)
+        public static Result Frame(IReadOnlyList<Point> camp, IReadOnlyList<Point> dolls, float halfX, float halfZ, float centreZ = 0f)
         {
             camp ??= Array.Empty<Point>();
             dolls ??= Array.Empty<Point>();
@@ -67,7 +67,7 @@ namespace AquariumCiv.Lighting
             bool groupIsMost = dolls.Count > 0 && groupCount * 2 >= dolls.Count;
             if (camp.Count == 0)
             {
-                if (dolls.Count == 0) return new Result { x = 0f, z = 0f, radius = MaxRadius, source = Source.Box };
+                if (dolls.Count == 0) return new Result { x = 0f, z = centreZ, radius = MaxRadius, source = Source.Box };
                 AddNear(dolls, gx, gz, GroupReach, pts);
                 src = Source.Group;
             }
@@ -95,7 +95,7 @@ namespace AquariumCiv.Lighting
             Trim(pts, nFixed);
             float r = Enclose(pts, out float fx, out float fz) + Pad;
             fx = Clamp(fx, -(halfX - EdgeInset), halfX - EdgeInset);
-            fz = Clamp(fz, -(halfZ - EdgeInset), halfZ - EdgeInset);
+            fz = Clamp(fz, centreZ - (halfZ - EdgeInset), centreZ + (halfZ - EdgeInset)); // #658: the land is not centred on z = 0
             return new Result { x = fx, z = fz, radius = Clamp(r, MinRadius, MaxRadius), source = src };
         }
 

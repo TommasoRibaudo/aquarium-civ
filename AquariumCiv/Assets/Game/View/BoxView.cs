@@ -643,14 +643,14 @@ namespace AquariumCiv.View
 
         // ---------------- chunks ----------------
         /// <summary>Which quarter of the box a ground point is in: bit 0 = right (x ≥ 0), bit 1 = back (z ≥ 0).</summary>
-        public static int ChunkOf(float x, float z) => (x < 0f ? 0 : 1) + (z < 0f ? 0 : 2);
+        public static int ChunkOf(float x, float z) => (x < 0f ? 0 : 1) + (z < Land.CZ ? 0 : 2); // #658: the quarters meet at the box centre, z = CZ
         public static int ChunkOf(Vector2 p) => ChunkOf(p.x, p.y);
 
         static void ChunkBounds(int k, out float x0, out float x1, out float z0, out float z1)
         {
             bool right = (k & 1) != 0, back = (k & 2) != 0;
             x0 = right ? 0f : -Land.HX; x1 = right ? Land.HX : 0f;
-            z0 = back ? 0f : -Land.HZ; z1 = back ? Land.HZ : 0f;
+            z0 = back ? Land.CZ : Land.ZMin; z1 = back ? Land.ZMax : Land.CZ;
         }
 
         MeshBuilder BuildChunk(int k, out int terrainVerts)
@@ -829,7 +829,7 @@ namespace AquariumCiv.View
             for (int j = 0; j < FZ; j++)
                 for (int i = 0; i < FX; i++)
                 {
-                    var p = new Vector2(-Land.HX + i * FieldRes, -Land.HZ + j * FieldRes);
+                    var p = new Vector2(-Land.HX + i * FieldRes, Land.ZMin + j * FieldRes);
                     if (p.x < min.x || p.x > max.x || p.y < min.y || p.y > max.y || !InPolygon(shore, p)) continue;
                     shoreField[j * FX + i] = -shoreField[j * FX + i];
                 }
@@ -881,12 +881,12 @@ namespace AquariumCiv.View
         {
             int i0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.x, b.x) - range + Land.HX) / FieldRes));
             int i1 = Mathf.Min(FX - 1, Mathf.CeilToInt((Mathf.Max(a.x, b.x) + range + Land.HX) / FieldRes));
-            int j0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.y, b.y) - range + Land.HZ) / FieldRes));
-            int j1 = Mathf.Min(FZ - 1, Mathf.CeilToInt((Mathf.Max(a.y, b.y) + range + Land.HZ) / FieldRes));
+            int j0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.y, b.y) - range - Land.ZMin) / FieldRes));
+            int j1 = Mathf.Min(FZ - 1, Mathf.CeilToInt((Mathf.Max(a.y, b.y) + range - Land.ZMin) / FieldRes));
             float abx = b.x - a.x, abz = b.y - a.y, len2 = abx * abx + abz * abz;
             for (int j = j0; j <= j1; j++)
             {
-                float pz = -Land.HZ + j * FieldRes;
+                float pz = Land.ZMin + j * FieldRes;
                 for (int i = i0; i <= i1; i++)
                 {
                     float px = -Land.HX + i * FieldRes;
@@ -902,7 +902,7 @@ namespace AquariumCiv.View
         static float Sample(float[] f, float x, float z, float far)
         {
             if (f == null) return far;
-            float fx = (x + Land.HX) / FieldRes, fz = (z + Land.HZ) / FieldRes;
+            float fx = (x + Land.HX) / FieldRes, fz = (z - Land.ZMin) / FieldRes;
             int i = Mathf.FloorToInt(fx), j = Mathf.FloorToInt(fz);
             if (i < 0 || j < 0 || i >= FX - 1 || j >= FZ - 1) return far;
             float u = fx - i, v = fz - j;
@@ -1188,8 +1188,8 @@ namespace AquariumCiv.View
             var h = new float[w * (j1 - j0 + 1)];
             for (int j = j0; j <= j1; j++)
                 for (int i = i0; i <= i1; i++)
-                    h[(j - j0) * w + (i - i0)] = GroundHeight(-HX + 2 * HX * i / nx, -HZ + 2 * HZ * j / nz);
-            Vector3 P(int i, int j) => new(-HX + 2 * HX * i / nx, h[(j - j0) * w + (i - i0)], -HZ + 2 * HZ * j / nz);
+                    h[(j - j0) * w + (i - i0)] = GroundHeight(-HX + 2 * HX * i / nx, Land.ZMin + 2 * HZ * j / nz);
+            Vector3 P(int i, int j) => new(-HX + 2 * HX * i / nx, h[(j - j0) * w + (i - i0)], Land.ZMin + 2 * HZ * j / nz);
             for (int i = i0; i < i1; i++)
                 for (int j = j0; j < j1; j++)
                 {
@@ -1248,8 +1248,8 @@ namespace AquariumCiv.View
         /// <summary>The cut through the soil you see behind the glass: gravel, loam, soil, a moss lip, pebbles.</summary>
         void Substrate(MeshBuilder mb)
         {
-            float HX = Land.HX, HZ = Land.HZ;
-            var corners = new[] { new Vector2(-HX, -HZ), new Vector2(HX, -HZ), new Vector2(HX, HZ), new Vector2(-HX, HZ) };
+            float HX = Land.HX;
+            var corners = new[] { new Vector2(-HX, Land.ZMin), new Vector2(HX, Land.ZMin), new Vector2(HX, Land.ZMax), new Vector2(-HX, Land.ZMax) };
             var co = Co;
             Color[] cols = { Palette.Gravel, Palette.Loam, Palette.SoilLight, Eco ? DirtWet : co.moss }; // P8: no moss lip on a barren box
             for (int side = 0; side < 4; side++)
@@ -1306,37 +1306,37 @@ namespace AquariumCiv.View
 
         void BoxAndRoom(MeshBuilder mb, MeshBuilder frame)
         {
-            float HX = Land.HX, HZ = Land.HZ, GlassTop = Land.GlassTop;
+            float HX = Land.HX, HZ = Land.HZ, CZ = Land.CZ, GlassTop = Land.GlassTop;
             const float lip = 0.2f, plinthH = 0.3f;
-            mb.Box(new Vector3(0, -plinthH / 2f, 0), new Vector3(2 * HX + 2 * lip, plinthH, 2 * HZ + 2 * lip), Palette.Plinth);
-            mb.Box(new Vector3(0, 0.012f, 0), new Vector3(2 * HX + 2 * lip - 0.04f, 0.024f, 2 * HZ + 2 * lip - 0.04f), Palette.PlinthTop);
-            float gx = HX + 0.075f, gz = HZ + 0.075f, t = 0.07f;
+            mb.Box(new Vector3(0, -plinthH / 2f, CZ), new Vector3(2 * HX + 2 * lip, plinthH, 2 * HZ + 2 * lip), Palette.Plinth);
+            mb.Box(new Vector3(0, 0.012f, CZ), new Vector3(2 * HX + 2 * lip - 0.04f, 0.024f, 2 * HZ + 2 * lip - 0.04f), Palette.PlinthTop);
+            float gx = HX + 0.075f, gz = HZ + 0.075f, t = 0.07f, gzF = CZ - gz, gzB = CZ + gz; // #658: front and back glass planes, centred on CZ
             // Parts 0..3 are the sides (front, back, left, right: the glass's order), 4..7 the corner posts: each fades by itself (#162).
             int post = 4;
-            foreach (var (x, z) in new[] { (-gx, -gz), (gx, -gz), (gx, gz), (-gx, gz) })
+            foreach (var (x, z) in new[] { (-gx, gzF), (gx, gzF), (gx, gzB), (-gx, gzB) })
             {
                 frame.frameSide = post++;
                 frame.Box(new Vector3(x, GlassTop / 2f, z), new Vector3(t, GlassTop, t), Palette.Frame);
             }
             foreach (float y in new[] { 0.05f, GlassTop })
             {
-                frame.frameSide = 0; frame.Box(new Vector3(0, y, -gz), new Vector3(2 * gx + t, t, t), Palette.Frame);
-                frame.frameSide = 1; frame.Box(new Vector3(0, y, gz), new Vector3(2 * gx + t, t, t), Palette.Frame);
-                frame.frameSide = 2; frame.Box(new Vector3(-gx, y, 0), new Vector3(t, t, 2 * gz), Palette.Frame);
-                frame.frameSide = 3; frame.Box(new Vector3(gx, y, 0), new Vector3(t, t, 2 * gz), Palette.Frame);
+                frame.frameSide = 0; frame.Box(new Vector3(0, y, gzF), new Vector3(2 * gx + t, t, t), Palette.Frame);
+                frame.frameSide = 1; frame.Box(new Vector3(0, y, gzB), new Vector3(2 * gx + t, t, t), Palette.Frame);
+                frame.frameSide = 2; frame.Box(new Vector3(-gx, y, CZ), new Vector3(t, t, 2 * gz), Palette.Frame);
+                frame.frameSide = 3; frame.Box(new Vector3(gx, y, CZ), new Vector3(t, t, 2 * gz), Palette.Frame);
             }
             // The glass's cut edge along the top of the frame: a pale, faintly glowing line (polish note: the glass read
             // only by its dark frame). Together with the shader's rim highlight it says "glass" at full view.
             float ey = GlassTop + t / 2f + 0.004f, ew = 0.022f;
             frame.emission = 0.12f;
-            frame.frameSide = 0; frame.Box(new Vector3(0, ey, -gz), new Vector3(2 * gx + t, 0.008f, ew), Palette.GlassEdge);
-            frame.frameSide = 1; frame.Box(new Vector3(0, ey, gz), new Vector3(2 * gx + t, 0.008f, ew), Palette.GlassEdge);
-            frame.frameSide = 2; frame.Box(new Vector3(-gx, ey, 0), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
-            frame.frameSide = 3; frame.Box(new Vector3(gx, ey, 0), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
+            frame.frameSide = 0; frame.Box(new Vector3(0, ey, gzF), new Vector3(2 * gx + t, 0.008f, ew), Palette.GlassEdge);
+            frame.frameSide = 1; frame.Box(new Vector3(0, ey, gzB), new Vector3(2 * gx + t, 0.008f, ew), Palette.GlassEdge);
+            frame.frameSide = 2; frame.Box(new Vector3(-gx, ey, CZ), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
+            frame.frameSide = 3; frame.Box(new Vector3(gx, ey, CZ), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
             frame.emission = 0f;
             frame.frameSide = -1;
             // The shelf: a grid top so the baked AO can draw the box's contact shadow on it.
-            float sy = -plinthH, sx0 = -16f, sx1 = 16f, sz0 = -4.2f, sz1 = 3.6f, cell = 0.3f;
+            float sy = -plinthH, sx0 = -16f, sx1 = 16f, sz0 = -4.2f, sz1 = Land.ZMax + 1.4f, cell = 0.3f;
             var keep = mb.jitter; mb.jitter = 0f;
             for (float x = sx0; x < sx1 - 1e-3f; x += cell)
                 for (float z = sz0; z < sz1 - 1e-3f; z += cell)
@@ -1706,7 +1706,7 @@ namespace AquariumCiv.View
                 var w = transform.TransformPoint(spots[i].at);
                 LampX[i] = w.x; LampY[i] = w.y; LampZ[i] = w.z; LampThreshold[i] = spots[i].threshold;
             }
-            var bounds = new Bounds(new Vector3(0, 1.5f, 0), new Vector3(2 * Land.HX + 1f, 3f, 2 * Land.HZ + 1f));
+            var bounds = new Bounds(new Vector3(0, 1.5f, Land.CZ), new Vector3(2 * Land.HX + 1f, 3f, 2 * Land.HZ + 1f));
             if (verts.Count > 0)
             {
                 var m = new Mesh { name = "Glows" };
@@ -1797,10 +1797,10 @@ namespace AquariumCiv.View
             float gx = Land.HX + 0.075f, gz = Land.HZ + 0.075f, h = Land.GlassTop - 0.03f, t = 0.02f;
             var specs = new[]
             {
-                ("Front", new Vector3(0, h / 2f, -gz), new Vector3(2 * gx, h, t), 0f, new Vector2(2 * gx, h)),
-                ("Back", new Vector3(0, h / 2f, gz), new Vector3(2 * gx, h, t), 0f, new Vector2(2 * gx, h)),
-                ("Left", new Vector3(-gx, h / 2f, 0), new Vector3(t, h, 2 * gz), 1f, new Vector2(2 * gz, h)),
-                ("Right", new Vector3(gx, h / 2f, 0), new Vector3(t, h, 2 * gz), 1f, new Vector2(2 * gz, h)),
+                ("Front", new Vector3(0, h / 2f, Land.CZ - gz), new Vector3(2 * gx, h, t), 0f, new Vector2(2 * gx, h)),
+                ("Back", new Vector3(0, h / 2f, Land.CZ + gz), new Vector3(2 * gx, h, t), 0f, new Vector2(2 * gx, h)),
+                ("Left", new Vector3(-gx, h / 2f, Land.CZ), new Vector3(t, h, 2 * gz), 1f, new Vector2(2 * gz, h)),
+                ("Right", new Vector3(gx, h / 2f, Land.CZ), new Vector3(t, h, 2 * gz), 1f, new Vector2(2 * gz, h)),
             };
             foreach (var (name, pos, size, axis, pane) in specs)
             {
@@ -1826,7 +1826,7 @@ namespace AquariumCiv.View
                 lidMat.renderQueue = 3005; // after the back panes, before the front ones: the camera is always above it
                 panes.Add(lidMat);
                 var lid = Spawn("Lid", cube, lidMat, false);
-                lid.transform.localPosition = new Vector3(0, Land.GlassTop, 0);
+                lid.transform.localPosition = new Vector3(0, Land.GlassTop, Land.CZ);
                 lid.transform.localScale = new Vector3(2 * gx, t, 2 * gz);
                 lidRenderer = lid.GetComponent<MeshRenderer>();
                 lidRenderer.receiveShadows = false;
@@ -1871,11 +1871,11 @@ namespace AquariumCiv.View
             float ratio = rig != null ? rig.zoom : 1f;
             var care = CareView.Instance;
             bool clean = care != null && care.CleanMode;
-            var to = transform.InverseTransformDirection(cam.transform.position - transform.position);
+            var to = transform.InverseTransformDirection(cam.transform.position - transform.TransformPoint(new Vector3(0f, 0f, Land.CZ))); // #658: from the box centre
             to.y = 0f;
             to.Normalize();
             // #319: how close the camera is to each pane itself (plane distance over the fit distance), on top of the zoom.
-            var camLocal = transform.InverseTransformPoint(cam.transform.position);
+            var camLocal = transform.InverseTransformPoint(cam.transform.position) - new Vector3(0f, 0f, Land.CZ); // #658: relative to the box centre, so the panes are symmetric again
             float fit = rig != null ? Mathf.Max(0.01f, rig.FitDistance()) : 10f;
             float camp = rig != null ? NearGlassFade.CampCloseness(fit * rig.zoom, fit) : 0f; // the camp frame: no near glass edge (decisions 2026-11-06)
             float gx = Land.HX + 0.075f, gz = Land.HZ + 0.075f;

@@ -130,7 +130,7 @@ namespace AquariumCiv.View.Moments.Tests
             Assert.AreEqual(0f, p.target.x, 1e-5f, "no pan at zoom 1 and out");
             var close = CameraRail.Limits.Clamp(new CameraPose(new MVec3(9f, 1f, -9f), 0f, 0f, 0.3f));
             Assert.AreEqual(CameraRail.Limits.HX - CameraRail.Limits.PanMargin, close.target.x, 1e-4f);
-            Assert.AreEqual(-(CameraRail.Limits.HZ - CameraRail.Limits.PanMargin), close.target.z, 1e-4f);
+            Assert.AreEqual(CameraRail.Limits.CZ - (CameraRail.Limits.HZ - CameraRail.Limits.PanMargin), close.target.z, 1e-4f);
             Assert.AreEqual(CameraRail.Limits.PitchFloorClose, close.pitch, 1e-4f);
         }
 

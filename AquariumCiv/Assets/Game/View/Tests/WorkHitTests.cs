@@ -52,7 +52,7 @@ namespace AquariumCiv.View.Tests
                 {
                     Assert.IsFalse(float.IsNaN(h.at.x + h.at.y + h.at.z));
                     Assert.LessOrEqual(Mathf.Abs(h.at.x), Land.HX + 0.3f, "the hit is in the box");
-                    Assert.LessOrEqual(Mathf.Abs(h.at.z), Land.HZ + 0.3f, "the hit is in the box");
+                    Assert.IsTrue(Land.InZ(h.at.z, -0.3f), "the hit is in the box");
                     if (h.style is not (DollStyle.Chop or DollStyle.Hammer)) continue;
                     if (last.TryGetValue(h.who.Key, out float prev) && h.t - prev < 3f)
                     {

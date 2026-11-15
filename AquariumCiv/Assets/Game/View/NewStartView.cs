@@ -241,7 +241,7 @@ namespace AquariumCiv.View
             if (cam != null) { var f = box.transform.InverseTransformDirection(cam.transform.forward); away = new Vector2(f.x, f.z); if (away.sqrMagnitude < 1e-4f) away = Vector2.up; away.Normalize(); }
             var entry = fire + away * 1.5f;
             entry.x = Mathf.Clamp(entry.x, -Land.HX + 0.25f, Land.HX - 0.25f);
-            entry.y = Mathf.Clamp(entry.y, -Land.HZ + 0.25f, Land.HZ - 0.25f);
+            entry.y = Land.ClampZ(entry.y, 0.25f);
             var along = (fire - entry); float len = along.magnitude;
             var dir = len > 1e-3f ? along / len : Vector2.down;
             var side = new Vector2(-dir.y, dir.x);

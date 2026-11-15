@@ -13,7 +13,9 @@ namespace AquariumCiv.View
     public class Land
     {
         // Box interior half-size, the ground's base height, the glass top and the pond's water level.
-        public const float HX = 3f, HZ = 2.2f, G = 1f, GlassTop = 2.95f, WaterY = G - 0.08f;
+        public const float HX = Sim.Settle.Terrain.HX, HZ = Sim.Settle.Terrain.HZ, G = 1f, GlassTop = 2.95f, WaterY = G - 0.08f;
+        /// <summary>The land's z run (#658): front glass, back glass, centre. The box is 6 x 6 but NOT centred on z = 0.</summary>
+        public const float ZMin = Sim.Settle.Terrain.ZMin, ZMax = Sim.Settle.Terrain.ZMax, CZ = Sim.Settle.Terrain.CZ;
 
         /// <summary>The sim's terrain preset this land is drawn from (<see cref="AquariumCiv.Sim.Settle.TerrainSpec.Preset"/>).</summary>
         public int preset;
@@ -38,7 +40,11 @@ namespace AquariumCiv.View
         public Vector3 OnGround(float x, float z) => new(x, Height(x, z), z);
         public Vector3 OnGround(Vector2 p) => OnGround(p.x, p.y);
 
-        public bool Inside(Vector2 p, float margin) => Mathf.Abs(p.x) <= HX - margin && Mathf.Abs(p.y) <= HZ - margin;
+        /// <summary>#658: the glass test and clamp along z. The land runs ZMin..ZMax, not -HZ..HZ.</summary>
+        public static bool InZ(float z, float margin = 0f) => Sim.Settle.Terrain.InZ(z, margin);
+        public static float ClampZ(float z, float margin = 0f) => Sim.Settle.Terrain.ClampZ(z, margin);
+
+        public bool Inside(Vector2 p, float margin) => Mathf.Abs(p.x) <= HX - margin && Sim.Settle.Terrain.InZ(p.y, margin);
 
         public bool IsWater(float x, float z) => Height(x, z) < WaterY;
 
