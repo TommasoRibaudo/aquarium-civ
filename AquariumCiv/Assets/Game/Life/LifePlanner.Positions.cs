@@ -40,6 +40,7 @@ namespace AquariumCiv.Life
                 return true;
             }
             if (EggActivityAt(p, t, out var egg) && PrayerPos(egg, out x, out z)) return true; // #574: out along the route to the real shore, back to the pile (their base day does not move them)
+            if (NestActivityAt(p, t, out var nest) && PrayerPos(nest, out x, out z)) return true; // #709: out along the route to the nest's bush, back to the pile
             if (PrayerActivityAt(p, t, out var pray) && PrayerPos(pray, out x, out z)) return true; // fb4 #566: on a visit to the feather pole
             return PlanPos(p, t.hour, out x, out z);
         }
