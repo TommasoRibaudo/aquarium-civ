@@ -310,6 +310,16 @@ namespace AquariumCiv.View
                 GUILayout.Label("The rack moves at night or when empty; press Bedtime (clock to 20:00) to see it go.");
             }
             // ---- end #700 ----
+            // ---- #676: the camp pot's stew kind (from what the camp has) ----
+            if (Section("Stew pot (#676)"))
+            {
+                GUILayout.BeginHorizontal();
+                foreach (var sk in new[] { StewKind.Fish, StewKind.Rabbit, StewKind.Berries, StewKind.Thin })
+                    if (GUILayout.Button("Stew: " + sk))
+                        last = Done(sim.EcologyOn ? $"stew is now {sim.DebugStew(sk)} (the pot shows at a lit camp fire; use Dusk / Fire cheats to see it)" : "needs the ecology");
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #676 ----
             if (Section("Staged moments (#370)")) { var line = StagedMoments.Gui(); if (line != null) last = line; } // #370
             // ---- #373: the Keeper's choices page and the hand pins ----
             if (Section("Keeper's choices (#373)"))

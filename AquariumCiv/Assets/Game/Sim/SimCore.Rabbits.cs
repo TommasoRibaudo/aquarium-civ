@@ -115,6 +115,7 @@ namespace AquariumCiv.Sim
             if (!EcologyOn || State.eco.rabbits < 0.5f) return false;
             State.eco.rabbits = MathF.Max(0f, State.eco.rabbits - 1f);
             State.eco.rabbitsCaught++;
+            State.eco.rabbitCatchDay = State.month; // #676
             return true;
         }
 

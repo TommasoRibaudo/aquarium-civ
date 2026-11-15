@@ -85,6 +85,20 @@ namespace AquariumCiv.Sim
             return ate;
         }
 
+        /// <summary>#676: what the camp pot holds on view day <paramref name="day"/> (<see cref="StewKinds.Decide"/> over the hunt log, the fish pile and the stores).</summary>
+        public StewKind StewOn(long day) => StewKinds.Decide(day, EcologyOn ? State.eco.rabbitCatchDay : -1, FishInPile, State.food);
+
+        /// <summary>Debug (#676 "stew: fish / rabbit / berries / thin"): set the camp so the pot makes <paramref name="kind"/> today. Returns what <see cref="StewOn"/> then says.</summary>
+        public StewKind DebugStew(StewKind kind)
+        {
+            if (!EcologyOn) return StewOn(State.month);
+            var e = State.eco;
+            e.rabbitCatchDay = kind == StewKind.Rabbit ? State.month : -1;
+            e.fishPile = kind == StewKind.Fish ? Math.Max(e.fishPile, 4) : 0;
+            State.food = kind == StewKind.Thin ? 0f : Math.Max(State.food, 30f);
+            return StewOn(State.month);
+        }
+
         // ---------- debug ----------
         /// <summary>Debug ("fill fish basket"): the basket is full of fish.</summary>
         public int DebugFillFishBasket(int n = 6)
