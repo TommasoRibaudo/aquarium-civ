@@ -51,6 +51,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - 23:00 · #697/#696 round 2 (Editor): b6eeab7. ReplanKeepsPlansPlayTests 22/22, LifePlanner 24/24, TentSleepers 4/4, EcoTent 10/10, smoke 2/2, day watch (year 17, ~10 clock min, triggers every 30 s) PASS → #697 done. New #696 cause found+fixed: ChooseBuilders took sleeping adults to raise a night tent (test fails before/passes after). Night watch still FAILS: sleeper 23 shown at the tent at a chronicle+nudges+belief replan while the plan says Sleep=Home → a view path (scene/reaction) shows sleepers. Round 3 sent (instrument doll visibility, fix at source; 90-min box).
 - 23:40 · #696 round 3 accepted: 406644d. View cause: a replan/new sleeper renumbers the home's slots; the hidden doll 'walked' to its new slot and the walk style replaced Hidden (PeopleView.Drive). Fix: asleep/indoors dolls take a changed slot at once, never the walk style. Night watch 1/1 (0 sleeper frames), day watch 1/1, ReplanKeepsPlans 22/22, smoke 2/2. Merged 74e22c4; view cause posted on #696. Merged-branch SimTests (after #676) 1941/1941.
 - 23:42 · Editor restart before #698 (3 tickets since start: #702, #707, #697; a recompile returned 400).
+- 23:55 · #698 Editor worker started (after an Editor restart). #705 spec B28 written on vs/705-laundry (a53f2df → round 2 977f0f4: cloths 0.11×0.13 u ≈ 14–16 px at the default camera, oversized vs dolls on purpose; rain dash dropped (polish phase)). Not built yet; the build + AnimLab clip go on the same branch in the Editor; user signs off spec then clip. Design-proposal comments posted on #708 #709 #710 #687.
 
 ## Round logs
 ### #702
@@ -70,6 +71,9 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 
 ### #676
 - round 1 (lane A): accepted; meta files added by me. Look pending in Editor.
+
+### #705
+- spec round 1: cloths ~7 px (unreadable), rain dash (new beat) → round 2: fixed. Spec accepted for the user's sign-off.
 
 ### #697/#696
 - round 1: all lane A boxes ticked; #696 guard tests didn't fail on base (noted). Lane B verification pending.
