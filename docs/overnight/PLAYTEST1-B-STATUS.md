@@ -48,6 +48,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - 22:10 · #700 round 2 accepted: ConsequenceProps path-aware, props move at night; SimTests 1927. Merged 969c8b2. Merged branch: SimTests 1930/1930, offline csc 0 errors (Sim, Life, Life.Tests, Game, Game.UI, View, View.Tests, View.PlayTests).
 - 22:15 · #703 round 1 accepted: c11423a+81aec5c, SimTests 1924. Call (recorded): ★ the duck jar is shut while the pond is ice; need line "The pond is ice. Ducks will come when it thaws."; a placing made before the freeze is kept (ducks leave for winter per #618, come back). Test change reviewed: EcoTests' once-a-year winter Keeper now places a thawed duck jar outside its visit (lab artifact); PlacedLifeTests accepts 'shut under ice'. Risk for the user: a winter-only player waits until spring for ducks (village gate up to 9 months later). Merged.
 - 22:45 · #676 lane A round 1 accepted: affcc34 (+ my .meta commit; the worker made none). StewKinds.Decide: rabbit (hunt this/last month) > fish (pile has fish) > berries/roots (food) > thin. MealDirector.LookOf per kind. SimTests 1941. Merged 0d00f73. Lane B part (StewLookTests, StewKindTests, MealDirectorTests; fish + rabbit stew shots day/dusk) queued for the Editor.
+- 23:00 · #697/#696 round 2 (Editor): b6eeab7. ReplanKeepsPlansPlayTests 22/22, LifePlanner 24/24, TentSleepers 4/4, EcoTent 10/10, smoke 2/2, day watch (year 17, ~10 clock min, triggers every 30 s) PASS → #697 done. New #696 cause found+fixed: ChooseBuilders took sleeping adults to raise a night tent (test fails before/passes after). Night watch still FAILS: sleeper 23 shown at the tent at a chronicle+nudges+belief replan while the plan says Sleep=Home → a view path (scene/reaction) shows sleepers. Round 3 sent (instrument doll visibility, fix at source; 90-min box).
 
 ## Round logs
 ### #702
@@ -70,4 +71,5 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 
 ### #697/#696
 - round 1: all lane A boxes ticked; #696 guard tests didn't fail on base (noted). Lane B verification pending.
+- round 2: #697 boxes ticked (day watch). #696: night-builder cause fixed, night watch red (view shows a sleeper at a chronicle/nudge/belief replan). Sent back.
 
