@@ -1,5 +1,7 @@
 # Polish backlog (from the P3–P6 builds), ranked
 
+> **Superseded (2026-11-14).** Kept for history only. The live backlog is the GitHub Polish milestone.
+
 Merged from the "Polish for the user to decide" lists in [results/P3.md](results/P3.md)–[P6.md](results/P6.md) and the
 Test Hub notes (2026-10-29). **Nothing here is implemented**, and nothing changes during the 0.3.x test (it would change
 what is being compared). You pick; the gate outcome decides which ones matter at all.
