@@ -249,7 +249,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(Shown(ui.Q("visit-banner")));
             foreach (var n in new[] { "hud-title", "hud-settings", "hud-feedback", "hud-photo", "hud-history", "shelf-open" })
             {
-                var h = hudRoot.Q(n) ?? ui.Q(n);
+                var h = hudRoot.Q(n) ?? ui.Q(n) ?? FeedbackUI.Instance?.PillRoot?.Q(n);
                 if (h == null || !Shown(h)) continue;
                 Assert.IsFalse(bannerRect.Overlaps(h.worldBound), $"the visit banner {bannerRect} covers {n} {h.worldBound}");
             }

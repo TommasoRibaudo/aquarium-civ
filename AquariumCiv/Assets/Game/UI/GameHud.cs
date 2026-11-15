@@ -736,6 +736,7 @@ namespace AquariumCiv.GameUI
             if (offHome == off) return;
             offHome = off;
             topRow?.EnableInClassList("hud-top--backed", off);
+            if (FeedbackUI.Instance != null) FeedbackUI.Instance.SetBacked(off); // #702: the pill is drawn there now
         }
 
         public bool OffHome => offHome;
@@ -805,7 +806,8 @@ namespace AquariumCiv.GameUI
             topRow.Add(spacer);
             var corner = new VisualElement { name = "hud-corner", pickingMode = PickingMode.Ignore };
             corner.AddToClassList("hud-corner");
-            if (FeedbackUI.InTestBuild) corner.Add(IconButton("hud-feedback", "feedback", OpenFeedback, UiRole.Tap)); // #650: full ink like its neighbours (the quiet fade read as disabled)
+            // #702: the Feedback pill isn't here any more: FeedbackUI draws it over every panel, in this place, left of Photo (#650: full ink)
+            if (FeedbackUI.InTestBuild && FeedbackUI.AutoCreate && FeedbackUI.Instance == null) FeedbackUI.Create();
             corner.Add(photoButton = IconButton("hud-photo", "photo", () => SetCameraMode(true), UiRole.Toggle));
             topRow.Add(corner);
             safe.Add(topRow);
@@ -1085,6 +1087,13 @@ namespace AquariumCiv.GameUI
             GlassMotion.Hide(safe, GlassMotion.AwayOff, GlassMotion.AwayMs, () => { if (hidden) root.style.display = DisplayStyle.None; });
         }
 
+        /// <summary>The pill's tap (#702): the HUD shuts its own sheet first, then the sheet opens.</summary>
+        internal static void OpenFeedbackFrom(FeedbackUI fb)
+        {
+            if (Instance != null) Instance.CloseSheet();
+            fb.Open();
+        }
+
         internal void OpenFeedback()
         {
             CloseSheet();
@@ -1200,7 +1209,7 @@ namespace AquariumCiv.GameUI
             return d;
         }
 
-        static GlassButton IconButton(string name, string icon, Action onClick, UiRole role, params string[] classes)
+        internal static GlassButton IconButton(string name, string icon, Action onClick, UiRole role, params string[] classes)
         {
             var b = new GlassButton("", onClick, ButtonKind.Icon, role) { name = name };
             b.AddToClassList("hud-icon");
