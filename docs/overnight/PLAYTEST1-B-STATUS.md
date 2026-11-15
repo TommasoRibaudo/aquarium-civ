@@ -47,6 +47,7 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 - 21:35 · #700 round 1: rule + quiet-moment + spec B27 accepted; round 2 sent (wire ConsequenceProps path check; full SimTests count; dirt redraw?).
 - 22:10 · #700 round 2 accepted: ConsequenceProps path-aware, props move at night; SimTests 1927. Merged 969c8b2. Merged branch: SimTests 1930/1930, offline csc 0 errors (Sim, Life, Life.Tests, Game, Game.UI, View, View.Tests, View.PlayTests).
 - 22:15 · #703 round 1 accepted: c11423a+81aec5c, SimTests 1924. Call (recorded): ★ the duck jar is shut while the pond is ice; need line "The pond is ice. Ducks will come when it thaws."; a placing made before the freeze is kept (ducks leave for winter per #618, come back). Test change reviewed: EcoTests' once-a-year winter Keeper now places a thawed duck jar outside its visit (lab artifact); PlacedLifeTests accepts 'shut under ice'. Risk for the user: a winter-only player waits until spring for ducks (village gate up to 9 months later). Merged.
+- 22:45 · #676 lane A round 1 accepted: affcc34 (+ my .meta commit; the worker made none). StewKinds.Decide: rabbit (hunt this/last month) > fish (pile has fish) > berries/roots (food) > thin. MealDirector.LookOf per kind. SimTests 1941. Merged 0d00f73. Lane B part (StewLookTests, StewKindTests, MealDirectorTests; fish + rabbit stew shots day/dusk) queued for the Editor.
 
 ## Round logs
 ### #702
@@ -63,6 +64,9 @@ Prompt: `docs/prompts/playtest-1-batch-2-run.md`. Integration: `p9/playtest1-b` 
 
 ### #703
 - round 1: accepted; Unity look of the shut jar in the chooser pending.
+
+### #676
+- round 1 (lane A): accepted; meta files added by me. Look pending in Editor.
 
 ### #697/#696
 - round 1: all lane A boxes ticked; #696 guard tests didn't fail on base (noted). Lane B verification pending.
