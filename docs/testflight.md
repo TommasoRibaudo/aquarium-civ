@@ -83,6 +83,8 @@ new prototype ships, the patch for fixes to the same one, and add a row here plu
 | (not built yet) | **0.4.0** | **Perf check of the style kit** (branch `vs/35-perf-build`, issue #35) | Frame time / GPU ms of the new art style on the user's iPhone: Growth Lab town y110, style-kit camp and village. Not a prototype: Build Settings switched, see [below](#perf-build-04x-issue-35) | "Perf check of the new art style. Tap to switch scenes; send a screenshot of the numbers." |
 | 14 | 0.4.0 | (failed: Apple certificate limit, see Notes) | - | - |
 | 15 | 0.4.0 | **Slice + P7 dilemmas + P8 living land** (both on by default in phone builds, `GameClock.OnInBuilds`) | A barren box that greens under the Keeper's mist (hold a finger still on the land), with the dilemmas (variant B, normal schedule). An existing box keeps its old land: Settings → Reset box for a barren one. Debug panel → Dilemmas (P7) / Living land (P8) turns either off (kept) | "Your box starts as dry earth. Hold a finger still on the land to mist it and watch it green; the people will ask you to choose now and then." |
+| 29 | 0.4.0 | (failed: Apple agreement expired, see Notes) | - | - |
+| 30 | 0.4.0 | **First outside playtest** (#637; main 78063961) | A stranger's first week: the first run with no Skip, one quick question per session (#636: knows what to do, remembers people, feels they grow the box), charms on the Keeper's tree (#635). Notes and answers go to the private `aquarium-civ-feedback` | "Play a few minutes a day for a week. Now and then the box asks one quick question; answer if you like. Use the Feedback button for anything else." |
 
 ### Slice build 0.4.0 (issue #98)
 The first build of the vertical slice, for the user alone on their iPhone.
@@ -179,6 +181,10 @@ Lab session (sitting with a tester): hold the top-left info box for 2 s until "L
 - Debug panels: hidden behind a 2 s top-left long-press in every non-Editor build (see Slice build 0.4.0). Lab tests that need the away buttons still run in the Editor.
 - If the macOS job fails on signing, check that the API key has **Admin** access and that the bundle ID is
   registered under the same team.
+- **`FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED`** (build 29, 2026-11-13): the export and archive pass, the upload gets a 403
+  because Apple published a new agreement. The account holder accepts it in App Store Connect (home banner or Business) /
+  developer.apple.com → Account. Then start a **new** run: `gh run rerun --failed` can't work, because the workflow deletes the
+  `ios-xcode` artifact when it ends ("Artifact not found for name: ios-xcode").
 - **"Your account has reached the maximum number of certificates"** (build 14, 2026-11-03): the archive used to sign with automatic
   development signing, which made a new "Apple Development" certificate on every fresh runner. The archive is now unsigned
   (`CODE_SIGNING_ALLOWED=NO`) and only the export signs, with the cloud-managed distribution certificate. If it still hits the
