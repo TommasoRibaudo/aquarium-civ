@@ -18,7 +18,7 @@ namespace AquariumCiv.View.PlayTests
     [Category("FishChainPlay")]
     public class FishChainPlayTests : PlayTestBase
     {
-        const string Dir = Shots + "fb4/543/";
+        static string Dir => Shots + "fb4/543/";
 
         static SimCore Sim => GameClock.Instance.Sim;
         static BoxCamera Cam => Camera.main.GetComponent<BoxCamera>();

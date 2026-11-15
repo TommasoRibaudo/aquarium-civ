@@ -15,7 +15,7 @@ namespace AquariumCiv.View.PlayTests
     [Category("LightShots"), Explicit("Writes images; run by hand")]
     public class LightShots : PlayTestBase
     {
-        const string Out = Shots + "light-shots/";
+        static string Out => Shots + "light-shots/";
         /// <summary>Temp/agent/light-tag.txt names a run (before, after...).</summary>
         static string Tag => File.Exists(Shots + "light-tag.txt") ? File.ReadAllText(Shots + "light-tag.txt").Trim() : "x";
         static BoxCamera Cam => Camera.main.GetComponent<BoxCamera>();

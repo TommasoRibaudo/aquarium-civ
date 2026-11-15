@@ -12,7 +12,7 @@ namespace AquariumCiv.View.PlayTests
     [Category("Fb4CampPropsShots"), Explicit]
     public class Fb4CampPropsShots : PlayTestBase
     {
-        const string Dir = Shots + "fb4/540/";
+        static string Dir => Shots + "fb4/540/";
 
         static BoxCamera Cam => Camera.main.GetComponent<BoxCamera>();
 
