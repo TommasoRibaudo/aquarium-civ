@@ -480,6 +480,13 @@ namespace AquariumCiv.View
                     face = target + (target - from).normalized; // moved round a corner, still looking away from the house
                 }
             }
+            // #700 (B27): a path came over a rack: the crew stand where the plan says (RackMovePlan.Stand), at the beat's own pace
+            RackMovePlan rackPlan = null; RackRole rackRole = RackRole.Lifter; float rackSince = 0f; bool rackNow = false;
+            if (!hidden && !hunting && !tenting && !a.moving && !a.enRoute && a.kind == ActivityKind.MoveRack && planner.TryGetRackRole(a.who, now, out rackPlan, out rackRole, out rackSince))
+            {
+                rackPlan.Stand(rackRole, rackSince, out float rsx, out float rsz, out float rmx, out float rmz, out _);
+                target = new Vector2(rsx, rsz); face = new Vector2(rmx, rmz); rackNow = true; claimed.Add(target);
+            }
             // #365 B9.d: the cook stands at the pot, facing it
             if (!hidden && !hunting && !tenting && !a.moving && !a.enRoute && a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && meals.HasFire) { target = meals.CookSpot(target); face = meals.Pot; }
             // #358: a play group has them: its game says where they stand, what they face and the move (KidPlayDirector).
@@ -587,6 +594,7 @@ namespace AquariumCiv.View
                 // on reaching it. Now the catching up fades as they near it, and they settle into the walk.
                 d.pos = Vector2.MoveTowards(d.pos, goal, (targetSpeed + Mathf.Min(DrawnSlack, CatchLeast + gap * (a.moving ? CatchWalking : CatchArriving))) * dt);
             }
+            if (rackNow && !jump) d.pos = (target - d.pos).sqrMagnitude < 0.12f * 0.12f ? target : Vector2.MoveTowards(d.pos, target, 0.45f * dt); // #700: the carried parts ride on the plan's points, so the crew keep to them
             d.wasHidden = hidden;
             float inst = dt > 0f && d.placed ? (d.pos - prev).magnitude / dt : 0f;
             var drawnWas = d.drawn;
@@ -596,7 +604,7 @@ namespace AquariumCiv.View
             d.placed = true;
 
             if (d.speed > WalkStarts) d.walking = true; else if (d.speed < WalkStops) d.walking = false;
-            bool walking = d.walking;
+            bool walking = d.walking && !rackNow; // #700: the carry's legs are part of the beat's pose
             var style = DollMotion.StyleOf(a.kind);
             // #362: a crouched creep (0.1 u/s) is faster than the walk threshold, but it is a stalk, not a walk
             bool keepsHunchStyle = hunting && (a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.Bolt or HuntPhase.PullSpear or HuntPhase.PickUp or HuntPhase.HoldUp
@@ -703,6 +711,7 @@ namespace AquariumCiv.View
                 tipSince = since = time - d.tipStart;
             }
             var pose = playing ? playGame.PoseOf(playIx, time, phase, d.stride, d.speed, out _) : DollMotion.Evaluate(style, phase, style == DollStyle.Chop ? a.pace * (0.9f + 0.2f * Hash01(a.who.Key, 6)) : a.pace /* #573: each chopper has their own tempo, so two at one tree never strike together */, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count, d.stride); // #358
+            if (rackNow) RackMoveBeats.Apply(ref pose, rackPlan, rackRole, rackSince, d.stride, holds); // #700 (B27)
             // sign-off 2026-11-14 (2nd run): a bedroll mended by the fire is laid out there for the rest of the session
             if (d.drew == DollStyle.Mend && style != DollStyle.Mend && !jump && planner.FirePoint(out float bfx, out float bfz)) CampBedrolls.Lay(new Vector2(bfx, bfz));
             if (style != d.drew)

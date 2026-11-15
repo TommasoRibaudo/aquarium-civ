@@ -36,6 +36,8 @@ namespace AquariumCiv.EditorTools
         public float radius, sx, sz;
         public float[] f;
         public string[] act;
+        /// <summary>#700: a rack move's plan: kind, fx, fz, oldAngle, newAngle, cargo, fresh, start (clip seconds), seed.</summary>
+        public float[] rack;
     }
 
     [Serializable]

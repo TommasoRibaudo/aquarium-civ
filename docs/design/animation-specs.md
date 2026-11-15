@@ -1311,7 +1311,7 @@ trots off, tail up.*
 
 *A path has grown over a rack. At a quiet hour two people lift the fish off, pull the poles, carry them a few steps and plant them again on free ground; the old spot is left bare.*
 
-**Status: spec only. Not built; waits for the user's sign-off.** The rule that decides *when* and *where* (never on a path cell, move at night or when empty, the nearest free angle) is built: `Life/RackSites.cs`. Until this beat exists the rack simply stands on its new spot at that moment. Applies to the fish rack (B16.c, `Life/FishRackSpot.cs`) and the hide rack (`Life/LifePlanner.Tents.cs`, `HideFrame`); the beat is the same, only the loads differ.
+**Status: built on `vs/700-beat` (Life/RackMove.cs, LifePlanner.RackMove.cs, View/Beats/RackMoveBeats.cs, View/RackMoveView.cs); AnimLab clips `Tools/AnimBench/clips/700-fish-rack.json`, `700-hide-rack.json`; waits for the user's sign-off.** Built as: the crew start at dusk/night, or by day when empty, or at once with the cheat "Rack moves now"; the Lifter carries the ridge pole and the basket, the Carrier pulls and plants both frames; no walk-in beat of its own beyond a plain walk; the beat runs on the plan's clock in real seconds. The rule that decides *when* and *where* (never on a path cell, move at night or when empty, the nearest free angle) is built: `Life/RackSites.cs`. Until this beat exists the rack simply stands on its new spot at that moment. Applies to the fish rack (B16.c, `Life/FishRackSpot.cs`) and the hide rack (`Life/LifePlanner.Tents.cs`, `HideFrame`); the beat is the same, only the loads differ.
 
 ### B27.a The take-down and rebuild
 | | |
