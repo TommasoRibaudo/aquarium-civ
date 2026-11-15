@@ -228,6 +228,30 @@ Shared rules for all of them (how often, the work still gets done, kids stay saf
 185. Sound: a wood knock on the sticks (B36.a; Kenney Impact Sounds (impactWood_light, already in the project)) · ☐ OK ☐ change: ___
 186. Sound: bird chirps (B71; BirdSong (R, in code)) · ☐ OK ☐ change: ___
 
+## Writing: the reworded lines (#714–#721), all proposals
+
+187. **W714.a** Lost travellers ask: "{t1} and {t2} are lost near {land}. Can they stay?" · ☐ OK ☐ change: ___
+188. **W714.b** The people's takes: "{t1} and {t2} are cold and hungry. Can they stay?" / "Strangers! {t1} and {t2}. Probably fine? Can they stay?" / "{t1} and {t2}? From across {land}, they say. Stay?" / "I found {t1} and {t2} by {land}. Can they stay?" / "{t1} and {t2}. Two more mouths. Can they stay?" · ☐ OK ☐ change: ___
+189. **W714.c** Stay: "The Keeper let {t1} and {t2} stay. They slept by the fire and never left." · ☐ OK ☐ change: ___
+190. **W714.d** Send off ("full packs" becomes "a camp of their own"): "They keep their own fire {camp}. We'll see it at night." / "The Keeper sent {t1} and {t2} to camp {camp}, with full packs." · ☐ OK ☐ change: ___
+191. **W714.e** Later: "{t1} still walks over some mornings to borrow a coal for their fire." · ☐ OK ☐ change: ___
+192. **W714.f** Headman fallback: "{place} still holds its meetings {a}'s way, and they still start late." · ☐ OK ☐ change: ___
+193. **W714.g** Young workers ask: "{y1} and {y2} can work now. The mill, or the roofs?" with takes "…both want {y1} and {y2}. Who?" / "Roofs leaking, grain ripe. Where do {y1} and {y2} go?" / "The miller wants {y1} and {y2}. So do the roofers. Well?" · ☐ OK ☐ change: ___
+194. **W714.h** Young workers, done: "The mill turned all summer." / "Sawdust got into the soup."; later "the miller still calls {y1} and {y2} 'my young ones'. One of them has a beard now." / "{y1} and {y2} still climb onto the roofs they mended to watch the sun go down." · ☐ OK ☐ change: ___
+195. **W714.i** Pond family: "The Keeper gave the pond family a home here. They pulled their boat up by the fire."; later "the pond family's old boat lies upside down by the fire. The children use it as a house." (a placeholder boat prop: needs a real model and your OK) · ☐ OK ☐ change: ___
+196. **W714.j** Pond family dreamer: "The pond family! I dreamt of them. Here, or there?" (was "from behind the Keeper's window") · ☐ OK ☐ change: ___
+197. **W714.k** Wolves: "{who} saw a wolf take meat from the rack again. Chase them off, or leave the scraps?" / "{who} found the wolves' kill in the wood, under the ravens. Take the meat, or leave it?" · ☐ OK ☐ change: ___
+198. **W715.a** Stories: the lost goat → the lost basket; a goat → a broom; pies → bread; quarrels over "the last of the stew" / "where the new path should go" ("a tent peg" in the camp) · ☐ OK ☐ change: ___
+199. **W715.b** The sandal found "in the mud at the pond's edge" / "in the mud of the hollow"; "tripped over a tent rope"; "…aren't speaking." ("again" only on a repeat) · ☐ OK ☐ change: ___
+200. **W715.c** Fewer stories: about 2–3 per 10 years on living land instead of 7, with a new "quiet month" weight [est] · ☐ OK ☐ change: ___
+201. **W716.a** Chief lines: "…ended a speech at the {2} with a joke. Even {3} laughed, and they never laugh." / "…held a day of games… {3} won the race by falling over the line." / "{0} is planning a joke. Everyone is being careful." · ☐ OK ☐ change: ___
+202. **W716.b** Chief lines: camp rule "the fire goes low early…"; "They could be heard at the pond." / "…at the far edge of the {5}."; "had a ring of stones put round the fire, and then a second ring." · ☐ OK ☐ change: ___
+203. **W716.c** Pilgrim and explorer: led everyone to the Keeper's tree to wave at the sky ("{3} swears something waved back"); a night under the tree; "walked the whole edge of the glass in one day" (narrator line) · ☐ OK ☐ change: ___
+204. **W716.d** Roles: "{a}'s roof still keeps the rain out."; "telling the fire it was rigged"; "the blessing on the fields"; "The watch is {pick} and {dog}." / "…and one lantern." · ☐ OK ☐ change: ___
+205. **W721.a** Rituals replay every year: harvest and winter hints and done lines as in #721; "the woodpile at {place} has a roof older than most of the people."; "…has {seats} seats now, one for every year since the first feast." · ☐ OK ☐ change: ___
+206. **W721.b** The offering basket "goes to the Keeper's tree every autumn…"; "the children of {place} carry a small basket of their own behind the big one."; the yearly history lines as in #721 · ☐ OK ☐ change: ___
+207. **W718** Deleted: wishes, Sky Crumb, Lens (the book lists 3 relics), the tap-back card, gift teasers, the "Sky Bread" and "Great Eye-Glass" era titles. The Keeper Doll always holds the cloth. · ☐ OK ☐ change: ___
+
 ## Questions (pick one; my pick first)
 
 Q1. Skip stones (B45.a): you dropped "throwing pebbles in the pond", #692 still lists "skip stones" · ☐ keep ☐ drop
