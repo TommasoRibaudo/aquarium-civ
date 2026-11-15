@@ -1540,6 +1540,15 @@ namespace AquariumCiv.View
             return pv.planner.ForceRunIn(bicker ? ActivityKind.Argue : ActivityKind.Chat, pv.now);
         }
 
+        /// <summary>Debug (#697/#696): make one replan happen the way <paramref name="trigger"/> would (see <see cref="LifePlanner.ReplanTriggers"/>); the
+        /// people must keep what they are doing: the sleepers stay in their tents, the walkers finish their walk.</summary>
+        public static string DebugReplan(string trigger)
+        {
+            var pv = Find();
+            if (pv == null || pv.planner == null) return "no people";
+            return pv.planner.DebugTrigger(trigger);
+        }
+
         /// <summary>Debug (#360): "Water run now": three adults draw water at dawn, and the clock goes to the walk out.</summary>
         public static string DebugWaterRun()
         {

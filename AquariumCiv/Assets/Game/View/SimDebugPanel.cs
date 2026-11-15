@@ -293,6 +293,26 @@ namespace AquariumCiv.View
                 }
             }
             // ---- end #373 ----
+            // ---- #697/#696: force each replan trigger; sleepers must stay hidden in the tent, walkers must finish their walk ----
+            if (Section("Replans (#697/#696)"))
+            {
+                GUILayout.Label("Force a replan; nobody may turn round or come out of bed.");
+                var rp = PeopleView.Find();
+                if (rp != null && rp.Planner != null) GUILayout.Label($"kept at the last replan: {rp.Planner.PinnedSleepers} asleep, {rp.Planner.PinnedWalkers} walking, {rp.Planner.PinnedStanding} standing");
+                var trig = AquariumCiv.Life.LifePlanner.ReplanTriggers;
+                for (int i = 0; i < trig.Length; i += 3)
+                {
+                    GUILayout.BeginHorizontal();
+                    for (int k = i; k < i + 3 && k < trig.Length; k++)
+                        if (GUILayout.Button("force replan (" + trig[k] + ")")) last = PeopleView.DebugReplan(trig[k]);
+                    GUILayout.EndHorizontal();
+                }
+                if (rp != null && rp.Planner != null && GUILayout.Button(rp.Planner.ReplanLog == null ? "Log every replan to the console" : "Stop logging replans"))
+                    rp.Planner.ReplanLog = rp.Planner.ReplanLog == null ? (System.Action<string>)(m => Debug.Log("[replan] " + m)) : null;
+                if (GUILayout.Button("Bedtime: clock to 20:00")) last = PeopleView.DebugSetHour(20f);
+                if (GUILayout.Button("Mid-evening walk: clock to 17:30")) last = PeopleView.DebugSetHour(17.5f);
+            }
+            // ---- end #697/#696 ----
             // ---- #417: the life jar (placed-life spec §10); "place" opens a shut jar and places by the camp, no ghost ----
             if (sim.EcologyOn && Section("Life jar (#417)"))
             {
