@@ -200,6 +200,7 @@ namespace AquariumCiv.Sim
             ApartStep(); // the people who live apart age even if the switch is turned off later (nothing when there are none)
             if (!Config.dilemmas) return;
             CallbackStep(); // no dice: one due callback per month
+            RitualStep(); // #721: the kept rituals, each in its season (no dice)
             var open = OpenDilemma;
             if (open != null)
             {

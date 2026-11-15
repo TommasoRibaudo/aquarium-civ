@@ -197,20 +197,20 @@ namespace AquariumCiv.Sim
             {
                 new DilemmaOptionDef
                 {
-                    icon = "gift", touch = "baskets first", label = "the baskets", hint = "Full bellies all winter, and a thinner woodpile.",
+                    icon = "gift", touch = "baskets first", label = "the baskets", hint = "Every autumn, everyone goes berrying together.", // #721 [est]
                     done = "The Keeper chose the baskets, and everyone went berrying.",
                     custom = "winter:baskets", buildingType = BuildingType.Farm,
                     prop = ConsequenceKind.Baskets, propAt = PropAnchor.Building,
                     favouredBy = new[] { "the kind", "the gardener", "the lazy", "the dreamer", "the singer" },
                     callbacks = new[]
                     {
-                        Cb("winter_baskets_berrying", "{place} still goes berrying every autumn, all together, and nobody comes home with clean fingers."),
+                        // #721: the berrying walk itself plays every autumn (SimCore.Rituals.cs), so the callback is what it leaves
                         Cb("winter_baskets_names", "the children of {place} know every berry bush by name. Some of the names are rude.", minYears: 6),
                     },
                 },
                 new DilemmaOptionDef
                 {
-                    icon = "tree", touch = "wood first", label = "the woodpile", hint = "Warm huts and new building, and a plainer winter table.",
+                    icon = "tree", touch = "wood first", label = "the woodpile", hint = "Every autumn, everyone stacks the woodpile before the snow.", // #721 [est]
                     done = "The Keeper chose the woodpile. The axes rang till the first snow.",
                     custom = "winter:wood", buildingType = BuildingType.Lumbermill,
                     prop = ConsequenceKind.WoodpileRoof, propAt = PropAnchor.Building,
@@ -218,7 +218,7 @@ namespace AquariumCiv.Sim
                     callbacks = new[]
                     {
                         Cb("winter_wood_roof", "{place}'s woodpile grew so tall it got a little roof of its own."),
-                        Cb("winter_wood_leaks", "the roofs of {place} have never once leaked. People knock on them to show visitors.", minYears: 6),
+                        Cb("winter_wood_old_roof", "the woodpile at {place} has a roof older than most of the people.", minYears: 6), // #721 [est]
                     },
                 },
             },
@@ -446,29 +446,29 @@ namespace AquariumCiv.Sim
             {
                 new DilemmaOptionDef
                 {
-                    icon = "star", touch = "a feast", label = "a feast", hint = "Long tables with everyone at them, and the Keeper watching.",
+                    icon = "star", touch = "a feast", label = "a feast", hint = "One long table every autumn, and a seat for everyone.", // #721 [est]
                     done = "The Keeper chose a feast. The tables ran the length of {place}.",
                     custom = "harvest:feast",
                     prop = ConsequenceKind.LongTable, propAt = PropAnchor.Fire,
                     favouredBy = new[] { "the loud", "the joker", "the singer", "the gossip", "the lazy" },
                     callbacks = new[]
                     {
-                        Cb("harvest_feast_days", "the harvest feast at {place} lasts three days now. Nobody remembers agreeing to the third."),
+                        Cb("harvest_feast_seats", "the harvest table at {place} has {seats} seats now, one for every year since the first feast."), // #721 [est]
                         Cb("harvest_feast_table", "the tavern keeps one long table just for the harvest feast, and nobody may eat at it the rest of the year.",
                             needsBuilding: BuildingType.Tavern, minYears: 5),
                     },
                 },
                 new DilemmaOptionDef
                 {
-                    icon = "hill", touch = "an offering", label = "an offering", hint = "The best basket left on the hill for the Keeper, and quiet thanks.",
-                    done = "The Keeper chose an offering. The best basket went up the hill, very carefully.",
+                    icon = "hill", touch = "an offering", label = "an offering", hint = "The best basket, left at the Keeper's tree every autumn.", // #721 [est]
+                    done = "The Keeper chose an offering. The best basket went to the Keeper's tree, very carefully.", // #721 [est]
                     custom = "harvest:offering",
                     prop = ConsequenceKind.OfferingBasket, propAt = PropAnchor.Edge,
                     favouredBy = new[] { "the kind", "the dreamer", "the worrier", "the gardener", "the stubborn" },
                     callbacks = new[]
                     {
-                        Cb("harvest_offering_basket", "the best basket goes up the hill every autumn, and every spring it's empty. The birds aren't saying."),
-                        Cb("harvest_offering_crumb", "the children of {place} leave a crumb on the sill for the Keeper after every meal. Just in case.", minYears: 5),
+                        Cb("harvest_offering_basket", "the best basket goes to the Keeper's tree every autumn, and every spring it's empty. The birds aren't saying."), // #721 [est]: no hill
+                        Cb("harvest_offering_small", "the children of {place} carry a small basket of their own behind the big one.", minYears: 5), // #721 [est]
                     },
                 },
             },

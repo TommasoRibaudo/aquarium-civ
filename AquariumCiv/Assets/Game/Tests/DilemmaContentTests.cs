@@ -18,7 +18,7 @@ namespace AquariumCiv.Tests
 
         static IEnumerable<DilemmaDef> Defs => DilemmaDefs.All;
 
-        static string Fill(string t) => (t ?? "").Replace("{t1}", Name).Replace("{t2}", Name).Replace("{y1}", Name).Replace("{y2}", Name).Replace("{a}", Name).Replace("{b}", Name).Replace("{p}", Name).Replace("{q}", Name).Replace("{place}", Place).Replace("{land}", "the meadow").Replace("{camp}", "out in the meadow") // #578: the longest of the three lands
+        static string Fill(string t) => (t ?? "").Replace("{seats}", "12").Replace("{t1}", Name).Replace("{t2}", Name).Replace("{y1}", Name).Replace("{y2}", Name).Replace("{a}", Name).Replace("{b}", Name).Replace("{p}", Name).Replace("{q}", Name).Replace("{place}", Place).Replace("{land}", "the meadow").Replace("{camp}", "out in the meadow") // #578: the longest of the three lands
             .Replace("{dead}", Name).Replace("{tree}", "a pole till a tree grows"); // #635: the longest tree words
 
         static IEnumerable<string> Questions(DilemmaDef d) => new[] { d.question }.Concat(d.askedBy?.Values ?? Enumerable.Empty<string>());
@@ -173,6 +173,7 @@ namespace AquariumCiv.Tests
                         if (d.namesStrangers) ok.AddRange(new[] { "{t1}", "{t2}" }); // #714
                         if (d.namesYoung) ok.AddRange(new[] { "{y1}", "{y2}" }); // #714
                         if (d.needsDeath) ok.Add("{dead}"); // #635: the latest death, kept when raised
+                        ok.Add("{seats}"); // #721: callbacks only, the years since the choice
                         if (d.options.Any(o => o.propAt == PropAnchor.Tree)) ok.Add("{tree}"); // #635
                         Assert.Contains(m.Value, ok, $"{d.id}: \"{t}\"");
                     }

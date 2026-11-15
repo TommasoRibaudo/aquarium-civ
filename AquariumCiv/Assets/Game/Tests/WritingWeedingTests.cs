@@ -255,6 +255,92 @@ namespace AquariumCiv.Tests
             Assert.IsEmpty(lines.Where(t => t.Contains("lanterns hung")), "the lantern line is the village's");
         }
 
+        // ---------- #721: the rituals replay every year ----------
+
+        static SimCore WithChoice(string defId, int option)
+        {
+            var def = DilemmaDefs.All.Single(d => d.id == defId);
+            var sim = Raised(def);
+            Assert.IsNotNull(sim, defId);
+            Assert.IsTrue(sim.AnswerDilemma(sim.State.dilemmas[0].id, option, DilemmaPath.Card));
+            return sim;
+        }
+
+        [TestCase("camp_winter", 0, RitualKind.Berrying)]
+        [TestCase("camp_winter", 1, RitualKind.Woodpile)]
+        [TestCase("village_harvest", 0, RitualKind.Feast)]
+        [TestCase("village_harvest", 1, RitualKind.Offering)]
+        public void EachAnswerBringsItsRitualBackEveryYearInItsSeason_WithANamedLeader(string defId, int option, string ritual)
+        {
+            var sim = WithChoice(defId, option);
+            CollectionAssert.AreEqual(new[] { ritual }, sim.Rituals.ToArray(), "only the chosen ritual");
+            var played = new List<(string kind, Notable lead, ChronicleEntry e, int cal)>();
+            sim.RitualPlayed += (k, lead, e) => played.Add((k, lead, e, sim.CalendarMonth));
+            for (int m = 0; m < 6 * SimConfig.MonthsPerYear; m++) { sim.Step(); if (sim.State.eraReady) sim.AdvanceEra(); }
+            Assert.That(played.Count, Is.InRange(5, 6), "once a year");
+            Assert.IsTrue(played.All(p => p.kind == ritual && p.cal == RitualKind.MonthOf(ritual)), "in its season");
+            Assert.IsTrue(played.All(p => p.lead != null && p.e.text.Length > 0 && !p.e.text.Contains("{")), "a named leader");
+            Assert.AreEqual(SimCore.RitualFirstKind(ritual), played[0].e.kind, "a card the first time");
+            Assert.IsTrue(played.Skip(1).All(p => p.e.kind == SimCore.RitualYearKind(ritual)), "History after");
+            Assert.AreEqual("custom", SimCore.GroupOf(played[0].e.kind));
+            Assert.AreEqual("hidden", SimCore.GroupOf(played[1].e.kind), "never a card again");
+            foreach (var p in played) foreach (var w in new[] { "hill", "goat", "glass", "tank" }) StringAssert.DoesNotContain(w, p.e.text.ToLowerInvariant());
+        }
+
+        [Test]
+        public void ARitualSurvivesASaveAndAnEraChange_AndALapseStartsIt()
+        {
+            var sim = WithChoice("camp_winter", 0);
+            for (int m = 0; m < 2 * SimConfig.MonthsPerYear; m++) sim.Step();
+            int before = sim.RitualTimes(RitualKind.Berrying);
+            Assert.GreaterOrEqual(before, 1);
+            var back = new SimCore(new SimConfig { dilemmas = true }, JsonUtility.FromJson<SimState>(JsonUtility.ToJson(sim.State)));
+            Assert.IsTrue(back.ForceNextEra());
+            for (int m = 0; m < 2 * SimConfig.MonthsPerYear; m++) back.Step();
+            Assert.Greater(back.RitualTimes(RitualKind.Berrying), before, "still every autumn, in the village");
+            Assert.AreEqual(1, back.State.chronicle.Count(e => e.kind == SimCore.RitualFirstKind(RitualKind.Berrying)), "the card only once");
+
+            var def = DilemmaDefs.All.Single(d => d.id == "village_harvest");
+            var lapsed = Raised(def);
+            Assert.IsTrue(lapsed.DebugLapseDilemma());
+            Assert.AreEqual(1, lapsed.Rituals.Count(), "the people's pick starts a ritual too");
+        }
+
+        [Test]
+        public void TheTownGrowsTheRituals_AndTheOfferingBasketIsEmptyInSpring()
+        {
+            var sim = WithChoice("village_harvest", 1);
+            for (int m = 0; m < 2 * SimConfig.MonthsPerYear; m++) sim.Step();
+            Assert.IsTrue(sim.State.chronicle.Any(e => e.text.Contains("Keeper's tree") && e.kind.StartsWith("ritual_offering")));
+            Assert.IsTrue(sim.State.chronicle.Any(e => e.kind == "ritual_offering_empty"), "the basket is empty in spring");
+            Assert.AreEqual("hidden", SimCore.GroupOf("ritual_offering_empty"));
+        }
+
+        [Test]
+        public void TheDebugCheatPlaysEachRitualNow()
+        {
+            var sim = NewSim(3, new SimConfig { dilemmas = true });
+            foreach (var k in RitualKind.All)
+            {
+                var e = sim.DebugPlayRitual(k);
+                Assert.IsNotNull(e, k);
+                Assert.AreEqual(SimCore.RitualFirstKind(k), e.kind);
+                Assert.IsFalse(string.IsNullOrEmpty(RitualKind.Caption(k)));
+            }
+            Assert.IsNull(sim.DebugPlayRitual("nope"));
+        }
+
+        [Test]
+        public void TheFeastCallbackCountsTheSeats()
+        {
+            var sim = WithChoice("village_harvest", 0);
+            ChronicleEntry e;
+            var told = new List<string>();
+            while ((e = sim.DebugFireCallbackNow()) != null) told.Add(e.text);
+            Assert.IsTrue(told.All(t => !t.Contains("{")), string.Join(" / ", told));
+            Assert.IsTrue(told.Any(t => t.Contains("seats now")), string.Join(" / ", told));
+        }
+
         // ---------- #715: the story stream ----------
 
         /// <summary>The story stream's kinds (SimCore.Story.cs), the kept ones and the dropped ones.</summary>

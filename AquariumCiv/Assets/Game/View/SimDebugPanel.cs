@@ -312,6 +312,15 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
             }
             // ---- end #371 ----
+            // ---- #721: the yearly rituals (a choice's tradition, replayed every year) ----
+            if (Section("Rituals (#721)"))
+            {
+                GUILayout.BeginHorizontal();
+                foreach (var k in RitualKind.All)
+                    if (GUILayout.Button("Play " + k + " now")) { var e = Sim?.DebugPlayRitual(k); last = e == null ? "no box" : e.text; }
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #721 ----
             // ---- fb4 #540: camp props ----
             if (Section("Camp props (fb4 #540)"))
                 if (GUILayout.Button("Camp props: show all (rack, every prop)")) last = ConsequenceCheats.ShowCampProps();
