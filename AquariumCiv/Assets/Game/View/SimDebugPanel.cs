@@ -308,10 +308,13 @@ namespace AquariumCiv.View
             // ---- #721: the yearly rituals (a choice's tradition, replayed every year) ----
             if (Section("Rituals (#721)"))
             {
-                GUILayout.BeginHorizontal();
-                foreach (var k in RitualKind.All)
-                    if (GUILayout.Button("Play " + k + " now")) last = StagedMoments.DebugPlayRitualNow(k); // the held moment, staged now
-                GUILayout.EndHorizontal();
+                for (int i = 0; i < RitualKind.All.Length; i += 2) // two a row: four did not fit the panel's width
+                {
+                    GUILayout.BeginHorizontal();
+                    for (int j = i; j < i + 2 && j < RitualKind.All.Length; j++)
+                        if (GUILayout.Button("Play " + RitualKind.All[j] + " now")) last = StagedMoments.DebugPlayRitualNow(RitualKind.All[j]); // the held moment, staged now
+                    GUILayout.EndHorizontal();
+                }
             }
             // ---- end #721 ----
             // ---- fb4 #540: camp props ----
