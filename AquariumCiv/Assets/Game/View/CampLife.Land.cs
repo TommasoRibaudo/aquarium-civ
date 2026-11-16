@@ -497,6 +497,7 @@ namespace AquariumCiv.View
             float rs = root.lossyScale.y;
             Transform Next(int meshKey)
             {
+                while (used < landPool.Count && landPool[used] == null) landPool.RemoveAt(used); // the box (the people's root) was rebuilt: its marks went with it
                 while (landPool.Count <= used)
                 {
                     var go = new GameObject("Camp land mark") { hideFlags = HideFlags.DontSave };

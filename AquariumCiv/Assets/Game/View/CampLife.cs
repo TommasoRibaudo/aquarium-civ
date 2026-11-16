@@ -751,6 +751,7 @@ namespace AquariumCiv.View
 
         Transform Tip(Transform root, Material material, int i)
         {
+            while (i < tipPool.Count && tipPool[i] == null) tipPool.RemoveAt(i); // the box was rebuilt: its tips went with it
             while (tipPool.Count <= i)
             {
                 var go = new GameObject("Camp tip") { hideFlags = HideFlags.DontSave };

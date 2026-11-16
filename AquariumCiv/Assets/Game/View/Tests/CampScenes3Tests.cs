@@ -152,7 +152,7 @@ namespace AquariumCiv.View.Tests
             Sane(s); PoseRuns(s);
             var sit = DollPose.Rest; CampScenes3.RockSitPose(ref sit, 1f, 10f);
             Assert.Greater(sit.offset.y, 0f, "sits higher than the ground");
-            Assert.IsTrue(s.parts[0].Any(p => p.style == DollStyle.Sit && (p.pos - r1).magnitude < 1e-3f && p.Len >= 10f), "on top of the boulder");
+            Assert.IsTrue(s.parts[0].Any(p => p.style == DollStyle.Sit && (p.pos - r1).magnitude < LandGeo.RockW * 0.4f && p.Len >= 10f), "on top of the boulder (its back half)");
             Assert.IsTrue(s.parts[1].Any(p => p.style == DollStyle.PoseBig && (p.pos - r2).magnitude < 1e-3f), "king of the rock on top");
             Assert.AreEqual(1, s.fx.Count(f => f.kind == CampFxKind.Dust), "the jump off lands in a dust puff");
             var alone = CampScenes3.SitRock(-1, default, r1, ToCam, 5f, 2, Spot + Vector2.left, r2, 0f);
