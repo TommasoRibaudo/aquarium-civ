@@ -225,6 +225,53 @@ namespace AquariumCiv.Life.Tests
             TestContext.WriteLine($"retries {retries}, with a kid {withKid}");
         }
 
+        [Test]
+        public void NoSecondTry_WhenNoRabbitIsLeft_OrTheAfternoonIsOver()
+        {
+            for (int rabbits = 3; rabbits <= 12; rabbits += 3)
+            {
+                var s = Herd(7, rabbits);
+                for (int i = 0; i < 60; i++)
+                {
+                    long day = s.sim.State.month + i;
+                    var plans = s.planner.HuntsOn(day);
+                    var ids = plans.Select(p => p.rabbitId).ToList();
+                    Assert.AreEqual(ids.Count, ids.Distinct().Count(), $"day {day}: a rabbit is after one hunter at a time, tries included");
+                    Assert.LessOrEqual(ids.Count, s.field.Alive.Count, $"day {day}: no more throws than rabbits on the field");
+                    float limit = LifeClock.AfternoonEnd(LifeClock.SeasonOf(day)) + 0.5f;
+                    foreach (var p in plans.Where(p => p.IsRetry))
+                        Assert.LessOrEqual(p.end, limit + 1e-3f, $"day {day}: no second try that runs past the afternoon");
+                }
+            }
+        }
+
+        [Test]
+        public void TheSecondTry_KeepsTheYearsCatchesNearTheBase()
+        {
+            int baseCatches = 0, withCatches = 0, baseThrows = 0, withThrows = 0;
+            for (int seed = 1; seed <= 5; seed++)
+                foreach (bool on in new[] { false, true })
+                {
+                    var s = Herd(seed, 12);
+                    s.planner.HuntRetryOn = on;
+                    int catches = 0, throws = 0;
+                    for (int i = 0; i < 120; i++)
+                    {
+                        long day = s.sim.State.month + i;
+                        int allowed = (s.sim.HuntSurplus + 1) / 2;
+                        var plans = s.planner.HuntsOn(day);
+                        int c = plans.Count(p => p.catches);
+                        Assert.LessOrEqual(c, Math.Max(allowed, 0), $"seed {seed} day {day}: never more than the allowed catches, tries included");
+                        catches += c; throws += plans.Count;
+                    }
+                    if (on) { withCatches += catches; withThrows += throws; } else { baseCatches += catches; baseThrows += throws; }
+                }
+            TestContext.WriteLine($"catches base {baseCatches} / with the try {withCatches}; throws base {baseThrows} / with {withThrows}");
+            Assert.Greater(baseCatches, 0);
+            Assert.GreaterOrEqual(withCatches, baseCatches * 0.9, "the try does not take food away");
+            Assert.LessOrEqual(withCatches, baseCatches * 1.25 + 2, "and adds only a little: the day's allowed catches still cap it");
+        }
+
         static float Dist(float ax, float az, float bx, float bz) { float dx = ax - bx, dz = az - bz; return (float)Math.Sqrt(dx * dx + dz * dz); }
     }
 }
