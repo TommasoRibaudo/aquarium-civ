@@ -54,6 +54,9 @@ sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Wo
   recorded, splash fix uncommitted). A new worker resumes on vs/692-parts-2-3. User on splash: "too big, the drops too big".
   User going to bed: after this, polish issues that need no approval. Started #652 (lane A, vs/652-stream-words). Editor
   polish queue after #692 p2–3: #657 grass tufts, #665 rabbit tracks, #680 hunter retry (#644 needs the winter look call).
+- 2026-11-16: #692 parts 2–3 merged db5b1a4 (splash smaller 214d5a9, B32 tree visits, B33–B36 land uses); sim 2077/2077.
+  Clips page for part 1 re-takes + part 2: https://claude.ai/artifact/T35GhkQTNEPSf6HqqrznPQ. Part 3 clips didn't read
+  (Ring puff black discs, whistle puff, framing): worker on vs/692-p3-fixes, then #657, #665, #680 Editor check.
 - 2026-11-16: #652 merged b917fa1 (already done on batch3; added a ContentRules 'stream' gate + test). #680 retry was
   already in e20da81 (#681); tests merged. Open for the user: planned catches +22% with the retry (998→1218 over 5x120
   days, unresolved hunts); the issue wanted the food economy unchanged. Editor check of the retry still to do.
