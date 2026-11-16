@@ -2016,6 +2016,8 @@ The read on a phone is in the beats' last words. None has a sound unless it says
   7 s, a slow breath, the arms folded in the lap (`NapPose`).
 - **B44.c:** the leaner stands beside the trunk as the camera sees it and the other out to the side; the shoulder lean is 16°.
 - **B45:** people stand at the drawn water's edge (0.035 u short of it), not at the bank cell's middle (up to 0.2 u up the slope).
+  Reshoot2: the camp's water rings were drawn 0.06 x their scale under the given point (no ground given), under the raised pond: none ever
+  showed. They now sit on the pond's surface at the spec's sizes.
 - **B46.b:** each kid keeps a lane 0.065 u apart, side by side across the run.
 - **B47.a:** the armful is seven green and straw stalks with brown cattail heads; one reed is green.
 - **B53.a:** the weed in the hand is drawn 2 x. **B53.c:** the worn crown sits round the head (1.2 x the head's width, on its upper half).
