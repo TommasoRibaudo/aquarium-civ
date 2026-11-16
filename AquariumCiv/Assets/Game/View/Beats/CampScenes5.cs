@@ -62,8 +62,8 @@ namespace AquariumCiv.View
         // ---- B45.a: the skips (u along the water from the throw), 0.25 s apart, the stone 0.02 u over the water
         public static readonly float[] SkipSteps = { 0.15f, 0.12f, 0.08f };
         public const float SkipGap = 0.25f, SkipH = 0.02f, SkipFirst = 0.12f, PlopFar = 0.12f;
-        /// <summary>#692 p5 retakes: a skip's ring scale (the sink's 1.3 x) [est]; thin and pale as approved, only wider.</summary>
-        public const float SkipRing = 1.1f;
+        /// <summary>A skip's ring scale (the sink's 1.3 x). Back to the spec's 0.6 (reshoot2): the rings had been hidden under the water, not too small.</summary>
+        public const float SkipRing = 0.6f;
         // ---- B45.b: the leaf boat drifts 0.04 u/s, turning 20 deg/s, 0.3-0.5 u out
         public const float BoatSpeed = 0.04f, BoatTurn = 20f, BoatSize = 0.03f;
         // ---- B48.b: the little pool behind the dam
@@ -788,7 +788,7 @@ namespace AquariumCiv.View
             {
                 var plop = bank + toWater * CampGeo5.PlopFar;
                 float hit = s.a + 0.35f;
-                s.Fx(hit, CampFxKind.WaterRing, G(plop), 1.3f);
+                s.Fx(hit, CampFxKind.WaterRing, G(plop), 0.9f);
                 s.Fx(hit, CampFxKind.WaterDrops, G(plop, 0.01f), 0.5f, 4);
                 Leave(s, hit, CampMark.SkipSplash, plop);
                 last = hit;
@@ -829,7 +829,7 @@ namespace AquariumCiv.View
             t += 0.55f;
             s.a = t;
             var on = bank + toWater * 0.07f; // #692 p5 retakes: on the drawn water (the bank stands 0.035 short of it)
-            s.Fx(t, CampFxKind.WaterRing, G(on), 0.8f);
+            s.Fx(t, CampFxKind.WaterRing, G(on), 0.5f);
             Leave(s, t, CampMark.Boat, on);
             t += 0.05f;
             s.Part(m, t, t + 0.4f, bank, bank + toWater, DollStyle.Stand, (ref DollPose p, float u, float l) => { CrouchPose(ref p, 1f, l); float k = Bump(u, 0f, l); p.armR = Lerp(p.armR, new Vector3(70f, 0f, 6f), k); });
@@ -866,7 +866,7 @@ namespace AquariumCiv.View
             {
                 float ph = i * 0.6f;
                 s.Part(i, t, t + sitFor, spots[i], spots[i] + toWater, DollStyle.Sit, (ref DollPose p, float u, float l) => { p.offset.y -= 0.02f * In(u, 0f, 0.5f); p.lean -= 10f; p.offset.y += 0.008f * Mathf.Sin((u + ph) * 1.5f * Mathf.PI * 2f); });
-                for (float r = 1.2f + ph; r < sitFor; r += 2f) s.Fx(t + r, CampFxKind.WaterRing, G(spots[i] + toWater * 0.07f), 0.8f); // #692 p5 retakes: 0.4 was not seen
+                for (float r = 1.2f + ph; r < sitFor; r += 2f) s.Fx(t + r, CampFxKind.WaterRing, G(spots[i] + toWater * 0.07f), 0.5f); // reshoot2: the rings had been under the water (CampLife.FireCamp)
             }
             return s;
         }

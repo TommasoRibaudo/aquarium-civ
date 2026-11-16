@@ -396,6 +396,7 @@ namespace AquariumCiv.View
                 foreach (float deg in new[] { 45f, 25f, 65f, -45f, 0f })
                 {
                     var f = Rotate(across, deg);
+                    if (Vector2.Dot(f, toCam) < 0f) f = Rotate(across, -deg); // reshoot2: the front of the arc toward the camera, so the pusher stands behind the swing, not in front of it
                     if (CampGeo5.SwingSpotOk(piv, f, fire, Bad)) { pvt = piv; fw = f.normalized; return true; }
                 }
                 return false;
@@ -1059,7 +1060,8 @@ namespace AquariumCiv.View
             if (watcher >= 0)
             {
                 int m = sw.Add(watcher);
-                var spot = pivot - swingFwd * (CampGeo5.ArcReach + 0.3f) + ToCam(pivot) * 0.08f; // #692 p5 retakes: off to the side of the arc (0.45 toward the camera stood in front of the swing)
+                var acr = CameraAcross(); float sd = Vector2.Dot(swingFwd, acr) >= 0f ? -1f : 1f;
+                var spot = pivot + acr * (sd * 0.45f) - ToCam(pivot) * 0.05f; // reshoot2: across the camera's view from the swing, a little behind it (in front it hid the swing)
                 float w = Mathf.Clamp(((At(watcher) ?? spot) - spot).magnitude / CampScenes1.Walk, 0.4f, 9f);
                 sw.Part(m, 0f, w, spot, pivot, DollStyle.Stand, null, PropKind.None, CampScenes1.Walk);
                 sw.Part(m, w, Mathf.Max(w + 0.5f, sw.Length), spot, pivot, DollStyle.Stand);
@@ -1131,8 +1133,10 @@ namespace AquariumCiv.View
             var o = PuffOptions.Default; if (f.count > 0) o.count = f.count;
             switch (f.kind)
             {
-                case CampFxKind.WaterRing: HitFx.Puff(PuffKind.Ring, root.TransformPoint(new Vector3(f.at.x, PondY + 0.003f + f.at.y, f.at.z)), Vector3.up, f.scale, o); break;
-                case CampFxKind.WaterDrops: HitFx.Puff(PuffKind.Droplets, root.TransformPoint(new Vector3(f.at.x, PondY + 0.01f + f.at.y, f.at.z)), Vector3.up, f.scale, o); break;
+                // reshoot2: the puffs' ground is the pond's surface. With none given a ring sat 0.06 x its scale under the given point, under the
+                // water, so no skip, plop, boat or feet ring was ever seen
+                case CampFxKind.WaterRing: { var w = root.TransformPoint(new Vector3(f.at.x, PondY + 0.003f + f.at.y, f.at.z)); o.groundY = w.y; HitFx.Puff(PuffKind.Ring, w, Vector3.up, f.scale, o); break; }
+                case CampFxKind.WaterDrops: { var w = root.TransformPoint(new Vector3(f.at.x, PondY + 0.01f + f.at.y, f.at.z)); o.groundY = root.TransformPoint(new Vector3(f.at.x, PondY, f.at.z)).y; HitFx.Puff(PuffKind.Droplets, w, Vector3.up, f.scale, o); break; }
                 case CampFxKind.Creak: AudioDirector.Instance?.Play(AquariumCiv.Audio.CueLibrary.KnockBack, -5f, 0.25f * Mathf.Max(0.3f, f.scale), 0f); break; // [est] impactWood_light pitched down
                 case CampFxKind.BushSway: HitFx.Shake(ShakeTarget.Bush, world, CameraAcross3(root), 0f); break;
                 case CampFxKind.Leave: Leave(s, f, root); break;
