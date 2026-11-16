@@ -78,6 +78,8 @@ namespace AquariumCiv.View
             hud ??= GameHud.Instance;
             bool holding = sim != null && sim.EcologyOn && box != null && hud != null && hud.Hand == GameHud.KitTool.Seed;
             if (!holding) { HideGhost(); press.Reset(); return; }
+            // tester batch 3 (the first-tap freeze): the ghost's meshes are built when the seed is taken, not on the tap that shows it
+            if (!GhostShown) { bool earned = !sim.CanPlantTree; GhostMesh(false, earned); GhostMesh(true, earned); }
             DrawGhost();
             int n = KitPress.ReadPointer(out var pos);
             if (press.Tap(n, pos, slop, out var at)) TapAt(sim, at); // two fingers (a pan, a pinch) never plant: the camera's
