@@ -209,9 +209,11 @@ namespace AquariumCiv.View
         /// <summary>#714: the boat's length on the land before <see cref="Scale"/> (0.27 × 1.5 = 0.4 box units: about two people lying down,
         /// a family of three fits in it, and two children crawl under it).</summary>
         public const float BoatLength = 0.27f;
+        /// <summary>#714 round 2: the stern's lift on its stone (degrees about the beam).</summary>
+        public const float BoatLift = 8f;
 
-        /// <summary>#714: Kenney's small rowing boat, turned upside down by the fire with its stern propped on a log (the dark hollow under it
-        /// is the children's house), its two oars laid beside it. Recoloured to wood in the vertex colours: each corner's colour in Kenney's
+        /// <summary>#714: Kenney's small rowing boat, turned upside down, flat and level with its rim on the ground (#714 round 2: no prop,
+        /// no roll), its two oars laid beside it; the view stands it apart from the pot (<see cref="ConsequencePropsView"/>'s boat spot). Recoloured to wood in the vertex colours: each corner's colour in Kenney's
         /// colour map is read for its lightness only, then mapped onto the box's timber browns (bark, timber, light wood); the shared texture
         /// is not edited. False when the model can't be read (the code-built stand-in draws instead).</summary>
         static bool KenneyBoat(MeshBuilder mb)
@@ -237,17 +239,18 @@ namespace AquariumCiv.View
             float k = BoatLength / Mathf.Max(1e-4f, alongZ ? b.size.z : b.size.x);
             var toX = Quaternion.Euler(0f, alongZ ? 90f : 0f, 0f);
             var flip = Quaternion.Euler(180f, 0f, 0f);                       // keel up: rolled over its long axis
-            var tilt = Quaternion.Euler(0f, 0f, 18f);                        // the stern up on its log
             float height = b.size.y * k;
-            // centre, turn long side to x, roll over, scale, sit the gunwale on the ground, then tilt about the bow's foot
-            var place = Matrix4x4.TRS(new Vector3(0f, height * 0.5f, 0f), flip * toX, Vector3.one * k) * Matrix4x4.Translate(-b.center);
+            // centre, turn long side to x, roll over, scale, and sit the gunwale flat and level on the ground (#714 round 2: no tilt,
+            // no log, no roll: the user found the propped stern read as skewed, and its open end threw an odd dark blob)
+            var place = Matrix4x4.TRS(new Vector3(0f, height * 0.5f - 0.001f, 0f), flip * toX, Vector3.one * k) * Matrix4x4.Translate(-b.center);
+            // a small lift at the stern on one stone (about the beam only: no roll), so the gunwale line and the dark inside show and it reads
+            // as a boat, not a slab; the bow's rim stays on the ground
             var bow = new Vector3(-BoatLength * 0.5f, 0f, 0f);
-            var lift = Matrix4x4.Translate(bow) * Matrix4x4.Rotate(tilt) * Matrix4x4.Translate(-bow);
+            var lift = Matrix4x4.Translate(bow) * Matrix4x4.Rotate(Quaternion.Euler(0f, 0f, BoatLift)) * Matrix4x4.Translate(-bow);
             var keep = mb.M;
-            mb.Box(new Vector3(0.02f, 0.004f, 0f), new Vector3(BoatLength * 0.62f, 0.008f, BoatLength * 0.3f), new Color(0.16f, 0.11f, 0.07f)); // the dark hollow under it
             foreach (var (mesh, m) in hull) AddWood(mb, mesh, m, keep * lift * place, map, 0f);
-            // the log under the stern (the high end), across the boat
-            mb.Prism(new Vector3(BoatLength * 0.3f, 0.03f, -BoatLength * 0.24f), 0.033f, 0.033f, BoatLength * 0.48f, 7, Palette.Bark, Quaternion.Euler(90f, 0f, 0f), true, true, Palette.WoodLight);
+            float stoneTop = BoatLength * Mathf.Sin(BoatLift * Mathf.Deg2Rad) * 0.9f;
+            mb.Ico(new Vector3(BoatLength * 0.42f, stoneTop * 0.45f, 0f), stoneTop * 0.6f, new Vector3(1.3f, 0.85f, 1.1f), Palette.Rock, 0.15f); // the stone under the stern
             // the oars, laid flat on the ground beside it, side by side: the model's paddles are one mesh, an oar out to each side,
             // so each side's half is taken alone, centred, and laid along x (the left one turned round so both blades point one way)
             int i = 0;
@@ -395,6 +398,30 @@ namespace AquariumCiv.View
         PeopleView people;
         readonly List<CampSpots.Disc> spots = new();
         readonly Dictionary<int, Vector2> settledSpot = new(); // #700: where each fire prop stands now
+        readonly List<ConsequenceProp> ordered = new();
+        readonly List<CampSpots.Disc> wide = new();
+
+        /// <summary>#714 round 2: how far out from the fire the boat wants to lie (toward the pond), and the room it keeps from the other things
+        /// (it is 0.4 u long: the pot and the baskets must never hide it).</summary>
+        public const float BoatOut = 0.9f, BoatRadius = 0.26f;
+
+        /// <summary>#714 round 2 (the user: "apart from the stew pot, so nothing hides it"): the boat lies out from the fire toward the pond, on
+        /// clear ground: every other thing's room is widened by the boat's half-length, so none of them touches it.</summary>
+        void BoatSpot(LifePlanner planner, System.Func<float, float, bool> onPath, out float px, out float pz)
+        {
+            var dir = new Vector2(0f, -1f); // no pond yet: toward the front glass
+            if (planner != null && planner.Positions.TryGetPosition(Place.Land(PlaceKind.Pond), out float wx, out float wz))
+            {
+                var d = new Vector2(wx - fx, wz - fz);
+                if (d.sqrMagnitude > 1e-4f) dir = d.normalized;
+            }
+            wide.Clear();
+            foreach (var d in spots) wide.Add(new CampSpots.Disc(d.x, d.z, d.r + BoatRadius - CampSpots.PropRadius));
+            CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, fx + dir.x * BoatOut, fz + dir.y * BoatOut, wide, out px, out pz, fishAngle, onPath);
+        }
+
+        /// <summary>#714 round 2: the boat lines up with the box's lines (the glass), its long side across the way to the fire, never a random yaw.</summary>
+        float BoatYaw(float px, float pz) => Mathf.Abs(px - fx) > Mathf.Abs(pz - fz) ? 90f : 0f;
         readonly List<CampSpots.Disc> fixedScratch = new();
         readonly Dictionary<int, Made> made = new();
         readonly Dictionary<int, float> pulses = new();
@@ -478,7 +505,10 @@ namespace AquariumCiv.View
                 fishAngle = FishRackSpot.AngleFor(sim, fx, fz); // #543, #700 (where the camp stands it now)
             }
             var pole = sim.FeatherPoleProp; // fb4 #566: one feather pole, however many answers asked for a feather (old saves too)
-            foreach (var p in list)
+            ordered.Clear(); // #714: the boat is stood last, so it keeps clear of every other thing at the fire
+            foreach (var p in list) if (p.kind != ConsequenceKind.ShoreBoat) ordered.Add(p);
+            foreach (var p in list) if (p.kind == ConsequenceKind.ShoreBoat) ordered.Add(p);
+            foreach (var p in ordered)
             {
                 if (!p.placed) continue;
                 if (!ReplayGate.Shows(p.placedMonth)) // #669: a replay shows it from the month it was placed
@@ -496,7 +526,8 @@ namespace AquariumCiv.View
                 {
                     // #700: never on a path; one that a path grows over (or a moved rack reaches) moves at night, not in front of the player
                     var onPath = RackSites.PathTest(sim);
-                    CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, spots, out px, out pz, fishAngle, onPath);
+                    if (p.kind == ConsequenceKind.ShoreBoat) BoatSpot(planner, onPath, out px, out pz);
+                    else CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, spots, out px, out pz, fishAngle, onPath);
                     if (settledSpot.TryGetValue(p.id, out var was) && (was.x != px || was.y != pz))
                     {
                         fixedScratch.Clear(); CampSpots.FireSide(fx, fz, fixedScratch);
@@ -504,7 +535,7 @@ namespace AquariumCiv.View
                         if (stillOk || !RackSites.IsNight(sim)) { px = was.x; pz = was.y; }
                     }
                     settledSpot[p.id] = new Vector2(px, pz);
-                    spots.Add(new CampSpots.Disc(px, pz, CampSpots.PropRadius));
+                    spots.Add(new CampSpots.Disc(px, pz, p.kind == ConsequenceKind.ShoreBoat ? BoatRadius : CampSpots.PropRadius));
                 }
                 else if (haveFire) spots.Add(new CampSpots.Disc(p.x, p.z, CampSpots.PropRadius));
                 // #635: charms on a tree hang from the drawn crown (no post, not scaled up); a tree not drawn yet: wait a frame
@@ -554,7 +585,8 @@ namespace AquariumCiv.View
                     continue;
                 }
                 m.t.localScale = Vector3.one * s;
-                m.t.SetLocalPositionAndRotation(box.land.OnGround(px, pz) + Vector3.up * lift, Quaternion.Euler(0f, p.yaw, 0f));
+                float yaw = p.kind != ConsequenceKind.ShoreBoat ? p.yaw : haveFire && p.anchor == PropAnchor.Fire ? BoatYaw(px, pz) : Mathf.Round(p.yaw / 90f) * 90f; // #714 round 2: square to the glass (old saves too)
+                m.t.SetLocalPositionAndRotation(box.land.OnGround(px, pz) + Vector3.up * lift, Quaternion.Euler(0f, yaw, 0f));
             }
         }
     }

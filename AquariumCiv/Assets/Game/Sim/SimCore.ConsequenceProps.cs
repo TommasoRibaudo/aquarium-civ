@@ -205,10 +205,32 @@ namespace AquariumCiv.Sim
                 p.anchor = PropAnchor.Fire;
                 AnchorOf(p, ref ax, ref az, ref minR, ref maxR);
             }
+            if (p.kind == ConsequenceKind.ShoreBoat && p.anchor == PropAnchor.Fire) { minR = Math.Max(minR, BoatFromFire); maxR = Math.Max(maxR, BoatFromFire + 1.2f); } // #714 round 2: out past the pot and the seats
             PropSpot(p, ax, az, minR, maxR, out p.x, out p.z);
             p.yaw = (int)(DilemmaRoll(110, p.dilemmaId * 8 + p.option, p.id) * 360f);
+            if (p.kind == ConsequenceKind.ShoreBoat) p.yaw = p.yaw < 180 ? 0 : 90; // #714 round 2: lined up with the box's lines, never a random yaw
             p.placed = true;
             p.placedMonth = State.month;
+        }
+
+        /// <summary>#714 round 2: the extra room the boat keeps from every other thing (it is 0.4 u long; the stew pot must never hide it).</summary>
+        public const float BoatRoom = 0.35f, BoatFromFire = 0.75f;
+
+        /// <summary>#714 round 2: a lot (a house, a yard) within 0.3 u of a cell, or in front of it toward the default camera within 0.8 u: the boat lying there would be hidden.</summary>
+        static bool BoatNearLot(SiteMap map, int c)
+        {
+            int reach = (int)Math.Ceiling(0.3f / SiteMap.Cell), i0 = SiteMap.I(c), j0 = SiteMap.J(c);
+            for (int j = Math.Max(0, j0 - reach); j <= Math.Min(SiteMap.NZ - 1, j0 + reach); j++)
+                for (int i = Math.Max(0, i0 - reach); i <= Math.Min(SiteMap.NX - 1, i0 + reach); i++)
+                    if (map.lot[SiteMap.Index(i, j)] != 0) return true;
+            // and between it and the default camera (yaw 28: the camera stands off -x, -z): a house there hides it
+            float cx = SiteMap.CXc(c), cz = SiteMap.CZc(c), dx = -0.47f, dz = -0.88f;
+            for (float d = 0.1f; d <= 0.8f; d += 0.05f)
+            {
+                int q = SiteMap.CellAt(cx + dx * d, cz + dz * d);
+                if (q >= 0 && q < SiteMap.N && map.lot[q] != 0) return true;
+            }
+            return false;
         }
 
         bool AnchorOf(ConsequenceProp p, ref float ax, ref float az, ref float minR, ref float maxR)
@@ -296,9 +318,17 @@ namespace AquariumCiv.Sim
                     if (pass < 2 && Settlement.WalkCost(c) == 0) continue;
                     bool crowded = false;
                     foreach (var q in State.consequenceProps)
-                        if (q != p && q.placed && (q.x - cx) * (q.x - cx) + (q.z - cz) * (q.z - cz) < 0.22f * 0.22f) { crowded = true; break; }
+                    {
+                        float room = 0.22f + (p.kind == ConsequenceKind.ShoreBoat || q.kind == ConsequenceKind.ShoreBoat ? BoatRoom : 0f); // #714 round 2: nothing hides the boat
+                        if (q != p && q.placed && (q.x - cx) * (q.x - cx) + (q.z - cz) * (q.z - cz) < room * room) { crowded = true; break; }
+                    }
                     if (crowded) continue;
                     float roll = DilemmaRoll(112, salt * 4096 + c, p.id);
+                    if (p.kind == ConsequenceKind.ShoreBoat) // #714 round 2: the boat lies on clear ground nearest the pond's edge (not on the mud), not behind the pot
+                    {
+                        if (map.waterDist[c] < 0.15f) continue;
+                        roll = map.waterDist[c] + (BoatNearLot(map, c) ? 2f : 0f) + Math.Max(0f, cz - az) * 0.15f + roll * 0.01f; // not by or behind a house, on the camera's side when it can
+                    }
                     if (roll < bestRoll) { bestRoll = roll; best = c; }
                 }
                 if (best >= 0) { x = SiteMap.CXc(best); z = SiteMap.CZc(best); return; }

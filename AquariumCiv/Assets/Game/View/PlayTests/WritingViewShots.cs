@@ -119,6 +119,51 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsEmpty(errors, string.Join(" | ", errors));
         }
 
+        /// <summary>#714 round 2: the boat stands apart from the stew pot and every other thing at the fire (nothing hidden here), flat, upside
+        /// down, lined up with the glass. Asserts the gap to every other thing and the square yaw, then a close and a mid shot.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator BoatApartFromPot()
+        {
+            yield return OpenSlice(seed: Seed);
+            yield return GrowInto(Era.Village);
+            PeopleView.DebugSetHour(11f);
+            Debug.Log("[WritingShots] " + ConsequenceCheats.PlaceEvery());
+            yield return Frames(20);
+            var boat = Sim.ConsequenceProps.FirstOrDefault(p => p.kind == ConsequenceKind.ShoreBoat);
+            var pot = Sim.ConsequenceProps.FirstOrDefault(p => p.kind == ConsequenceKind.StewPot);
+            Assert.IsNotNull(boat, "the boat is placed");
+            var standing = ConsequencePropsView.Instance.Standing;
+            Assert.IsTrue(standing.TryGetValue(boat.id, out var t) && t != null, "and drawn");
+            float yaw = t.localEulerAngles.y;
+            Assert.Less(Mathf.Abs(Mathf.DeltaAngle(yaw, Mathf.Round(yaw / 90f) * 90f)), 0.5f, "lined up with the glass");
+            foreach (var kv in standing)
+                if (kv.Key != boat.id && kv.Value != null && kv.Value.gameObject.activeSelf)
+                {
+                    float gap = Vector2.Distance(new Vector2(kv.Value.localPosition.x, kv.Value.localPosition.z), new Vector2(t.localPosition.x, t.localPosition.z));
+                    Assert.Greater(gap, ConsequencePropsView.BoatRadius, $"the boat is clear of thing {kv.Key} ({kv.Value.name})");
+                }
+            Debug.Log($"[WritingShots] boat at {t.localPosition.x:0.00}, {t.localPosition.z:0.00}, yaw {yaw:0}");
+            if (pot != null && standing.TryGetValue(pot.id, out var potT) && potT != null)
+                Debug.Log($"[WritingShots] boat to pot: {Vector3.Distance(potT.localPosition, t.localPosition):0.00} u");
+            if (PeopleView.Find().Planner.FirePoint(out float ffx, out float ffz))
+                Debug.Log($"[WritingShots] boat to fire: {Vector2.Distance(new Vector2(ffx, ffz), new Vector2(t.localPosition.x, t.localPosition.z)):0.00} u");
+            yield return new WaitForSecondsRealtime(1.5f); // the tidy-up's own camera move first
+            Cam.FlyTo(t.position, 0.08f, 0.3f);
+            yield return Until(() => !Cam.IsFlying, 3f);
+            yield return new WaitForSecondsRealtime(0.8f);
+            Debug.Log($"[WritingShots] close zoom {Cam.zoom:0.000}");
+            yield return Shot("714/boat-apart-close");
+            Cam.FlyTo(t.position, 0.3f, 0.3f);
+            yield return Until(() => !Cam.IsFlying, 3f);
+            yield return new WaitForSecondsRealtime(0.8f);
+            yield return Shot("714/boat-apart-mid");
+            Cam.EaseTo(t.position, 20f, 75f, 0.2f, 0.3f);
+            yield return Until(() => !Cam.IsFlying, 3f);
+            yield return new WaitForSecondsRealtime(0.8f);
+            yield return Shot("714/boat-apart-top");
+            Assert.IsEmpty(errors, string.Join(" | ", errors));
+        }
+
         IEnumerator Teller(int option, string name)
         {
             yield return OpenSlice(seed: Seed);
