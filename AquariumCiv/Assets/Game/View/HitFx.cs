@@ -362,8 +362,12 @@ namespace AquariumCiv.View
 
         // ================================================================== spawning
 
+        /// <summary>#708: every ring or droplets puff asked for (world point, before the view check): the pond's fish dart from it (FishView).</summary>
+        public static event System.Action<PuffKind, Vector3> WaterPuff;
+
         bool Spawn(PuffKind kind, Vector3 at, Vector3 dir, float scale, in PuffOptions o, bool force)
         {
+            if (kind is PuffKind.Ring or PuffKind.Droplets) WaterPuff?.Invoke(kind, at);
             if (!force && !InView(at)) return false;
             if (kind == PuffKind.Sparks && o.fire) at += Vector3.up * 0.07f * ZoomScale; // look-fix: the fire's sparks start over the flames, not inside them
             var puff = pool.Spawn(kind, at, dir, scale * Mathf.Max(ZoomScale, ViewBoost(at)), Now, unchecked(++seedCounter * 7919 + (int)kind * 104729), o);

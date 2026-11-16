@@ -129,7 +129,7 @@ namespace AquariumCiv.EditorTools
             frame = 0;
             warmFrames = Mathf.RoundToInt(s.warm * s.fps);
             recFrames = Mathf.RoundToInt(s.seconds * s.fps) + 1;
-            followSet = false;
+            followSet = false; followY = float.NaN;
             pv.HandDriven = true;
             Time.captureDeltaTime = 1f / s.fps;
             if (cam == null)
@@ -160,11 +160,62 @@ namespace AquariumCiv.EditorTools
             Time.captureDeltaTime = 0f;
         }
 
+        /// <summary>#708/#709: the height the cameras aim at for the "glass" and "nest" follows (NaN = the ground there).</summary>
+        static float followY = float.NaN;
+
+        /// <summary>#708/#709 follows: "fish" (the school's centre on the water), "glass" (the fish on the pond's wall, aimed at their height),
+        /// "nest" (the nest in its bush). False for any other follow.</summary>
+        static bool ThingFocus(out Vector3 world)
+        {
+            world = default;
+            var box = Object.FindAnyObjectByType<BoxView>();
+            if (box == null || box.Root == null) return false;
+            if (spec.follow == "nest")
+            {
+                var nv = NestView.Instance;
+                if (nv == null || !nv.NestShown && !nv.BirdShown) return false;
+                world = box.Root.TransformPoint(nv.NestLocal);
+                return true;
+            }
+            if (spec.follow == "fishgrab")
+            {
+                var pv = PeopleView.Find();
+                if (pv == null || !pv.KidPlay.FishGrabSpot(out var e)) return false;
+                world = box.Root.TransformPoint(new Vector3(e.x, box.SurfaceHeight(e.x, e.y), e.y));
+                return true;
+            }
+            var fv = FishView.Instance;
+            if (fv == null || fv.School == null || fv.School.fish.Count == 0) return false;
+            if (spec.follow == "fish")
+            {
+                var c = fv.School.Centre;
+                world = box.Root.TransformPoint(new Vector3(c.x, box.layout.eco.waterY, c.y));
+                return true;
+            }
+            if (spec.follow == "glass")
+            {
+                var sum = Vector3.zero; int n = 0;
+                foreach (var f in fv.School.fish) if (f.SideDrawn) { sum += fv.School.SidePosition(f); n++; }
+                if (n == 0) return false;
+                world = box.Root.TransformPoint(sum / n);
+                return true;
+            }
+            return false;
+        }
+
         /// <summary>Where the cameras look this frame: the followed doll (eased), else the spec's focus.</summary>
         static Vector2 Focus(PeopleView pv)
         {
             var want = new Vector2(spec.fx, spec.fz);
-            if (!string.IsNullOrEmpty(spec.follow))
+            if (spec.follow is "fish" or "glass" or "nest" or "fishgrab")
+            {
+                if (ThingFocus(out var w))
+                {
+                    want = new Vector2(w.x, w.z);
+                    followY = spec.follow is "fish" or "fishgrab" ? float.NaN : (float.IsNaN(followY) ? w.y : Mathf.Lerp(followY, w.y, 0.08f));
+                }
+            }
+            else if (!string.IsNullOrEmpty(spec.follow))
             {
                 var pts = new List<Vector3>();
                 foreach (var a in pv.Activities)
@@ -193,7 +244,7 @@ namespace AquariumCiv.EditorTools
             float y = 0f;
             var box = Object.FindAnyObjectByType<BoxView>();
             if (box != null) y = box.SurfaceHeight(focus.x, focus.y);
-            var target = new Vector3(focus.x, y + 0.07f, focus.y);
+            var target = float.IsNaN(followY) ? new Vector3(focus.x, y + 0.07f, focus.y) : new Vector3(focus.x, followY, focus.y); // #708/#709: the glass fish, the nest
             float hfov = 2f * Mathf.Atan(Mathf.Tan(cam.fieldOfView * Mathf.Deg2Rad * 0.5f) * aspect);
             float dist = span * 0.5f / Mathf.Tan(hfov * 0.5f);
             cam.transform.position = target + Quaternion.Euler(spec.pitch, spec.yaw, 0) * Vector3.back * dist;

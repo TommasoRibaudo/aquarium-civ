@@ -911,3 +911,21 @@ Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or
   children, so with layers the text must be a child label (`GameHud.Tool` / `SetWord`); keep `button.text` for tests and draw it
   clear. `-unity-slice-scale` needs a unit (`0.4px`), a bare `0.4` is dropped with a warning. A ring on a layered button goes on the
   face layer (`.kg-tool--on > .kg-tool-face`), not on the button. Background images are clipped by `border-radius`.
+
+### 2026-11-15 · #708/#709 view: AnimLab follows for things, timed cheats, and three traps
+- **AnimLab live follows for things, not dolls.** `"follow"` now also takes `"fish"` (FishView's school centre, aimed at the water),
+  `"glass"` (the side fish on the pond's wall, the camera aimed at their height: pair it with `"pitch": 8` for a look through the
+  front pane), `"nest"` (NestView's nest) and `"fishgrab"` (the kids at the pond's edge, B39.c). `"play"` averages every kid at play in
+  the box, so with more than one group the camera wanders: use a game's own follow. Clips: scratchpad requests of the #708/#709 run.
+- **A cheat that must happen on camera:** setup steps have ~2 s of game between them and before `Begin`, so a beat started by the last
+  step is over before frame 0 (the fly-off was gone). Schedule it instead: `NestView.DebugLater("lay"|"hatch"|"flyoff", 3.5f)` fires in
+  game time, which the recording's `captureDeltaTime` steps.
+- **All live clips of one `animlab.sh live` share one play session:** state carries over (a nest built by one clip stands in the next,
+  so the 0.6/0.8/1 growth only shows in a fresh session). Render a clip that needs a fresh box on its own call.
+- **Trap: the view's season is the view day's, not the sim's.** `EcoDebug.SkipSeasons` moves the sim month; kids' play at the water asks
+  `LifeClock.SeasonOf(pv.Now.day)`, which only follows at the next midnight. Set the hour to 23.97, let the game run, then set the day's
+  hour (tests: `FishNestPlayTests.ToSeason`). `EcoDebug.WaterBreaksNow` itself passes seasons: make the water before choosing the season.
+- **Trap: a fresh living land has five grown-ups and no kids**, and skipping years doesn't grow it (pop stays 5). `SimCore.DebugAddKids(n)`
+  (panel: "Two kids join the camp") adds children for the kids' beats.
+- **Trap: the box's solid material culls back faces.** `LifeLooks.FishShape`'s body is wound downward (the arrival's transparent shadow
+  material draws both sides); with `box.SolidMaterial` only the tail showed. Its `FishPart.Body`/`Tail` pieces are now two-sided.

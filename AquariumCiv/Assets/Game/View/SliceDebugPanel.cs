@@ -198,6 +198,13 @@ namespace AquariumCiv.View
             Row(); // #364
             if (Btn("Fish bite now")) last = FishingView.DebugBiteNow();
             EndRow();
+            Row(); // #708 (B70): the fish seen from above and through the glass; B39.c the kids' try by hand
+            if (Btn("Fish: the shadows")) last = FishView.DebugShadows();
+            if (Btn("Fish: show them at the glass")) last = FishView.DebugGlass();
+            if (Btn("Fish: startle")) last = FishView.DebugStartle();
+            if (Btn("Kids try to catch a fish by hand")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.FishGrab);
+            if (Btn("Two kids join the camp")) { var gc = AquariumCiv.Game.GameClock.Instance; last = gc == null ? "no box" : $"{gc.Sim.DebugAddKids(2)} kids came"; }
+            EndRow();
             Row(); // #361
             if (Btn("Pickers to the nearest bush now")) last = BerryPickView.DebugPickersToBush();
             if (Btn("Tip at the stash now")) last = BerryPickView.DebugTipNow();
