@@ -753,7 +753,7 @@ namespace AquariumCiv.View
                 default:
                     t.position = hand + Vector3.up * (0.006f * rs);
                     t.rotation = Quaternion.identity;
-                    float size = tip.kind == CampTipKind.Bunch ? 0.026f : tip.kind == CampTipKind.Stone ? 0.012f : 0.012f * Mathf.Max(0.5f, tip.grow); // #692 p3: the bunch held up big enough to read
+                    float size = tip.kind == CampTipKind.Bunch ? 0.026f : tip.kind == CampTipKind.Stone ? 0.012f * Mathf.Max(1f, tip.grow) /* #693 retakes: the name-cutter's stone, 1.8x */ : 0.012f * Mathf.Max(0.5f, tip.grow); // #692 p3: the bunch held up big enough to read
                     t.localScale = Vector3.one * size * Mathf.Max(0.8f, sc);
                     return;
             }

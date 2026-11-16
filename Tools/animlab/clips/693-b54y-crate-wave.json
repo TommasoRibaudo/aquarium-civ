@@ -21,9 +21,9 @@
   "fps": 30,
   "follow": "camp",
   "span": 1.6,
-  "closeSpan": 0.9,
+  "closeSpan": 0.7,
   "yaw": 28,
-  "pitch": 30,
+  "pitch": 25,
   "lead": 3.0
  }
 }

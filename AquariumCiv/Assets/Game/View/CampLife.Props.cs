@@ -34,7 +34,7 @@ namespace AquariumCiv.View
         long propDay = long.MinValue, offeredDay = long.MinValue, bigPotDay = long.MinValue, birdFixedDay = long.MinValue, retieYear = long.MinValue;
         int nameExtra;
         readonly List<Transform> propPool = new();
-        Mesh[] oneBaskets; Mesh logMesh, halfMesh, ladderMesh, flourMesh;
+        Mesh[] oneBaskets; Mesh logMesh, halfMesh, ladderMesh, flourMesh, carryLog, staffMesh, fishMesh, charmMesh;
         /// <summary>The cheats alternate: a log stacked, then one fetched for the fire (B54.c); rain, then a dry day's sit (B54.d).</summary>
         public static bool ForceFetch, ForceDry;
 
@@ -120,6 +120,7 @@ namespace AquariumCiv.View
                 if (p.kind == ConsequenceKind.RoofBird && !birdTipped.Contains(p.id) && birdFixedDay != now.day && planner != null && planner.WeatherOn(now.day - 1) == Weather.Storm && Hour < 12f)
                 { birdTipped.Add(p.id); ConsequencePropsView.Tip(p.id, 20f); }
             }
+            StepKnock(time); // B54.u: the Keeper knocks while kids wait by the offering
             // B54.h: the together supper at the big pot on a "one big pot" night
             if (meals != null)
                 meals.BigPotAt = (bigPotDay == now.day || sim.SupperOn(now.day) == SupperPick.Pot) && sim.State.era == Era.Camp && PropOf(ConsequenceKind.StewPot, out var pot) ? pot.at : (Vector2?)null;
@@ -464,6 +465,55 @@ namespace AquariumCiv.View
             return Start(CampScenes6.PegRetie(who, At(who).Value, p.at, ToCam(p.at), time), p, CampUse.PegRetie);
         }
 
+        // ================================================================== B54.u: the Keeper knocks while they wait
+        readonly Dictionary<CampScene, int> knockSeen = new();
+        /// <summary>Tests: how many waits the Keeper's knock answered.</summary>
+        public int KnockAnswers { get; private set; }
+
+        void StepKnock(float time)
+        {
+            var g = GlassVoice.Instance;
+            if (g == null) return;
+            CleanUp(knockSeen);
+            foreach (var s in scenes)
+            {
+                if (s.use != CampUse.OfferingWait) continue;
+                if (!knockSeen.TryGetValue(s, out int k)) { knockSeen[s] = g.Knocks; continue; }
+                if (g.Knocks <= k) continue;
+                knockSeen[s] = g.Knocks;
+                float u = time - s.t0;
+                if (u < 0f || u > s.Length - 0.5f) continue;
+                AnswerKnock(s, u);
+                KnockAnswers++;
+            }
+        }
+
+        /// <summary>B54.u: the knock comes now (scene second <paramref name="u"/>): every kid jumps up (a hop of 0.05 u, both arms up) and points
+        /// at the glass (2 s), then runs off. The rest of their wait is dropped.</summary>
+        void AnswerKnock(CampScene s, float u)
+        {
+            var toCam = ToCam(s.focus);
+            for (int m = 0; m < s.Count; m++)
+            {
+                var ps = s.parts[m];
+                Vector2 at = s.focus;
+                foreach (var p in ps) if (p.from <= u && u < p.to) { at = p.keepSpot ? (At(s.keys[m]) ?? s.focus) : p.pos; p.to = u; }
+                ps.RemoveAll(p => p.from >= u);
+                float ph = m * 0.12f;
+                s.Part(m, u, u + 0.6f, at, at + toCam, DollStyle.Stand, (ref DollPose p, float t, float l) =>
+                {
+                    float k = CampPose.Bump(t, ph, 0.45f); p.offset.y += 0.05f * k; p.armL = new Vector3(150f, 0f, -20f); p.armR = new Vector3(150f, 0f, 20f);
+                });
+                s.Part(m, u + 0.6f, u + 2.6f, at, at + toCam, DollStyle.Stand, (ref DollPose p, float t, float l) =>
+                {
+                    p.armR = new Vector3(115f + 8f * Mathf.Sin(t * 12f), 0f, 6f); p.lean -= 10f; p.offset.y += 0.012f * Mathf.Abs(Mathf.Sin(t * 7f + ph));
+                });
+                var go = s.Part(m, u + 2.6f, u + 3.6f, at + toCam * 0.25f + CameraAcross() * ((m - 1) * 0.15f), at + toCam, DollStyle.Stand, null, PropKind.None, CampScenes1.KidRun);
+                go.run = true;
+            }
+            s.Fx(u + 0.05f, CampFxKind.Dust, new Vector3(s.focus.x, 0.01f, s.focus.y), 0.3f, 2);
+        }
+
         // ================================================================== what the scenes do to the thing (CampFxKind.Prop)
         void FireProp(CampScene s, in CampFx f)
         {
@@ -483,6 +533,7 @@ namespace AquariumCiv.View
                     break;
                 }
                 case PropFx.Offered: offeredDay = now.day; break;
+                case PropFx.Swing: ConsequencePropsView.Swing(id); break;
             }
         }
 
@@ -547,8 +598,9 @@ namespace AquariumCiv.View
                     var toPole = Dir2(ld.foot, ld.pole);
                     t.localPosition = new Vector3(ld.foot.x, groundAt(ld.foot.x, ld.foot.y), ld.foot.y);
                     t.localRotation = Quaternion.LookRotation(new Vector3(toPole.x, 0f, toPole.y)) * Quaternion.Euler(14f, 0f, 0f); // leaning on the pole
-                    t.localScale = Vector3.one * ConsequenceMeshes.Scale;
+                    t.localScale = Vector3.one * CampScenes6.LadderScale; // #693 retakes: it reaches the bird
                 }
+                used = DrawRetakeThings(root, material, s, u, used, groundAt);
                 if (s.use == CampUse.FlourFight)
                     foreach (var a in s.arcs)
                     {
@@ -560,7 +612,7 @@ namespace AquariumCiv.View
                         var from = root.InverseTransformPoint(v.armR.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f)));
                         var to = new Vector3(a.to.x, groundAt(a.to.x, a.to.z) + a.to.y, a.to.z);
                         var t = PropPiece(root, material, used++, flourMesh);
-                        t.localPosition = Vector3.Lerp(from, to, k) + Vector3.up * (4f * a.h * k * (1f - k)); t.localRotation = Quaternion.identity; t.localScale = Vector3.one * 0.018f;
+                        t.localPosition = Vector3.Lerp(from, to, k) + Vector3.up * (4f * a.h * k * (1f - k)); t.localRotation = Quaternion.identity; t.localScale = Vector3.one * 0.03f; // #693 retakes: 1.7x
                     }
             }
             // white flour on the kids until the evening wash
@@ -573,10 +625,62 @@ namespace AquariumCiv.View
                 {
                     var t = PropPiece(root, material, used++, flourMesh);
                     t.position = v.transform.TransformPoint(new Vector3(k == 0 ? -0.012f : 0.014f, PegDoll.HeadY * (k == 0 ? 0.55f : 0.9f), -0.024f) * v.scale);
-                    t.localRotation = Quaternion.identity; t.localScale = Vector3.one * (k == 0 ? 0.016f : 0.012f) * Mathf.Max(0.8f, v.scale);
+                    t.localRotation = Quaternion.identity; t.localScale = Vector3.one * (k == 0 ? 0.026f : 0.02f) * Mathf.Max(0.8f, v.scale); // #693 retakes: 1.6x
                 }
             }
             for (int i = used; i < propPool.Count; i++) if (propPool[i] != null) propPool[i].gameObject.SetActive(false);
+        }
+
+        /// <summary>#693 retakes: what a use holds or shows, drawn 1.4-2x so it reads at phone scale: the log carried to the woodpile and laid on
+        /// it, the headman's staff in the hand, a fish lifted from the crate, the charm a kid flicks (lit, on the camera's side of the crown).</summary>
+        int DrawRetakeThings(Transform root, Material material, CampScene s, float u, int used, System.Func<float, float, float> groundAt)
+        {
+            PegDollView V(int m) { var v = m < s.Count ? pv.ViewOf(s.keys[m]) : null; return v != null && v.gameObject.activeInHierarchy ? v : null; }
+            Vector3 Hand(PegDollView v) => root.InverseTransformPoint(v.armR.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f)));
+            if (s.use == CampUse.WoodStack && s.kind == 0)
+            {
+                carryLog ??= PieceMesh(4);
+                var t = PropPiece(root, material, used++, carryLog);
+                var v = V(0);
+                if (u < s.a - 0.25f && v != null) { t.localPosition = root.InverseTransformPoint(HandsMid(v)) + Vector3.up * 0.005f; t.localRotation = Quaternion.Euler(0f, v.transform.eulerAngles.y + 90f, 0f); }
+                else
+                {   // slid onto the pile: it sits on top a moment, then the pile's own logs carry on (it fades into the pile at the scene's end)
+                    var f = s.focus; float k = CampPose.Smooth((u - (s.a - 0.25f)) / 0.35f);
+                    var top = new Vector3(f.x, groundAt(f.x, f.y) + PropGeo.LogsTop * 2.3f, f.y);
+                    var from = v != null ? root.InverseTransformPoint(HandsMid(v)) : top;
+                    t.localPosition = Vector3.Lerp(from, top, k); t.localRotation = Quaternion.Euler(0f, (v != null ? v.transform.eulerAngles.y : 0f) + 90f, 0f);
+                }
+                t.localScale = Vector3.one * 1.6f;
+            }
+            if ((s.use == CampUse.StaffWalk || s.use == CampUse.StaffPlay) && u >= s.c && u < s.d && V(0) is PegDollView sv)
+            {
+                staffMesh ??= PieceMesh(5);
+                var t = PropPiece(root, material, used++, staffMesh);
+                var hand = Hand(sv);
+                t.localPosition = new Vector3(hand.x, Mathf.Max(groundAt(hand.x, hand.z), hand.y - 0.09f), hand.z); // planted: its foot near the ground, the hand on it
+                t.localRotation = Quaternion.Euler(0f, sv.transform.eulerAngles.y, 0f);
+                t.localScale = Vector3.one * 1.6f;
+            }
+            if (s.use == CampUse.CrateFish && V(0) is PegDollView cv)
+                foreach (var f in s.fx)
+                    if (f.kind == CampFxKind.Prop && f.count == (int)PropFx.Look && u >= f.time - 0.3f && u < f.time + 0.35f)
+                    {
+                        fishMesh ??= PieceMesh(6);
+                        var t = PropPiece(root, material, used++, fishMesh);
+                        t.localPosition = Hand(cv); t.localRotation = Quaternion.Euler(0f, cv.transform.eulerAngles.y, 15f * Mathf.Sin(u * 20f)); t.localScale = Vector3.one * 1.7f;
+                    }
+            if (s.use == CampUse.CharmFlick)
+            {
+                charmMesh ??= PieceMesh(7);
+                var t = PropPiece(root, material, used++, charmMesh);
+                var at = s.focus; float g = groundAt(at.x, at.y);
+                float spin = u >= s.a ? 720f * (1f - Mathf.Exp(-(u - s.a) / 0.5f)) : 0f;
+                float sway = u >= s.a ? 18f * Mathf.Sin((u - s.a) * 6f) * Mathf.Exp(-(u - s.a) / 0.8f) : 0f;
+                t.localPosition = new Vector3(at.x, g + 0.36f, at.y); // the cord's top, in the crown's edge; the charm hangs to ~0.26 u, a jump's reach
+                t.localRotation = Quaternion.Euler(sway, spin, 0f);
+                t.localScale = Vector3.one * 1.8f;
+            }
+            return used;
         }
 
         void CleanUp<T>(Dictionary<CampScene, T> d)
@@ -615,6 +719,18 @@ namespace AquariumCiv.View
                 case 2:
                     foreach (float x in new[] { -0.025f, 0.025f }) mb.Box(new Vector3(x, CampScenes6.LadderH * 0.5f, 0f), new Vector3(0.008f, CampScenes6.LadderH, 0.008f), Palette.Timber);
                     for (int k = 0; k < 4; k++) mb.Box(new Vector3(0f, 0.03f + k * 0.045f, 0f), new Vector3(0.05f, 0.006f, 0.006f), Palette.WoodLight);
+                    break;
+                case 4: mb.Prism(new Vector3(0f, 0f, -0.06f), 0.022f, 0.022f, 0.12f, 7, Palette.Bark, Quaternion.Euler(90f, 0f, 0f), true, true, Palette.WoodLight); break; // a log on its side, 0.12 u
+                case 5: // the headman's staff: a pale pole, a red knob, a ribbon
+                    mb.Prism(Vector3.zero, 0.007f, 0.006f, 0.22f, 6, Palette.WoodLight);
+                    mb.Ico(new Vector3(0f, 0.225f, 0f), 0.016f, Vector3.one, Palette.Accents[1], 0.05f);
+                    mb.Box(new Vector3(0.016f, 0.19f, 0f), new Vector3(0.03f, 0.026f, 0.002f), Palette.Accents[0]);
+                    break;
+                case 6: mb.Ico(Vector3.zero, 0.016f, new Vector3(1.7f, 0.55f, 0.7f), Palette.Water, 0.05f); mb.Ico(new Vector3(-0.03f, 0f, 0f), 0.008f, new Vector3(0.6f, 1.2f, 0.4f), Palette.WaterDeep, 0.05f); break; // a fish
+                case 7: // a charm on its cord: the cord from the crown down, a red bead and a pale shell under it (lit: bright colours)
+                    mb.Box(new Vector3(0f, -0.04f, 0f), new Vector3(0.003f, 0.08f, 0.003f), new Color(0.95f, 0.9f, 0.78f));
+                    mb.Ico(new Vector3(0f, -0.085f, 0f), 0.012f, Vector3.one, new Color(0.95f, 0.22f, 0.18f), 0.05f);
+                    mb.Box(new Vector3(0.008f, -0.1f, 0f), new Vector3(0.016f, 0.014f, 0.004f), new Color(0.98f, 0.95f, 0.85f));
                     break;
                 default: mb.Ico(Vector3.zero, 1f, Vector3.one, new Color(0.97f, 0.96f, 0.92f), 0.1f); break;
             }
@@ -701,6 +817,8 @@ namespace AquariumCiv.View
         public bool OfferedToday => offeredDay == now.day;
         public int PropsStanding => Props().Count;
         public int EatersNow => meals != null ? meals.Eaters : 0;
+        /// <summary>Tests (the work share): this person is drawn by a #693 use now.</summary>
+        public bool PropCued(int key) => byKey.TryGetValue(key, out var s) && IsPropUse(s.use) && s.TryPart(key, clock, out _, out _);
         public int NameRowsCut(int propId) => nameCut.TryGetValue(propId, out int c) ? c : 0;
     }
 
@@ -749,6 +867,15 @@ namespace AquariumCiv.View
         public static string TableUnder() => Do(CampUse.TableUnder);
         public static string OfferingFill() => Do(CampUse.OfferingFill);
         public static string OfferingWait() => Do(CampUse.OfferingWait);
+        /// <summary>B54.u with the Keeper's knock: the kids wait, and 2.5 s after the cloth check the glass is knocked (they jump and point).</summary>
+        public static string OfferingWaitKnock()
+        {
+            var r = Do(CampUse.OfferingWait);
+            var c = Camp;
+            if (c == null || !(c.UntilA is float a)) return r + " (no knock: the wait did not start)";
+            c.Later(Mathf.Max(0.5f, a + 2.5f), () => GlassVoice.DebugKnock(3));
+            return r + $"; the Keeper knocks in {a + 2.5f:0.0} s";
+        }
         public static string CrateFish() => Do(CampUse.CrateFish);
         public static string CrateWave() => Do(CampUse.CrateWave);
         public static string PegRetie() => Do(CampUse.PegRetie);
