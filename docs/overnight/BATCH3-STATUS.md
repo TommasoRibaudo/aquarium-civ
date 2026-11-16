@@ -40,7 +40,11 @@ sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Wo
   **All 10 clips signed off by the user 2026-11-15** (https://claude.ai/artifact/NEbta4ca1WZotqvACcyX4k). Known: AnimBench
   build broken (`Principles.cs(46)` `DollStyle.Peer`), fix in the next Editor pass.
 - [ ] Base failures listed above (present on p9/batch3 before the writing merge): triage before the PR
-- [ ] People and things #692–#695 builds, with Q3 rope swing and Q7 goat; clips signed off per issue
+- [~] #692 part 1 merged 2147df7 (B29–B31; AnimLab leak fix). User review 2026-11-15: clips 1 B29.a, 4 B29.d, 5 B30.a,
+  9 B30.e, 11 B31.b OK; to fix: B29.b stray splash at the rejoin, B29.c berry on the wrong end, B30.b bowls don't read as
+  filled, B30.c kid too far from the pot + steam not a puff, B30.d sniff should waft fumes to the nose then tilt the head,
+  close to the pot, B31.a new white feather not seen. **B53.d rope swing spec approved.** Fixes sent to the parts 2–3 worker.
+- [ ] People and things #692 parts 2–5, #693–#695, with Q3 rope swing and Q7 goat; clips signed off per issue
 - [x] Lane A: ritual and teller staging specs B72–B77 (vs/ritual-specs) — merged c6ac43b; rows 218–229 all OK (user, 2026-11-15)
 - [ ] Editor: build B72–B77 (rituals, teller, boat uses) after #692; clips signed off
 - [ ] Batched pass, smoke, tester, walkthrough stops, PR to dev
