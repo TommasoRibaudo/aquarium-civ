@@ -709,8 +709,30 @@ namespace AquariumCiv.View
             if (step == FirstRunStep.Year) yearFill.style.width = Length.Percent(100f * run.YearProgress);
             bool reward = !quiet && Time.unscaledTime < rewardUntil;
             UpdateBubble(step, quiet, reward);
+            KeepSkipsOffTheBubble();
             UpdateHint(quiet || NameSheetOpen || reward);
         }
+
+        /// <summary>Tester batch 3: since the deeper box the reward line's bubble ("Green, where the mist fell...") rides up to the top
+        /// limit, over the test row; the row steps under the bubble while it is up, as it does under a caption (<see cref="ApplySafe"/>).</summary>
+        void KeepSkipsOffTheBubble()
+        {
+            if (skipRow.style.display != DisplayStyle.Flex || bubble.style.display != DisplayStyle.Flex) return;
+            float sh = skipRow.resolvedStyle.height;
+            var b = bubble.worldBound;
+            if (float.IsNaN(sh) || float.IsNaN(b.height) || b.height < 1f) return;
+            var row = skipRow.worldBound;
+            if (row.xMax <= b.xMin || row.xMin >= b.xMax) return; // side by side: nothing to step
+            // both in the safe area's space: the row's top was just set (ApplySafe), the bubble's bound is its last layout
+            float bTop = safe.WorldToLocal(new Vector2(0f, b.yMin)).y, bBottom = safe.WorldToLocal(new Vector2(0f, b.yMax)).y;
+            float sTop = skipRow.style.top.value.value;
+            if (sTop >= bBottom || sTop + sh <= bTop) return; // clear of it already
+            skipRow.style.top = bBottom + CaptionAir;
+            SkipSteps++;
+        }
+
+        /// <summary>Frames the test row had to step under the reward bubble (tests).</summary>
+        public int SkipSteps { get; private set; }
 
         /// <summary>The plate sits on the plinth, under the glass, where it stays in the world.</summary>
         void PlacePlate()
