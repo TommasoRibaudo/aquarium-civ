@@ -14,7 +14,7 @@
    "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.PickFlowers());"
   ],
   "warm": 0.5,
-  "seconds": 20,
+  "seconds": 13,
   "fps": 30,
   "follow": "camp",
   "span": 1.6,

@@ -288,6 +288,21 @@ namespace AquariumCiv.View
             return hi < lvl - RimMargin;
         }
 
+        /// <summary>#708 p3 (the user's review: the kid knelt on sand short of the water): is the pond's sheet drawn over box point (x, z)? The
+        /// same pieces <see cref="EcoWaterMesh"/> keeps (a cell near water, cut 3 x 3, every corner under the level by the rim margin).</summary>
+        public bool WaterDrawnAt(float x, float z)
+        {
+            var ec = layout.eco;
+            if (!ec.on || ec.pondCells <= 0) return false;
+            int c = Site.CellAt(x, z);
+            if (c < 0 || c >= Site.N || !ec.NearWater(c)) return false;
+            float h = Site.Cell * 0.5f + 0.003f, step = 2f * h / 3f;
+            float cx = Site.CXc(c), cz = Site.CZc(c);
+            int si = Mathf.Clamp(Mathf.FloorToInt((x - (cx - h)) / step), 0, 2), sj = Mathf.Clamp(Mathf.FloorToInt((z - (cz - h)) / step), 0, 2);
+            float x0 = cx - h + si * step, z0 = cz - h + sj * step;
+            return WaterPieceUnder(x0, z0, x0 + step, z0 + step);
+        }
+
         Mesh EcoWaterMesh()
         {
             var mb = new MeshBuilder(seed + 3) { jitter = 0f };

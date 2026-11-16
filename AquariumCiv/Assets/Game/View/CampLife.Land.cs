@@ -91,10 +91,45 @@ namespace AquariumCiv.View
             return bd < float.MaxValue;
         }
 
-        /// <summary>B34: the drawn wild sapling or seedling nearest the camp within <paramref name="reach"/> (the view's own spots).</summary>
-        bool SaplingNear(Vector2 camp, float reach, out Vector2 at, System.Func<Vector2, bool> ok = null)
+        /// <summary>#692 p3 (B33.a, the user's review: the roll showed bare land): the grass cell whose neighbours (r 0.25 u) hold the most grass and
+        /// tall grass (ties: the nearest), with the same room tests as <see cref="GrassSpot"/>.</summary>
+        bool GrassiestSpot(Vector2 near, float min, float max, out Vector2 spot)
         {
-            at = default; float bd = reach;
+            spot = default;
+            if (sim == null || !sim.EcologyOn) return false;
+            var box = LandBox;
+            float best = -1f, bd = float.MaxValue;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                var cv = sim.EcoCoverAt(c);
+                if (cv != EcoCover.Tall && cv != EcoCover.Grass) continue;
+                var p = new Vector2(SiteMap.CXc(c), SiteMap.CZc(c));
+                float d = (p - near).magnitude;
+                if (d < min || d > max || !Terrain.InBox(p.x, p.y, Terrain.GlassMargin + 0.15f)) continue;
+                if (box != null && !box.FreeForProp(p, 0.1f)) continue;
+                bool onRock = false; foreach (var r in rocks) if ((r - p).magnitude < 0.15f) onRock = true;
+                if (onRock) continue;
+                float score = 0f;
+                for (int dj = -2; dj <= 2; dj++)
+                    for (int di = -2; di <= 2; di++)
+                    {
+                        var q = p + new Vector2(di, dj) * (SiteMap.Cell);
+                        if (!Terrain.InBox(q.x, q.y, 0f)) continue;
+                        var qc = sim.EcoCoverAt(SiteMap.CellAt(q.x, q.y));
+                        score += qc == EcoCover.Tall ? 1.2f : qc == EcoCover.Grass ? 1f : 0f;
+                    }
+                if (score > best + 1e-3f || Mathf.Abs(score - best) < 1e-3f && d < bd) { best = score; bd = d; spot = p; }
+            }
+            return best >= 0f;
+        }
+
+        /// <summary>B34: the drawn wild sapling or seedling nearest the camp within <paramref name="reach"/> (the view's own spots). #692 p3: only one
+        /// clear of the glass (<see cref="ClearOfGlass"/>), so the camera on the use never looks through a pane.</summary>
+        bool SaplingNear(Vector2 camp, float reach, out Vector2 at, System.Func<Vector2, bool> ok = null) => SaplingNear(camp, reach, out at, out _, ok);
+
+        bool SaplingNear(Vector2 camp, float reach, out Vector2 at, out float crown, System.Func<Vector2, bool> ok = null)
+        {
+            at = default; crown = 0f; float bd = reach;
             var box = LandBox;
             if (box == null) return false;
             lock (box.SaplingSpots)
@@ -102,11 +137,29 @@ namespace AquariumCiv.View
                 {
                     var p = new Vector2(kv.Value.pos.x, kv.Value.pos.z);
                     float d = (p - camp).magnitude;
-                    if (d >= bd || ok != null && !ok(p)) continue;
-                    bd = d; at = p;
+                    if (d >= bd || !InView(box, p) || ok != null && !ok(p)) continue;
+                    bd = d; at = p; crown = kv.Value.r;
                 }
             return bd < reach;
         }
+
+        /// <summary>#692 p3 (the user's review: the camera looked through the front pane at B34): a sapling the camp uses may tend stands at least
+        /// <see cref="GlassClearFront"/> in from the front glass and <see cref="GlassClearSide"/> from the others.</summary>
+        public static bool ClearOfGlass(Vector2 p) => Terrain.InBox(p.x, p.y, GlassClearSide) && p.y >= Terrain.ZMin + GlassClearFront;
+        public const float GlassClearFront = 2.4f, GlassClearSide = 0.6f;
+
+        /// <summary>#692 p3 (the user's review: the water clip showed only the Keeper's crown): a sapling a camp use tends is clear of the glass
+        /// and out from under every grown crown the box draws (its play radius + <see cref="CrownClear"/>), so the camera sees the little tree.</summary>
+        static bool InView(BoxView box, Vector2 p)
+        {
+            if (!ClearOfGlass(p)) return false;
+            if (box == null) return true;
+            lock (box.TreeSpots)
+                foreach (var kv in box.TreeSpots)
+                    if ((new Vector2(kv.Value.pos.x, kv.Value.pos.z) - p).magnitude < kv.Value.r + CrownClear) return false;
+            return true;
+        }
+        public const float CrownClear = 0.18f;
 
         bool Ringed(Vector2 sapling) { foreach (var r in rings) if ((r.sapling - sapling).magnitude < 0.03f) return true; return false; }
 
@@ -210,7 +263,7 @@ namespace AquariumCiv.View
         string TryRoll(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
             var camp = meals.Fire;
-            if (!GrassSpot(camp, 0.45f, force ? 2.5f : 1.6f, false, out var spot)) return "no grass near the camp";
+            if (!GrassiestSpot(camp, 0.45f, force ? 2.5f : 1.6f, out var spot)) return "no grass near the camp"; // #692 p3: the grassiest spot, not the nearest
             var kids = Pick(acts, spot, a => IsKid(a), 3, force);
             if (kids.Count == 0) return "no kid free ('Two kids join the camp' first)";
             var at = new List<Vector2>(); foreach (int k in kids) at.Add(At(k).Value);
@@ -279,7 +332,7 @@ namespace AquariumCiv.View
             if (!GrassSpot(At(k).Value, 0f, force ? 2.5f : 1.2f, false, out var spot)) return "no grass near";
             var others = new List<int>(); var oat = new List<Vector2>();
             for (int i = 1; i < kids.Count; i++) { others.Add(kids[i]); oat.Add(At(kids[i]).Value); }
-            Add(CampScenes3.GrassWhistle(k, At(k).Value, spot, others, oat, time));
+            Add(CampScenes3.GrassWhistle(k, At(k).Value, spot, others, oat, time, CameraAcross()));
             doneToday.Add(CampUse.GrassWhistle);
             return null;
         }
@@ -287,10 +340,10 @@ namespace AquariumCiv.View
         string TryWater(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
             var camp = meals.Fire;
-            if (!SaplingNear(camp, force ? 4f : LandGeo.SaplingReach, out var sap)) return "no wild sapling near the camp ('Land: a wild tree and saplings' first)";
+            if (!SaplingNear(camp, force ? 4f : LandGeo.SaplingReach, out var sap, out float crown)) return "no wild sapling near the camp ('Land: a wild tree and saplings' first)";
             var who = Pick(acts, sap, a => IsGrown(a), 1, force);
             if (who.Count == 0) return "no grown-up free";
-            var s = CampScenes3.WaterSapling(who[0], At(who[0]).Value, sap, time, CameraAcross() + Dir2(sap, TowardCamera(sap)) * 0.35f); // beside the little tree as the camera sees it: its crown never hides the pour
+            var s = CampScenes3.WaterSapling(who[0], At(who[0]).Value, sap, time, CameraAcross() + Dir2(sap, TowardCamera(sap)) * 0.35f, Mathf.Max(0.08f, crown * 0.7f)); // beside the little tree as the camera sees it: its crown never hides the pour
             Add(Thing(s, ThingSapling));
             doneToday.Add(CampUse.WaterSapling);
             MaybeTwig(acts, sap, s.Length + 0.3f, -1, force);
@@ -300,16 +353,19 @@ namespace AquariumCiv.View
         string TryRing(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
             var camp = meals.Fire;
-            if (!SaplingNear(camp, force ? 4f : LandGeo.SaplingReach, out var sap, p => !Ringed(p))) return "no sapling without a ring near the camp ('Land: a wild tree and saplings' first)";
+            if (!SaplingNear(camp, force ? 4f : LandGeo.SaplingReach, out var sap, out float crown, p => !Ringed(p))) return "no sapling without a ring near the camp ('Land: a wild tree and saplings' first)";
             if (!force && rings.Count >= LandGeo.MaxRings) return "four rings already";
             var g = Pick(acts, sap, a => IsGrown(a), 1, force);
             if (g.Count == 0) return "no grown-up free";
             var k = Pick(acts, sap, a => IsKid(a), 1, force, g);
             if (k.Count == 0 && !force) return "no kid free to help";
             EnsureRocks();
-            var pile = rocks.Count > 0 ? rocks[0] + Dir2(rocks[0], sap) * 0.1f : Stash ?? camp;
+            // #692 p3 (the user's review): the stones come from a boulder only when one is near; else from loose stones beside the little tree, so
+            // both trips stay in the frame
+            Vector2 pile = sap + CameraAcross() * 0.3f + Dir2(sap, TowardCamera(sap)) * 0.08f;
+            foreach (var rk in rocks) if ((rk - sap).magnitude < 0.6f) { pile = rk + Dir2(rk, sap) * 0.1f; break; }
             int kid = k.Count > 0 ? k[0] : -1;
-            var s = CampScenes3.RingSapling(g[0], kid, At(g[0]).Value, kid >= 0 ? At(kid).Value : default, sap, pile, time);
+            var s = CampScenes3.RingSapling(g[0], kid, At(g[0]).Value, kid >= 0 ? At(kid).Value : default, sap, pile, time, LandGeo.RingFor(crown));
             Add(Thing(s, ThingSapling));
             rings.Add((sap, new List<Vector2>()));
             if (rings.Count > LandGeo.MaxRings) rings.RemoveAt(0);
@@ -336,7 +392,9 @@ namespace AquariumCiv.View
         {
             var at = At(kid).Value;
             var twigAt = DeadfallAt(meals.Fire, out var df) && (df - sap).magnitude < 1.2f ? df : Vector2.Lerp(at, sap, 0.4f) + CameraAcross() * 0.12f;
-            Add(Thing(CampScenes3.PlantTwig(kid, at, sap, twigAt, clock), ThingSapling));
+            float crown = 0f; var box = LandBox;
+            if (box != null) lock (box.SaplingSpots) foreach (var kv in box.SaplingSpots) if ((new Vector2(kv.Value.pos.x, kv.Value.pos.z) - sap).magnitude < 0.03f) crown = kv.Value.r;
+            Add(Thing(CampScenes3.PlantTwig(kid, at, sap, twigAt, clock, Dir2(sap, TowardCamera(sap)), Mathf.Max(0.06f, crown * 0.75f)), ThingSapling)); // #692 p3: on the camera's side
             doneToday.Add(CampUse.PlantTwig);
             return "a kid plants a twig: " + kid;
         }
@@ -358,7 +416,7 @@ namespace AquariumCiv.View
             if (force || BeatHash.U01((int)(today & 0x7fffffff), 11, 6944) < Sometimes) { var k = Pick(acts, rocks[rocks.Count - 1], a => IsKid(a), 1, force, g); kid = k.Count > 0 ? k[0] : -1; }
             if (g.Count == 0 && kid < 0) return "nobody free";
             int grown = g.Count > 0 ? g[0] : -1;
-            var kidRock = rocks.Count > 1 ? rocks[1] : rocks[0];
+            var kidRock = rocks.Count > 1 && (rocks[1] - rocks[0]).magnitude <= 0.6f ? rocks[1] : rocks[0]; // #692 p3: a far boulder leaves the frame: share the near one
             Add(Thing(CampScenes3.SitRock(grown, grown >= 0 ? At(grown).Value : default, rocks[0], TowardCamera(rocks[0]) - rocks[0], force ? 10f : 20f, kid, kid >= 0 ? At(kid).Value : default, kidRock, time), ThingRock));
             doneToday.Add(CampUse.SitRock);
             return null;
@@ -405,7 +463,8 @@ namespace AquariumCiv.View
             var camp = meals.Fire;
             var centre = camp + Dir2(camp, TowardCamera(camp)) * 0.5f + CameraAcross() * 0.15f;
             EnsureRocks();
-            var lean = rocks.Count > 0 ? rocks[0] + Dir2(rocks[0], centre) * (LandGeo.RockW * 0.5f + 0.01f) : Stash ?? camp + CameraAcross() * 0.4f;
+            // #692 p3 (the user's review: the kid rode out of frame): the end beat stays by the loop: against a boulder only when one is near
+            var lean = rocks.Count > 0 && (rocks[0] - centre).magnitude < 0.55f ? rocks[0] + Dir2(rocks[0], centre) * (LandGeo.RockW * 0.5f + 0.01f) : centre + CameraAcross() * (CampScenes3.HorseLoopR + 0.16f);
             Add(Thing(CampScenes3.StickHorse(kids[0], At(kids[0]).Value, df, centre, lean, time), ThingDeadfall));
             doneToday.Add(CampUse.StickHorse);
             return null;
@@ -443,6 +502,7 @@ namespace AquariumCiv.View
             if (!sim.EcoTree.planted || sim.EcoTree.stage < 3) r += CampCheats.GrowTree() + "; ";
             var camp = meals != null && meals.HasFire ? meals.Fire : Vector2.zero;
             if (!DeadfallAt(camp, out _) || !SaplingNear(camp, 4f, out _)) r += EcoDebug.WildTrees(true);
+            if (!SaplingNear(camp, 4f, out _)) r += "; " + EcoDebug.SaplingsWhere((x, z) => InView(LandBox, new Vector2(x, z)) && (new Vector2(x, z) - camp).magnitude < 3.5f); // #692 p3
             EnsureRocks();
             return r + $"; rocks {rocks.Count}, deadfall {(DeadfallAt(camp, out _) ? "yes" : "no")}, sapling {(SaplingNear(camp, 4f, out _) ? "yes" : "not drawn yet")}";
         }
@@ -597,7 +657,7 @@ namespace AquariumCiv.View
                     mb.Ico(new Vector3(0f, LandGeo.RockH * 0.5f, 0f), 1f, new Vector3(LandGeo.RockW * 0.5f, LandGeo.RockH * 0.55f, LandGeo.RockW * 0.42f), Palette.Rock, 0.12f, Palette.RockDark);
                     mb.Ico(new Vector3(0.02f, LandGeo.RockH * 0.35f, 0.03f), 1f, new Vector3(0.03f, 0.022f, 0.025f), Palette.RockDark, 0.12f);
                     break;
-                case MeshRingStone: mb.Ico(new Vector3(0f, 0.006f, 0f), 0.012f, new Vector3(1f, 0.7f, 0.9f), Palette.RockLight, 0.15f, Palette.RockDark); break;
+                case MeshRingStone: mb.Ico(new Vector3(0f, 0.009f, 0f), 0.019f, new Vector3(1f, 0.7f, 0.9f), Palette.Rock, 0.15f, Palette.RockDark); break; // #692 p3: big and grey enough to read on sand
                 case MeshTwig:
                     mb.Box(new Vector3(0f, 0.026f, 0f), new Vector3(0.006f, 0.052f, 0.006f), Palette.Bark);
                     mb.Box(new Vector3(0.006f, 0.04f, 0f), new Vector3(0.012f, 0.003f, 0.003f), Palette.Bark, Quaternion.Euler(0f, 0f, 35f));
@@ -615,6 +675,9 @@ namespace AquariumCiv.View
             return landMeshes[key] = m;
         }
 
+        /// <summary>#692 p3: the bunch's three heads: a hot pink, a white, a sun yellow.</summary>
+        static readonly Color[] BunchHeads = { new(1f, 0.38f, 0.62f), new(1f, 1f, 0.97f), new(1f, 0.78f, 0.12f) };
+
         /// <summary>The part 3 tips, each a unit size: a stone, three stones, a pebble, a bunch of three flowers, a grass blade, the stick horse.</summary>
         static bool LandTipMesh(CampTipKind kind, MeshBuilder mb)
         {
@@ -631,16 +694,16 @@ namespace AquariumCiv.View
                     for (int i = 0; i < 3; i++)
                     {
                         float a = i * 2.1f;
-                        var top = new Vector3(Mathf.Cos(a) * 0.5f, 2.6f + 0.2f * i, Mathf.Sin(a) * 0.5f);
-                        mb.Box(top * 0.5f, new Vector3(0.18f, 2.6f, 0.18f), new Color(0.35f, 0.55f, 0.2f));
-                        mb.Ico(top, 0.9f, new Vector3(1f, 0.6f, 1f), Palette.Flowers[(i + 1) % Palette.Flowers.Length], 0.05f);
-                        mb.Ico(top + Vector3.up * 0.3f, 0.36f, Vector3.one, new Color(1f, 0.85f, 0.25f), 0.05f);
+                        var top = new Vector3(Mathf.Cos(a) * 0.6f, 2.6f + 0.2f * i, Mathf.Sin(a) * 0.6f);
+                        mb.Box(top * 0.5f, new Vector3(0.22f, 2.6f, 0.22f), new Color(0.35f, 0.6f, 0.2f));
+                        mb.Ico(top, 1.05f, new Vector3(1f, 0.6f, 1f), BunchHeads[i], 0.05f); // #692 p3: bright heads that read on a phone
+                        mb.Ico(top + Vector3.up * 0.32f, 0.4f, Vector3.one, new Color(1f, 0.9f, 0.3f), 0.05f);
                     }
                     return true;
                 case CampTipKind.Blade: mb.Box(new Vector3(0f, 0f, 0f), new Vector3(2.4f, 0.3f, 0.15f), Palette.GrassA); return true;
-                case CampTipKind.Horse:
-                    mb.Box(new Vector3(0f, 0.5f, 0f), new Vector3(0.04f, 1f, 0.04f), Palette.Bark);
-                    mb.Box(new Vector3(0f, 1f, 0.04f), new Vector3(0.03f, 0.03f, 0.1f), Palette.Bark);
+                case CampTipKind.Horse: // #692 p3: a thicker pale stick with a knobbly "head", so it reads in the kid's hands
+                    mb.Box(new Vector3(0f, 0.5f, 0f), new Vector3(0.1f, 1f, 0.1f), Palette.WoodLight);
+                    mb.Ico(new Vector3(0f, 1f, 0.04f), 0.09f, new Vector3(0.9f, 1f, 1.5f), Palette.Bark, 0.05f);
                     return true;
             }
             return false;
@@ -672,19 +735,25 @@ namespace AquariumCiv.View
                 }
                 case CampTipKind.Horse:
                 {
+                    // #692 p3 (the user's review: it did not read as riding): the stick between the legs, its head up in front of the chest, its
+                    // foot trailing on the ground behind, 30° down to the back; it passes the body low, at the hips, and bobs with the doll
                     var back = -v.transform.forward; back.y = 0f; back = back.sqrMagnitude > 1e-6f ? back.normalized : Vector3.back;
                     var dir = (back * Mathf.Cos(30f * Mathf.Deg2Rad) + Vector3.down * Mathf.Sin(30f * Mathf.Deg2Rad)).normalized;
-                    float len = 0.2f * rs;
-                    // the unit mesh runs from its foot (0) to its head (1, the fork): the head at the hand, the foot back on the ground
+                    var hip = v.transform.TransformPoint(new Vector3(0f, PegDoll.BodyH * 0.3f * v.scale, 0f));
+                    float ahead = 0.1f * rs * Mathf.Max(0.8f, sc);
+                    var head = hip - dir * ahead;
+                    float hipH = Mathf.Max(0.01f * rs, hip.y - v.transform.position.y);
+                    float len = ahead + hipH / Mathf.Sin(30f * Mathf.Deg2Rad); // the foot just reaches the ground behind
+                    // the unit mesh runs from its foot (0) to its head (1, the fork)
                     t.rotation = Quaternion.FromToRotation(Vector3.up, -dir);
-                    t.position = hand + dir * (len * 0.85f); // the head 0.03 u past the hand
+                    t.position = head + dir * len;
                     t.localScale = Vector3.one * len;
                     return;
                 }
                 default:
                     t.position = hand + Vector3.up * (0.006f * rs);
                     t.rotation = Quaternion.identity;
-                    float size = tip.kind == CampTipKind.Bunch ? 0.012f : tip.kind == CampTipKind.Stone ? 0.012f : 0.012f * Mathf.Max(0.5f, tip.grow);
+                    float size = tip.kind == CampTipKind.Bunch ? 0.026f : tip.kind == CampTipKind.Stone ? 0.012f : 0.012f * Mathf.Max(0.5f, tip.grow); // #692 p3: the bunch held up big enough to read
                     t.localScale = Vector3.one * size * Mathf.Max(0.8f, sc);
                     return;
             }

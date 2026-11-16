@@ -256,11 +256,28 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(2, n);
             Assert.AreEqual(0f, bits[0].delay); Assert.AreEqual(0.15f, bits[1].delay, 1e-5f);
             Assert.AreEqual(0.03f, HitFxMath.Size(bits[0], 0f), 1e-5f);
-            Assert.AreEqual(0.20f, HitFxMath.Size(bits[0], 0.7999f), 1e-3f);
-            Assert.AreEqual(0.7f * 0.20f, HitFxMath.Size(bits[1], 0.7999f), 1e-3f, "the second ring is 0.7x");
+            Assert.AreEqual(HitFxMath.RingEnd, HitFxMath.Size(bits[0], 0.7999f), 1e-3f);
+            Assert.AreEqual(0.7f * HitFxMath.RingEnd, HitFxMath.Size(bits[1], 0.7999f), 1e-3f, "the second ring is 0.7x");
             Assert.AreEqual(0f, HitFxMath.Size(bits[1], -0.01f), "not yet");
             Assert.Greater(HitFxMath.Line(bits[0], 0.05f), HitFxMath.Line(bits[0], 0.6f));
             Assert.AreEqual(0f, HitFxMath.Line(bits[0], 0.8f));
+        }
+
+        [Test]
+        public void Ring_IsThinPaleAndModest_NeverADisc_NeverDark()
+        {
+            Assert.LessOrEqual(HitFxMath.RingEnd, 0.12f, "a modest ring (#692 p3)");
+            // even where a far camera's pixel is huge, the line stays a quarter of the radius: the middle stays open
+            for (float r = 0.01f; r < 0.3f; r += 0.02f)
+                Assert.LessOrEqual(HitFxMath.RingDrawLine(0.006f, r, 0.05f, 1f), r * 0.25f + 1e-6f);
+            foreach (var g in new[] { PuffGround.Grass, PuffGround.Sand })
+                foreach (var c in new[] { PuffColour.RingWater, PuffColour.RingMud })
+                {
+                    Assert.IsTrue(PuffContrast.Pick(c, g, out var fill, out var rim));
+                    var band = HitFxMath.RingBand(fill);
+                    Assert.Greater(fill.grayscale, 0.85f, "a pale ring");
+                    Assert.Greater(band.grayscale, 0.6f, "its band is never dark");
+                }
         }
 
         [Test]

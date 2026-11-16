@@ -63,6 +63,12 @@ namespace AquariumCiv.View
 
         public static HitFx Instance { get; private set; }
 
+        /// <summary>#692 p3 (AnimLab): the camera the puffs are drawn for (pixel floors, outlines, facing); null = <see cref="Camera.main"/>. AnimLab's
+        /// close camera sets it and calls <see cref="Redraw"/> before each shot, so a puff's outline is sized for the shot, not the far game view.</summary>
+        public static Camera DrawCamera;
+        /// <summary>#692 p3: rebuild the puff mesh now for <see cref="DrawCamera"/> (AnimLab, before a render).</summary>
+        public void Redraw() => Draw(Now);
+
         /// <summary>After the glass, like the chatter marks' neighbours: the transparent queue's +2 (ShapingFx).</summary>
         const int Queue = 3002;
 
@@ -476,7 +482,7 @@ namespace AquariumCiv.View
 
         void Draw(double now)
         {
-            var cam = Camera.main;
+            var cam = DrawCamera != null ? DrawCamera : Camera.main;
             if (pool.Live == 0 || cam == null) { Hide(); VertsDrawn = 0; return; }
             BuildPalette();
             verts.Clear(); colors.Clear(); tris.Clear();
@@ -505,9 +511,11 @@ namespace AquariumCiv.View
                     var back = cam.transform.forward * Mathf.Max(0.002f, perPx * 0.5f); // the outline sits just behind the fill
                     if (b.shape == PuffShape.Ring)
                     {
-                        float line = Mathf.Max(HitFxMath.Line(b, age), perPx * 2f * Shrink(age, b.life));
-                        HitFxShapes.RingTris(size, line * 2.4f, pos + back, verts, tris); // a dark band under the pale ring
-                        for (int k = 0; k < HitFxShapes.RingSides * 2; k++) colors.Add(rim);
+                        // #692 p3 (the user's review: black discs): a thin pale ring, never filled, never dark. The line keeps 1.5 px but never
+                        // more than a quarter of the radius; a slightly bluer band just outside it, no dark outline.
+                        float line = HitFxMath.RingDrawLine(HitFxMath.Line(b, age), size, perPx, Shrink(age, b.life));
+                        HitFxShapes.RingTris(size + line * 0.5f, line * 1.8f, pos + back, verts, tris);
+                        for (int k = 0; k < HitFxShapes.RingSides * 2; k++) colors.Add(HitFxMath.RingBand(col));
                         HitFxShapes.RingTris(size, line, pos, verts, tris);
                         for (int k = 0; k < HitFxShapes.RingSides * 2; k++) colors.Add(col);
                         continue;

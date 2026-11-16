@@ -159,6 +159,7 @@ namespace AquariumCiv.EditorTools
             var pv = PeopleView.Find();
             if (pv != null) pv.HandDriven = false;
             Time.captureDeltaTime = 0f;
+            HitFx.DrawCamera = null;
         }
 
         /// <summary>#708/#709: the height the cameras aim at for the "glass" and "nest" follows (NaN = the ground there).</summary>
@@ -265,6 +266,8 @@ namespace AquariumCiv.EditorTools
         {
             var rt = RenderTexture.GetTemporary(w, h, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB, 1);
             cam.targetTexture = rt;
+            HitFx.DrawCamera = cam; // #692 p3: the puffs' outlines and floors sized for this shot, not the far game camera
+            if (HitFx.Instance != null) HitFx.Instance.Redraw();
             cam.Render();
             cam.targetTexture = null;
             var keep = RenderTexture.active;

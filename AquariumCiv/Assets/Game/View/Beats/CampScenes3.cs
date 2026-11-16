@@ -30,7 +30,12 @@ namespace AquariumCiv.View
         public static float StackHeight(int n) { float h = 0f; for (int i = 0; i < n; i++) h += PebbleSize(i) * 0.8f; return h; }
 
         /// <summary>B34.b: stone <paramref name="i"/>'s spot in the ring round <paramref name="sapling"/>.</summary>
-        public static Vector2 RingSpot(Vector2 sapling, int i) { float a = i * Mathf.PI * 2f / RingStones + 0.3f; return sapling + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * RingR; }
+        public static Vector2 RingSpot(Vector2 sapling, int i) => RingSpot(sapling, i, RingR);
+        public static Vector2 RingSpot(Vector2 sapling, int i, float r) { float a = i * Mathf.PI * 2f / RingStones + 0.3f; return sapling + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r; }
+
+        /// <summary>#692 p3 (the user's review: the stones hid under the young tree's crown): the ring lies just outside the drawn crown
+        /// (<paramref name="crown"/> u), never smaller than <see cref="RingR"/>, at most 0.18 u.</summary>
+        public static float RingFor(float crown) => Mathf.Clamp(crown + 0.03f, RingR, 0.18f);
 
         /// <summary>B35 [est]: the boulders' spots: two (or fewer) on free ground 0.5–0.8 u from the fire, at least 0.35 u apart, the first toward
         /// the camera's side (so a sitter faces the Keeper), from the box's seed (never shuffled by a rebuild). <paramref name="ok"/>: the box's own room test
@@ -115,10 +120,13 @@ namespace AquariumCiv.View
         public static CampPoseFn RollPose(int r) => (ref DollPose p, float t, float len) =>
         {
             float u = Mathf.Clamp01(t / len);
-            p.roll = 90f; p.lean = 90f - 360f * u; p.offset.y = 0.03f; p.offset.z = RollStep * (r + u); p.squash = 1f;
-            p.armL = new Vector3(0f, 0f, -10f); p.armR = new Vector3(0f, 0f, 10f);
+            // #692 p3 (the user's review: it read as lying on the side): the arms stick out in front, so they sweep round with each turn, and
+            // the body lifts a little twice a turn (it is not round), so the turning shows from the default camera too
+            p.roll = 90f; p.lean = 90f - 360f * u; p.offset.y = 0.03f + 0.008f * Mathf.Abs(Mathf.Sin(u * Mathf.PI * 2f)); p.offset.z = RollStep * (r + u); p.squash = 1f;
+            p.armL = new Vector3(80f, 0f, -10f); p.armR = new Vector3(80f, 0f, 10f);
         };
-        public const float RollStep = 0.05f, RollSeconds = 0.4f;
+        /// <summary>#692 p3: 0.08 u a roll [est] (the spec's 0.05 turned the doll in place: it read as lying still).</summary>
+        public const float RollStep = 0.08f, RollSeconds = 0.4f;
         public const int Rolls = 3;
 
         /// <summary>On the back after the rolls, arms out (z ∓90), giggling (a bob 0.01 u at 9 Hz).</summary>
@@ -149,7 +157,10 @@ namespace AquariumCiv.View
         {
             across = across.sqrMagnitude > 1e-6f ? across.normalized : Vector2.right;
             var side = new Vector2(-across.y, across.x);
-            var s = new CampScene(CampUse.GrassRoll, t0, spot + across * RollStep * Rolls * 0.5f) { holdFocus = true };
+            // #692 p3: the log roll's drawn offset (roll 90, then lean about the body's length) carries the doll toward −across for a doll facing
+            // +across; the grass, the flattening, the sit-up and the camera follow where it is drawn (the sit-up jumped back 0.24 u before)
+            var rollTo = -across;
+            var s = new CampScene(CampUse.GrassRoll, t0, spot + rollTo * RollStep * Rolls * 0.5f) { holdFocus = true };
             int n = kids.Count;
             float first = 99f;
             for (int i = 0; i < n; i++)
@@ -163,11 +174,11 @@ namespace AquariumCiv.View
                 for (int r = 0; r < Rolls; r++)
                 {
                     s.Part(m, t, t + RollSeconds, start, face, DollStyle.Stand, RollPose(r));
-                    s.Fx(t + RollSeconds * 0.5f, CampFxKind.Grass, G(start + across * RollStep * (r + 0.5f), 0.02f), 0.6f, 4);
+                    s.Fx(t + RollSeconds * 0.5f, CampFxKind.Grass, G(start + rollTo * RollStep * (r + 0.5f), 0.02f), 0.6f, 4);
                     t += RollSeconds;
                 }
                 s.Part(m, t, t + 0.8f, start, face, DollStyle.Stand, GigglePose); t += 0.8f;
-                var end = start + across * RollStep * Rolls;
+                var end = start + rollTo * RollStep * Rolls;
                 if (i == 0) Mark(s, t, CampMark.Flatten, Vector2.Lerp(start, end, 0.5f));
                 s.Part(m, t, t + 0.5f, end, face, DollStyle.Sit, SitUpPose, PropKind.None, Snap); t += 0.5f;
                 PersonMark(s, t, CampMark.GrassBits, m);
@@ -264,23 +275,28 @@ namespace AquariumCiv.View
                 s.Part(m, t, t + 0.7f, stand, f, DollStyle.Stand, HoldUpPose); t += 0.7f;
                 from = stand;
             }
-            var give = takerAt + Dir(takerAt, from, Vector2.down) * (taker >= 0 ? 0.1f : 0.07f);
-            float wg = WalkTime(from, give, Walk);
-            s.Part(m, t, t + wg, give, takerAt, DollStyle.Stand, null, PropKind.None, Walk); t += wg;
+            // #692 p3 (the user's review: the camera drifted to the fire): the taker comes to the picker in the grass, so the hand-over stays
+            // where the flowers were; laid on the stone, the picker still walks there
+            var meet = from + Dir(from, takerAt, Vector2.down) * 0.1f;
+            var give = taker >= 0 ? from : takerAt + Dir(takerAt, from, Vector2.down) * 0.07f;
+            var takeAt = taker >= 0 ? meet : takerAt;
+            float wg = taker >= 0 ? 0.4f : WalkTime(from, give, Walk);
+            s.Part(m, t, t + wg, give, takeAt, DollStyle.Stand, null, PropKind.None, Walk); t += wg;
             s.Tip(m, firstPick, t + 0.5f, n > 1 ? CampTipKind.Bunch : CampTipKind.Flower);
             if (taker >= 0)
             {
                 int k = s.Add(taker);
-                s.Part(k, t - 1.2f, t, takerAt, give, DollStyle.Stand).keepSpot = true; // turns to see them coming
-                s.Part(m, t, t + 0.9f, give, takerAt, DollStyle.Stand, OfferPose);
+                float wk = WalkTime(takerAt, meet, Walk);
+                s.Part(k, Mathf.Max(0f, t - wk - 0.6f), t, meet, give, DollStyle.Stand, null, PropKind.None, Walk); // sees them picking and comes over
+                s.Part(m, t, t + 0.9f, give, takeAt, DollStyle.Stand, OfferPose);
                 s.a = t + 0.5f;
-                s.Part(k, t, t + 0.9f, takerAt, give, DollStyle.Stand, TakePose).keepSpot = true;
+                s.Part(k, t, t + 0.9f, meet, give, DollStyle.Stand, TakePose);
                 s.Tip(k, t + 0.5f, t + 2.6f, n > 1 ? CampTipKind.Bunch : CampTipKind.Flower);
                 t += 0.9f;
-                s.Part(k, t, t + 1.4f, takerAt, give, DollStyle.Stand, CampScenes1.SniffNodPose).keepSpot = true;
-                s.Part(m, t, t + 2.3f, give, takerAt, DollStyle.Laugh);
+                s.Part(k, t, t + 1.4f, meet, give, DollStyle.Stand, CampScenes1.SniffNodPose);
+                s.Part(m, t, t + 2.3f, give, takeAt, DollStyle.Laugh);
                 t += 1.4f;
-                s.Part(k, t, t + 0.6f, takerAt, give, DollStyle.Stand, TuckPose).keepSpot = true;
+                s.Part(k, t, t + 0.6f, meet, give, DollStyle.Stand, TuckPose);
                 PersonMark(s, t + 0.3f, CampMark.EarFlower, k);
                 t += 0.9f;
             }
@@ -298,6 +314,9 @@ namespace AquariumCiv.View
         }
 
         // ================================================================== B33.d blow a grass whistle
+        /// <summary>#692 p3: how far each side of the whistler the other kids come to play (u).</summary>
+        public const float OthersApart = 0.17f;
+
         /// <summary>The blade held at the mouth between both hands (arms x 125, z ∓15).</summary>
         public static void WhistleHoldPose(ref DollPose p, float t, float len)
         {
@@ -331,7 +350,7 @@ namespace AquariumCiv.View
         /// <summary>B33.d: a kid pulls a blade of grass (bend, the snap: 1 blade), holds it between the hands at the mouth and blows: two duds
         /// (nothing, a shrug), then it works (two short white lines burst at the hands); the kids near turn, cover their ears (0.8 s), laugh and
         /// all try. <see cref="CampScene.a"/>: the blow that works.</summary>
-        public static CampScene GrassWhistle(int kid, Vector2 at, Vector2 spot, IList<int> others, IList<Vector2> othersAt, float t0)
+        public static CampScene GrassWhistle(int kid, Vector2 at, Vector2 spot, IList<int> others, IList<Vector2> othersAt, float t0, Vector2 across = default)
         {
             var s = new CampScene(CampUse.GrassWhistle, t0, spot) { holdFocus = true };
             int m = s.Add(kid);
@@ -355,16 +374,26 @@ namespace AquariumCiv.View
             t += 0.4f;
             s.Part(m, t, t + 1.2f, spot, face, DollStyle.Stand, WhistleHoldPose);
             float heard = t;
+            // #692 p3 (the user's review: the others were off camera): they come and play near, one each side of the whistler as the camera
+            // sees it, a little toward the camera, back turned at first, so the turn and the ears read in the same frame
+            var ac = across.sqrMagnitude > 1e-6f ? across.normalized : Rot(Dir(spot, face, Vector2.down), 90f);
+            var toCam = new Vector2(ac.y, -ac.x);
             for (int i = 0; i < others.Count; i++)
             {
                 int k = s.Add(others[i]);
+                float sideK = i % 2 == 0 ? 1f : -1f;
+                var near = spot + ac * sideK * (OthersApart + 0.05f * (i / 2)) + toCam * 0.04f;
+                var away = near + ac * sideK;
+                float wk = Mathf.Min(WalkTime(othersAt[i], near, KidWalk), Mathf.Max(0.5f, heard - 0.5f));
+                s.Part(k, 0f, wk, near, away, DollStyle.Stand, null, PropKind.None, KidWalk);
                 float h = heard + 0.15f + 0.1f * i;
-                s.Part(k, h, h + 0.3f, othersAt[i], spot, DollStyle.Stand).keepSpot = true; // the turn
-                s.Part(k, h + 0.3f, h + 1.1f, othersAt[i], spot, DollStyle.Stand, EarsPose).keepSpot = true;
-                s.Part(k, h + 1.1f, h + 2.1f, othersAt[i], spot, DollStyle.Laugh).keepSpot = true;
+                s.Part(k, wk, h, near, away, DollStyle.Look);
+                s.Part(k, h, h + 0.3f, near, spot, DollStyle.Stand); // the turn
+                s.Part(k, h + 0.3f, h + 1.1f, near, spot, DollStyle.Stand, EarsPose);
+                s.Part(k, h + 1.1f, h + 2.1f, near, spot, DollStyle.Laugh);
                 // they all try: a blade, the hands at the mouth, a blow (no sound: theirs are duds)
-                s.Part(k, h + 2.1f, h + 2.6f, othersAt[i], spot, DollStyle.Stand, BendPickPose).keepSpot = true;
-                s.Part(k, h + 2.6f, h + 3.6f, othersAt[i], spot, DollStyle.Stand, BlowPose).keepSpot = true;
+                s.Part(k, h + 2.1f, h + 2.6f, near, spot, DollStyle.Stand, BendPickPose);
+                s.Part(k, h + 2.6f, h + 3.6f, near, spot, DollStyle.Stand, BlowPose);
                 s.Tip(k, h + 2.5f, h + 3.6f, CampTipKind.Blade);
             }
             t += 1.2f;
@@ -393,11 +422,11 @@ namespace AquariumCiv.View
         /// <summary>B34.a: the water carrier walks over with the bucket, stops 0.08 u from the little tree, crouches and tips the bucket slowly over it
         /// (6 droplets in 1 s at the foot); a darker wet patch (r 0.05 u, gone in a view hour) and the tree perks up; stands, looks at it, nods.
         /// <see cref="CampScene.a"/>: the wet patch (the hit).</summary>
-        public static CampScene WaterSapling(int carrier, Vector2 at, Vector2 sapling, float t0, Vector2 standSide = default)
+        public static CampScene WaterSapling(int carrier, Vector2 at, Vector2 sapling, float t0, Vector2 standSide = default, float standOff = 0.08f)
         {
             var s = new CampScene(CampUse.WaterSapling, t0, sapling) { holdFocus = true };
             int m = s.Add(carrier);
-            var stand = sapling + (standSide.sqrMagnitude > 1e-6f ? standSide.normalized : Dir(sapling, at, Vector2.down)) * 0.08f;
+            var stand = sapling + (standSide.sqrMagnitude > 1e-6f ? standSide.normalized : Dir(sapling, at, Vector2.down)) * standOff; // #692 p3: outside a young tree's crown
             float t = 0f, w = WalkTime(at, stand, Walk * 0.85f);
             s.Part(m, t, t + w, stand, sapling, DollStyle.Stand, BucketWalkPose, PropKind.Bucket, Walk * 0.85f).poseWalking = true; t += w;
             s.Part(m, t, t + 0.3f, stand, sapling, DollStyle.Stand, CrouchPose, PropKind.Bucket); t += 0.3f;
@@ -418,7 +447,7 @@ namespace AquariumCiv.View
         /// <summary>B34.b: a grown-up and a kid fetch stones from <paramref name="pile"/> (the grown-up 3 in the arms, the kid one in the hand) and set
         /// them into a ring r 0.06 round the sapling (each: a crouch, the hand down, 0.4 s, a dust puff, the stone stays); six stones in two trips. Both
         /// stand back; the kid hops. <see cref="CampScene.a"/>: the first stone; <see cref="CampScene.b"/>: the last.</summary>
-        public static CampScene RingSapling(int grown, int kid, Vector2 gAt, Vector2 kAt, Vector2 sapling, Vector2 pile, float t0)
+        public static CampScene RingSapling(int grown, int kid, Vector2 gAt, Vector2 kAt, Vector2 sapling, Vector2 pile, float t0, float ringR = LandGeo.RingR)
         {
             var s = new CampScene(CampUse.RingSapling, t0, sapling) { holdFocus = true };
             int g = s.Add(grown);
@@ -445,22 +474,22 @@ namespace AquariumCiv.View
                 // to the ring: the grown-up sets two, the kid one
                 int gi0 = stone, gi1 = stone + 1, ki = stone + 2;
                 stone += k >= 0 ? 3 : 2;
-                Vector2 Crouch(int i) { var r = LandGeo.RingSpot(sapling, i); return r + (r - sapling).normalized * 0.06f; }
+                Vector2 Crouch(int i) { var r = LandGeo.RingSpot(sapling, i, ringR); return r + (r - sapling).normalized * 0.06f; }
                 var gc0 = Crouch(gi0); var gc1 = Crouch(gi1); var kc = Crouch(ki);
                 float wg2 = WalkTime(gp, gc0, Walk * 0.85f), wk2 = k >= 0 ? WalkTime(kp, kc, KidWalk) : 0f;
                 s.Part(g, t, t + wg2, gc0, sapling, DollStyle.Stand, HugStonesPose, PropKind.None, Walk * 0.85f).poseWalking = true;
                 if (k >= 0) s.Part(k, t, t + wk2, kc, sapling, DollStyle.Stand, null, PropKind.None, KidWalk);
                 float ts = t + wg2;
-                s.Part(g, ts, ts + 0.6f, gc0, sapling, DollStyle.Stand, CrouchSetPose); SetStone(s, ts + 0.4f, sapling, gi0); if (first < 0f) first = ts + 0.4f;
+                s.Part(g, ts, ts + 0.6f, gc0, sapling, DollStyle.Stand, CrouchSetPose); SetStone(s, ts + 0.4f, sapling, gi0, ringR); if (first < 0f) first = ts + 0.4f;
                 s.Part(g, ts + 0.6f, ts + 0.9f, gc1, sapling, DollStyle.Stand, CrouchPose, PropKind.None, 0.25f);
-                s.Part(g, ts + 0.9f, ts + 1.5f, gc1, sapling, DollStyle.Stand, CrouchSetPose); SetStone(s, ts + 1.3f, sapling, gi1);
+                s.Part(g, ts + 0.9f, ts + 1.5f, gc1, sapling, DollStyle.Stand, CrouchSetPose); SetStone(s, ts + 1.3f, sapling, gi1, ringR);
                 var tg = s.tips[gTip]; tg.to = ts + 1.3f; tg.kind = CampTipKind.Stones; s.tips[gTip] = tg;
                 float te = ts + 1.5f;
                 if (k >= 0)
                 {
                     float tk = Mathf.Max(t + wk2, ts + 0.5f); // the kid waits for the grown-up's first, then sets theirs
                     s.Part(k, t + wk2, tk, kc, sapling, DollStyle.Stand);
-                    s.Part(k, tk, tk + 0.6f, kc, sapling, DollStyle.Stand, CrouchSetPose); SetStone(s, tk + 0.4f, sapling, ki);
+                    s.Part(k, tk, tk + 0.6f, kc, sapling, DollStyle.Stand, CrouchSetPose); SetStone(s, tk + 0.4f, sapling, ki, ringR);
                     var tkk = s.tips[kTip]; tkk.to = tk + 0.4f; s.tips[kTip] = tkk;
                     te = Mathf.Max(te, tk + 0.6f);
                     last = Mathf.Max(last, tk + 0.4f);
@@ -473,12 +502,12 @@ namespace AquariumCiv.View
                 t = te;
             }
             // both stand back and look; the kid hops
-            var gb = sapling + (gFrom - sapling).normalized * 0.2f;
+            var gb = sapling + (gFrom - sapling).normalized * (ringR + 0.14f);
             s.Part(g, t, t + 0.8f, gb, sapling, DollStyle.Stand, null, PropKind.None, 0.25f);
             s.Part(g, t + 0.8f, t + 2.2f, gb, sapling, DollStyle.Look);
             if (k >= 0)
             {
-                var kb = sapling + (kFrom - sapling).normalized * 0.18f;
+                var kb = sapling + (kFrom - sapling).normalized * (ringR + 0.12f);
                 s.Part(k, t, t + 0.7f, kb, sapling, DollStyle.Stand, null, PropKind.None, 0.3f);
                 s.Part(k, t + 0.7f, t + 1.5f, kb, sapling, DollStyle.Hop);
                 s.Part(k, t + 1.5f, t + 2.2f, kb, sapling, DollStyle.Laugh);
@@ -487,9 +516,9 @@ namespace AquariumCiv.View
             return s;
         }
 
-        static void SetStone(CampScene s, float t, Vector2 sapling, int i)
+        static void SetStone(CampScene s, float t, Vector2 sapling, int i, float ringR)
         {
-            var r = LandGeo.RingSpot(sapling, i);
+            var r = LandGeo.RingSpot(sapling, i, ringR);
             Mark(s, t, CampMark.RingStone, r);
             s.Fx(t, CampFxKind.Dust, G(r, 0.01f), 0.3f, 1);
         }
@@ -516,13 +545,17 @@ namespace AquariumCiv.View
         /// <summary>B34.c: a kid picks up a twig at <paramref name="twigAt"/> (bend, lift), crouches 0.06 u from the sapling, pushes it into the ground
         /// (the twig stands: a mark, for a season), pats the soil round it three times, "waters" it (2 droplets) and nods at it.
         /// <see cref="CampScene.a"/>: the twig stands.</summary>
-        public static CampScene PlantTwig(int kid, Vector2 at, Vector2 sapling, Vector2 twigAt, float t0)
+        public static CampScene PlantTwig(int kid, Vector2 at, Vector2 sapling, Vector2 twigAt, float t0, Vector2 toCam = default, float plantOff = 0.06f)
         {
             var s = new CampScene(CampUse.PlantTwig, t0, sapling) { holdFocus = true };
             int m = s.Add(kid);
-            var side = Rot(Dir(sapling, at, Vector2.down), 70f);
-            var plant = sapling + side * 0.06f;
-            var crouch = plant + Dir(sapling, at, Vector2.down) * 0.06f;
+            // #692 p3 (the user's review: the kid was behind the tree): with the camera's way known, the twig goes in on the camera's side of
+            // the little tree, a little round, and the kid crouches in front of it, between the twig and the camera
+            bool cam = toCam.sqrMagnitude > 1e-6f;
+            var front = cam ? toCam.normalized : Dir(sapling, at, Vector2.down);
+            var side = cam ? Rot(front, 35f) : Rot(front, 70f);
+            var plant = sapling + side * plantOff;
+            var crouch = plant + (cam ? Rot(front, -20f) : front) * 0.06f;
             float t = 0f, w = WalkTime(at, twigAt, KidWalk);
             s.Part(m, t, t + w, twigAt, twigAt + Dir(at, twigAt, Vector2.down), DollStyle.Stand, null, PropKind.None, KidWalk); t += w;
             s.Part(m, t, t + 0.6f, twigAt, twigAt + Dir(at, twigAt, Vector2.down), DollStyle.Stand, BendPickPose); t += 0.6f;
@@ -547,8 +580,10 @@ namespace AquariumCiv.View
 
         // ================================================================== B35.a sit on a rock; the kid on the rock
         /// <summary>Seated on top of a boulder (the sit offset +0.06 u).</summary>
-        public static void RockSitPose(ref DollPose p, float t, float len) { Seated(ref p); p.offset.y += RockSit; }
-        public const float RockSit = 0.06f;
+        public static void RockSitPose(ref DollPose p, float t, float len) { Seated(ref p); p.offset.y += RockSit; p.lean -= 6f; p.armL = new Vector3(35f, 0f, -18f); p.armR = new Vector3(35f, 0f, 18f); } // #692 p3: leaning back a little, hands on the knees
+        /// <summary>#692 p3: how far to the side of the boulder's middle the grown-up sits, and the kid stands on a shared boulder.</summary>
+        public const float SeatSide = 0.05f, KidSide = 0.045f;
+        public const float RockSit = 0.075f; // #692 p3 (the user's review: the sitter looked as if standing): the seat on the boulder's top, not in it
 
         /// <summary>The climb on (0.4 s): a hop 0.07 u up and 0.08 u in, landing on top.</summary>
         static void ClimbPose(ref DollPose p, float t, float len)
@@ -577,7 +612,12 @@ namespace AquariumCiv.View
         public static CampScene SitRock(int grown, Vector2 gAt, Vector2 rock, Vector2 toCam, float sitFor, int kid, Vector2 kAt, Vector2 kidRock, float t0)
         {
             toCam = toCam.sqrMagnitude > 1e-6f ? toCam.normalized : Vector2.down;
-            var s = new CampScene(CampUse.SitRock, t0, grown >= 0 ? rock : kidRock) { holdFocus = true };
+            var across = new Vector2(toCam.y, -toCam.x);
+            // #692 p3 (the user's review): one boulder shared (the cheat picks the other only when it is near): the grown-up sits on its top to one
+            // side as the camera sees it, the kid climbs the other side; the camera holds both
+            bool shared = (kidRock - rock).sqrMagnitude < 1e-4f && grown >= 0;
+            if (shared) kidRock = rock - across * KidSide;
+            var s = new CampScene(CampUse.SitRock, t0, grown >= 0 && kid >= 0 ? Vector2.Lerp(rock, kidRock, 0.5f) : grown >= 0 ? rock : kidRock) { holdFocus = true };
             float t = 0f;
             if (grown >= 0)
             {
@@ -586,7 +626,7 @@ namespace AquariumCiv.View
                 float w = WalkTime(gAt, front, Walk);
                 s.Part(g, 0f, w, front, rock, DollStyle.Stand, null, PropKind.None, Walk);
                 s.Part(g, w, w + 0.4f, front, front + toCam, DollStyle.Stand); // turns
-                var seat = rock - toCam * 0.03f; // the back half: the boulder's front shows under the sitter
+                var seat = rock + across * SeatSide + toCam * 0.02f; // #692 p3: on the top's side: the boulder shows beside and under the sitter
                 s.Part(g, w + 0.4f, w + 0.9f, seat, seat + toCam, DollStyle.Sit, RockSitPose, PropKind.None, 0.25f);
                 s.Part(g, w + 0.9f, w + 0.9f + sitFor, seat, seat + toCam, DollStyle.Sit, RockSitPose);
                 t = w + 0.9f + sitFor;
@@ -723,8 +763,8 @@ namespace AquariumCiv.View
             // the snap over the knee: the branch, then a short stick
             s.Part(a, t, t + 0.6f, pa, pa + toCam, DollStyle.Stand, KneeSnapPose, PropKind.Branch);
             s.Part(b, t, t + 0.6f, pb, pb + toCam, DollStyle.Stand, KneeSnapPose, PropKind.Branch);
-            s.Fx(t + 0.3f, CampFxKind.Chips, new Vector3(0f, 0f, 0f), 0.5f, 2, CampAnchor.Hand, a);
-            s.Fx(t + 0.35f, CampFxKind.Chips, new Vector3(0f, 0f, 0f), 0.5f, 2, CampAnchor.Hand, b);
+            s.Fx(t + 0.3f, CampFxKind.Chips, new Vector3(0f, 0f, 0f), 0.3f, 2, CampAnchor.Hand, a); // #692 p3: smaller chips
+            s.Fx(t + 0.35f, CampFxKind.Chips, new Vector3(0f, 0f, 0f), 0.3f, 2, CampAnchor.Hand, b);
             t += 0.6f;
             Vector2 da = mid + axis * DuelGap * 0.5f, db = mid - axis * DuelGap * 0.5f;
             float w = Mathf.Max(WalkTime(pa, da, KidWalk), WalkTime(pb, db, KidWalk));
@@ -774,7 +814,7 @@ namespace AquariumCiv.View
         /// <summary>The horse rears: stop, lean −15, its front up (the arm x 110), 0.4 s.</summary>
         public static void RearPose(ref DollPose p, float t, float len) { float u = Bump(t, 0f, len); p.lean -= 15f * u; p.armR = Lerp(new Vector3(60f, 0f, -12f), new Vector3(110f, 0f, -12f), u); p.armL = new Vector3(60f, 0f, -40f); }
 
-        public const float HorseLoopR = 0.22f, HorseSpeed = 0.3f;
+        public const float HorseLoopR = 0.14f, HorseSpeed = 0.3f; // #692 p3: a small loop the camera holds (was 0.22)
 
         /// <summary>B36.b: a kid picks up a long fallen branch and rides it: the gallop round a loop in the camp (r 0.22 u, one and a half times round),
         /// rearing once halfway (stop, lean back, its front up, 0.4 s); then leans the "horse" against <paramref name="leanAt"/> (it stays there a view

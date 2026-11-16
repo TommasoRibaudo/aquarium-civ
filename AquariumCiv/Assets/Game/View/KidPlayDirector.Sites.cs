@@ -123,6 +123,16 @@ namespace AquariumCiv.View
                 dir.Normalize();
                 var edge = start;
                 for (int i = 0; i < 200 && Wet(edge); i++) edge += dir * 0.02f;
+                // #708 p3 (the user's review: the kid knelt on dry sand, the splash missed the pond): the sheet is drawn only where a whole
+                // piece lies under the level by the rim margin, so the shallow cells by the bank show sand. Kneel at the drawn sheet's edge:
+                // from the drawn point nearest the kids, walk out toward them until the sheet ends.
+                if (eco != null && box != null && NearestDrawnWater(box, eco, at, out var drawn))
+                {
+                    var d2 = at - drawn;
+                    if (d2.sqrMagnitude > 1e-6f) dir = d2.normalized;
+                    edge = drawn;
+                    for (int i = 0; i < 400 && box.WaterDrawnAt(edge.x, edge.y); i++) edge += dir * 0.01f;
+                }
                 site = new PlaySite { water = true, edge = edge, toLand = dir };
                 return true;
             }
@@ -153,6 +163,28 @@ namespace AquariumCiv.View
         {
             if (land.Height(x, z) >= level) return false;
             return eco == null || eco.WaterCell(AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z));
+        }
+
+        /// <summary>#708 p3: the centre of the cell (or one of its 3 x 3 sheet pieces) nearest <paramref name="at"/> where the pond's sheet is drawn.</summary>
+        static bool NearestDrawnWater(BoxView box, EcoLayer eco, Vector2 at, out Vector2 point)
+        {
+            point = default;
+            float best = float.MaxValue;
+            const float step = AquariumCiv.Sim.Settle.SiteMap.Cell / 3f;
+            for (int c = 0; c < AquariumCiv.Sim.Settle.SiteMap.N; c++)
+            {
+                if (!eco.NearWater(c)) continue;
+                float cx = AquariumCiv.Sim.Settle.SiteMap.CXc(c), cz = AquariumCiv.Sim.Settle.SiteMap.CZc(c);
+                for (int j = -1; j <= 1; j++)
+                    for (int i = -1; i <= 1; i++)
+                    {
+                        var p = new Vector2(cx + i * step, cz + j * step);
+                        float d = (p - at).sqrMagnitude;
+                        if (d >= best || !box.WaterDrawnAt(p.x, p.y)) continue;
+                        best = d; point = p;
+                    }
+            }
+            return best < float.MaxValue;
         }
 
         /// <summary>#630: the centre of the eco pond's water cell nearest <paramref name="at"/> (false: no cell holds water).</summary>

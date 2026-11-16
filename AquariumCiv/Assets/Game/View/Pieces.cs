@@ -1238,18 +1238,24 @@ namespace AquariumCiv.View
         /// <summary>#657 (playtest: the grass looked like it floats): how far a tuft's base sinks into the ground, so it never starts above
         /// the low-poly triangle under it (the ground point is the smooth height, the drawn face can sit a little lower).</summary>
         public const float TuftSink = 0.012f;
+        /// <summary>#657: the base's colour as a share of the blade's (a contact shade), and its sway weight (still).</summary>
+        public const float TuftBaseShade = 0.55f, TuftBaseSway = 0.012f;
 
         public static void GrassTuft(MeshBuilder mb, Vector3 g, float h, Color col, bool tall = false)
         {
             g.y -= TuftSink; h += TuftSink; // the same height above the ground as before, the base below it
-            mb.sway = tall ? GrassHide.TallSway : 1f; // the tall-grass marker: the hunt's hide-near safety net reads it
+            float tip = tall ? GrassHide.TallSway : 1f; // the tall-grass marker: the hunt's hide-near safety net reads it
+            // #657: the base corners are darker (they meet the ground, not a bright edge against it) and keep still in the wind; only the tip
+            // sways (a base weight just over 0.01, so the season look still treats the blade as foliage)
+            var baseCol = new Color(col.r * TuftBaseShade, col.g * TuftBaseShade, col.b * TuftBaseShade, col.a);
             for (int b = 0; b < 3; b++)
             {
                 float a = b * 2.1f + mb.Range(0f, 1f);
                 var lean = new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * h * 0.35f;
                 var side = new Vector3(-Mathf.Sin(a), 0, Mathf.Cos(a)) * 0.012f;
-                mb.Tri(g - side, g + lean + Vector3.up * h, g + side, col);
-                mb.Tri(g + side, g + lean + Vector3.up * h, g - side, col);
+                var top = g + lean + Vector3.up * h;
+                mb.TriCorners(g - side, top, g + side, baseCol, col, baseCol, TuftBaseSway, tip, TuftBaseSway);
+                mb.TriCorners(g + side, top, g - side, baseCol, col, baseCol, TuftBaseSway, tip, TuftBaseSway);
             }
             mb.sway = 0f;
         }
