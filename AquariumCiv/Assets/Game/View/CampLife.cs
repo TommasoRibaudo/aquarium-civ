@@ -64,7 +64,7 @@ namespace AquariumCiv.View
 
         public void Reset()
         {
-            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree();
+            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree(); ResetLand();
             fxDone = float.NaN; potState = PotState.Cold; potDay = long.MinValue; spitDay = long.MinValue;
         }
 
@@ -89,6 +89,7 @@ namespace AquariumCiv.View
             Index();
             if (sim == null || planner == null || sim.State.era != Era.Camp) { StepPot(acts, time, false); return; }
             StepTree(acts, time); // #692 part 2: the Keeper's tree visits (no fire needed)
+            StepLand(acts, time); // #692 part 3: grass, saplings, rocks, fallen branches
             bool fire = meals.HasFire && planner.FireNow != CampFireStage.None;
             StepPot(acts, time, fire);
             if (fire && !OnlyCheats) Trigger(acts, time);
@@ -639,6 +640,7 @@ namespace AquariumCiv.View
             DrawSpit(root, material, time, groundAt);
             DrawLadle(root, time);
             DrawTree(root, time); // #692 part 2: the newborn lifted, the glow, the charm held back until it is tied, the hush
+            DrawLand(root, material, time, groundAt); // #692 part 3: the boulders and what the land's uses leave
         }
 
         void FireFx(Transform root, float time, Func<float, float, float> groundAt)
@@ -683,6 +685,14 @@ namespace AquariumCiv.View
                 case CampFxKind.Leaves: o.count = Mathf.Max(1, f.count); HitFx.Puff(PuffKind.Leaves, world, Vector3.down, f.scale, o); break;
                 case CampFxKind.TreeShake: HitFx.Shake(ShakeTarget.Tree, world, CameraAcross3(root), 0f); break;
                 case CampFxKind.Glow: TreeGlow(world, time: clock); break;
+                case CampFxKind.Chips: HitFx.Puff(PuffKind.Chips, world, Vector3.up, f.scale, o); break; // #692 part 3
+                case CampFxKind.Whistle: HitFx.Puff(PuffKind.Steam, world, Vector3.up, f.scale, o); break; // #692 part 3 (B33.d) [est: a Steam puff for the two white lines]
+                case CampFxKind.Mark: LandMark(s, f); break; // #692 part 3
+                case CampFxKind.Perk: HitFx.Shake(ShakeTarget.Tree, world, CameraAcross3(root), 0f, true); break; // #692 part 3 (B34.a)
+                case CampFxKind.Clash: // #692 part 3 (B36.a): the white flash at the cross and a light wood knock
+                    HitFx.Puff(PuffKind.Sparks, world, Vector3.up, f.scale, o);
+                    AudioDirector.Instance?.Play(AquariumCiv.Audio.CueLibrary.KnockBack, 0f, 0.6f, 0f);
+                    break;
                 case CampFxKind.Chime: break; // [est] a soft chime: no CC0 chime in the project yet (none played)
             }
             if (s.use == CampUse.FeatherTie && f.kind == CampFxKind.Jolt && sim != null && s.kind >= 0) { sim.MarkPoleFeatherTied(s.kind); s.kind = -1; }
@@ -722,6 +732,12 @@ namespace AquariumCiv.View
                         t.gameObject.SetActive(true);
                         continue;
                     }
+                    if (tip.kind >= CampTipKind.Stone) // #692 part 3
+                    {
+                        PlaceLandTip(t, v, tip, u, root, sc0);
+                        t.gameObject.SetActive(true);
+                        continue;
+                    }
                     t.localRotation = Quaternion.identity;
                     var at = Anchor(v, CampAnchor.TwigTip);
                     t.position = at;
@@ -754,7 +770,7 @@ namespace AquariumCiv.View
             Color c = kind == CampTipKind.Ember ? new Color(1f, 0.55f, 0.12f)
                 : Color.Lerp(new Color(0.78f, 0.12f, 0.22f), new Color(0.28f, 0.08f, 0.10f), tint / 4f);
             var mb = new MeshBuilder(6926 + key);
-            if (TreeTipMesh(kind, mb)) { m = mb.ToMesh("Camp_Tip_" + key); m.hideFlags = HideFlags.DontSave; return tipMeshes[key] = m; }
+            if (TreeTipMesh(kind, mb) || LandTipMesh(kind, mb)) { m = mb.ToMesh("Camp_Tip_" + key); m.hideFlags = HideFlags.DontSave; return tipMeshes[key] = m; }
             mb.Ico(Vector3.zero, 1f, Vector3.one, c, 0.05f);
             m = mb.ToMesh("Camp_Tip_" + key); m.hideFlags = HideFlags.DontSave;
             return tipMeshes[key] = m;
@@ -834,6 +850,7 @@ namespace AquariumCiv.View
             tipPool.Clear();
             if (spitGo != null) UnityEngine.Object.Destroy(spitGo);
             spitGo = null;
+            DestroyLand();
         }
 
         // ================================================================== cheats (SliceDebugPanel "#692")
@@ -841,7 +858,7 @@ namespace AquariumCiv.View
         public string Force(CampUse use)
         {
             int before = scenes.Count;
-            string r = IsTreeUse(use) ? ForceTree(use) : ForceUse(use);
+            string r = IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : ForceUse(use);
             if (scenes.Count > before) forced = scenes[^1];
             return r;
         }

@@ -1,0 +1,25 @@
+{
+ "name": "692-b36a-sticks",
+ "notes": "B36.a: two kids pick up fallen branches under the wild tree, snap them to size over the knee (chips), en garde, four strikes and blocks (a flash and a knock at each cross), sticks up high, dropped back on the deadfall.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.StickFight());"
+  ],
+  "warm": 0.5,
+  "seconds": 19,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.55,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

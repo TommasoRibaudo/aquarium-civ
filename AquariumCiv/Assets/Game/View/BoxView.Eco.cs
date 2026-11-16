@@ -79,6 +79,11 @@ namespace AquariumCiv.View
         }
         /// <summary>#359: where each grown tree was drawn (site cell -> ground point, crown radius), as BushSpots: the kids play round the real trunks.</summary>
         public readonly Dictionary<int, (Vector3 pos, float r)> TreeSpots = new();
+        /// <summary>#692 part 3 (B34): where each wild young tree or seedling was drawn (site cell -> ground point, size), so the people water and ring
+        /// the little trees the player sees (a young tree is drawn on ~80 % of its cells).</summary>
+        public readonly Dictionary<int, (Vector3 pos, float r)> SaplingSpots = new();
+        /// <summary>#692 part 3 (B33.c): the flowers baked into tall-grass tufts (cell x 2 + tuft -> the flower's point), so a picker walks to a real one.</summary>
+        public readonly Dictionary<int, Vector3> FlowerSpots = new();
 
         /// <summary>#730 (landscaping phase 2): the spots are written as chunks build and were never taken out, so a tree or a bush the landscaping
         /// tool lifted (or one that died) stayed a "tree to play round" until the box was rebuilt. Each refresh drops the spots whose cell no
@@ -96,6 +101,18 @@ namespace AquariumCiv.View
                     if (!keepers && (kv.Key < 0 || kv.Key >= ec.cover.Length || ec.cover[kv.Key] != EcoLayer.Tree)) gone.Add(kv.Key);
                 }
                 foreach (int c in gone) TreeSpots.Remove(c);
+            }
+            gone.Clear();
+            lock (SaplingSpots)
+            {
+                foreach (var kv in SaplingSpots) if (kv.Key < 0 || kv.Key >= ec.cover.Length || ec.cover[kv.Key] != EcoLayer.Young && ec.cover[kv.Key] != EcoLayer.Seedling) gone.Add(kv.Key);
+                foreach (int c in gone) SaplingSpots.Remove(c);
+            }
+            gone.Clear();
+            lock (FlowerSpots)
+            {
+                foreach (var kv in FlowerSpots) { int c = kv.Key / 2; if (c < 0 || c >= ec.cover.Length || ec.cover[c] != EcoLayer.Tall) gone.Add(kv.Key); }
+                foreach (int c in gone) FlowerSpots.Remove(c);
             }
             gone.Clear();
             lock (BushSpots)
@@ -177,6 +194,7 @@ namespace AquariumCiv.View
                         mb.AppendFree(ib);
                         near.Add((p, 0.16f * s));
                         if (grown) lock (TreeSpots) TreeSpots[c] = (land.OnGround(p), 0.16f * s); // #359
+                        else lock (SaplingSpots) SaplingSpots[c] = (land.OnGround(p), 0.16f * s); // #692 part 3
                         if (grown) FallenBranches(mb, c, p, s, ec, near, H);
                     }
                     else if (pass == 1 && (cv == EcoLayer.Bush || cv == EcoLayer.Seedling))
@@ -202,6 +220,7 @@ namespace AquariumCiv.View
                             Pieces.Tree(ib, land.OnGround(p), s, H(c, 5) < 0.3f, co);
                             mb.AppendFree(ib);
                             near.Add((p, 0.05f));
+                            lock (SaplingSpots) SaplingSpots[c] = (land.OnGround(p), 0.05f); // #692 part 3
                         }
                     }
                     else if (pass == 2)
@@ -230,7 +249,10 @@ namespace AquariumCiv.View
                             var g = land.OnGround(q);
                             Pieces.GrassTuft(ib, g, h, c3 < 0.33f ? co.tuftA : c3 < 0.66f ? co.tuftB : co.tuftC, cv == EcoLayer.Tall);
                             if (cv == EcoLayer.Tall && H(c, 34 + t) < 0.12f)
+                            {
                                 ib.Ico(g + Vector3.up * h * 0.8f, 0.014f, Vector3.one, Palette.Flowers[Mathf.Min(Palette.Flowers.Length - 1, (int)(H(c, 36) * Palette.Flowers.Length))], 0.1f);
+                                lock (FlowerSpots) FlowerSpots[c * 2 + t] = g + Vector3.up * h * 0.8f; // #692 part 3 (B33.c)
+                            }
                             mb.AppendFree(ib);
                         }
                     }

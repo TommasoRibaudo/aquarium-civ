@@ -1,0 +1,25 @@
+{
+ "name": "692-b33d-whistle",
+ "notes": "B33.d: a kid pulls a blade of grass and blows it between the hands: two duds and a shrug, then it works (two white lines); the other kids turn, cover their ears, laugh and all try.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 3);",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.GrassWhistle());"
+  ],
+  "warm": 0.5,
+  "seconds": 15,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.5,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

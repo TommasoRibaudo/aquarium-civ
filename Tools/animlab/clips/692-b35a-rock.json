@@ -1,0 +1,25 @@
+{
+ "name": "692-b35a-rock",
+ "notes": "B35.a: a grown-up walks to one of the two new boulders at the camp's edge and sits on top; a kid climbs the other, stands on top arms up wide (king of the rock) and jumps off.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.SitRock());"
+  ],
+  "warm": 0.5,
+  "seconds": 16,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

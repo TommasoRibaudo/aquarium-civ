@@ -50,6 +50,29 @@ namespace AquariumCiv.View
         TreeOld,
         /// <summary>B32.h: the eldest tells the kids who planted it.</summary>
         TreeTell,
+        // #692 part 3: grass, saplings, rocks, fallen branches (View/Beats/CampScenes3.cs, View/CampLife.Land.cs)
+        /// <summary>B33.a: kids roll in the grass.</summary>
+        GrassRoll,
+        /// <summary>B33.b: two lie back in the grass and look up.</summary>
+        LieBack,
+        /// <summary>B33.c: pick flowers and give the bunch away.</summary>
+        PickFlowers,
+        /// <summary>B33.d: a kid blows a grass whistle.</summary>
+        GrassWhistle,
+        /// <summary>B34.a: water a sapling (work).</summary>
+        WaterSapling,
+        /// <summary>B34.b: ring a sapling with stones (work, once per sapling).</summary>
+        RingSapling,
+        /// <summary>B34.c: a kid plants a twig beside it.</summary>
+        PlantTwig,
+        /// <summary>B35.a: sit on a rock; a kid climbs on, king of the rock.</summary>
+        SitRock,
+        /// <summary>B35.b: stack pebbles.</summary>
+        StackPebbles,
+        /// <summary>B36.a: kids sword fight with fallen sticks.</summary>
+        StickFight,
+        /// <summary>B36.b: a kid rides a stick horse.</summary>
+        StickHorse,
     }
 
     /// <summary>A pose laid over the doll's pose for one part: <paramref name="into"/> seconds into the part, <paramref name="len"/> its length.</summary>
@@ -88,7 +111,20 @@ namespace AquariumCiv.View
         /// <summary>#692 part 2: the Keeper's tree's crown shakes (a pat, a slap, a touch; HitFx's baked-tree shake).</summary>
         TreeShake,
         /// <summary>#692 part 2 (B32.d): the tree's dusk glow comes up a little for 4 s.</summary>
-        Glow }
+        Glow,
+        /// <summary>#692 part 3: wood chips (a stick snapped to size, B36.a).</summary>
+        Chips,
+        /// <summary>#692 part 3 (B33.d): the grass whistle works: two short white lines at the hands.</summary>
+        Whistle,
+        /// <summary>#692 part 3: a mark is made on the land at <see cref="CampFx.at"/> (what kind: <see cref="CampFx.count"/>, a <see cref="CampMark"/>).</summary>
+        Mark,
+        /// <summary>#692 part 3 (B34.a): the little tree perks up (the baked-tree shake at the sapling).</summary>
+        Perk,
+        /// <summary>#692 part 3 (B36.a): the sticks cross: a small white flash and a light wood knock.</summary>
+        Clash }
+
+    /// <summary>#692 part 3: what a <see cref="CampFxKind.Mark"/> leaves on the land (CampLife.Land draws them).</summary>
+    public enum CampMark { None, WetPatch, RingStone, Twig, Pebble, Topple, Horse, GrassBits, EarFlower, Flatten }
 
     /// <summary>Where an effect is: on the ground at a box point (<see cref="CampFx.at"/> x, z; y above the ground), or at a member's hand,
     /// head or held twig's tip (plus <see cref="CampFx.at"/> as a world-up offset in box units).</summary>
@@ -108,7 +144,10 @@ namespace AquariumCiv.View
     /// <summary>A small thing the scene draws at a member's hand or twig tip for a while (B29.b the ember, B29.c the berry, B31.a the feather).</summary>
     public enum CampTipKind { Ember, Berry, MeatPiece,
         /// <summary>#692 part 2: a leaf drifting down onto a shoulder (B32.d), a flower in the hand (B32.g), a charm to tie (B32.d).</summary>
-        Leaf, Flower, Charm }
+        Leaf, Flower, Charm,
+        /// <summary>#692 part 3: a stone in the hand (B34.b), three in the arms, a pebble (B35.b), a bunch of flowers (B33.c), a grass blade at the
+        /// mouth (B33.d), the stick horse from the hand back to the ground (B36.b).</summary>
+        Stone, Stones, Pebble, Bunch, Blade, Horse }
 
     public struct CampTip
     {

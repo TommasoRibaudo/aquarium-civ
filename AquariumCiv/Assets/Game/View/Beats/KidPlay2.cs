@@ -459,7 +459,7 @@ namespace AquariumCiv.View
             Beat.Step(BeatPhase.Settle, 0.2f, Ease.Smooth, PoseKey.Base));
 
         /// <summary>A strike: the stick up (x 130), down (Snap) onto the other's stick (the Contact), the jolt back, settle.</summary>
-        static readonly Beat Strike = new Beat(
+        public static readonly Beat Strike = new Beat(
             Beat.Step(BeatPhase.Antic, 0.25f, Ease.Out, PoseKey.Hold.ArmR(135f, 0f, 12f).Lean(-8f).Squash(1.04f).Extend(true)),
             Beat.Step(BeatPhase.Act, 0.1f, Ease.Snap, PoseKey.Hold.ArmR(88f, 0f, 4f).Lean(14f).Squash(0.94f)), // level: the sticks meet at chest height
             Beat.Step(BeatPhase.Contact, Beat.MinContact, Ease.Linear, PoseKey.Hold),
@@ -467,7 +467,7 @@ namespace AquariumCiv.View
             Beat.Step(BeatPhase.Settle, 0.4f, Ease.Smooth, PoseKey.Base.Extend(true)));
 
         /// <summary>The block: the stick across (x 100, turned in), braced; at the cross a jolt back; settle.</summary>
-        static readonly Beat Block = new Beat(
+        public static readonly Beat Block = new Beat(
             Beat.Step(BeatPhase.Antic, 0.2f, Ease.Out, PoseKey.Hold.ArmR(100f, 0f, -25f).Lean(-6f).Squash(0.94f).Extend(true)),
             Beat.Step(BeatPhase.Hold, 0.2f, Ease.Linear, PoseKey.Hold),
             Beat.Step(BeatPhase.Follow, 0.12f, Ease.Out, PoseKey.Hold.Offset(0f, 0f, 0.04f).Lean(-12f).Squash(0.9f)),
