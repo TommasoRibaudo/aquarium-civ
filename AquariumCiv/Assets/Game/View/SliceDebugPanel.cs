@@ -318,6 +318,32 @@ namespace AquariumCiv.View
             Row(); // fb4 #566: the feather pole
             if (Btn("Feather pole: pray now")) last = ConsequenceCheats.PrayNow();
             EndRow();
+            // #692 people and things, part 1: the fire, the stew pot, the feather pole
+            Row(); // #692
+            if (Btn("Winter fire: warm hands")) last = CampCheats.WarmHands(); // #692 B29.a
+            if (Btn("Kids poke the fire")) last = CampCheats.KidPoke(); // #692 B29.b
+            if (Btn("Berry on a stick")) last = CampCheats.BerryStick(); // #692 B29.c
+            EndRow();
+            Row(); // #692
+            if (Btn("Roast on the spit (rabbit)")) last = CampCheats.Spit(false); // #692 B29.d
+            if (Btn("Roast on the spit (deer)")) last = CampCheats.Spit(true); // #692 B29.d
+            EndRow();
+            Row(); // #692
+            if (Btn("Pot: fill it now")) last = CampCheats.PotFill(); // #692 B30.a
+            if (Btn("Pot: scrape and lift off")) last = CampCheats.PotOff(); // #692 B30.e
+            if (Btn("Pot: cold / cooking")) last = CampCheats.PotToggle(); // #692 B30.e
+            EndRow();
+            Row(); // #692
+            if (Btn("Kids peek in the pot")) last = CampCheats.PotPeek(); // #692 B30.c
+            if (Btn("Someone sniffs the pot")) last = CampCheats.PotSniff(); // #692 B30.d
+            if (Btn("Bowl round: ladle")) last = CampCheats.Ladle(); // #692 B30.b (with "Meal now" at supper)
+            EndRow();
+            Row(); // #692
+            if (Btn("Feather: newborn")) last = CampCheats.TieFeather(AquariumCiv.Sim.PoleFeatherKind.Newborn); // #692 B31.a
+            if (Btn("Feather: marriage")) last = CampCheats.TieFeather(AquariumCiv.Sim.PoleFeatherKind.Marriage); // #692 B31.a
+            if (Btn("Feather: village")) last = CampCheats.TieFeather(AquariumCiv.Sim.PoleFeatherKind.Village); // #692 B31.a
+            if (Btn("Kids dare at the feather pole")) last = CampCheats.PoleDare(); // #692 B31.b
+            EndRow();
         }
 
         void OnGUI()

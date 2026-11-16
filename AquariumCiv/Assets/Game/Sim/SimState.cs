@@ -423,6 +423,7 @@ namespace AquariumCiv.Sim
         public int storyTellerId = -1; public long storyTellerMonth = -1; public int storyTellerManner;
         public List<ConsequenceProp> consequenceProps = new(); // #371: the things the Keeper's choices left in the box
         public bool featherPoleSet; public float featherPoleX, featherPoleZ; // fb4 #566: the one feather pole's spot (SimCore.FeatherPole.cs); an old save has none until asked
+        public List<PoleFeather> poleFeathers = new(); // #692 (B31.a): the feathers tied on the pole after good events (SimCore.PoleFeathers.cs)
         public List<ApartGroup> apartGroups = new(); // strangers who live apart in the box (#231): not the settlement's people
 
         /// <summary>#603: months added before the calendar reads the season (SeasonCalendar). New boxes: 2 (they open in spring); a save without it: 0.</summary>

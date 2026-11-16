@@ -1,0 +1,23 @@
+{
+ "name": "692-b29d-spit-rabbit",
+ "notes": "B29.d: the forked sticks pushed in, the bar laid with the rabbit, a sitter turns it (drips flare), it browns; lifted off, a piece torn, the round; the hunter holds his up.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(17.7f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.Spit(false));"
+  ],
+  "warm": 0.5,
+  "seconds": 40,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.5,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 42
+ }
+}

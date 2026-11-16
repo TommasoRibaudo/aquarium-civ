@@ -47,6 +47,7 @@ namespace AquariumCiv.EditorTools
         static int loadFrame = -1, frame, warmFrames, recFrames;
         static Camera cam;
         static Texture2D readback;
+        static readonly Dictionary<(int, int), Texture2D> readbacks = new Dictionary<(int, int), Texture2D>();
         static Vector2 followAt;
         static bool followSet;
         static int ecologyWas = -1;
@@ -177,6 +178,14 @@ namespace AquariumCiv.EditorTools
                 world = box.Root.TransformPoint(nv.NestLocal);
                 return true;
             }
+            if (spec.follow == "camp") // #692: the camp use playing now (its focus: the fire, the pot, the pole)
+            {
+                var pvc = PeopleView.Find();
+                var fc = pvc != null ? pvc.Camp.FocusNow() : null;
+                if (!(fc is Vector2 f)) return false;
+                world = box.Root.TransformPoint(new Vector3(f.x, box.SurfaceHeight(f.x, f.y), f.y));
+                return true;
+            }
             if (spec.follow == "fishgrab")
             {
                 var pv = PeopleView.Find();
@@ -207,12 +216,12 @@ namespace AquariumCiv.EditorTools
         static Vector2 Focus(PeopleView pv)
         {
             var want = new Vector2(spec.fx, spec.fz);
-            if (spec.follow is "fish" or "glass" or "nest" or "fishgrab")
+            if (spec.follow is "fish" or "glass" or "nest" or "fishgrab" or "camp")
             {
                 if (ThingFocus(out var w))
                 {
                     want = new Vector2(w.x, w.z);
-                    followY = spec.follow is "fish" or "fishgrab" ? float.NaN : (float.IsNaN(followY) ? w.y : Mathf.Lerp(followY, w.y, 0.08f));
+                    followY = spec.follow is "fish" or "fishgrab" or "camp" ? float.NaN : (float.IsNaN(followY) ? w.y : Mathf.Lerp(followY, w.y, 0.08f));
                 }
             }
             else if (!string.IsNullOrEmpty(spec.follow))
@@ -260,8 +269,11 @@ namespace AquariumCiv.EditorTools
             cam.targetTexture = null;
             var keep = RenderTexture.active;
             RenderTexture.active = rt;
-            if (readback == null || readback.width != w || readback.height != h)
-                readback = new Texture2D(w, h, TextureFormat.RGB24, false) { hideFlags = HideFlags.DontSave };
+            // #692: one readback per size (the two cameras alternate 480x360 and 360x360): a new one each frame without destroying the
+            // last leaked ~2 MB a frame, 23 GB over a few clips, and the Editor died out of memory (tooling.md 2026-11-15)
+            var key = (w, h);
+            if (!readbacks.TryGetValue(key, out readback) || readback == null)
+                readbacks[key] = readback = new Texture2D(w, h, TextureFormat.RGB24, false) { hideFlags = HideFlags.DontSave };
             readback.ReadPixels(new Rect(0, 0, w, h), 0, 0);
             readback.Apply(false);
             RenderTexture.active = keep;

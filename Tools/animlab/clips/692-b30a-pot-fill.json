@@ -1,0 +1,23 @@
+{
+ "name": "692-b30a-pot-fill",
+ "notes": "B30.a: the cold pot set out; a bucket tipped in (the water shows), a basket tipped in (the stew shows), the two-person lift onto the fire stones; the simmer starts.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(17.7f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.PotFill());"
+  ],
+  "warm": 0.5,
+  "seconds": 24,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.4,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 42
+ }
+}

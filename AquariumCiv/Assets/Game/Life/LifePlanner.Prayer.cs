@@ -18,7 +18,7 @@ namespace AquariumCiv.Life
         public const float PraySeconds = 5.5f;
         /// <summary>The midday visit starts between these hours (on <see cref="MiddayVisitChance"/> of the days); the dusk one between the dusk hours.</summary>
         public const float MiddayFrom = 9f, MiddayTo = 14.5f, DuskFrom = 17f, DuskTo = 18.4f;
-        public const float MiddayVisitChance = 0.55f, DuskVisitChance = 0.8f, TwoPrayChance = 0.5f, KidTagChance = 0.5f;
+        public const float MiddayVisitChance = 1f /* #692 (B31.c): every day, so a normal visit sees one */, DuskVisitChance = 0.8f, TwoPrayChance = 0.5f, KidTagChance = 0.5f;
 
         /// <summary>One person's visit: leaves at <see cref="start"/>, stands at the pole from <see cref="arrive"/> to <see cref="end"/>, is back where the day had them at <see cref="until"/> (view hours of the visit's day).</summary>
         public struct PrayerVisit

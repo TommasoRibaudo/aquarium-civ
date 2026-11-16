@@ -326,6 +326,41 @@ namespace AquariumCiv.View
         }
 
         /// <summary>#635: the stand-in pole with <paramref name="count"/> charms on its bough (the sim's count, not always four).</summary>
+        /// <summary>#692 (B31.a): the feather pole with its tied feathers: <paramref name="slots"/> are their kinds (PoleFeatherKind) oldest first;
+        /// they spiral down from the top, 0.03 u apart (at the props' 1.5 scale: 0.02 here), tilted out 30 deg; white, red or ochre.</summary>
+        public static Mesh FeatherPole(int[] slots)
+        {
+            var mb = new MeshBuilder(3790) { jitter = 0.02f };
+            for (int i = 0; i < 5; i++)
+            {
+                float a = i / 5f * Mathf.PI * 2f;
+                mb.Ico(new Vector3(Mathf.Cos(a), 0.01f, Mathf.Sin(a)) * 0.05f, 0.022f, new Vector3(1f, 0.7f, 1f), Palette.Rock, 0.2f);
+            }
+            mb.Prism(Vector3.zero, 0.018f, 0.014f, 0.2f, 6, Palette.WoodLight, topCol: Palette.Plaster);
+            mb.Box(new Vector3(0f, 0.11f, 0f), new Vector3(0.048f, 0.03f, 0.048f), Palette.Accents[0]);
+            for (int i = -1; i <= 1; i++)
+            {
+                var rot = Quaternion.Euler(0f, 0f, -i * 24f);
+                var col = i == 0 ? Palette.Plaster : i < 0 ? Palette.Accents[1] : Palette.Accents[0];
+                var at = new Vector3(i * 0.04f, 0.31f - Mathf.Abs(i) * 0.015f, 0f);
+                mb.Box(at, new Vector3(0.05f, 0.2f, 0.008f), col, rot);
+                mb.Box(at, new Vector3(0.006f, 0.21f, 0.011f), Palette.Timber, rot);
+            }
+            for (int i = 0; i < slots.Length; i++)
+            {
+                float a = i * 2.39996f, y = 0.19f - i * 0.0125f;
+                var col = slots[i] == PoleFeatherKind.Newborn ? new Color(0.96f, 0.95f, 0.92f) : slots[i] == PoleFeatherKind.Marriage ? new Color(0.80f, 0.18f, 0.16f) : new Color(0.80f, 0.56f, 0.20f);
+                var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                var rot = Quaternion.LookRotation(dir) * Quaternion.Euler(-60f, 0f, 0f); // up the pole, tilted out 30 deg
+                var at = new Vector3(0f, y, 0f) + dir * 0.022f;
+                mb.Box(at + rot * new Vector3(0f, 0.022f, 0f), new Vector3(0.016f, 0.045f, 0.004f), col, rot);
+                mb.Box(at + rot * new Vector3(0f, 0.022f, 0f), new Vector3(0.003f, 0.047f, 0.006f), Palette.Timber, rot);
+            }
+            var m = mb.ToMesh("Consequence_FeatherPole_" + slots.Length);
+            m.hideFlags = HideFlags.DontSave;
+            return m;
+        }
+
         public static Mesh PoleWithCharms(int count)
         {
             var mb = new MeshBuilder(3780 + count) { jitter = 0.025f };
@@ -425,6 +460,14 @@ namespace AquariumCiv.View
         readonly List<CampSpots.Disc> fixedScratch = new();
         readonly Dictionary<int, Made> made = new();
         readonly Dictionary<int, float> pulses = new();
+        float flutterAt = -99f, flutterAmp = 1f;
+
+        /// <summary>#692 (B31.a/b): a new feather tied on, a kid's touch: the pole jolts and its feathers flutter.</summary>
+        public static void FlutterPole(float amp = 1f)
+        {
+            if (Instance == null) return;
+            Instance.flutterAt = Time.unscaledTime; Instance.flutterAmp = amp;
+        }
 
         /// <summary>The things standing now, by prop id (tests).</summary>
         public IReadOnlyDictionary<int, Transform> Standing
@@ -548,6 +591,8 @@ namespace AquariumCiv.View
                 }
                 int charms = p.anchor == PropAnchor.Tree ? sim.CharmsOn(p) : 0;
                 string key = KeyOf(p, charms, treeR);
+                int[] featherSlots = p == pole ? SimCore.PoleSlots(sim.PoleFeathers) : null; // #692 (B31.a): the pole fills up over the years
+                if (featherSlots != null && featherSlots.Length > 0) key += ":f" + string.Join("", featherSlots);
                 if (!made.TryGetValue(p.id, out var m) || m.t == null || m.kind != key)
                 {
                     if (m != null) { Kill(m.mesh); if (m.t != null) Kill(m.t.gameObject); }
@@ -558,6 +603,7 @@ namespace AquariumCiv.View
                         mesh = ConsequenceMeshes.Charms(charms, ty, tr);
                     }
                     else if (p.anchor == PropAnchor.Tree) mesh = ConsequenceMeshes.PoleWithCharms(charms); // tester: the pole always drew four
+                    else if (featherSlots != null && featherSlots.Length > 0) mesh = ConsequenceMeshes.FeatherPole(featherSlots);
                     else mesh = ConsequenceMeshes.Build(p.kind);
                     m = new Made { kind = key, mesh = mesh };
                     var go = new GameObject("Consequence_" + p.kind + "_" + p.id) { hideFlags = HideFlags.DontSave };
@@ -585,8 +631,14 @@ namespace AquariumCiv.View
                     continue;
                 }
                 m.t.localScale = Vector3.one * s;
+                var tilt = Quaternion.identity;
+                if (p == pole && Time.unscaledTime - flutterAt < 1.2f) // #692 (B31.a/b): the feathers flutter (Sway 8 deg, 6 Hz, tau 0.3 s)
+                {
+                    float ft = Time.unscaledTime - flutterAt;
+                    tilt = Quaternion.Euler(Mathf.Sin(ft * 6f * Mathf.PI * 2f) * 8f * flutterAmp * Mathf.Exp(-ft / 0.3f), 0f, 0f);
+                }
                 float yaw = p.kind != ConsequenceKind.ShoreBoat ? p.yaw : haveFire && p.anchor == PropAnchor.Fire ? BoatYaw(px, pz) : Mathf.Round(p.yaw / 90f) * 90f; // #714 round 2: square to the glass (old saves too)
-                m.t.SetLocalPositionAndRotation(box.land.OnGround(px, pz) + Vector3.up * lift, Quaternion.Euler(0f, yaw, 0f));
+                m.t.SetLocalPositionAndRotation(box.land.OnGround(px, pz) + Vector3.up * lift, Quaternion.Euler(0f, yaw, 0f) * tilt);
             }
         }
     }
