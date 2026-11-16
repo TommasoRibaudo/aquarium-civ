@@ -55,6 +55,7 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log("[693 uses] " + CampCheats.StageCamp(10f, 4));
             yield return new WaitForSeconds(2f);
             Debug.Log("[693 uses] " + CampCheats.PondReady());
+            int deerBefore = AquariumCiv.Game.GameClock.Instance.Sim.EcoDeerCount;
             Debug.Log("[693 uses] " + CampCheats.EveryThing());
             yield return new WaitForSeconds(3f);
             var pv = PeopleView.Find();
@@ -91,6 +92,26 @@ namespace AquariumCiv.View.PlayTests
             yield return Play(pv, CampUse.PegRetie, CampCheats.PegRetie, null, null, "");
             yield return Play(pv, CampUse.PegTap, CampCheats.PegTap, null, null, "");
             yield return Play(pv, CampUse.BigPot, CampCheats.BigPot, null, null, "");
+            // 2026-11-16 "Bring a pen back": the goat in its pen, outside every herd and drawn-animal count, and its pen's uses
+            var sim = AquariumCiv.Game.GameClock.Instance.Sim;
+            int pen = PropId(ConsequenceKind.GoatPen);
+            if (pen < 0 || !sim.PenGoat) failed.Add("no goat pen with its goat after 'every choice's thing'");
+            else
+            {
+                yield return null;
+                if (!camp.GoatDrawn) failed.Add("the goat is not drawn in its pen");
+                var gt = camp.GoatTransform;
+                // drawn by CampLife beside the people, never in a herd view's holder ("Deer", "Rabbits", the wolves' and dogs'), so no view counts it
+                for (var up = gt; up != null; up = up.parent) if (up.name is "Deer" or "Rabbits" or "Wolves" or "Dogs") failed.Add("the goat is under the " + up.name + " holder");
+                if (DeerView.Instance != null && DeerView.Instance.Shown > sim.EcoDeerShown()) failed.Add($"more deer drawn ({DeerView.Instance.Shown}) than the sim shows ({sim.EcoDeerShown()})");
+                if (sim.EcoDeerCount != deerBefore) failed.Add($"the pen changed the deer count ({deerBefore} -> {sim.EcoDeerCount})");
+                Debug.Log("[693 uses] " + CampCheats.GoatNibble());
+                float tn = Time.time; while (Time.time - tn < 15f && camp.GoatNibbles == 0) yield return null;
+                if (camp.GoatNibbles == 0) failed.Add("the goat never gnawed the corner");
+                yield return Play(pv, CampUse.PenMend, CampCheats.PenMend, null, () => look(pen) == 1, "the corner mended");
+                yield return Play(pv, CampUse.PenRails, CampCheats.PenRails, null, null, "");
+                yield return Play(pv, CampUse.PenPet, CampCheats.PenPet, null, null, "");
+            }
             if (pv.Camp.Scenes.Count(s => s.use >= CampUse.BasketTake) > 0) yield return new WaitForSeconds(2f);
             // the work still gets done: after the uses, a meal still seats people at the fire
             CampLife.OnlyCheats = false;

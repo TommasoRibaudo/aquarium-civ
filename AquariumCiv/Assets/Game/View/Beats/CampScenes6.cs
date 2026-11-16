@@ -994,5 +994,123 @@ namespace AquariumCiv.View
             s.Part(m, t, t + 0.8f, st, pot, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lean += 20f * Bump(u, 0f, l); }); // a sniff
             return s;
         }
+
+        // ================================================================== 2026-11-16 "Bring a pen back": the goat pen (B54.v, B54.w, B58.d)
+        /// <summary>The pen's sizes as drawn: half its width, the top rail's height (box units).</summary>
+        public const float PenHalf = ConsequenceMeshes.PenHalf * PropGeo.S, PenTop = 0.085f * PropGeo.S;
+
+        /// <summary>B54.v: a grown-up kneels outside the gnawed corner <paramref name="gap"/> (<paramref name="outward"/>: away from the pen), binds a
+        /// new rail on (both hands working, 1.5 s), then three hammer taps (x 70 to 115, each a puff of chips) and the corner is whole
+        /// (<see cref="PropFx.Look"/> 1). <see cref="CampScene.a"/>: the first tap.</summary>
+        public static CampScene PenMend(int who, Vector2 at, Vector2 gap, Vector2 outward, Vector2 toCam, float t0)
+        {
+            outward = Unit(outward, Vector2.right); toCam = Unit(toCam, Vector2.down);
+            var s = new CampScene(CampUse.PenMend, t0, gap) { holdFocus = true };
+            int m = s.Add(who);
+            var kneel = gap + outward * 0.1f + toCam * 0.03f;
+            float t = WalkTime(at, kneel, Walk);
+            s.Part(m, 0f, t, kneel, gap, DollStyle.Stand, null, PropKind.None, Walk);
+            s.Part(m, t, t + 1.5f, kneel, gap, DollStyle.Stand, (ref DollPose p, float u, float l) => { KneelPose(ref p, u, l); FiddleHandsPose(ref p, u, l); });
+            t += 1.5f;
+            s.a = t + 0.3f;
+            s.Part(m, t, t + 1.8f, kneel, gap, DollStyle.Stand, (ref DollPose p, float u, float l) =>
+            {
+                KneelPose(ref p, 1f, l);
+                float ph = Mathf.Repeat(u / 0.6f, 1f);
+                p.armR = new Vector3(ph < 0.5f ? Mathf.Lerp(70f, 115f, Smooth(ph * 2f)) : Mathf.Lerp(115f, 70f, Smooth((ph - 0.5f) * 2f)), 0f, 8f);
+                p.armL = new Vector3(60f, 0f, -14f);
+            }, PropKind.Hammer);
+            for (int i = 0; i < 3; i++) { s.Fx(t + 0.3f + i * 0.6f, CampFxKind.Chips, G(gap, PenTop * 0.7f), 0.5f, 3); Jolt(s, t + 0.3f + i * 0.6f); }
+            Look(s, t + 1.6f, 1);
+            t += 1.8f;
+            s.Part(m, t, t + 0.7f, kneel, gap, DollStyle.Stand, (ref DollPose p, float u, float l) => { KneelPose(ref p, 1f, l); NodPose(ref p, u, l); }, PropKind.Hammer);
+            t += 0.7f;
+            Go(s, m, t, 1f, kneel + toCam * 0.25f, kneel + toCam, Walk);
+            return s;
+        }
+
+        /// <summary>B54.w: two kids climb onto the pen's near rail <paramref name="rail"/> (the side toward the camera) and sit on it swinging their
+        /// legs (roll 6 deg); with <paramref name="gapOpen"/>, a third (-1: none) crawls in through the gnawed gap (on hands and knees, 0.15 u/s),
+        /// stands up inside and waves both arms, then crawls back out. <see cref="CampScene.a"/>: sat on the rail.</summary>
+        public static CampScene PenRails(int kidA, int kidB, Vector2 atA, Vector2 atB, int crawler, Vector2 crawlAt, Vector2 rail, Vector2 along, Vector2 gap, Vector2 outward, bool gapOpen, Vector2 toCam, float sitFor, float t0)
+        {
+            toCam = Unit(toCam, Vector2.down); along = Unit(along, Vector2.right); outward = Unit(outward, Vector2.right);
+            var s = new CampScene(CampUse.PenRails, t0, (rail + gap) * 0.5f) { holdFocus = true };
+            int a = s.Add(kidA), b = s.Add(kidB);
+            var seatA = rail - along * 0.06f; var seatB = rail + along * 0.06f;
+            float wa = WalkTime(atA, seatA + toCam * 0.06f, KidWalk), wb = WalkTime(atB, seatB + toCam * 0.06f, KidWalk);
+            s.Part(a, 0f, wa, seatA + toCam * 0.06f, seatA, DollStyle.Stand, null, PropKind.None, KidWalk);
+            s.Part(b, 0f, wb, seatB + toCam * 0.06f, seatB, DollStyle.Stand, null, PropKind.None, KidWalk);
+            float t = Mathf.Max(wa, wb);
+            CampPoseFn climb = (ref DollPose p, float u, float l) => { float k = In(u, 0f, l); p.offset.y += PropGeo.SeatLift(PenTop) * k; p.armL = new Vector3(110f * (1f - k), 0f, -12f); p.armR = new Vector3(110f * (1f - k), 0f, 12f); };
+            if (wa < t) s.Part(a, wa, t, seatA + toCam * 0.06f, seatA, DollStyle.Stand);
+            if (wb < t) s.Part(b, wb, t, seatB + toCam * 0.06f, seatB, DollStyle.Stand);
+            s.Part(a, t, t + 0.6f, seatA, seatA + toCam, DollStyle.Stand, climb, PropKind.None, 0.2f).poseWalking = true;
+            s.Part(b, t, t + 0.6f, seatB, seatB + toCam, DollStyle.Stand, climb, PropKind.None, 0.2f).poseWalking = true;
+            t += 0.6f; s.a = t;
+            float end = t + sitFor;
+            if (crawler >= 0 && gapOpen)
+            {
+                int c = s.Add(crawler);
+                var outside = gap + outward * 0.12f; var inside = gap - outward * 0.12f;
+                float w = WalkTime(crawlAt, outside, KidWalk);
+                s.Part(c, 0f, w, outside, gap, DollStyle.Stand, null, PropKind.None, KidWalk);
+                float c0 = Mathf.Max(w, t + 0.5f);
+                if (c0 > w) s.Part(c, w, c0, outside, gap, DollStyle.Stand);
+                CampPoseFn crawl = (ref DollPose p, float u, float l) => { p.squash = 0.72f; p.lean += 48f; p.offset.y -= 0.018f; float k = Mathf.Sin(u * 9f); p.armL = new Vector3(70f + 25f * k, 0f, -12f); p.armR = new Vector3(70f - 25f * k, 0f, 12f); };
+                float cl = (inside - outside).magnitude / 0.15f;
+                s.Part(c, c0, c0 + cl, inside, inside - outward, DollStyle.Stand, crawl, PropKind.None, 0.15f).poseWalking = true;
+                float tt = c0 + cl;
+                s.Part(c, tt, tt + 2f, inside, inside + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) =>
+                {
+                    float f = Mathf.Sin(u * 3f * Mathf.PI * 2f) * 35f; p.armL = new Vector3(165f, 0f, -25f - f); p.armR = new Vector3(165f, 0f, 25f + f); p.offset.y += 0.02f * Mathf.Abs(Mathf.Sin(u * 3f * Mathf.PI));
+                });
+                tt += 2f;
+                var outAgain = gap + outward * 0.14f + toCam * 0.04f;
+                s.Part(c, tt, tt + cl, outAgain, outAgain + outward, DollStyle.Stand, crawl, PropKind.None, 0.15f).poseWalking = true;
+                tt += cl;
+                end = Mathf.Max(end, tt + 0.5f);
+                Go(s, c, tt, 1f, outAgain + toCam * 0.3f, outAgain + toCam, KidWalk);
+            }
+            s.Part(a, t, end, seatA, seatA + toCam, DollStyle.Sit, SitOn(PenTop, 6f, 0f));
+            s.Part(b, t, end, seatB, seatB + toCam, DollStyle.Sit, SitOn(PenTop, 6f, 0.5f));
+            foreach (int m in new[] { a, b })
+            {
+                var seat = m == a ? seatA : seatB;
+                s.Part(m, end, end + 0.5f, seat + toCam * 0.06f, seat + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += PropGeo.SeatLift(PenTop) * (1f - In(u, 0f, l)); }, PropKind.None, 0.2f).poseWalking = true;
+                Go(s, m, end + 0.5f, 1f, seat + toCam * 0.3f + along * (m == a ? -0.1f : 0.1f), seat + toCam, KidWalk);
+            }
+            return s;
+        }
+
+        /// <summary>B58.d at the pen: a kid at the near rail <paramref name="rail"/> reaches over (arm x 100, lean 20) and pats the goat's head twice;
+        /// the goat butts gently (<see cref="CampScene.c"/>: CampLife steps it in 0.03 u) and the kid stumbles back laughing.
+        /// <see cref="CampScene.a"/>: the first pat. The goat stands inside at <see cref="CampScene.p0"/> for the whole scene.</summary>
+        public static CampScene PenPet(int kid, Vector2 at, Vector2 rail, Vector2 inward, Vector2 toCam, float t0)
+        {
+            inward = Unit(inward, Vector2.up); toCam = Unit(toCam, Vector2.down);
+            var s = new CampScene(CampUse.PenPet, t0, rail) { holdFocus = true };
+            int m = s.Add(kid);
+            var side = new Vector2(-inward.y, inward.x); if (Vector2.Dot(side, at - rail) < 0f) side = -side;
+            var st = rail - inward * 0.06f + side * 0.06f; // a little to the side, so the kid doesn't hide the goat
+            float w = WalkTime(at, st, KidWalk);
+            s.p0 = rail + inward * 0.085f - side * 0.02f; // the goat comes to the rail
+            s.Part(m, 0f, w, st, rail, DollStyle.Stand, null, PropKind.None, KidWalk);
+            float t = Mathf.Max(w, 2f); // the goat needs a moment to come over
+            if (t > w) s.Part(m, w, t, st, rail, DollStyle.Stand);
+            s.a = t + 0.5f;
+            s.Part(m, t, t + 1.6f, st, rail, DollStyle.Stand, (ref DollPose p, float u, float l) =>
+            {
+                float k = In(u, 0f, 0.3f); p.lean += 20f * k; float pat = Mathf.Max(Bump(u, 0.4f, 0.3f), Bump(u, 0.9f, 0.3f));
+                p.armR = Lerp(p.armR, new Vector3(100f - 25f * pat, 0f, 6f), k); p.offset.y += 0.01f * k;
+            });
+            t += 1.6f;
+            s.c = t + 0.1f;
+            s.Part(m, t, t + 0.5f, st - inward * 0.05f, rail, DollStyle.HopBack, null, PropKind.None, 0.3f);
+            s.Part(m, t + 0.5f, t + 2.3f, st - inward * 0.05f, rail, DollStyle.Laugh);
+            t += 2.3f;
+            Go(s, m, t, 1f, st - inward * 0.3f + toCam * 0.1f, st + toCam, KidWalk);
+            return s;
+        }
     }
 }

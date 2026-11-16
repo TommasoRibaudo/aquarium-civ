@@ -477,6 +477,13 @@ namespace AquariumCiv.View
             if (Btn("Re-tie the name tag")) last = CampCheats.PegRetie(); // #693 B54.z
             if (Btn("Kid taps the name peg")) last = CampCheats.PegTap(); // #693 B54.zz
             EndRow();
+            Row(); // #693 goat pen (2026-11-16 "Bring a pen back")
+            if (Btn("Goat pen with its goat")) last = CampCheats.GoatPen(); // stands every choice's thing, the pen and its goat among them
+            if (Btn("Goat: gnaw the corner")) last = CampCheats.GoatNibble();
+            if (Btn("Mend the goat pen")) last = CampCheats.PenMend(); // #693 B54.v
+            if (Btn("Kids at the goat pen")) last = CampCheats.PenRails(); // #693 B54.w
+            if (Btn("Kid pets the goat")) last = CampCheats.PenPet(); // B58.d at the pen
+            EndRow();
         }
 
         void OnGUI()

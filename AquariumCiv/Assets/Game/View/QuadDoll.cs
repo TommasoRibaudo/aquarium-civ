@@ -4,7 +4,9 @@ using UnityEngine;
 namespace AquariumCiv.View
 {
     /// <summary>The four-legged looks P0 names (animation-specs P0, #425): a parameter set on <see cref="QuadLook"/> each.</summary>
-    public enum QuadKind { None, Stag, Doe, Wolf, Fawn, Pup, Dog, WhiteStag, WhiteWolf }
+    public enum QuadKind { None, Stag, Doe, Wolf, Fawn, Pup, Dog, WhiteStag, WhiteWolf,
+        /// <summary>2026-11-16 "Bring a pen back": the pond family's goat (in its pen only; no herd, cap or hunt).</summary>
+        Goat }
 
     /// <summary>
     /// P0 (#425): the parameters of the one procedural quadruped. Deer, wolves and dogs are parameter sets on it (research 19 §11): size,
@@ -64,6 +66,13 @@ namespace AquariumCiv.View
                     l.neckLen = 0.012f; l.neckRise = 30f; l.headLen = 0.034f; l.muzzle = 0.55f; l.headRound = 1.4f;
                     l.earSize = 0.013f; l.tailLen = 0.014f; l.tailHang = 30f;
                     l.coat = new Color(0.60f, 0.59f, 0.57f); l.belly = WolfPale; l.saddle = new Color(0.50f, 0.49f, 0.47f);
+                    break;
+                case QuadKind.Goat: // 2026-11-16 [est]: small and stocky, white with brown patches, ears out to the side, a short tail up, horns and a beard
+                    l.shoulder = 0.085f; l.bodyLen = 0.12f; l.legShare = 0.52f; l.fullness = 0.25f;
+                    l.neckLen = 0.03f; l.neckRise = 38f; l.headLen = 0.045f; l.muzzle = 0.85f; l.headRound = 1.05f;
+                    l.earSize = 0.016f; l.earDroop = 0.55f; l.tailLen = 0.018f; l.tailCurl = 0.8f; l.tailHang = 10f;
+                    l.coat = new Color(0.93f, 0.91f, 0.86f); l.belly = new Color(0.97f, 0.96f, 0.93f); l.saddle = l.coat;
+                    l.patch = 0.6f; l.patchCol = new Color(0.52f, 0.34f, 0.2f); l.eye = new Color(0.62f, 0.48f, 0.12f);
                     break;
                 default: // the wolf (and the dog's generation 0)
                     l.shoulder = 0.10f; l.bodyLen = 0.16f; l.legShare = 0.56f;
@@ -464,6 +473,13 @@ namespace AquariumCiv.View
                         foreach (int sd in new[] { -1, 1 })
                         {
                             mb.Ico(new Vector3(sd * r * 0.62f, r * 0.45f, hl * 0.3f), r * (l.kind == QuadKind.Dog ? 0.14f + 0.08f * l.headRound : 0.2f), Vector3.one, l.eye, 0.02f);
+                            if (l.kind == QuadKind.Goat)
+                            {   // short horns curving back from the brow, grey-brown
+                                var hc = new Color(0.55f, 0.5f, 0.42f);
+                                mb.Box(new Vector3(sd * r * 0.35f, r * 1.05f, hl * 0.05f), new Vector3(0.006f, 0.022f, 0.006f), hc, Quaternion.Euler(-35f, 0f, sd * -10f));
+                                mb.Box(new Vector3(sd * r * 0.4f, r * 1.35f, -hl * 0.12f), new Vector3(0.005f, 0.016f, 0.005f), hc, Quaternion.Euler(-75f, 0f, sd * -10f));
+                                if (sd == 1) mb.Ico(new Vector3(0f, -r * 0.55f, hl * 0.2f + r * 0.75f), r * 0.32f, new Vector3(0.6f, 1.4f, 0.6f), new Color(0.72f, 0.66f, 0.56f), 0.05f); // the beard tuft
+                            }
                             if (l.antlers > 0.01f)
                             {
                                 // the beam up and back, then out, with tines: reads as "antlers" at phone size

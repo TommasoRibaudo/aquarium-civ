@@ -42,6 +42,7 @@ namespace AquariumCiv.View
         {
             towers.Clear(); ladders.Clear(); splits.Clear(); floured.Clear(); nameSeen.Clear(); nameCut.Clear(); birdTipped.Clear();
             propDay = offeredDay = bigPotDay = birdFixedDay = retieYear = long.MinValue; nameExtra = 0; propFrame = -1;
+            ResetGoat();
         }
 
         // ================================================================== the things
@@ -120,6 +121,7 @@ namespace AquariumCiv.View
                 if (p.kind == ConsequenceKind.RoofBird && !birdTipped.Contains(p.id) && birdFixedDay != now.day && planner != null && planner.WeatherOn(now.day - 1) == Weather.Storm && Hour < 12f)
                 { birdTipped.Add(p.id); ConsequencePropsView.Tip(p.id, 20f); }
             }
+            StepGoat(acts, time); // the goat pen's look and uses
             StepKnock(time); // B54.u: the Keeper knocks while kids wait by the offering
             // B54.h: the together supper at the big pot on a "one big pot" night
             if (meals != null)
@@ -629,6 +631,7 @@ namespace AquariumCiv.View
                 }
             }
             for (int i = used; i < propPool.Count; i++) if (propPool[i] != null) propPool[i].gameObject.SetActive(false);
+            DrawGoat(root, material, time, groundAt); // the pond family's goat in its pen
         }
 
         /// <summary>#693 retakes: what a use holds or shows, drawn 1.4-2x so it reads at phone scale: the log carried to the woodpile and laid on
@@ -740,6 +743,7 @@ namespace AquariumCiv.View
 
         void DestroyProps()
         {
+            DestroyGoat();
             foreach (var t in propPool) if (t != null) UnityEngine.Object.Destroy(t.gameObject);
             propPool.Clear();
         }
@@ -747,6 +751,7 @@ namespace AquariumCiv.View
         // ================================================================== cheats
         string ForceProp(CampUse use)
         {
+            if (IsPenUse(use)) return ForcePen(use);
             if (sim == null || planner == null || meals == null) return "no camp yet";
             var acts = pv.Activities; float time = clock;
             string kind = KindFor(use);
@@ -802,6 +807,7 @@ namespace AquariumCiv.View
             CampUse.OfferingFill or CampUse.OfferingWait => ConsequenceKind.OfferingBasket,
             CampUse.CrateFish or CampUse.CrateWave => ConsequenceKind.FishCrate,
             CampUse.PegRetie or CampUse.PegTap => ConsequenceKind.NamePeg,
+            CampUse.PenMend or CampUse.PenRails or CampUse.PenPet => ConsequenceKind.GoatPen,
             _ => "",
         };
 
