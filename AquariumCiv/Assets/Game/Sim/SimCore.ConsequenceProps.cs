@@ -14,13 +14,18 @@ namespace AquariumCiv.Sim
             RoofBird = "roof_bird", LongTable = "long_table", OfferingBasket = "offering_basket", ShoreBoat = "shore_boat",
             FishCrate = "fish_crate", NamePeg = "name_peg";
 
-        /// <summary>#714: the pond family's goat pen of old saves; it loads as <see cref="ShoreBoat"/> (EnsureDilemmaState).</summary>
+        /// <summary>2026-11-16 "Bring a pen back": the pond family's little goat pen by the fire, beside their boat, with one goat in it
+        /// (<see cref="SimCore.PenGoat"/>). The goat is outside <see cref="AnimalBudget"/> and every herd, cap, food and hunting list (Q7).</summary>
+        public const string GoatPen = "goat_pen";
+
+        /// <summary>#714: the pond family's goat pen of old saves; it loads as <see cref="ShoreBoat"/> plus a <see cref="GoatPen"/>
+        /// (2026-11-16, EnsureDilemmaState).</summary>
         public const string LegacyGoatFence = "goat_fence";
 
         public static readonly string[] All =
         {
             Feather, Baskets, WoodpileRoof, NameStone, CharmPole, StewPot, AxeStump, Staff, FlourSacks, RoofBird, LongTable,
-            OfferingBasket, ShoreBoat, FishCrate, NamePeg,
+            OfferingBasket, ShoreBoat, FishCrate, NamePeg, GoatPen,
         };
     }
 
@@ -81,25 +86,63 @@ namespace AquariumCiv.Sim
         public ConsequenceProp ConsequencePropOfEntry(ChronicleEntry e)
         {
             var info = CallbackInfoOf(e);
-            return info == null ? null : ConsequencePropFor(info.dilemma.id, info.option);
+            if (info == null) return null;
+            // 2026-11-16: a callback about the option's second thing (needsProp: the goat at the pen) is about that thing, not the first
+            string kind = info.callback == null ? null : CallbackDefOf(info.callback)?.needsProp;
+            var own = string.IsNullOrEmpty(kind) ? null : ConsequenceProps.FirstOrDefault(p => p.dilemmaId == info.dilemma.id && p.option == info.option && p.kind == kind);
+            return own ?? ConsequencePropFor(info.dilemma.id, info.option);
         }
 
-        /// <summary>The option made a thing: queue it (placed now if its anchor is there, else on a later month, within the year).</summary>
+        // ---------- 2026-11-16 "Bring a pen back": the pond family's goat pen ----------
+        /// <summary>The goat pen (the first one; null when the pond family never brought one). It may wait a month to be placed.</summary>
+        public ConsequenceProp GoatPenProp => ConsequenceProps.FirstOrDefault(p => p.kind == ConsequenceKind.GoatPen);
+
+        /// <summary>The box has the goat pen (placed or about to be): the words "goat" and "goats" may be said (ContentRules.Gates).</summary>
+        public bool HasGoatPen => GoatPenProp != null;
+
+        /// <summary>The one goat stands in its pen: true once the pen is placed. Read-only for the view (draw the goat inside the pen at
+        /// <see cref="GoatPenProp"/>'s x, z, yaw). The goat is in no herd, cap, budget, food or hunting list (Q7): it lives only in the pen.</summary>
+        public bool PenGoat => GoatPenProp?.placed ?? false;
+
+        /// <summary>How many goats the pen holds: one, or none without a placed pen. Never grows.</summary>
+        public int PenGoats => PenGoat ? 1 : 0;
+
+        /// <summary>The option made a thing (and its second thing, <see cref="DilemmaOptionDef.prop2"/>): queue them (placed now if
+        /// the anchor is there, else on a later month, within the year).</summary>
         void LeaveConsequence(Dilemma d, DilemmaDef def, int option)
+        {
+            QueueConsequence(d, def, option);
+            PlaceQueuedConsequence(d, option);
+        }
+
+        /// <summary>2026-11-16: the option's things join the box's list, not placed yet. An answer queues them before its line is written,
+        /// so a line that names them ("penned their goat") is said in a box that has them (ContentRules.Gates); placing waits for the
+        /// option's effects (<see cref="PlaceQueuedConsequence"/>), as before.</summary>
+        void QueueConsequence(Dilemma d, DilemmaDef def, int option)
         {
             var o = def.options[option];
             if (string.IsNullOrEmpty(o.prop)) return;
             var list = (State.consequenceProps ??= new List<ConsequenceProp>());
-            if (list.Any(p => p.dilemmaId == d.id && p.option == option)) return;
             int person = def.smallKind != null && d.subjectId >= 0 ? d.subjectId : d.PersonOf(option); // t4-fixes: a small choice with no subject (the story) is about its person
-            var p = new ConsequenceProp
+            string type = string.IsNullOrEmpty(o.propBuilding) ? o.buildingType ?? "" : o.propBuilding;
+            foreach (var (kind, at) in new[] { (o.prop, o.propAt), (o.prop2, o.prop2At) })
             {
-                id = list.Count == 0 ? 1 : list.Max(x => x.id) + 1, dilemmaId = d.id, option = option, kind = o.prop, anchor = o.propAt,
-                personId = person, buildingId = d.BuildingOf(option), buildingType = string.IsNullOrEmpty(o.propBuilding) ? o.buildingType ?? "" : o.propBuilding, dueMonth = State.month,
-                keeper = d.state == DilemmaState.Answered,
-            };
-            list.Add(p);
-            TryPlaceProp(p, false);
+                if (string.IsNullOrEmpty(kind) || list.Any(p => p.dilemmaId == d.id && p.option == option && p.kind == kind)) continue;
+                list.Add(new ConsequenceProp
+                {
+                    id = list.Count == 0 ? 1 : list.Max(x => x.id) + 1, dilemmaId = d.id, option = option, kind = kind, anchor = at,
+                    personId = person, buildingId = d.BuildingOf(option), buildingType = type, dueMonth = State.month,
+                    keeper = d.state == DilemmaState.Answered,
+                });
+            }
+        }
+
+        /// <summary>The option's queued things are placed now if their anchor is there (the first thing first).</summary>
+        void PlaceQueuedConsequence(Dilemma d, int option)
+        {
+            var list = State.consequenceProps;
+            if (list == null) return;
+            foreach (var p in list) if (!p.placed && p.dilemmaId == d.id && p.option == option) TryPlaceProp(p, false);
         }
 
         /// <summary>Every month: a thing still waiting for its anchor is placed; at the end of the year it goes by the fire.</summary>
@@ -206,15 +249,32 @@ namespace AquariumCiv.Sim
                 AnchorOf(p, ref ax, ref az, ref minR, ref maxR);
             }
             if (p.kind == ConsequenceKind.ShoreBoat && p.anchor == PropAnchor.Fire) { minR = Math.Max(minR, BoatFromFire); maxR = Math.Max(maxR, BoatFromFire + 1.2f); } // #714 round 2: out past the pot and the seats
+            if (p.kind == ConsequenceKind.GoatPen && p.anchor == PropAnchor.Fire) { minR = Math.Max(minR, PenFromFire); maxR = Math.Max(maxR, PenFromFire + 0.9f); } // 2026-11-16: out past the pot and the seats, beside the boat
             PropSpot(p, ax, az, minR, maxR, out p.x, out p.z);
             p.yaw = (int)(DilemmaRoll(110, p.dilemmaId * 8 + p.option, p.id) * 360f);
-            if (p.kind == ConsequenceKind.ShoreBoat) p.yaw = p.yaw < 180 ? 0 : 90; // #714 round 2: lined up with the box's lines, never a random yaw
+            if (p.kind == ConsequenceKind.ShoreBoat || p.kind == ConsequenceKind.GoatPen) p.yaw = p.yaw < 180 ? 0 : 90; // #714 round 2: lined up with the box's lines, never a random yaw
             p.placed = true;
             p.placedMonth = State.month;
         }
 
         /// <summary>#714 round 2: the extra room the boat keeps from every other thing (it is 0.4 u long; the stew pot must never hide it).</summary>
         public const float BoatRoom = 0.35f, BoatFromFire = 0.75f;
+
+        /// <summary>2026-11-16 [est]: the goat pen is about 0.3 u square: the extra room it keeps from every other thing, its ring from the
+        /// fire, how far it stays from the water's edge, and the extra margin it keeps from the glass (on top of Terrain.GlassMargin).</summary>
+        public const float PenRoom = 0.2f, PenFromFire = 0.6f, PenFromWater = 0.3f, PenFromGlass = 0.2f;
+
+        /// <summary>2026-11-16 [est]: a tent's yard or a house lot within this many box units of a cell: the pen does not stand there.</summary>
+        public const float PenFromLot = 0.25f;
+
+        static bool NearLot(SiteMap map, int c, float within)
+        {
+            int reach = (int)Math.Ceiling(within / SiteMap.Cell), i0 = SiteMap.I(c), j0 = SiteMap.J(c);
+            for (int j = Math.Max(0, j0 - reach); j <= Math.Min(SiteMap.NZ - 1, j0 + reach); j++)
+                for (int i = Math.Max(0, i0 - reach); i <= Math.Min(SiteMap.NX - 1, i0 + reach); i++)
+                    if (map.lot[SiteMap.Index(i, j)] != 0) return true;
+            return false;
+        }
 
         /// <summary>#714 round 2: a lot (a house, a yard) within 0.3 u of a cell, or in front of it toward the default camera within 0.8 u: the boat lying there would be hidden.</summary>
         static bool BoatNearLot(SiteMap map, int c)
@@ -296,6 +356,8 @@ namespace AquariumCiv.Sim
             var map = Settlement?.Map;
             int salt = p.dilemmaId * 8 + p.option;
             float mx = Terrain.HX - Terrain.GlassMargin, mz = Terrain.HZ - Terrain.GlassMargin;
+            bool pen = p.kind == ConsequenceKind.GoatPen;
+            if (pen) { mx -= PenFromGlass; mz -= PenFromGlass; } // 2026-11-16: the pen is wide; it keeps clear of the glass
             if (map == null)
             {
                 double a = DilemmaRoll(111, salt, p.id) * Math.PI * 2.0;
@@ -303,6 +365,7 @@ namespace AquariumCiv.Sim
                 x = Math.Max(-mx, Math.Min(mx, ax + (float)Math.Cos(a) * r)); z = Terrain.CZ + Math.Max(-mz, Math.Min(mz, az + (float)Math.Sin(a) * r - Terrain.CZ));
                 return;
             }
+            var future = pen ? FutureWaterMask(PenFromWater) : null; // 2026-11-16: where the living land's pond will reach, too
             const byte block = SiteMap.FCanal | SiteMap.FGreen | SiteMap.FCommons | SiteMap.FYard | SiteMap.FRock;
             for (int pass = 0; pass < 3; pass++)
             {
@@ -320,9 +383,11 @@ namespace AquariumCiv.Sim
                     foreach (var q in State.consequenceProps)
                     {
                         float room = 0.22f + (p.kind == ConsequenceKind.ShoreBoat || q.kind == ConsequenceKind.ShoreBoat ? BoatRoom : 0f); // #714 round 2: nothing hides the boat
+                        if (pen || q.kind == ConsequenceKind.GoatPen) room += PenRoom; // 2026-11-16: the pen is wide
                         if (q != p && q.placed && (q.x - cx) * (q.x - cx) + (q.z - cz) * (q.z - cz) < room * room) { crowded = true; break; }
                     }
                     if (crowded) continue;
+                    if (pen && (map.waterDist[c] < PenFromWater || future != null && c < future.Length && future[c] || pass < 2 && NearLot(map, c, PenFromLot))) continue; // 2026-11-16: dry ground, clear of the tents (a cramped camp: by a tent before on the fire)
                     float roll = DilemmaRoll(112, salt * 4096 + c, p.id);
                     if (p.kind == ConsequenceKind.ShoreBoat) // #714 round 2: the boat lies on clear ground nearest the pond's edge (not on the mud), not behind the pot
                     {

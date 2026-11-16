@@ -24,7 +24,7 @@ namespace AquariumCiv.Tests
             Assert.IsEmpty(ContentRules.Problems("The Kells wandered in from a far-away tank.", LineVoice.Narrator), "the one allowed far-away");
             Assert.IsNotEmpty(ContentRules.Problems("Best game ever.", LineVoice.People), "the people state the game");
             Assert.IsEmpty(ContentRules.Problems("Best game ever.", LineVoice.Narrator).Where(p => p.Contains("never say")), "the narrator may");
-            Assert.IsNotEmpty(ContentRules.Problems("They moved in with a goat.", LineVoice.Narrator), "a thing the box never has");
+            Assert.IsNotEmpty(ContentRules.Problems("They moved in with a sheep.", LineVoice.Narrator), "a thing the box never has");
             Assert.IsNotEmpty(ContentRules.Problems("Look at the glass!", LineVoice.People, stage: 2), "glass before stage 3");
             Assert.IsEmpty(ContentRules.Problems("Look at the glass!", LineVoice.People, stage: 3));
             Assert.IsNotEmpty(ContentRules.Problems("Everyone to the window!", LineVoice.People, stage: 1), "window in the camp");
@@ -74,6 +74,37 @@ namespace AquariumCiv.Tests
                 sim.Chronicled += e => { if (!sim.OpenWater) StringAssert.DoesNotContain("stream", e.text.ToLowerInvariant(), $"seed {seed}: {e.text}"); };
                 for (int y = 0; y < 30; y++) { sim.Advance(1); if (sim.State.eraReady) sim.AdvanceEra(); }
             }
+        }
+
+        /// <summary>2026-11-16 "Bring a pen back": "goat" is no longer a thing the box never has; it is said only in a box with the pond
+        /// family's pen (as "stream" only with water).</summary>
+        [Test]
+        public void ABoxWithoutThePenNeverSaysGoatAndOneWithItMay()
+        {
+            CollectionAssert.DoesNotContain(ContentRules.NotInTheBox, "goat");
+            CollectionAssert.DoesNotContain(ContentRules.NotInTheBox, "goats");
+            Assert.IsEmpty(ContentRules.Problems("They moved in with a goat.", LineVoice.Narrator), "a goat is not banned outright");
+            var cfg = new SimConfig { ecology = true };
+            var bare = new SimCore(cfg, SimCore.NewWorld(3, cfg));
+            Assert.IsFalse(bare.HasGoatPen);
+            CollectionAssert.Contains(ContentRules.MissingThings("They penned their goat beside it.", bare), "the goat pen");
+            CollectionAssert.Contains(ContentRules.MissingThings("Two goats ate the washing.", bare), "the goat pen");
+            CollectionAssert.Contains(ContentRules.MissingThings("The pond family's goat has chewed the pen's corner again.", bare), "the goat pen");
+            CollectionAssert.Contains(ContentRules.MissingThings("The goat's rope came loose.", bare), "the goat pen");
+            Assert.IsEmpty(ContentRules.MissingThings("Mira lost a basket by the boat.", bare), "nothing about a goat");
+            // the pond family's "a home here" brings the pen: the words may be said from its own line on
+            var def = DilemmaDefs.All.Single(d => d.id == "village_hill_family");
+            int home = System.Array.FindIndex(def.options, o => o.label == "a home here");
+            SimCore sim = null;
+            for (int s = 1; s <= 12 && sim == null; s++) sim = DilemmaContentTests.RaisedWithin40Years(def, s);
+            Assert.IsNotNull(sim);
+            var said = new List<string>();
+            sim.Chronicled += e => said.AddRange(ContentRules.MissingThings(e.text, sim));
+            Assert.IsTrue(sim.AnswerDilemma(sim.OpenDilemma.id, home, DilemmaPath.Card));
+            CollectionAssert.DoesNotContain(said, "the goat pen", "the answer's own line has its pen");
+            Assert.IsTrue(sim.HasGoatPen);
+            Assert.IsEmpty(ContentRules.MissingThings("They penned their goat beside it.", sim));
+            Assert.IsEmpty(ContentRules.MissingThings("The pond family's goat has chewed the pen's corner again.", sim));
         }
 
         [Test]

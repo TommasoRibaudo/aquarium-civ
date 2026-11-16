@@ -126,6 +126,7 @@ namespace AquariumCiv.Sim
                 case ConsequenceKind.ShoreBoat: return "their boat, upside down by the fire";
                 case ConsequenceKind.FishCrate: return "a crate of fish";
                 case ConsequenceKind.NamePeg: return "a peg with a name tag";
+                case ConsequenceKind.GoatPen: return "a little goat pen with their goat";
                 default: return "a " + (kind ?? "thing").Replace('_', ' ');
             }
         }

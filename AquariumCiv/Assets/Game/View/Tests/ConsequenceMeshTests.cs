@@ -10,7 +10,7 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void EveryKindBuildsASmallMeshStandingOnTheGround()
         {
-            Assert.AreEqual(15, ConsequenceKind.All.Length);
+            Assert.AreEqual(16, ConsequenceKind.All.Length); // 2026-11-16: + the goat pen (a cairn until the Editor pass builds its mesh)
             foreach (var kind in ConsequenceKind.All)
             {
                 var mesh = ConsequenceMeshes.Build(kind);

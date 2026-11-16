@@ -132,7 +132,27 @@ namespace AquariumCiv.Sim
             s.consequenceProps ??= new List<ConsequenceProp>();
             if (s.dilemmaNextId < 1) s.dilemmaNextId = 1;
             // #714: an old save's goat pen is the pond family's boat now (the old leans in a save are ignored on load)
-            foreach (var p in s.consequenceProps) if (p.kind == ConsequenceKind.LegacyGoatFence) p.kind = ConsequenceKind.ShoreBoat;
+            // 2026-11-16 "Bring a pen back": and the pen comes back beside it, with its goat (queued; the monthly step places it). A box
+            // that took "a home here" after #714 (a boat, no pen) gets its pen too.
+            var pens = new List<ConsequenceProp>();
+            foreach (var p in s.consequenceProps)
+            {
+                bool legacy = p.kind == ConsequenceKind.LegacyGoatFence;
+                if (legacy) p.kind = ConsequenceKind.ShoreBoat;
+                if (p.kind != ConsequenceKind.ShoreBoat) continue;
+                if (!legacy)
+                {
+                    var o = DilemmaDefOf(FindDilemma(p.dilemmaId))?.options;
+                    if (o == null || p.option < 0 || p.option >= o.Length || o[p.option].prop2 != ConsequenceKind.GoatPen) continue;
+                }
+                if (s.consequenceProps.Any(q => q.kind == ConsequenceKind.GoatPen && q.dilemmaId == p.dilemmaId && q.option == p.option)) continue;
+                pens.Add(new ConsequenceProp
+                {
+                    dilemmaId = p.dilemmaId, option = p.option, kind = ConsequenceKind.GoatPen, anchor = PropAnchor.Fire,
+                    personId = p.personId, dueMonth = s.month, keeper = p.keeper,
+                });
+            }
+            foreach (var pen in pens) { pen.id = s.consequenceProps.Max(x => x.id) + 1; s.consequenceProps.Add(pen); }
         }
 
         /// <summary>True when a custom set by an answer is on the box ("burial:stone").</summary>
@@ -546,6 +566,7 @@ namespace AquariumCiv.Sim
             d.option = option;
             d.path = path;
             d.endMonth = State.month;
+            QueueConsequence(d, def, option); // 2026-11-16: the things are in the box as the line is said ("penned their goat"); placed after the effects
             var e = Record("keeper", text, 0.8f, d.PersonOf(option), d.PersonOf(1 - option));
             e.keeper = true;
             d.answerEntryId = e.id;
@@ -554,7 +575,7 @@ namespace AquariumCiv.Sim
             if (State.cards != null && e.month > State.cards.since && !State.cards.read.Contains(e.id)) State.cards.read.Add(e.id);
             ApplyDilemmaEffects(d, def, option);
             ScheduleCallbacks(d, def, option);
-            LeaveConsequence(d, def, option);
+            PlaceQueuedConsequence(d, option);
         }
 
         // ---------- lapse ----------
