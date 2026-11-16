@@ -204,6 +204,13 @@ namespace AquariumCiv.View
         PegRetie,
         /// <summary>B54.zz: the named child taps their peg in passing.</summary>
         PegTap,
+        // 2026-11-16 "Bring a pen back": the pond family's goat pen (View/CampLife.Goat.cs)
+        /// <summary>B54.v: the gnawed rail mended.</summary>
+        PenMend,
+        /// <summary>B54.w: kids sit on the rails; one crawls through the gnawed gap and waves.</summary>
+        PenRails,
+        /// <summary>B58.d at the pen: a kid pets the goat over the rail; it butts gently.</summary>
+        PenPet,
     }
 
     /// <summary>A pose laid over the doll's pose for one part: <paramref name="into"/> seconds into the part, <paramref name="len"/> its length.</summary>

@@ -239,7 +239,7 @@ namespace AquariumCiv.View.Tests
             }
             Assert.Less(ConsequenceMeshes.Build(ConsequenceKind.Baskets, 1).vertexCount, ConsequenceMeshes.Build(ConsequenceKind.Baskets).vertexCount, "a basket fewer");
             Assert.Greater(ConsequenceMeshes.Build(ConsequenceKind.NameStone, 1).vertexCount, ConsequenceMeshes.Build(ConsequenceKind.NameStone).vertexCount, "a row more");
-            Assert.AreEqual(CampUse.PegTap, System.Enum.GetValues(typeof(CampUse)).Cast<CampUse>().Max(), "#693's uses are the last");
+            Assert.AreEqual(CampUse.PenPet, System.Enum.GetValues(typeof(CampUse)).Cast<CampUse>().Max(), "#693's uses (and the goat pen's) are the last");
             foreach (CampUse u in System.Enum.GetValues(typeof(CampUse))) if (u >= CampUse.BasketTake) Assert.IsNotEmpty(CampLife.KindFor(u), u + " has its thing");
         }
     }

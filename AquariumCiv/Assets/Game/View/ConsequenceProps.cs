@@ -215,6 +215,9 @@ namespace AquariumCiv.View
                     for (int i = 0; i < 3 - Mathf.Clamp(variant, 0, 3); i++) // #693 (B54.x): the fish lifted out one by one
                         mb.Ico(new Vector3(-0.04f + i * 0.04f, 0.08f, 0f), 0.025f, new Vector3(1.6f, 0.5f, 0.6f), i % 2 == 0 ? Palette.Water : Palette.WaterDeep, 0.05f);
                     break;
+                case ConsequenceKind.GoatPen: // 2026-11-16 "Bring a pen back": a little rail pen, gnawed at one corner (variant 1: mended, a pale new rail)
+                    GoatPenMesh(mb, variant);
+                    break;
                 case ConsequenceKind.NamePeg: // a peg with a small wooden tag
                     mb.Prism(Vector3.zero, 0.012f, 0.01f, 0.2f, 5, Palette.Bark);
                     mb.Box(new Vector3(0f, 0.17f, 0f), new Vector3(0.09f, 0.05f, 0.012f), Palette.WoodLight);
@@ -352,6 +355,46 @@ namespace AquariumCiv.View
         }
 
         /// <summary>#635: the stand-in pole with <paramref name="count"/> charms on its bough (the sim's count, not always four).</summary>
+        /// <summary>The goat pen, before <see cref="Scale"/>: 0.2 square (0.3 u drawn), corner posts and side posts, two rails a side; the corner at
+        /// +x +z is gnawed: the top rail there stops short with a chewed end, the low rail is gone, a gap a kid can crawl through
+        /// (<see cref="PenGap"/>). <paramref name="variant"/> 1: mended, a new pale rail bound on across the gap.</summary>
+        public const float PenHalf = 0.1f;
+        public static readonly Vector3 PenGap = new Vector3(PenHalf, 0f, PenHalf * 0.55f);
+        static void GoatPenMesh(MeshBuilder mb, int variant)
+        {
+            const float h = PenHalf, top = 0.085f, low = 0.04f;
+            var post = Palette.Bark; var rail = Palette.Timber; var fresh = Palette.WoodLight;
+            for (int i = -1; i <= 1; i++)
+                for (int j = -1; j <= 1; j++)
+                {
+                    if (i == 0 && j == 0) continue;
+                    mb.Box(new Vector3(i * h, 0.05f, j * h), new Vector3(0.016f, 0.1f, 0.016f), post);
+                }
+            void Rail(Vector3 a, Vector3 b, float y, Color c, float th = 0.009f)
+            {
+                var m = (a + b) * 0.5f; var d = b - a;
+                mb.Box(new Vector3(m.x, y, m.z), new Vector3(Mathf.Abs(d.x) + th, th, Mathf.Abs(d.z) + th), c);
+            }
+            // the four sides; the +x side's far half (toward +z) is the gnawed corner
+            Rail(new Vector3(-h, 0f, -h), new Vector3(h, 0f, -h), top, rail); Rail(new Vector3(-h, 0f, -h), new Vector3(h, 0f, -h), low, rail);
+            Rail(new Vector3(-h, 0f, h), new Vector3(h, 0f, h), top, rail); Rail(new Vector3(-h, 0f, h), new Vector3(h, 0f, h), low, rail);
+            Rail(new Vector3(-h, 0f, -h), new Vector3(-h, 0f, h), top, rail); Rail(new Vector3(-h, 0f, -h), new Vector3(-h, 0f, h), low, rail);
+            Rail(new Vector3(h, 0f, -h), new Vector3(h, 0f, 0f), top, rail); Rail(new Vector3(h, 0f, -h), new Vector3(h, 0f, 0f), low, rail);
+            if (variant == 1)
+            {
+                Rail(new Vector3(h, 0f, 0f), new Vector3(h, 0f, h), top, fresh, 0.011f); Rail(new Vector3(h, 0f, 0f), new Vector3(h, 0f, h), low, fresh, 0.011f);
+                foreach (float z in new[] { 0.005f, h - 0.005f }) foreach (float y in new[] { top, low }) mb.Box(new Vector3(h, y, z), new Vector3(0.014f, 0.016f, 0.006f), Palette.Straw); // the bindings
+            }
+            else
+            {
+                Rail(new Vector3(h, 0f, 0f), new Vector3(h, 0f, h * 0.45f), top, rail); // stops short: chewed
+                for (int k = 0; k < 3; k++) mb.Box(new Vector3(h, top + (k - 1) * 0.003f, h * 0.45f + 0.004f + k * 0.003f), new Vector3(0.008f, 0.004f, 0.006f), Palette.WoodLight); // the pale chewed end
+                mb.Box(new Vector3(h, low, h * 0.85f), new Vector3(0.009f, 0.009f, h * 0.3f), rail); // a stub of the low rail at the corner
+                for (int k = 0; k < 4; k++) mb.Box(new Vector3(h + 0.012f + (k % 2) * 0.008f, 0.003f, h * (0.3f + 0.15f * k)), new Vector3(0.01f, 0.003f, 0.004f), Palette.WoodLight); // chips on the ground
+            }
+            mb.Ico(new Vector3(-h * 0.45f, 0.006f, -h * 0.4f), 0.03f, new Vector3(1f, 0.25f, 0.8f), Palette.Straw, 0.1f); // a little hay inside
+        }
+
         /// <summary>#693 (B54.a/b): where basket <paramref name="i"/> of the three stands (local, before <see cref="Scale"/>), and which are gone when
         /// <paramref name="taken"/> have been taken: the right one first, then the left, then the middle (the back one).</summary>
         public static Vector3 BasketAt(int i) => new Vector3((i - 1) * 0.1f, 0f, i == 1 ? 0.05f : 0f);
@@ -503,6 +546,18 @@ namespace AquariumCiv.View
             CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, fx + dir.x * BoatOut, fz + dir.y * BoatOut, wide, out px, out pz, fishAngle, onPath);
         }
 
+        /// <summary>2026-11-16 "Bring a pen back": the goat pen's room at the fire (its half-width and the rails' reach, SimCore.PenRoom more than a
+        /// small thing's): the boat and every later thing keep clear of it.</summary>
+        public const float PenRadius = SimCore.PenRoom + CampSpots.PropRadius;
+
+        /// <summary>The goat pen stands where the sim put it, moved out of every earlier thing's widened room (as the boat's spot).</summary>
+        void PenSpot(ConsequenceProp p, System.Func<float, float, bool> onPath, out float px, out float pz)
+        {
+            wide.Clear();
+            foreach (var d in spots) wide.Add(new CampSpots.Disc(d.x, d.z, d.r + PenRadius - CampSpots.PropRadius));
+            CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, wide, out px, out pz, fishAngle, onPath);
+        }
+
         /// <summary>#714 round 2: the boat lines up with the box's lines (the glass), its long side across the way to the fire, never a random yaw.</summary>
         float BoatYaw(float px, float pz) => Mathf.Abs(px - fx) > Mathf.Abs(pz - fz) ? 90f : 0f;
         readonly List<CampSpots.Disc> fixedScratch = new();
@@ -641,7 +696,8 @@ namespace AquariumCiv.View
             }
             var pole = sim.FeatherPoleProp; // fb4 #566: one feather pole, however many answers asked for a feather (old saves too)
             ordered.Clear(); // #714: the boat is stood last, so it keeps clear of every other thing at the fire
-            foreach (var p in list) if (p.kind != ConsequenceKind.ShoreBoat) ordered.Add(p);
+            foreach (var p in list) if (p.kind != ConsequenceKind.ShoreBoat && p.kind != ConsequenceKind.GoatPen) ordered.Add(p);
+            foreach (var p in list) if (p.kind == ConsequenceKind.GoatPen) ordered.Add(p); // the goat pen: after the small things, before the boat
             foreach (var p in list) if (p.kind == ConsequenceKind.ShoreBoat) ordered.Add(p);
             foreach (var p in ordered)
             {
@@ -662,6 +718,7 @@ namespace AquariumCiv.View
                     // #700: never on a path; one that a path grows over (or a moved rack reaches) moves at night, not in front of the player
                     var onPath = RackSites.PathTest(sim);
                     if (p.kind == ConsequenceKind.ShoreBoat) BoatSpot(planner, onPath, out px, out pz);
+                    else if (p.kind == ConsequenceKind.GoatPen) PenSpot(p, onPath, out px, out pz);
                     else CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, spots, out px, out pz, fishAngle, onPath);
                     if (settledSpot.TryGetValue(p.id, out var was) && (was.x != px || was.y != pz))
                     {
@@ -670,7 +727,7 @@ namespace AquariumCiv.View
                         if (stillOk || !RackSites.IsNight(sim)) { px = was.x; pz = was.y; }
                     }
                     settledSpot[p.id] = new Vector2(px, pz);
-                    spots.Add(new CampSpots.Disc(px, pz, p.kind == ConsequenceKind.ShoreBoat ? BoatRadius : CampSpots.PropRadius));
+                    spots.Add(new CampSpots.Disc(px, pz, p.kind == ConsequenceKind.ShoreBoat ? BoatRadius : p.kind == ConsequenceKind.GoatPen ? PenRadius : CampSpots.PropRadius));
                 }
                 else if (haveFire) spots.Add(new CampSpots.Disc(p.x, p.z, CampSpots.PropRadius));
                 // #635: charms on a tree hang from the drawn crown (no post, not scaled up); a tree not drawn yet: wait a frame
@@ -735,7 +792,8 @@ namespace AquariumCiv.View
                 tilt *= jq; if (jSquash < 1f) m.t.localScale = new Vector3(s, s * jSquash, s); // #693: a use's jolt
                 if (swings.ContainsKey(p.id)) tilt *= Quaternion.AngleAxis(SwingOf(p.id), new Vector3(1f, 0f, -1f).normalized);
                 if (tilts.ContainsKey(p.id)) tilt *= Quaternion.AngleAxis(TiltOf(p.id), new Vector3(1f, 0f, 1f).normalized); // leaning half across, half along: it shows from any side
-                float yaw = p.kind != ConsequenceKind.ShoreBoat ? p.yaw : haveFire && p.anchor == PropAnchor.Fire ? BoatYaw(px, pz) : Mathf.Round(p.yaw / 90f) * 90f; // #714 round 2: square to the glass (old saves too)
+                float yaw = p.kind == ConsequenceKind.GoatPen ? Mathf.Round(p.yaw / 90f) * 90f // 2026-11-16 "Bring a pen back": square to the glass, as the boat
+                    : p.kind != ConsequenceKind.ShoreBoat ? p.yaw : haveFire && p.anchor == PropAnchor.Fire ? BoatYaw(px, pz) : Mathf.Round(p.yaw / 90f) * 90f; // #714 round 2: square to the glass (old saves too)
                 m.t.SetLocalPositionAndRotation(box.land.OnGround(px, pz) + Vector3.up * lift, Quaternion.Euler(0f, yaw, 0f) * tilt);
             }
         }
