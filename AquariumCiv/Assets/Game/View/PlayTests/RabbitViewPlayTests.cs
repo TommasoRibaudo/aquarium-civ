@@ -128,7 +128,8 @@ namespace AquariumCiv.View.PlayTests
                     yield return null;
                 }
                 pv.timeScale = 1f;
-                Assert.Greater(checks, 1000, "sampled");
+                // sized for 12 dolls (1000 of 400 frames x 12); the animal budget now shows fewer (#710), so the floor scales with it
+                Assert.Greater(checks, 1000 * AquariumCiv.Sim.Eco.RabbitHerd.DefaultCap / 12, "sampled");
                 Assert.AreEqual(0, off, "rabbits only stand on green (one hopping over to a new spot may cross a strip of bare earth)");
                 int wc = rv.Field.WarrenCell;
                 yield return Fly(box, SiteMap.CXc(wc), SiteMap.CZc(wc), 2f);
