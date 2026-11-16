@@ -2074,6 +2074,8 @@ The read on a phone is in the beats' last words. None has a sound unless it says
 
 No goat is drawn in the pen today. **Ask:** a goat in the pen would be a new animal kind and must take its share of
 `AnimalBudget` (its comment: "never add a kind on top"); the pairs above work without one [est].
+**Answered (Q7, 2026-11-15; the pen back 2026-11-16, "Bring a pen back"):** one goat in the pen, outside the animal budget, never
+hunted, living only in the pen (sim: `SimCore.PenGoat`). The pen stands by the fire beside the pond family's boat.
 
 #### B54.a–o The beats (short, after the pairs are signed off)
 
