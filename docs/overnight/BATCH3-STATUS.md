@@ -54,5 +54,8 @@ sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Wo
   recorded, splash fix uncommitted). A new worker resumes on vs/692-parts-2-3. User on splash: "too big, the drops too big".
   User going to bed: after this, polish issues that need no approval. Started #652 (lane A, vs/652-stream-words). Editor
   polish queue after #692 p2–3: #657 grass tufts, #665 rabbit tracks, #680 hunter retry (#644 needs the winter look call).
+- 2026-11-16: #652 merged b917fa1 (already done on batch3; added a ContentRules 'stream' gate + test). #680 retry was
+  already in e20da81 (#681); tests merged. Open for the user: planned catches +22% with the retry (998→1218 over 5x120
+  days, unresolved hunts); the issue wanted the food economy unchanged. Editor check of the retry still to do.
 - 2026-11-15: p9/batch3 created and pushed; four lane A workers started. Implement says its Editor (pt1b) frees in
   ~20–30 min, left on p9/playtest1-b-signoff; #737 auto-merges into dev, then #736.
