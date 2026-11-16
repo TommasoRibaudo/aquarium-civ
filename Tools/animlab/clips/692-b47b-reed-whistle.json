@@ -12,15 +12,16 @@
    "return AquariumCiv.View.CampCheats.PondReady();",
    "return AquariumCiv.View.CampCheats.PondReady();",
    "return AquariumCiv.View.CampCheats.ReedsReady();",
-   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.ReedWhistle());"
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.ReedWhistle());"
   ],
   "warm": 0.5,
-  "seconds": 12,
+  "seconds": 9,
   "fps": 30,
   "follow": "camp",
   "span": 1.6,
   "closeSpan": 0.5,
   "yaw": 28,
-  "pitch": 38
+  "pitch": 38,
+  "lead": 2.0
  }
 }

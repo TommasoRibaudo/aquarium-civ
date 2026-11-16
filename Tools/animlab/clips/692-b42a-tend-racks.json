@@ -9,17 +9,18 @@
   "ecology": 1,
   "setup": [
    "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(10.0f, 2);",
-   "return AquariumCiv.View.FishRackView.DebugRack() + \"; \" + AquariumCiv.View.EcoDebug.ShowRack(3);",
+   "return AquariumCiv.View.CampCheats.FishStay() + \"; \" + AquariumCiv.View.EcoDebug.ShowRack(3);",
    "return AquariumCiv.View.CampCheats.HangMeat();",
-   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TendRacks());"
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.TendRacks());"
   ],
   "warm": 0.5,
-  "seconds": 22,
+  "seconds": 15,
   "fps": 30,
   "follow": "camp",
   "span": 1.6,
   "closeSpan": 0.7,
   "yaw": 28,
-  "pitch": 38
+  "pitch": 38,
+  "lead": 11.0
  }
 }

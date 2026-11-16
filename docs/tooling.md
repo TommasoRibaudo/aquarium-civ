@@ -983,3 +983,20 @@ Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or
   steps (`return "waiting for the tent to stand";`) so the tent stands at frame 0. Tree clips under a grown crown use `"pitch": 16`
   (the 38° close camera sat inside the crown). Watch for the fish rack popping out of view in rack clips (FishRackView, not fixed).
 - `Tools/animlab.sh live` took ~45-70 s a clip here; 3 clips then `restart-editor.sh` (~40 s) kept the Editor healthy for 60 clips.
+
+### 2026-11-16 · #692 p5 retakes: AnimLab clips that missed their own use
+- **A cheat's walk ate the clip.** Forced camp uses pick the nearest free doll, often 1.5 u off: the walk is capped at 9 s, so B45.a's throw
+  came after its 9 s clip ended (no rings). Live requests now take `"lead": s` (AnimLabLive, prep.py): warming goes on (unrecorded, at most
+  30 s more) until the camp use playing now is that many seconds before its hit (`CampScene.a`, `CampLife.UntilA`), and the camera snaps onto
+  it. The cheat must start during the warm-up: the driver sleeps ~2 s after every setup step, so a `Later(2.0f, ...)` fired before
+  recording began; the retakes use `Later(4.0f, ...)`. A use with no `a` (B44.b, B45.c) needs one set, else the lead is met at once.
+- **Dusk clips were shot in daylight:** `DayLightDriver` holds the light at 11 h while `FirstRunView.Active` (AnimLab's load did not end it).
+  Add a step `FirstRunView.DebugSkipAll()` after `StageCamp`, then `PeopleView.DebugSetHour(h)` again; `DayLightDriver.Status()` must not say
+  "held at day for the first run".
+- **Probing CampLife's drawn marks:** `FindObjectsByType<MeshFilter>(Include)` returned none of the "Camp part 5 mark" objects
+  (DontSave); `Resources.FindObjectsOfTypeAll<MeshFilter>()` finds them. A doll's pose offset has forward = −z.
+- **The name stone in a camp box** (B51): `DilemmaCheats.Toggle(true)`, `Raise("camp_remember")` (it kills the oldest if nobody has died),
+  `AnswerOnCard(0)` (the stone).
+- **FishRackView pop:** "Fish on the rack" sends someone to take the fish down, and the rack hid ("not wanted") between the last fish off and
+  the pile; it now stays once it has stood (`ThingSince("rack")`). `FishRackView.HideWhy` says why it is hidden. For clips that need the fish to
+  stay use `CampCheats.FishStay()`.

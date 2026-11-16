@@ -9,15 +9,16 @@
   "ecology": 1,
   "setup": [
    "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(10.0f, 2);",
-   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.PullWeed());"
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.PullWeed());"
   ],
   "warm": 0.5,
-  "seconds": 8,
+  "seconds": 6,
   "fps": 30,
   "follow": "camp",
   "span": 1.6,
   "closeSpan": 0.4,
   "yaw": 28,
-  "pitch": 38
+  "pitch": 38,
+  "lead": 2.5
  }
 }
