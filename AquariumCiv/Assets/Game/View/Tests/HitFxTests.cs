@@ -198,7 +198,7 @@ namespace AquariumCiv.View.Tests
                 Bits(PuffKind.Chips, seed, PuffOptions.Default, out int chips); Assert.That(chips, Is.InRange(5, 7));
                 Bits(PuffKind.Dust, seed, PuffOptions.Default, out int dust); Assert.That(dust, Is.InRange(3, 4));
                 Bits(PuffKind.Sparks, seed, PuffOptions.Default, out int sparks); Assert.AreEqual(5, sparks, "the flash star and 4 diamonds");
-                Bits(PuffKind.Droplets, seed, PuffOptions.Default, out int drops); Assert.That(drops, Is.InRange(4, 10));
+                Bits(PuffKind.Droplets, seed, PuffOptions.Default, out int drops); Assert.That(drops, Is.InRange(2, 4), "the user 2026-11-15: fewer drops");
                 Bits(PuffKind.Ring, seed, PuffOptions.Default, out int rings); Assert.AreEqual(2, rings);
                 Bits(PuffKind.Grass, seed, PuffOptions.Default, out int grass); Assert.AreEqual(4, grass);
             }
@@ -349,7 +349,8 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void DropletsAndSparks_OnSand_KeepABiggerFloor_AndABolderDarkRim()
         {
-            foreach (var s in new[] { PuffShape.Drop, PuffShape.Diamond, PuffShape.Star })
+            Assert.Less(PuffContrast.MinPixelsScale(PuffShape.Drop, PuffGround.Sand), 1f, "the user 2026-11-15: droplets stay small");
+            foreach (var s in new[] { PuffShape.Diamond, PuffShape.Star })
             {
                 Assert.GreaterOrEqual(PuffContrast.MinPixelsScale(s, PuffGround.Sand), 2f, s.ToString());
                 Assert.Greater(PuffContrast.MinPixelsScale(s, PuffGround.Grass), PuffContrast.MinPixelsScale(PuffShape.Slab, PuffGround.Grass), s.ToString());

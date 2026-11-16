@@ -346,15 +346,18 @@ namespace AquariumCiv.View
                 mb.Box(at, new Vector3(0.05f, 0.2f, 0.008f), col, rot);
                 mb.Box(at, new Vector3(0.006f, 0.21f, 0.011f), Palette.Timber, rot);
             }
+            // the user's review of B31.a ("where's the white feather"): a tied feather is as big as the old fan's (0.04 x 0.17 here), hangs
+            // below the fan off the red band, fanned out sideways and up (50 deg), with a dark spine and a dark tip, so a new one shows
             for (int i = 0; i < slots.Length; i++)
             {
-                float a = i * 2.39996f, y = 0.19f - i * 0.0125f;
+                float a = i * 2.39996f + 0.6f, y = 0.125f + (i % 3) * 0.02f;
                 var col = slots[i] == PoleFeatherKind.Newborn ? new Color(0.96f, 0.95f, 0.92f) : slots[i] == PoleFeatherKind.Marriage ? new Color(0.80f, 0.18f, 0.16f) : new Color(0.80f, 0.56f, 0.20f);
                 var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
-                var rot = Quaternion.LookRotation(dir) * Quaternion.Euler(-60f, 0f, 0f); // up the pole, tilted out 30 deg
-                var at = new Vector3(0f, y, 0f) + dir * 0.022f;
-                mb.Box(at + rot * new Vector3(0f, 0.022f, 0f), new Vector3(0.016f, 0.045f, 0.004f), col, rot);
-                mb.Box(at + rot * new Vector3(0f, 0.022f, 0f), new Vector3(0.003f, 0.047f, 0.006f), Palette.Timber, rot);
+                var rot = Quaternion.LookRotation(dir) * Quaternion.Euler(-40f, 0f, 0f); // out from the pole and up, 50 deg off upright
+                var at = new Vector3(0f, y, 0f) + dir * 0.02f;
+                mb.Box(at + rot * new Vector3(0f, 0.085f, 0f), new Vector3(0.04f, 0.15f, 0.006f), col, rot);
+                mb.Box(at + rot * new Vector3(0f, 0.165f, 0f), new Vector3(0.03f, 0.02f, 0.007f), col * 0.55f, rot);
+                mb.Box(at + rot * new Vector3(0f, 0.08f, 0f), new Vector3(0.005f, 0.17f, 0.009f), Palette.Timber, rot);
             }
             var m = mb.ToMesh("Consequence_FeatherPole_" + slots.Length);
             m.hideFlags = HideFlags.DontSave;
@@ -399,6 +402,8 @@ namespace AquariumCiv.View
     {
         public static bool AutoCreate = true;
         public static ConsequencePropsView Instance { get; private set; }
+        /// <summary>#692 (B32.d): charms on a tree not drawn yet: the mourner ties this death's charm during the quiet visit (CampLife sets it).</summary>
+        public static int HeldCharms;
         /// <summary>Real seconds a pulse lasts.</summary>
         public const float PulseSeconds = 1.6f;
 
@@ -589,7 +594,7 @@ namespace AquariumCiv.View
                     if (made.TryGetValue(p.id, out var hide) && hide.t != null) hide.t.gameObject.SetActive(false);
                     continue;
                 }
-                int charms = p.anchor == PropAnchor.Tree ? sim.CharmsOn(p) : 0;
+                int charms = p.anchor == PropAnchor.Tree ? Mathf.Max(0, sim.CharmsOn(p) - (onTree ? HeldCharms : 0)) : 0; // #692 B32.d: this death's charm waits to be tied
                 string key = KeyOf(p, charms, treeR);
                 int[] featherSlots = p == pole ? SimCore.PoleSlots(sim.PoleFeathers) : null; // #692 (B31.a): the pole fills up over the years
                 if (featherSlots != null && featherSlots.Length > 0) key += ":f" + string.Join("", featherSlots);
@@ -632,10 +637,11 @@ namespace AquariumCiv.View
                 }
                 m.t.localScale = Vector3.one * s;
                 var tilt = Quaternion.identity;
-                if (p == pole && Time.unscaledTime - flutterAt < 1.2f) // #692 (B31.a/b): the feathers flutter (Sway 8 deg, 6 Hz, tau 0.3 s)
+                float flutterFor = flutterAmp > 1.2f ? 2.6f : 1.2f, flutterTau = flutterAmp > 1.2f ? 0.8f : 0.3f; // the user's review: a new feather flutters longer
+                if (p == pole && Time.unscaledTime - flutterAt < flutterFor) // #692 (B31.a/b): the feathers flutter (Sway 8 deg, 6 Hz, tau 0.3 s)
                 {
                     float ft = Time.unscaledTime - flutterAt;
-                    tilt = Quaternion.Euler(Mathf.Sin(ft * 6f * Mathf.PI * 2f) * 8f * flutterAmp * Mathf.Exp(-ft / 0.3f), 0f, 0f);
+                    tilt = Quaternion.Euler(Mathf.Sin(ft * 6f * Mathf.PI * 2f) * 8f * Mathf.Min(flutterAmp, 1.3f) * Mathf.Exp(-ft / flutterTau), 0f, Mathf.Sin(ft * 4.3f * Mathf.PI * 2f) * 4f * Mathf.Exp(-ft / flutterTau) * (flutterAmp > 1.2f ? 1f : 0f));
                 }
                 float yaw = p.kind != ConsequenceKind.ShoreBoat ? p.yaw : haveFire && p.anchor == PropAnchor.Fire ? BoatYaw(px, pz) : Mathf.Round(p.yaw / 90f) * 90f; // #714 round 2: square to the glass (old saves too)
                 m.t.SetLocalPositionAndRotation(box.land.OnGround(px, pz) + Vector3.up * lift, Quaternion.Euler(0f, yaw, 0f) * tilt);

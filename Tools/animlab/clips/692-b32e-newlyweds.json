@@ -1,0 +1,25 @@
+{
+ "name": "692-b32e-newlyweds",
+ "notes": "B32.e: the couple meet and walk to the tree hand in hand, stand facing it, look up, lay a hand each on the bark, turn to each other and hop together, walk back. (The view clock is paused at dusk for the clip: a fresh camp pitches its tents and goes to bed in the next hour.)",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(19.1f, 2);",
+   "return AquariumCiv.View.CampCheats.GrowTree();",
+   "return AquariumCiv.View.DayLightDriver.DebugPauseClock(true);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TreeWed());"
+  ],
+  "warm": 0.5,
+  "seconds": 18,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.8,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

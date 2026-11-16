@@ -70,10 +70,14 @@ namespace AquariumCiv.View
         /// <summary>t2-polish (batch 5 puffs on sand): the smallest a bit draws, as a share of HitFx.MinPixels. Droplets and sparks are
         /// thin shapes (a teardrop 0.6 wide, a diamond) that read as specks at the camp frame: they keep 1.6x, on sand 2x (pale on pale);
         /// a dust blob's floor is its radius (0.5x); the rest 1x.</summary>
+        public const float DropFloor = 0.6f;
+        /// <summary>A droplet's size (box units at scale 1): the user 2026-11-15 cut it to a third.</summary>
+        public const float DropSize = 0.0055f;
         public static float MinPixelsScale(PuffShape s, PuffGround g) => s switch
         {
             PuffShape.Blob => 0.5f,
-            PuffShape.Drop or PuffShape.Diamond or PuffShape.Star => g == PuffGround.Sand ? 2f : 1.6f,
+            PuffShape.Drop => DropFloor, // the user 2026-11-15: small droplets, no bigger floor (it made every drop a blob at the camp frame)
+            PuffShape.Diamond or PuffShape.Star => g == PuffGround.Sand ? 2f : 1.6f,
             _ => 1f,
         };
 
@@ -150,7 +154,7 @@ namespace AquariumCiv.View
             PuffKind.Chips => new Row { minBits = 5, maxBits = 7, life = 0.7f, gravity = 3.0f, shrinkFrom = ShrinkFrom },
             PuffKind.Dust => new Row { minBits = 3, maxBits = 4, life = 0.45f, gravity = 0f, shrinkFrom = ShrinkFrom },
             PuffKind.Sparks => new Row { minBits = 5, maxBits = 5, life = 0.35f, gravity = 2.0f, shrinkFrom = ShrinkFrom },
-            PuffKind.Droplets => new Row { minBits = 4, maxBits = 10, life = 0.4f, gravity = 4.0f, shrinkFrom = ShrinkFrom },
+            PuffKind.Droplets => new Row { minBits = 2, maxBits = 4, life = 0.3f, gravity = 4.0f, shrinkFrom = ShrinkFrom }, // the user 2026-11-15: a much smaller splash, fewer drops
             PuffKind.Ring => new Row { minBits = 2, maxBits = 2, life = 0.8f, gravity = 0f, shrinkFrom = ShrinkFrom },
             PuffKind.Grass => new Row { minBits = 4, maxBits = 4, life = 0.4f, gravity = 2.5f, shrinkFrom = ShrinkFrom },
             PuffKind.Leaves => new Row { minBits = 1, maxBits = 3, life = 1.2f, gravity = 0f, shrinkFrom = ShrinkFrom },
@@ -255,7 +259,8 @@ namespace AquariumCiv.View
                     }
                     case PuffKind.Droplets:
                     {
-                        // 0.7–1.1 u/s, cone 35° about up, or aimed at a point (reached in 0.3 s); teardrops 0.016 stretched x1.6 along the velocity.
+                        // The user 2026-11-15 ("the splash is too big and its drops are too big"): 2-4 drops, 0.35-0.55 u/s (a short reach), cone 30°
+                        // about up, or aimed at a point (reached in 0.3 s); teardrops 0.0055 (a third of the old 0.016) stretched x1.6 along the velocity.
                         if (o.hasAim)
                         {
                             const float T = 0.3f;
@@ -266,12 +271,12 @@ namespace AquariumCiv.View
                         else
                         {
                             float yaw = Rng(seed, i, 2, 0f, 360f) * Mathf.Deg2Rad;
-                            float cone = Rng(seed, i, 3, 0f, 35f) * Mathf.Deg2Rad;
-                            float sp = Rng(seed, i, 4, 0.7f, 1.1f) * scale;
+                            float cone = Rng(seed, i, 3, 0f, 30f) * Mathf.Deg2Rad;
+                            float sp = Rng(seed, i, 4, 0.35f, 0.55f) * scale;
                             b.v0 = new Vector3(Mathf.Sin(cone) * Mathf.Sin(yaw), Mathf.Cos(cone), Mathf.Sin(cone) * Mathf.Cos(yaw)) * sp;
                         }
                         b.shape = PuffShape.Drop;
-                        b.size = 0.016f * scale; b.stretch = 1.6f;
+                        b.size = PuffContrast.DropSize * scale; b.stretch = 1.6f;
                         b.colour = o.mud ? PuffColour.Mud : PuffColour.Water;
                         b.lands = true;
                         break;

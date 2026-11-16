@@ -1,0 +1,24 @@
+{
+ "name": "692-b32a-sit",
+ "notes": "B32.a: one or two grown-ups walk to the Keeper's tree, sit back to the trunk, doze (the head droops), a leaf falls and is brushed off; stand, stretch, a pat on the trunk (the crown sways).",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(12.5f, 2);",
+   "return AquariumCiv.View.CampCheats.GrowTree();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TreeSit());"
+  ],
+  "warm": 0.5,
+  "seconds": 22,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.8,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

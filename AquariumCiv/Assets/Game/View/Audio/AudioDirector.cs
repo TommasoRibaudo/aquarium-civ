@@ -61,6 +61,9 @@ namespace AquariumCiv.View
         /// <summary>Era-moment cues played, in order (cue ids; tests).</summary>
         public readonly List<string> MomentLog = new();
         public float MusicDuck => ducker.Gain;
+        /// <summary>#692 (B32.d): the ambience's level under a scene (1 none; the quiet visit after a death sets 0.7). Eased at 0.4 a second.</summary>
+        public static float SceneDip = 1f;
+        float sceneDip = 1f;
         public AudioSettings Settings => settings;
         public AmbienceLevels AmbienceTarget => ambTarget;
         public float AmbienceLevel(int layer) => fader.Level(layer);
@@ -358,6 +361,8 @@ namespace AquariumCiv.View
             if (!ambSnapped) { fader.Snap(target); ambSnapped = true; } else fader.Tick(dt, target);
 
             float bus = Gain(SoundBus.Ambience);
+            sceneDip = Mathf.MoveTowards(sceneDip, Mathf.Clamp01(SceneDip), dt * 0.4f); // #692 B32.d: the hush under a quiet visit, eased in and out
+            bus *= sceneDip;
             for (int i = 0; i < amb.Length; i++)
             {
                 var src = amb[i];

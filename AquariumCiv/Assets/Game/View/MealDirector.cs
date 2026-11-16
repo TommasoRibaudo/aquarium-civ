@@ -130,7 +130,7 @@ namespace AquariumCiv.View
                         servedAt.Clear();
                         var takers = new List<int>(seatedKeys); var tpos = new List<Vector2>(seatedPos);
                         Dips.Clear(); // #692 (B30.b): a dip at the pot before each hand-over
-                        DipStand = CookSpot(Fire + (Pot - Fire) * 2.2f); DipGiver = giverKey; DipVersion++;
+                        DipStand = PotHotSpot + (PotHotSpot - Fire).normalized * CampLife.DipStandOff; /* #692 review: right at the pot to dip */ DipGiver = giverKey; DipVersion++;
                         int gi = seatedKeys.IndexOf(giverKey);
                         float toStand = gi >= 0 ? (seatedPos[gi] - DipStand).magnitude / PairStage.GiverPace : 0f;
                         var events = MealStage.Pass(fireSeed ^ (int)(time * 10f), time + 0.3f + toStand, giverKey, DipStand, Fire, Pot, takers, tpos, servedAt, Dips, PropKind.Bowl, CampScenes1.DipSeconds);
@@ -255,8 +255,73 @@ namespace AquariumCiv.View
             }
             if (simmer) DrawSteam(winter);
             else if (steamGo != null) steamGo.SetActive(false);
+            DrawBurst();
             DrawLadleAndBowls(material, heightAt);
         }
+
+        // ---------------------------------------------------------------- the user's review of #692 part 1: a swell of steam you can read
+        /// <summary>A puff of steam in a face (B30.c), a sniff (B30.d), a ladle's dip (B30.b): the pot's own soft steam swells for
+        /// <see cref="BurstSeconds"/>: <see cref="BurstPuffs"/> bigger white wisps rising faster and fading (the HitFx steam puff read as a flat grey disc).</summary>
+        public const int BurstPuffs = 7;
+        public const float BurstSeconds = 1.8f, BurstPeriod = 1.3f, BurstRise = 0.24f, BurstSizeTo = 0.05f, BurstAlpha = 0.6f;
+        float burstAt = -99f, burstScale = 1f;
+        GameObject burstGo; Material burstMat; Mesh burstMesh;
+
+        public void SteamBurst(float scale = 1f) { burstAt = Time.time; burstScale = Mathf.Clamp(scale, 0.3f, 1.5f); }
+        /// <summary>Tests: a burst is drawn now.</summary>
+        public bool BurstShown => burstGo != null && burstGo.activeInHierarchy;
+
+        void DrawBurst()
+        {
+            float k = (Time.time - burstAt) / BurstSeconds;
+            if (k < 0f || k >= 1f) { if (burstGo != null) burstGo.SetActive(false); return; }
+            if (burstGo == null)
+            {
+                var sh = Shader.Find("AquariumCiv/View/FireSmoke");
+                if (sh == null) return;
+                burstMat = new Material(sh) { name = "Camp_StewSteamBurst", hideFlags = HideFlags.DontSave };
+                burstMat.SetFloat("_Rise", BurstRise);
+                burstMat.SetFloat("_SizeFrom", SteamSizeFrom * 1.6f);
+                burstMat.SetFloat("_SizeTo", BurstSizeTo);
+                burstMat.SetFloat("_Drift", SteamDrift * 1.4f);
+                burstMat.SetFloat("_NightFade", 0.2f);
+                var verts = new List<Vector3>(); var cols = new List<Color>(); var corner = new List<Vector2>(); var data = new List<Vector2>(); var tris = new List<int>();
+                var col = MeshBuilder.Linear(new Color(1f, 1f, 0.98f));
+                Vector2[] corners = { new(-1f, -1f), new(-1f, 1f), new(1f, 1f), new(1f, -1f) };
+                for (int i = 0; i < BurstPuffs; i++)
+                {
+                    var at = SteamStart(i, BurstPuffs, out float phase);
+                    int o = verts.Count;
+                    foreach (var c in corners) { verts.Add(at); cols.Add(col); corner.Add(c); data.Add(new Vector2(phase, BurstPeriod)); }
+                    tris.AddRange(new[] { o, o + 1, o + 2, o, o + 2, o + 3 });
+                }
+                burstMesh = new Mesh { name = "Camp_StewSteamBurst", hideFlags = HideFlags.DontSave };
+                burstMesh.SetVertices(verts); burstMesh.SetColors(cols); burstMesh.SetUVs(0, corner); burstMesh.SetUVs(1, data); burstMesh.SetTriangles(tris, 0);
+                burstMesh.bounds = new Bounds(new Vector3(0f, PotTop + BurstRise * 0.5f, 0f), new Vector3(0.4f, BurstRise + 0.15f, 0.4f));
+                burstGo = new GameObject("Stew steam burst") { hideFlags = HideFlags.DontSave };
+                burstGo.transform.SetParent(potGo.transform, false);
+                burstGo.AddComponent<MeshFilter>().sharedMesh = burstMesh;
+                var r = burstGo.AddComponent<MeshRenderer>();
+                r.sharedMaterial = burstMat; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
+            }
+            // swells in fast, holds, fades out over the last half
+            float a = Mathf.Clamp01(k / 0.14f) * (1f - Mathf.Clamp01((k - 0.5f) / 0.5f));
+            burstMat.SetFloat("_Alpha", BurstAlpha * burstScale * a);
+            burstGo.SetActive(true);
+        }
+
+        // ---------------------------------------------------------------- the user's review of #692 part 1 (B30.b): the ladle in the giver's hand
+        bool ladleHeld;
+        /// <summary>This frame the ladle is in a hand: its foot (the scoop) at <paramref name="footWorld"/>, turned <paramref name="rotWorld"/>. Call after
+        /// <see cref="DrawPot"/> on every frame it is held; the next DrawPot puts it back in the pot.</summary>
+        public void HoldLadle(Vector3 footWorld, Quaternion rotWorld)
+        {
+            if (ladleGo == null) return;
+            ladleGo.transform.SetPositionAndRotation(footWorld, rotWorld);
+            ladleHeld = true;
+        }
+        /// <summary>Tests: the ladle was put in a hand since the last check.</summary>
+        public bool TakeLadleHeld() { bool h = ladleHeld; ladleHeld = false; return h; }
 
         // ---------------------------------------------------------------- #692 (B30.b, B30.e): the ladle and the stacked bowls
         Mesh waterPot, emptyPot, ladleMesh, stackMesh;

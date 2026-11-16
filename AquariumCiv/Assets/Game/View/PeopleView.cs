@@ -787,7 +787,7 @@ namespace AquariumCiv.View
             }
             if (started) (kind, slot) = (startCue.prop, startCue.slot); // #656/#677: the scene says what they carry
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
-            v.HoldInLeft(BerryMotion.BasketInLeft(style) || kind == PropKind.Bowl); // #361: the right hand picks, the basket rides in the left; #365: so does the meal's bowl
+            v.HoldInLeft(BerryMotion.BasketInLeft(style) || kind is PropKind.Bowl or PropKind.BowlEmpty); // #361: the right hand picks, the basket rides in the left; #365: so does the meal's bowl
 
             // Facing: along the walk, else the partner, the ring's centre, the work or the water.
             float want = d.yaw;
@@ -920,7 +920,7 @@ namespace AquariumCiv.View
                     fishLine = peopleRoot.TransformPoint(new Vector3(iceHole.Value.x, IceView.Instance.IceY, iceHole.Value.y));
                 Fishing?.Invoke(a.who, v, fishS, fishLeft, fishLine);
             }
-            if (struck)
+            if (struck && !camping /* the user's review of #692 part 1: a camp use fires its own effects (a kid's plan at the pond splashed at the fire) */)
             {   // #355; #362: a throw's hit is the spear coming down, so the puff is where it lands, not at the hand; #364: a yank's is the line's end
                 var hitAt = hunting && a.hunt == HuntPhase.Strike && huntPlan != null
                     ? peopleRoot.TransformPoint(HuntStage.LandPoint(huntPlan, (hx, hz) => Box.SurfaceHeight(hx, hz)))

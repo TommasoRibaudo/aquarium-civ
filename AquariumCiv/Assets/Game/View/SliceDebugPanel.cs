@@ -344,6 +344,40 @@ namespace AquariumCiv.View
             if (Btn("Feather: village")) last = CampCheats.TieFeather(AquariumCiv.Sim.PoleFeatherKind.Village); // #692 B31.a
             if (Btn("Kids dare at the feather pole")) last = CampCheats.PoleDare(); // #692 B31.b
             EndRow();
+            // #692 part 2: the Keeper's tree visits (each grows the tree first if it must)
+            Row(); // #692
+            if (Btn("Keeper's tree: sit under it")) last = CampCheats.TreeSit(); // #692 B32.a
+            if (Btn("Keeper's tree: touch the bark")) last = CampCheats.TreeTouch(); // #692 B32.b
+            if (Btn("Kids circle the Keeper's tree")) last = CampCheats.TreeCircle(); // #692 B32.c
+            EndRow();
+            Row(); // #692
+            if (Btn("Keeper's tree: quiet visit (after a death)")) last = CampCheats.TreeQuiet(); // #692 B32.d
+            if (Btn("Keeper's tree: newlyweds' visit")) last = CampCheats.TreeWed(); // #692 B32.e
+            EndRow();
+            Row(); // #692
+            if (Btn("Keeper's tree: newborn visit")) last = CampCheats.TreeNewborn(); // #692 B32.f
+            if (Btn("Keeper's tree: the old one sits there")) last = CampCheats.TreeOld(); // #692 B32.g
+            if (Btn("Keeper's tree: the eldest tells the kids")) last = CampCheats.TreeTell(); // #692 B32.h
+            EndRow();
+            // #692 part 3: grass, saplings, rocks, fallen branches ("Land: a wild tree and saplings" first for B34 and B36)
+            Row(); // #692
+            if (Btn("Kids roll in the grass")) last = CampCheats.GrassRoll(); // #692 B33.a
+            if (Btn("Lie back in the grass")) last = CampCheats.LieBack(); // #692 B33.b
+            if (Btn("Pick flowers")) last = CampCheats.PickFlowers(); // #692 B33.c
+            if (Btn("Grass whistle")) last = CampCheats.GrassWhistle(); // #692 B33.d
+            EndRow();
+            Row(); // #692
+            if (Btn("Land: a wild tree and saplings")) last = CampCheats.LandReady(); // #692 part 3
+            if (Btn("Water a sapling")) last = CampCheats.WaterSapling(); // #692 B34.a
+            if (Btn("Ring a sapling with stones")) last = CampCheats.RingSapling(); // #692 B34.b
+            if (Btn("A kid plants a twig")) last = CampCheats.PlantTwig(); // #692 B34.c
+            EndRow();
+            Row(); // #692
+            if (Btn("Sit on a rock / kid on the rock")) last = CampCheats.SitRock(); // #692 B35.a
+            if (Btn("Stack pebbles")) last = CampCheats.StackPebbles(); // #692 B35.b (alternates: stands / topples)
+            if (Btn("Kids sword fight with sticks")) last = CampCheats.StickFight(); // #692 B36.a
+            if (Btn("Stick horse")) last = CampCheats.StickHorse(); // #692 B36.b
+            EndRow();
         }
 
         void OnGUI()

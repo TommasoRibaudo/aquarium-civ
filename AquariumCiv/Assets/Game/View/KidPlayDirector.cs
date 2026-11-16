@@ -344,6 +344,7 @@ namespace AquariumCiv.View
                 {
                     var v = pv.ViewOf(g.game.KeyOf(b.holder));
                     if (v == null || !v.gameObject.activeInHierarchy) { g.ball.SetActive(false); continue; }
+                    if (pv.Camp.Busy(g.game.KeyOf(b.holder))) { g.ball.SetActive(false); continue; } // #692 review: a kid borrowed by a camp use put the ball down (it hung, huge, in the feather clip)
                     var hands = (v.armL.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f)) + v.armR.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f))) * 0.5f;
                     pos = root.InverseTransformPoint(hands);
                 }

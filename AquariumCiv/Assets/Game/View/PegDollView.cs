@@ -174,7 +174,7 @@ namespace AquariumCiv.View
         /// Cheap to call every frame.</summary>
         public void HoldInLeft(bool on)
         {
-            on &= prop != null && propSlot == PropSlot.Hand && propKind is PropKind.Basket or PropKind.Bowl; // #365: the meal's bowl rides in the left hand too
+            on &= prop != null && propSlot == PropSlot.Hand && propKind is PropKind.Basket or PropKind.Bowl or PropKind.BowlEmpty; // #365: the meal's bowl rides in the left hand too
             if (on == inLeft) return;
             inLeft = on;
             var (pos, rot) = PegDoll.SlotPose(PropSlot.Hand);
