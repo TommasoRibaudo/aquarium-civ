@@ -1,0 +1,31 @@
+{
+ "name": "692-b40b-tent-toy",
+ "notes": "B40.b: a kid on tiptoe ties a small wooden toy (or beads) on the tent's pole; it pops on and dangles, the kid flicks it so it spins and watches.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TentToy());"
+  ],
+  "warm": 0.5,
+  "seconds": 12,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.4,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

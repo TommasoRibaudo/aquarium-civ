@@ -1,0 +1,24 @@
+{
+ "name": "692-b49a-hill-dusk",
+ "notes": "B49.a: at dusk two grown-ups walk up the hill and sit on the top facing the camp and the fire, chatting quietly.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(17.3f, 2);",
+   "return AquariumCiv.View.DayLightDriver.DebugPauseClock(true);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.HillDusk());"
+  ],
+  "warm": 0.5,
+  "seconds": 18,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.8,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

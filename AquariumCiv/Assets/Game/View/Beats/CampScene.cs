@@ -73,6 +73,86 @@ namespace AquariumCiv.View
         StickFight,
         /// <summary>B36.b: a kid rides a stick horse.</summary>
         StickHorse,
+        // #692 part 4: animals (View/Beats/CampScenes4.cs, View/CampLife.Animals.cs)
+        /// <summary>B37: kids catch a frog and let it go (or miss and flop).</summary>
+        FrogCatch,
+        /// <summary>B38.a: watch the deer grazing from the wood's edge.</summary>
+        DeerWatch,
+        /// <summary>B38.b: kids creep up on the deer and the deer bolt.</summary>
+        DeerCreep,
+        /// <summary>B39.a: a kid holds a rabbit kit.</summary>
+        KitHold,
+        /// <summary>B15.d (B39.b's rate check): kids feed the ducks.</summary>
+        FeedDucks,
+        // #692 part 5: the rest of the camp (View/Beats/CampScenes5.cs, View/CampLife.Camp.cs)
+        /// <summary>B40.a: a kid's head pops out of the tent door, looks round, ducks back, then runs out.</summary>
+        TentPeek,
+        /// <summary>B40.b: a toy or a string of beads tied on the tent's pole.</summary>
+        TentToy,
+        /// <summary>B40.c: sitting in the doorway at dusk, a kid against them.</summary>
+        TentDoorSit,
+        /// <summary>B41.a: two kids count the stash's baskets.</summary>
+        CountStash,
+        /// <summary>B41.b: a snack sneaked from the stash, and caught.</summary>
+        SnackSneak,
+        /// <summary>B42.a: tending the racks (work): each hanging thing checked, the smoke fanned, the hide tugged taut.</summary>
+        TendRacks,
+        /// <summary>B42.b: kids in a chase duck under the hide rack.</summary>
+        DuckUnderHides,
+        /// <summary>B42.c: two kids count the fish on the rack.</summary>
+        CountFish,
+        /// <summary>B42.d: a kid sneaks a fish off the rack and shares it.</summary>
+        SneakFish,
+        /// <summary>B43.b: kids lie at the thicket's edge and peek at the rabbits.</summary>
+        ThicketPeek,
+        /// <summary>B43.c: a kid eats berries (a purple mouth); a parent wipes it off.</summary>
+        BerryWipe,
+        /// <summary>B44.a: a kid climbs onto a wild tree's low branch.</summary>
+        ClimbTree,
+        /// <summary>B44.b: a nap in a wild tree's shade (B32.a's sit).</summary>
+        TreeNap,
+        /// <summary>B44.c: a chat, one leaning on a wild tree's trunk.</summary>
+        TrunkLean,
+        /// <summary>B45.a: skip stones on the pond.</summary>
+        SkipStones,
+        /// <summary>B45.b: a kid floats a leaf boat.</summary>
+        LeafBoat,
+        /// <summary>B45.c: grown-ups sit on the bank, feet in the water.</summary>
+        FeetInWater,
+        /// <summary>B46.a: kids look at their reflection in a puddle.</summary>
+        PuddleLook,
+        /// <summary>B46.b: kids race from puddle to puddle, stomping.</summary>
+        PuddleRace,
+        /// <summary>B47.a: cut reeds to weave (work).</summary>
+        CutReeds,
+        /// <summary>B47.b: a kid blows a reed whistle.</summary>
+        ReedWhistle,
+        /// <summary>B48.a: kids follow the stream bed.</summary>
+        FollowStream,
+        /// <summary>B48.b: two kids build a little dam in the stream bed.</summary>
+        BuildDam,
+        /// <summary>B49.a: grown-ups sit on the hill at dusk.</summary>
+        HillDusk,
+        /// <summary>B49.b: kids roll down the hill.</summary>
+        HillRoll,
+        /// <summary>B50.a: kids race (or hop) along a path.</summary>
+        PathRace,
+        /// <summary>B50.b: two walkers meet on a path and chat.</summary>
+        PathChat,
+        /// <summary>B51: a small gift left at the remembering stone.</summary>
+        StoneGift,
+        /// <summary>B52.a: the tents' lanterns lit one after another at dusk (work).</summary>
+        LightLanterns,
+        /// <summary>B52.b: kids chase the moths round a lit lantern.</summary>
+        ChaseMoths,
+        /// <summary>B53.a: a weed pulled out of the camp (work).</summary>
+        PullWeed,
+        /// <summary>B53.c: a kid makes a crown of weeds and flowers for another.</summary>
+        Crown,
+        /// <summary>B53.d: the rope swing hung on a wild tree (once).</summary>
+        HangSwing,
+        /// <summary>B53.d: kids on the rope swing.</summary>
+        Swing,
     }
 
     /// <summary>A pose laid over the doll's pose for one part: <paramref name="into"/> seconds into the part, <paramref name="len"/> its length.</summary>
@@ -121,10 +201,23 @@ namespace AquariumCiv.View
         /// <summary>#692 part 3 (B34.a): the little tree perks up (the baked-tree shake at the sapling).</summary>
         Perk,
         /// <summary>#692 part 3 (B36.a): the sticks cross: a small white flash and a light wood knock.</summary>
-        Clash }
+        Clash,
+        // #692 part 5 (View/CampLife.Camp.cs)
+        /// <summary>A ring (or droplets) on the pond's surface at <see cref="CampFx.at"/> (x, z; y above the water).</summary>
+        WaterRing, WaterDrops,
+        /// <summary>A part 5 mark on the camp at <see cref="CampFx.at"/> (what: <see cref="CampFx.count"/>, a <see cref="CampMark"/>); with
+        /// <see cref="CampAnchor.Head"/> it is worn by the member (a crown, a purple mouth).</summary>
+        Leave,
+        /// <summary>B53.d: the bough's soft creak at an end of the swing's arc.</summary>
+        Creak,
+        /// <summary>B43: a bush at <see cref="CampFx.at"/> sways (HitFx's bush shake).</summary>
+        BushSway }
 
     /// <summary>#692 part 3: what a <see cref="CampFxKind.Mark"/> leaves on the land (CampLife.Land draws them).</summary>
-    public enum CampMark { None, WetPatch, RingStone, Twig, Pebble, Topple, Horse, GrassBits, EarFlower, Flatten }
+    public enum CampMark { None, WetPatch, RingStone, Twig, Pebble, Topple, Horse, GrassBits, EarFlower, Flatten,
+        // #692 part 5 (CampFxKind.Leave; View/CampLife.Camp.cs)
+        Toy, Beads, ToySpin, LanternLit, Crown, PurpleMouth, WipeMouth, Gift, DamPool, DamBreak, Boat, SkipSplash, SwingRope, SwingHung,
+        WeedPulled, FishTaken, ReedsFlat, MothClap, StripTouch }
 
     /// <summary>Where an effect is: on the ground at a box point (<see cref="CampFx.at"/> x, z; y above the ground), or at a member's hand,
     /// head or held twig's tip (plus <see cref="CampFx.at"/> as a world-up offset in box units).</summary>
@@ -147,7 +240,20 @@ namespace AquariumCiv.View
         Leaf, Flower, Charm,
         /// <summary>#692 part 3: a stone in the hand (B34.b), three in the arms, a pebble (B35.b), a bunch of flowers (B33.c), a grass blade at the
         /// mouth (B33.d), the stick horse from the hand back to the ground (B36.b).</summary>
-        Stone, Stones, Pebble, Bunch, Blade, Horse }
+        Stone, Stones, Pebble, Bunch, Blade, Horse,
+        /// <summary>#692 part 5 (drawn by View/CampLife.Camp.cs; keep these last): a flat skipping stone, an armful of reeds, one reed held like a
+        /// flute, a weed with its dangling root, the crown being twisted, a small wooden toy, a string of beads, the coiled rope, the swing's plank,
+        /// a folded leaf boat, a small bowl of berries for the stone.</summary>
+        FlatStone, Reeds, Reed, Weed, CrownRing, Toy, Beads, Rope, Plank, LeafFold, GiftBowl }
+
+    /// <summary>#692 part 4: a small thing thrown from a member's hand along an arc to a box point (B15.d's crumbs), drawn by CampLife.Animals.</summary>
+    public struct CampArc
+    {
+        public int member;
+        public float from, seconds, h;
+        /// <summary>Where it lands (box x, z; y above the ground or the water).</summary>
+        public Vector3 to;
+    }
 
     public struct CampTip
     {
@@ -176,8 +282,13 @@ namespace AquariumCiv.View
         public readonly List<CampTip> tips = new();
         /// <summary>#692 part 2: pair beats inside the scene (B32.d's hug), handed to PairStage when the scene is added (absolute times).</summary>
         public readonly List<PairEvent> pairs = new();
+        /// <summary>#692 part 4: things thrown along an arc (B15.d's crumbs).</summary>
+        public readonly List<CampArc> arcs = new();
         /// <summary>Extra state a use carries (the spit's meat, the pot's lift), read by the director.</summary>
         public float a, b;
+        /// <summary>#692 part 4: more moments and spots a use hands its animal (the frog's wriggle, the kit's hops: B37, B39.a).</summary>
+        public float c, d;
+        public Vector2 p0, p1;
         public int kind;
         /// <summary>The camera keeps to <see cref="focus"/> (the thing), not pulled toward the lead actor (the feather pole: the user's review).</summary>
         public bool holdFocus;
@@ -195,6 +306,7 @@ namespace AquariumCiv.View
                 float e = 0f;
                 foreach (var l in parts) foreach (var p in l) e = Mathf.Max(e, p.to);
                 foreach (var f in fx) e = Mathf.Max(e, f.time);
+                foreach (var r in arcs) e = Mathf.Max(e, r.from + r.seconds);
                 return e;
             }
         }

@@ -1,0 +1,24 @@
+{
+ "name": "692-b42c-count-fish",
+ "notes": "B42.c: two kids crouch at the fish rack and count the fish, one poking each along the row, then arms up and a cheer.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.FishRackView.DebugRack() + \"; \" + AquariumCiv.View.EcoDebug.ShowRack(3);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.CountFish());"
+  ],
+  "warm": 0.5,
+  "seconds": 10,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.5,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

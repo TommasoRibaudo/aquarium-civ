@@ -1,0 +1,23 @@
+{
+ "name": "692-b41a-count-stash",
+ "notes": "B41.a: two kids crouch at the stash; one pokes each basket in turn with a head bob (5 pokes), then both throw their arms up and cheer: so many!",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(15.0f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.CountStash());"
+  ],
+  "warm": 0.5,
+  "seconds": 10,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.45,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

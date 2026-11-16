@@ -1,0 +1,24 @@
+{
+ "name": "692-b42b-duck-hides",
+ "notes": "B42.b: two kids in a chase; the runner ducks under the hide rack and hops out the other side, the chaser goes round the end; the scraper shoos them.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.FishRackView.DebugRack() + \"; \" + AquariumCiv.View.EcoDebug.ShowRack(3);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.DuckUnderHides());"
+  ],
+  "warm": 0.5,
+  "seconds": 8,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

@@ -1,0 +1,23 @@
+{
+ "name": "692-b53c-crown",
+ "notes": "B53.c: a kid picks weeds and flowers, twists them into a ring and puts it on another kid's head; the crowned kid walks proudly.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.Crown());"
+  ],
+  "warm": 0.5,
+  "seconds": 10,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.45,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

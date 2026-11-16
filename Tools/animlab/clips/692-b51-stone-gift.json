@@ -1,0 +1,23 @@
+{
+ "name": "692-b51-stone-gift",
+ "notes": "B51: a family member walks to the remembering stone with a small gift, kneels and sets it at the foot, touches the stone, bows and walks back; the gift stays.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(8.0f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.StoneGift());"
+  ],
+  "warm": 0.5,
+  "seconds": 14,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.5,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

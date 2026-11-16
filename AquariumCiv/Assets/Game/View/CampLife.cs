@@ -64,7 +64,7 @@ namespace AquariumCiv.View
 
         public void Reset()
         {
-            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree(); ResetLand();
+            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree(); ResetLand(); ResetAnimals(); ResetCamp();
             fxDone = float.NaN; potState = PotState.Cold; potDay = long.MinValue; spitDay = long.MinValue;
         }
 
@@ -90,6 +90,8 @@ namespace AquariumCiv.View
             if (sim == null || planner == null || sim.State.era != Era.Camp) { StepPot(acts, time, false); return; }
             StepTree(acts, time); // #692 part 2: the Keeper's tree visits (no fire needed)
             StepLand(acts, time); // #692 part 3: grass, saplings, rocks, fallen branches
+            StepAnimals(acts, time); // #692 part 4: frogs, deer, a rabbit kit, the ducks
+            StepCamp(acts, time); // #692 part 5: the rest of the camp
             bool fire = meals.HasFire && planner.FireNow != CampFireStage.None;
             StepPot(acts, time, fire);
             if (fire && !OnlyCheats) Trigger(acts, time);
@@ -641,6 +643,8 @@ namespace AquariumCiv.View
             DrawLadle(root, time);
             DrawTree(root, time); // #692 part 2: the newborn lifted, the glow, the charm held back until it is tied, the hush
             DrawLand(root, material, time, groundAt); // #692 part 3: the boulders and what the land's uses leave
+            DrawAnimals(root, material, time, groundAt); // #692 part 4: the frog in the hands, the kit, the crumbs
+            DrawCamp(root, material, time, groundAt); // #692 part 5: lanterns, toys, strips, gifts, boats, the swing, crowns
         }
 
         void FireFx(Transform root, float time, Func<float, float, float> groundAt)
@@ -694,6 +698,7 @@ namespace AquariumCiv.View
                     AudioDirector.Instance?.Play(AquariumCiv.Audio.CueLibrary.KnockBack, 0f, 0.6f, 0f);
                     break;
                 case CampFxKind.Chime: break; // [est] a soft chime: no CC0 chime in the project yet (none played)
+                case CampFxKind.WaterRing: case CampFxKind.WaterDrops: case CampFxKind.Leave: case CampFxKind.Creak: case CampFxKind.BushSway: FireCamp(root, s, f, world); break; // #692 part 5
             }
             if (s.use == CampUse.FeatherTie && f.kind == CampFxKind.Jolt && sim != null && s.kind >= 0) { sim.MarkPoleFeatherTied(s.kind); s.kind = -1; }
         }
@@ -718,6 +723,7 @@ namespace AquariumCiv.View
                 {
                     float u = time - s.t0;
                     if (u < tip.from || u >= tip.to || tip.member >= s.Count) continue;
+                    if (tip.kind >= CampTipKind.FlatStone) continue; // #692 part 5: drawn by CampLife.Camp
                     var v = pv.ViewOf(s.keys[tip.member]);
                     if (v == null || !v.gameObject.activeInHierarchy) continue;
                     float k = Mathf.Clamp01((u - tip.from) / Mathf.Max(0.01f, tip.to - tip.from));
@@ -852,6 +858,8 @@ namespace AquariumCiv.View
             if (spitGo != null) UnityEngine.Object.Destroy(spitGo);
             spitGo = null;
             DestroyLand();
+            DestroyAnimals();
+            DestroyCamp();
         }
 
         // ================================================================== cheats (SliceDebugPanel "#692")
@@ -859,7 +867,7 @@ namespace AquariumCiv.View
         public string Force(CampUse use)
         {
             int before = scenes.Count;
-            string r = IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : ForceUse(use);
+            string r = IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : IsCampUse(use) ? ForceCamp(use) : ForceUse(use);
             if (scenes.Count > before) forced = scenes[^1];
             return r;
         }

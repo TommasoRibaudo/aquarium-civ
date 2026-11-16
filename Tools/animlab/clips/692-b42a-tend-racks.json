@@ -1,0 +1,25 @@
+{
+ "name": "692-b42a-tend-racks",
+ "notes": "B42.a: the rack keeper walks the fish rack touching each hanging fish and meat strip (the strips swing), turns one over, fans the smoke, then scrapes the hide on the hide rack and tugs a corner taut.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(10.0f, 2);",
+   "return AquariumCiv.View.FishRackView.DebugRack() + \"; \" + AquariumCiv.View.EcoDebug.ShowRack(3);",
+   "return AquariumCiv.View.CampCheats.HangMeat();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TendRacks());"
+  ],
+  "warm": 0.5,
+  "seconds": 22,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

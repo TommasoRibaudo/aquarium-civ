@@ -1,0 +1,25 @@
+{
+ "name": "692-b53d-hang-swing",
+ "notes": "B53.d (hanging it): a grown-up brings a coiled rope and a plank to a wild tree, throws the rope over the low bough, ties the plank, tests it by hanging on it, and nods.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(14.0f, 2);",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.HangSwing());"
+  ],
+  "warm": 0.5,
+  "seconds": 14,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 16
+ }
+}

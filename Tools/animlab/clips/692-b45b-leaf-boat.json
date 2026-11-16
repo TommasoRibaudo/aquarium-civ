@@ -1,0 +1,25 @@
+{
+ "name": "692-b45b-leaf-boat",
+ "notes": "B45.b: a kid folds a big leaf, sets it on the water and gives it a push; it drifts out turning, and the kid walks along the bank after it.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(12.0f, 2);",
+   "return AquariumCiv.View.CampCheats.PondReady();",
+   "return AquariumCiv.View.CampCheats.PondReady();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.LeafBoat());"
+  ],
+  "warm": 0.5,
+  "seconds": 14,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

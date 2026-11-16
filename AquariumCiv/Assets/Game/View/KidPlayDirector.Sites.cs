@@ -297,6 +297,28 @@ namespace AquariumCiv.View
                 var eco = box.layout.eco;
                 lock (box.BushSpots) foreach (var kv in box.BushSpots) if (!eco.on || eco.At(kv.Key) == EcoLayer.Bush) Add(new PlayCover(new Vector2(kv.Value.pos.x, kv.Value.pos.z), kv.Value.r, CoverKind.Bush));
                 lock (box.TreeSpots) foreach (var kv in box.TreeSpots) if (eco.At(kv.Key) == EcoLayer.Tree) Add(new PlayCover(new Vector2(kv.Value.pos.x, kv.Value.pos.z), 0.04f, CoverKind.Tree));
+                // #692 part 5 (B47.c): the reeds join the cover near the pond (they stand in the shallows, so the water test is skipped): the three
+                // reed cells nearest the base, at least 0.25 u apart
+                if (eco.on)
+                {
+                    var reeds = new List<(float d, Vector2 p)>();
+                    for (int c = 0; c < SiteMap.N; c++)
+                    {
+                        if (eco.At(c) != EcoLayer.Reeds) continue;
+                        var rp = new Vector2(SiteMap.CXc(c), SiteMap.CZc(c));
+                        float d = (rp - site.home.pos).magnitude;
+                        if (d <= HideSeekGame.Reach + 0.05f && InsideBox(rp, 0.2f)) reeds.Add((d, rp));
+                    }
+                    reeds.Sort((x, y) => x.d.CompareTo(y.d));
+                    int kept = 0;
+                    foreach (var r in reeds)
+                    {
+                        if (kept >= 3) break;
+                        bool close = false; foreach (var c in site.covers) if (c.kind == CoverKind.Reeds && (c.pos - r.p).magnitude < 0.25f) close = true;
+                        if (close) continue;
+                        site.covers.Add(new PlayCover(r.p, 0.05f, CoverKind.Reeds)); kept++;
+                    }
+                }
             }
             return site;
         }
