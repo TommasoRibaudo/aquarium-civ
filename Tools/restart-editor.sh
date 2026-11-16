@@ -15,7 +15,9 @@ editor_up() {
 }
 
 if editor_up; then
-  CODE='UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes(); UnityEditor.AssetDatabase.SaveAssets(); UnityEditor.EditorApplication.Exit(0); return "quitting";'
+  # Save only scenes that have a file: SaveOpenScenes() on an untitled scene (AnimLabLive's empty play scene, left open when a live
+  # run is stopped mid-way) opens a Save-As dialog that waits for the user (2026-11-15: saved as "Assets/temp file.unity").
+  CODE='for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++) { var sc = UnityEngine.SceneManagement.SceneManager.GetSceneAt(i); if (sc.isDirty && !string.IsNullOrEmpty(sc.path)) UnityEditor.SceneManagement.EditorSceneManager.SaveScene(sc); } UnityEditor.AssetDatabase.SaveAssets(); UnityEditor.EditorApplication.Exit(0); return "quitting";'
   unity command script eval --project-path "$P" --timeout 30 --code "$CODE" || echo "(an error reply is normal: the Editor quits mid-call)"
   for i in $(seq 1 30); do editor_up || break; sleep 5; done
   if editor_up; then echo "Editor did not quit in 150 s: stop and report"; exit 1; fi
