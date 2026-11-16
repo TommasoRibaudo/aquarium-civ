@@ -310,12 +310,12 @@ namespace AquariumCiv.View.PlayTests
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean")); // Kit
                 yield return Settle(0.6f);
                 Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Kit opens");
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+                // #668: no jar to open first: the tiles are on the kit's shelves
                 yield return Settle(0.5f);
                 Assert.IsTrue(hud.LifeRowOpen, "the chooser opens");
                 var icon = hud.Root.Q("kit-life-locked-ducks");
                 Assert.IsNotNull(icon, "the ducks are greyed in the chooser while the pond is ice");
-                Assert.IsTrue(icon.ClassListContains("kit-life-choice--locked"));
+                Assert.IsTrue(icon.ClassListContains(KitTile.ShutClass));
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-locked-ducks"));
                 yield return Settle(0.5f);
                 Note("3 winter", "the note says: '" + hud.LifeNoteText + "'");
@@ -334,7 +334,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return CalmHud();
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
                 yield return Settle(0.6f);
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+                // #668: no jar to open first: the tiles are on the kit's shelves
                 yield return Settle(0.5f);
                 Assert.IsTrue(hud.LifeRowOpen, "the chooser opens after the thaw");
                 yield return Snap("03c_thaw_chooser_ducks_ready");
@@ -709,7 +709,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return Settle(0.5f);
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
                 yield return Settle(0.6f);
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+                // #668: no jar to open first: the tiles are on the kit's shelves
                 yield return Settle(0.6f);
                 Assert.IsTrue(hud.LifeRowOpen);
                 yield return TapPillOpensSheet("the life chooser", "07c_pill_chooser");
@@ -1098,7 +1098,7 @@ namespace AquariumCiv.View.PlayTests
             yield return CalmHud();
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return Settle(0.6f);
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+            // #668: no jar to open first: the tiles are on the kit's shelves
             yield return Settle(0.5f);
             Assert.IsTrue(hud.LifeRowOpen, "the chooser opens on the shut jars");
             var icon = hud.Root.Q("kit-life-locked-deer");

@@ -461,6 +461,15 @@ namespace AquariumCiv.Sim.Eco
         }
 
         // ---------------------------------------------------------------- debug
+        /// <summary>Debug (#668 kit states): one shut jar opens now, whatever the land says. False when it isn't shut.</summary>
+        public bool DebugReadyOne(LifeSpecies s, long month)
+        {
+            var j = Jar(s);
+            if (j.State != JarState.Locked) return false;
+            Open(j, s, month);
+            return true;
+        }
+
         /// <summary>Debug ("ready every species"): every shut jar opens now, whatever the land says (the wolves too, though nothing
         /// can be placed for them before #437). How many opened.</summary>
         public int DebugReadyAll(long month)

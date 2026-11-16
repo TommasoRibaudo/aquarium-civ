@@ -62,16 +62,16 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(0.5f);
             }
             Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Kit opens the kit");
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+            // #668: no jar to open first: the tiles are on the kit's shelves
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.IsTrue(hud.LifeRowOpen, "the life jar opens its row");
         }
 
+        /// <summary>#668: a ready tile's name and its count badge ("Seed ×1").</summary>
         static string ChoiceWord(GameHud hud, string name)
         {
-            var b = hud.Root.Q(name);
-            var l = b?.Q<Label>(className: "kit-life-name");
-            return l != null ? l.text : null;
+            var t = hud.KitTileNamed(name);
+            return t != null ? (t.Name + " " + t.CountText).Trim() : null;
         }
 
         /// <summary>A cell the earned seed would take as it is, its middle on screen clear of the HUD.</summary>
@@ -137,8 +137,8 @@ namespace AquariumCiv.View.PlayTests
 
             // ---- #726: the life row shows the earned seed and bush, with their counts
             yield return OpenRow(hud);
-            Assert.AreEqual("1 seed", ChoiceWord(hud, "kit-life-seed"), "the seed's count");
-            Assert.AreEqual("1 bush", ChoiceWord(hud, "kit-life-bush"), "the bush's count");
+            Assert.AreEqual("Seed ×1", ChoiceWord(hud, "kit-life-seed"), "the seed's count (#668: a badge on its tile)");
+            Assert.AreEqual("Bushes ×1", ChoiceWord(hud, "kit-life-bush"), "the bush's count");
             yield return Shot("731-1-life-row-counts");
 
             // ---- #727: the earned seed: a tap shows the ghost, a tap on it plants a seedling
@@ -222,7 +222,10 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.AreEqual(GameHud.Kit, hud.OpenSheet);
-            Assert.AreEqual(GameHud.LandscapeLabel, ((Button)hud.Root.Q("kit-landscape")).text, "the tool's word: Spade (K2)");
+            Assert.AreEqual(GameHud.LandscapeLabel, hud.KitTileNamed("kit-landscape").Name, "the tool's word: Spade (K2)");
+            Assert.AreEqual("Spade", GameHud.LandscapeLabel);
+            float toolsY = hud.Root.Q("kit-cloth").worldBound.yMin; // the landscaping polish: the tools never wrap to a second row
+            foreach (var n in new[] { "kit-mister", "kit-tweezers", "kit-landscape" }) Assert.AreEqual(toolsY, hud.Root.Q(n).worldBound.yMin, 0.5f, n + " in the tools' one row");
             yield return Shot("731-6-kit-rail");
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-landscape"));
             yield return new WaitForSecondsRealtime(0.5f);

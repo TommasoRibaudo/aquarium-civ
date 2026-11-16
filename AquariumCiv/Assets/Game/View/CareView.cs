@@ -561,7 +561,7 @@ namespace AquariumCiv.View
 
         // ---------------- #311: the tweezers ----------------
         public const string ClothIsForGlass = "The cloth is for the glass. Take the tweezers from your Kit for weeds.";
-        public const string TweezersHintOnMess = "Take the tweezers from your Kit to pluck weeds.";
+        public const string TweezersHintOnMess = "Take the tweezers from your Kit to pull weeds."; // #668 kit-words §5
         float clothHintAt = -99f;
 
         void TellClothIsForGlass()

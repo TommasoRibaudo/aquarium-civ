@@ -211,15 +211,26 @@ namespace AquariumCiv.View.PlayTests
         /// #643: the chooser always opens, the seed alone too). Asserts the seed ends up in hand.</summary>
         protected IEnumerator PickSeedFromLifeJar(GameHud hud, string shot = null)
         {
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
-            yield return new WaitForSecondsRealtime(0.4f);
-            if (hud.LifeRowOpen)
+            // #668 (mock-up A): the seed is a tile on the kit's Ready shelf: no jar to open first
+            if (shot != null) yield return Shot(shot);
+            yield return TakeFromKit(hud, "kit-life-seed");
+            Assert.AreEqual(GameHud.KitTool.Seed, hud.Hand, "the seed in hand, picked from the kit");
+        }
+
+        /// <summary>#668 (kit-redesign.md §4): takes a tile from the Keeper's kit by touch, the way a player does: Kit (if it isn't open),
+        /// then the tile (a tool, the seed, a bush, a ready group or a shut jar). One place to change when the kit's layout changes.</summary>
+        protected IEnumerator TakeFromKit(GameHud hud, string tile)
+        {
+            if (hud.OpenSheet != GameHud.Kit)
             {
-                if (shot != null) yield return Shot(shot);
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-seed"));
-                yield return new WaitForSecondsRealtime(0.4f);
+                if (hud.Hand != GameHud.KitTool.None || hud.CleanMode) { yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean")); yield return Frames(10); }
+                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
+                yield return new WaitForSecondsRealtime(0.5f);
             }
-            Assert.AreEqual(GameHud.KitTool.Seed, hud.Hand, "the seed in hand, picked from the life jar");
+            Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Kit opens the kit");
+            Assert.IsNotNull(UnityEngine.UIElements.UQueryExtensions.Q(hud.Root, tile), tile + " is in the kit");
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, tile));
+            yield return new WaitForSecondsRealtime(0.4f);
         }
 
         /// <summary>P9 (#417-#419, #423): the Keeper places a ready jar's founding group near the camp by touch, the way a player
@@ -238,16 +249,11 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Kit opens the kit");
-            Assert.IsTrue(hud.LifeSlotShown, "the life slot is in the kit while a jar is ready");
+            Assert.IsTrue(hud.LifeSlotShown, "a ready jar's tile is in the kit");
             if (shotPrefix != null) yield return Shot(shotPrefix + "_kit");
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+            Assert.IsTrue(hud.LifeRowOpen, "#668: the Ready shelf shows the jar's group");
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-" + s.ToString().ToLowerInvariant()));
             yield return new WaitForSecondsRealtime(0.4f);
-            if (hud.LifeRowOpen)
-            {
-                if (shotPrefix != null) yield return Shot(shotPrefix + "_row");
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-" + s.ToString().ToLowerInvariant()));
-                yield return new WaitForSecondsRealtime(0.4f);
-            }
             Assert.AreEqual(GameHud.KitTool.Life, hud.Hand, "the life tool in hand");
             Assert.AreEqual(s, hud.HeldLife, "the species in hand");
             var lpv = LifePlaceView.Instance;

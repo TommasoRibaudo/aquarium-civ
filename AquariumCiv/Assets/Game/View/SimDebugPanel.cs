@@ -375,6 +375,21 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Mid-evening walk: clock to 17:30")) last = PeopleView.DebugSetHour(17.5f);
             }
             // ---- end #697/#696 ----
+            // ---- #668: the kit's states (kit-mockups.html s0 to s6, each tool in hand), staged by KitStates ----
+            if (sim.EcologyOn && Section("Kit states (#668)"))
+            {
+                var ks = KitStates.All;
+                for (int i = 0; i < ks.Length; i += 2)
+                {
+                    GUILayout.BeginHorizontal();
+                    for (int k = i; k < i + 2 && k < ks.Length; k++)
+                        if (GUILayout.Button(ks[k])) last = Done(KitStates.Stage(ks[k]));
+                    GUILayout.EndHorizontal();
+                }
+                if (GameHud.Instance != null && GUILayout.Button("New visit (the Kit wiggles again while a jar waits, #660)")) { GameHud.Instance.DebugNewVisit(); last = Done("a new visit"); }
+                if (GameHud.DebugToolsOnly && GUILayout.Button("Back to the real kit")) { GameHud.DebugToolsOnly = false; last = Done("the kit shows everything again"); }
+            }
+            // ---- end #668 ----
             // ---- #417: the life jar (placed-life spec §10); "place" opens a shut jar and places by the camp, no ghost ----
             if (sim.EcologyOn && Section("Life jar (#417)"))
             {

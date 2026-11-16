@@ -89,7 +89,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(0.5f);
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
                 yield return new WaitForSecondsRealtime(0.6f);
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+                // #668: no jar to open first: the tiles are on the kit's shelves
                 yield return new WaitForSecondsRealtime(0.6f);
                 Assert.IsTrue(hud.LifeRowOpen, "the life chooser is open");
                 yield return TapPillOpensSheet("the life chooser", "chooser");

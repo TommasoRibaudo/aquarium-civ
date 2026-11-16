@@ -113,7 +113,7 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Kit opens the kit");
             Assert.IsNull(UnityEngine.UIElements.UQueryExtensions.Q(hud.Root, "kit-seed"), "#558: no separate Seed tool in the kit");
-            Assert.IsTrue(UnityEngine.UIElements.UQueryExtensions.Q(hud.Root, "kit-life").resolvedStyle.display == UnityEngine.UIElements.DisplayStyle.Flex, "the life jar holds the seed");
+            Assert.IsTrue(UnityEngine.UIElements.UQueryExtensions.Q(hud.Root, "kit-life-seed") != null, "#668: the seed is a tile on the Ready shelf");
             yield return PickSeedFromLifeJar(hud, "558-seed-chooser");
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.AreEqual(GameHud.KitTool.Seed, hud.Hand, "the seed in hand");
