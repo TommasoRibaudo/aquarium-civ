@@ -54,6 +54,10 @@ sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Wo
   recorded, splash fix uncommitted). A new worker resumes on vs/692-parts-2-3. User on splash: "too big, the drops too big".
   User going to bed: after this, polish issues that need no approval. Started #652 (lane A, vs/652-stream-words). Editor
   polish queue after #692 p2–3: #657 grass tufts, #665 rabbit tracks, #680 hunter retry (#644 needs the winter look call).
+- 2026-11-16: tester fixes merged (vs/batch3-tester-fixes): caption/skip overlap, three camera-stuck causes, seed ghost
+  prebuilt (the 1 s hitch was the tester's own scan), cloth wipes the glass in reach [est, user to judge]. Words merged
+  0a6e039 (kids/mud/bench/broom gates). Open: CarePlayTests Glass_CleanIsClear 39.6/40 and LifeArrival wolves 'someone
+  near turned', not checked on base; nest/pole-dare one-frame pops; dark ring puff at the pole; fish tiny at the camp frame.
 - 2026-11-16: p3 fixes merged 164f5fd (+#657 tuft base, #680 checked OK); #665 winter tracks merged b918c4e. Tester run on
   b918c4e: FAIL. [real] Skip-step over the opening caption; camera stuck close on returns after placed-life lean; ~1 s
   hitch on the first seed tap; heavy grime barely wipes. [polish] lines with 'children'/bench/broom/mud that aren't there,
