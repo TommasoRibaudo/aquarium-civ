@@ -390,6 +390,17 @@ namespace AquariumCiv.View.Tests
             Assert.Greater(PuffContrast.PopRadius01(PuffContrast.PopSeconds * 0.9f), PuffContrast.PopRadius01(0f));
             Assert.AreEqual(0f, PuffContrast.PopRadius01(PuffContrast.PopSeconds));
             Assert.LessOrEqual(PuffContrast.PopSeconds, 0.2f);
+            // batch 3 leftovers: the band under the flash is never a dark ring (it drew black in the grass at the camp frame)
+            foreach (PuffGround g in System.Enum.GetValues(typeof(PuffGround)))
+            {
+                var c = PuffContrast.PopBand(g);
+                Assert.Greater(0.299f * c.r + 0.587f * c.g + 0.114f * c.b, 0.33f, $"the pop's band on {g} is a mid tone, not near black");
+            }
+            Assert.LessOrEqual(PuffContrast.PopBandLine, 1.2f, "and only just wider than the flash");
+            // and the pale dust on soil keeps a mid-brown edge, not a near-black ring (the pole-dare shot's hoe dust)
+            Assert.IsTrue(PuffContrast.Pick(PuffColour.DrySoil, PuffGround.Soil, out var dustFill, out var dustRim));
+            Assert.Greater(Lum(dustRim), 0.3f, "the dust's edge on soil is not near black");
+            Assert.Greater(Lum(dustFill) - Lum(dustRim), 0.3f, "and still edges the cream fill");
         }
     }
 }

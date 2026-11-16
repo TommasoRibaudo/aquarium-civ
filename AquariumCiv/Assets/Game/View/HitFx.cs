@@ -102,6 +102,19 @@ namespace AquariumCiv.View
         public int HitsSeen { get; private set; }
         public PuffKind LastKind { get; private set; }
         public int LastHitPuffs { get; private set; }
+        /// <summary>The live puffs now: kind, where (world), age in seconds and scale (probes, the cheat pass).</summary>
+        public string DebugLive()
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int s = 0; s < pool.SlotCount; s++)
+            {
+                var p = pool[s];
+                if (!p.live) continue;
+                if (sb.Length > 0) sb.Append("; ");
+                sb.Append($"{p.kind} at {p.origin.x:0.00},{p.origin.y:0.00},{p.origin.z:0.00} age {Now - p.start:0.00}s x{p.scale:0.00} on {p.ground}");
+            }
+            return sb.Length == 0 ? "no puffs" : sb.ToString();
+        }
         /// <summary>The renderer, for the draw-call count (tests): one.</summary>
         public MeshRenderer Renderer { get; private set; }
         /// <summary>The last frame's vertex count (tests).</summary>
@@ -552,7 +565,7 @@ namespace AquariumCiv.View
             Upload();
         }
 
-        /// <summary>Visit loop: a brief white flash ring under every puff (about 3 frames) so the eye catches the moment, over a dark band.</summary>
+        /// <summary>Visit loop: a brief white flash ring under every puff (about 3 frames) so the eye catches the moment, over a soft band (PuffContrast.PopBand).</summary>
         void DrawPop(Camera cam, Puff p, float since)
         {
             var pos = p.origin;
@@ -563,7 +576,7 @@ namespace AquariumCiv.View
             if (r <= 0f) return;
             float line = r * 0.45f;
             var back = cam.transform.forward * Mathf.Max(0.002f, perPx * 0.5f);
-            AddPopRing(cam, r * 1.12f, line * 1.5f, pos + back * 1.5f, MeshBuilder.Linear(new Color(0.15f, 0.15f, 0.2f)));
+            AddPopRing(cam, r * 1.06f, line * PuffContrast.PopBandLine, pos + back * 1.5f, MeshBuilder.Linear(PuffContrast.PopBand(p.ground)));
             AddPopRing(cam, r, line, pos - back * 0.5f, MeshBuilder.Linear(Color.white));
         }
 

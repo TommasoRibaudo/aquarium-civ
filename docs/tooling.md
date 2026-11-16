@@ -954,3 +954,17 @@ Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or
 - **Find who leaned the camera:** a temporary `Debug.Log(System.Environment.StackTrace)` in `BoxCamera.LeanIn` named the callers
   (NewStartView's first logs and arrival, LifeArrivalView); the camera's state per 2 s (`Leaning`, `GlideArmed`, `Gliding`, `IsFlying`,
   `CampFrameView.Status()`) showed the glide being cancelled by `LifePlaceView.FrameGround`'s `FlyTo`.
+
+### 2026-11-16 · Batch 3 leftovers: a probe's shot frame reads as a doll pop, and a random world under a pixel test
+- **A "doll pop" right after a shot is the shot's own frame.** `Batch3CheatPassShots` measured each doll's step per frame against
+  0.12 u. The frame after `Shot()` takes 120-220 ms (the capture), so a walk (0.8-0.95 u/s) or a kid's run steps 0.10-0.17 u in it with no
+  snap. Every step over 0.1 u in two full passes sat on that frame (t = shot + 0.12 s). The probe now logs each step over 0.1 u
+  (`[b3pop]`: who, ms, u/s, activity) and counts a pop only past 1.1 u/s (the fastest a doll is drawn), and only between two frames the
+  doll was out in both (back from a tent or into view is logged as "back in view"). `PeopleView.StepWatch` (a static hook, null in play)
+  reports a drawn step over `StepWatchOver` with PeopleView's own dt and why (jump, snapAll, inTent, play, pair, camp).
+- **Find a dark blob in a shot:** `HitFx.Instance.DebugLive()` lists the live puffs (kind, where, age, scale, ground) at the shot
+  (`[b3fx]`). The pole-dare's "dark ring in the grass" was a hoe's Dust (a grown-up at the garden), 0.06-0.09 s old: four young blobs
+  with a near-black outline (`SoilRim`) over the pop flash's near-black band, not a Ring puff.
+- **A pixel test on a new world needs a pinned seed.** CarePlayTests' glass test made a new world with a random seed, and the grime
+  pattern follows the seed (`GlassMask` weights): the one spot it measured read 74, 40 and 33 on the same code. Pin
+  `GameClock.DebugNextSeed` before the scene loads (reset it in `finally`) and measure where the pattern is dirtiest, not at one fixed point.

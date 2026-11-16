@@ -53,6 +53,10 @@ namespace AquariumCiv.View
         public static System.Action<string> SleeperShown;
         /// <summary>#698 diagnosis: called when a non-baby doll is hidden by <c>Drive</c> itself (an activity of None, or a plan place with no position).</summary>
         public static System.Action<string> HideReason;
+        /// <summary>Batch 3 leftovers (the cheat pass's doll-jump watch): told of every doll whose drawn point moves more than
+        /// <see cref="StepWatchOver"/> in one frame, with why (probes only; null in play).</summary>
+        public static System.Action<string> StepWatch;
+        public static float StepWatchOver = 0.1f;
         /// <summary>The hour the box shows, also before the first tick (<see cref="Now"/> is midnight then).</summary>
         public float ViewHour => clockStarted ? now.hour : startHour;
         public LifePlanner Planner => planner;
@@ -718,7 +722,10 @@ namespace AquariumCiv.View
             d.wasHidden = hidden;
             float inst = dt > 0f && d.placed ? (d.pos - prev).magnitude / dt : 0f;
             var drawnWas = d.drawn;
+            bool wasPlaced = d.placed;
             StepDrawn(d, a, jump, hidden, prev, inst, dt);
+            if (StepWatch != null && wasPlaced && !hidden && (d.drawn - drawnWas).magnitude > StepWatchOver)
+                StepWatch($"{a.who} drawn {(d.drawn - drawnWas).magnitude:0.000} u in {dt * 1000f:0} ms: jump {jump} (wasHidden {d.wasHidden}, snapAll {snapAll}, inTent {inTent}) pos step {(d.pos - prev).magnitude:0.000} target gap {(target - d.pos).magnitude:0.000} playing {playing} paired {paired} camp {camping}/{campMoves} toddling {toddling} kind {a.kind} at {a.place.kind} moving {a.moving}");
             if (!jump) inst = (d.drawn - drawnWas).magnitude / dt; // the legs follow the doll drawn: one still easing back to its plan walks there
             d.speed = Mathf.Lerp(d.speed, inst, dt > 0f ? 1f - Mathf.Exp(-dt * 10f) : 1f);
             d.placed = true;

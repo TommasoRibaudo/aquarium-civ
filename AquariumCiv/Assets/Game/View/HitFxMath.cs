@@ -37,7 +37,10 @@ namespace AquariumCiv.View
         }
 
         static readonly Color SparkRim = new(0.35f, 0.08f, 0.03f), WoodRim = new(0.25f, 0.14f, 0.06f),
-            WaterRim = new(0.05f, 0.22f, 0.45f), GrassRim = new(0.12f, 0.28f, 0.05f), LeafRim = new(0.35f, 0.2f, 0.03f), SoilRim = new(0.2f, 0.12f, 0.06f), SandRim = new(0.95f, 0.85f, 0.65f),
+            WaterRim = new(0.05f, 0.22f, 0.45f), GrassRim = new(0.12f, 0.28f, 0.05f), LeafRim = new(0.35f, 0.2f, 0.03f), SoilRim = new(0.2f, 0.12f, 0.06f),
+            // batch 3 leftovers [est]: the pale dust on soil (a hoe's stroke in the grass at the camp frame) drew its 1.4x outline near black, so
+            // its 3-4 young blobs read as a dark ring for half a second; a mid brown still edges the cream fill without the black
+            DustRimSoil = new(0.46f, 0.34f, 0.22f), SandRim = new(0.95f, 0.85f, 0.65f),
             SparkRimSand = new(0.22f, 0.04f, 0.02f), WaterRimSand = new(0.02f, 0.12f, 0.34f), RingRim = new(0.5f, 0.68f, 0.85f); // t2-polish: deeper outlines on sand
 
         /// <summary>The fill and rim (sRGB) for a kind of bit on a ground. False = keep the palette's own colour (it already reads).</summary>
@@ -52,7 +55,7 @@ namespace AquariumCiv.View
                     fill = g == PuffGround.Sand ? new Color(0.4f, 0.25f, 0.12f) : new Color(0.85f, 0.62f, 0.35f); rim = g == PuffGround.Sand ? SandRim : WoodRim; return true; // batch 5: a dark chip on sand gets a pale rim (dark on dark was 0.12 apart)
                 case PuffColour.DrySoil: case PuffColour.WetSoil: case PuffColour.Mud:
                     if (g == PuffGround.Grass) return false;
-                    fill = g == PuffGround.Sand ? new Color(0.5f, 0.36f, 0.22f) : new Color(0.92f, 0.85f, 0.7f); rim = SoilRim; return true;
+                    fill = g == PuffGround.Sand ? new Color(0.5f, 0.36f, 0.22f) : new Color(0.92f, 0.85f, 0.7f); rim = g == PuffGround.Sand ? SoilRim : DustRimSoil; return true;
                 case PuffColour.Ember: fill = new Color(1f, 0.6f, 0.15f); rim = g == PuffGround.Sand ? SparkRimSand : SparkRim; return true; // batch 5: 0.18 off grass (was 0.148)
                 case PuffColour.SparkYellow: fill = new Color(1f, 0.88f, 0.2f); rim = g == PuffGround.Sand ? SparkRimSand : SparkRim; return true;
                 case PuffColour.Gold: fill = new Color(1f, 0.8f, 0.1f); rim = SparkRim; return true;
@@ -91,6 +94,13 @@ namespace AquariumCiv.View
         public const float PopSeconds = 0.12f;
         /// <summary>The pop ring's radius as a share of its full size at <paramref name="since"/> seconds (grows fast, 0 once over).</summary>
         public static float PopRadius01(float since) => since < 0f || since >= PopSeconds ? 0f : Mathf.Lerp(0.55f, 1f, since / PopSeconds);
+
+        /// <summary>Batch 3 leftovers (the tester's dark ring in the grass, the pole-dare shot): the band under the white pop flash was near
+        /// black (0.15, 0.15, 0.2) and 1.5x the flash's line, so a hoe's dust at the camp frame drew a thick black ring for three frames.
+        /// Now a soft mid tone, a little deeper on sand (where the white needs it), and only just wider than the flash [est].</summary>
+        public static Color PopBand(PuffGround g) => g == PuffGround.Sand ? new Color(0.42f, 0.36f, 0.28f) : new Color(0.56f, 0.53f, 0.47f);
+        /// <summary>The band's line as a share of the white flash's (was 1.5).</summary>
+        public const float PopBandLine = 1.15f;
     }
 
     /// <summary>What a spawn may change (all optional; default = the table's numbers).</summary>
