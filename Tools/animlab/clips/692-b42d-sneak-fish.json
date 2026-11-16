@@ -1,0 +1,24 @@
+{
+ "name": "692-b42d-sneak-fish",
+ "notes": "B42.d: a kid on tiptoe pulls a fish off the rack and runs; the keeper chases a few steps, gives up hands on hips and laughs; behind a tent the kid shares the fish with another kid.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.FishRackView.DebugRack() + \"; \" + AquariumCiv.View.EcoDebug.ShowRack(3);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.SneakFish());"
+  ],
+  "warm": 0.5,
+  "seconds": 12,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.8,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

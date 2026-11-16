@@ -968,3 +968,18 @@ Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or
 - **A pixel test on a new world needs a pinned seed.** CarePlayTests' glass test made a new world with a random seed, and the grime
   pattern follows the seed (`GlassMask` weights): the one spot it measured read 74, 40 and 33 on the same code. Pin
   `GameClock.DebugNextSeed` before the scene loads (reset it in `finally`) and measure where the pattern is dirtiest, not at one fixed point.
+
+### 2026-11-16 · #692 parts 4-5 clips: four live-clip traps
+- **A cheat's herd or pond far off the camp's frame.** `EcoDebug.Table(0.3f)` (`CampCheats.PondReady`) floods ~420 cells, and its
+  edge cells near the camp may all sit in front of the glass margin: searches that demand `ClearOfGlass` (2.4 u from the front pane)
+  found "no pond". Rank such spots instead (clear of the glass first, else the nearest inside the box: `CampLife.PondEdge`, `BankNear`).
+  The deer cheats hold the herd grazing behind the camp as the camera sees it (`DeerView.DebugGrazeAt`, calm: no alert from people)
+  so watchers stand side by side across the screen; beside the camp they stacked along the view, one hiding the others.
+- **Anything drawn on a pond uses its own surface** (`box.layout.eco.waterY`), never `Land.WaterY`: after a raised table the rings,
+  the leaf boat and the skipping stone drew under the water.
+- **Width floors in pixels must be computed for the camera that renders.** The swing's ropes took a 2 px floor from `Camera.main`
+  (the far game camera): in AnimLab's close camera they became a pale wall. Cap such floors in box units too.
+- **A fresh StageCamp raises its tent during the first ~15 s**: tent clips (peek, toy, door, lanterns, moths) add eight no-op setup
+  steps (`return "waiting for the tent to stand";`) so the tent stands at frame 0. Tree clips under a grown crown use `"pitch": 16`
+  (the 38° close camera sat inside the crown). Watch for the fish rack popping out of view in rack clips (FishRackView, not fixed).
+- `Tools/animlab.sh live` took ~45-70 s a clip here; 3 clips then `restart-editor.sh` (~40 s) kept the Editor healthy for 60 clips.

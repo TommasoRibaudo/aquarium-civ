@@ -1,0 +1,25 @@
+{
+ "name": "692-b53d-swing",
+ "notes": "B53.d (swinging): a kid sits on the rope swing and swings back and forth, a second kid pushes from behind, they swap; the rider jumps off at the top; the empty swing rocks to a stop.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(14.0f, 2);",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.Swing());"
+  ],
+  "warm": 0.5,
+  "seconds": 22,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 16
+ }
+}

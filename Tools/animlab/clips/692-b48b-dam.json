@@ -1,0 +1,23 @@
+{
+ "name": "692-b48b-dam",
+ "notes": "B48.b: two kids carry stones and set five across the stream bed and pat mud on; a little pool shows behind it; one pushes a stone out: a gush and a cheer.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.BuildDam());"
+  ],
+  "warm": 0.5,
+  "seconds": 24,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.5,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

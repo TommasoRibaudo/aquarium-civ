@@ -73,3 +73,11 @@ https://freesound.org/people/Nivatius/sounds/519592/ (a National Park Service re
 `AquariumCiv/Assets/Audio/Resources/Sfx/Eco/wolf_howl.ogg` (4.2 s). The cue `wolf_howl` points at it; `CareSound.MakeHowl` stays in
 code but is no longer played. It is a chorus rather than a single wolf; a single clean howl could replace it later. The shared quadruped
 (P0: `View/QuadDoll.cs`) is built in code: no model pack.
+
+#692 part 5 (2026-11-16, work in progress): **no new asset pack.** Every new camp prop is built in code from primitives
+(`MeshBuilder` boxes, prisms and icospheres in `View/CampLife.Camp.cs` `CampMesh`): a short pole with a small lantern at each tent's door
+(the lantern glows when lit), a small wooden toy and a string of beads that hang on the pole, brown meat strips on the fish rack, a
+folded leaf boat, a crown (a green ring with three flower dots), a purple mouth, a small bowl of berries for the remembering stone, the
+dam's little pool and its stones, the rope swing (two ropes, drawn at least 2 px wide, and a plank), the coiled rope, moth specks, a
+flat skipping stone, an armful of reeds and a single reed, a weed with its root. The swing's creak reuses the Kenney CC0
+`impactWood_light_000` already logged (the `knock_back` cue), pitched down.

@@ -1,0 +1,23 @@
+{
+ "name": "692-b50a-path-race",
+ "notes": "B50.a: kids race along a worn path; the winner jumps with the arms up (or they hop along it).",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 3);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.PathRace());"
+  ],
+  "warm": 0.5,
+  "seconds": 8,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.8,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

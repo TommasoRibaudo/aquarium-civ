@@ -1,0 +1,23 @@
+{
+ "name": "692-b49b-hill-roll",
+ "notes": "B49.b: kids lie down at the top of the hill and roll down it, stand up dizzy, sit down hard and laugh, then run back up.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 3);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.HillRoll());"
+  ],
+  "warm": 0.5,
+  "seconds": 14,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.8,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

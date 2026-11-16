@@ -1,0 +1,33 @@
+{
+ "name": "692-b52b-moths",
+ "notes": "B52.b: pale moths circle a lit lantern at a tent; a kid jumps at them and claps; they scatter and come back.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(19.4f, 2);",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return AquariumCiv.View.CampCheats.LightLanterns();",
+   "return AquariumCiv.View.DayLightDriver.DebugPauseClock(true);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.ChaseMoths());"
+  ],
+  "warm": 0.5,
+  "seconds": 9,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.35,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

@@ -1,0 +1,25 @@
+{
+ "name": "692-b44c-trunk-lean",
+ "notes": "B44.c: two grown-ups chat by a wild tree, one leaning a shoulder on the trunk.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TrunkLean());"
+  ],
+  "warm": 0.5,
+  "seconds": 10,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 16
+ }
+}
