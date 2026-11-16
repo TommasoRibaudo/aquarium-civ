@@ -1000,3 +1000,12 @@ Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or
 - **FishRackView pop:** "Fish on the rack" sends someone to take the fish down, and the rack hid ("not wanted") between the last fish off and
   the pile; it now stays once it has stood (`ThingSince("rack")`). `FishRackView.HideWhy` says why it is hidden. For clips that need the fish to
   stay use `CampCheats.FishStay()`.
+
+### 2026-11-16 · #693 choice props: worktree runs of run-tests.sh, and every thing in one camp box
+- **`Tools/run-tests.sh` waits on `F:\GameDev`'s Editor by default** (`PROJ` defaults to `F:/GameDev/AquariumCiv`): from a worktree Editor it
+  sat in its 300 s ready wait with no output. Pass `PROJ=F:/GameDev-wt/<dir>/AquariumCiv EDITOR_LOG=<its log>` (as for `restart-editor.sh`).
+  [verified]
+- **Every choice's thing in a camp box for a clip:** `CampCheats.EveryThing()` (= `ConsequenceCheats.PlaceEvery`) stands one thing per
+  option, village ones too (they fall back to the fire's ring or the edge), so the village props' uses can be shot without a village. Some
+  kinds stand twice (two stew pots, baskets, staffs, pegs); the #693 cheats take the first drawn. The axe stump stands at the edge (2+ u
+  out): its clips need a `lead`. [verified]

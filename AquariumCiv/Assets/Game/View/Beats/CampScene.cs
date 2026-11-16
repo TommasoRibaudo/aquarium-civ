@@ -153,6 +153,57 @@ namespace AquariumCiv.View
         HangSwing,
         /// <summary>B53.d: kids on the rope swing.</summary>
         Swing,
+        // #693: the choice props, a work use and a life use each (View/Beats/CampScenes6.cs, View/CampLife.Props.cs). Keep these last.
+        /// <summary>B54.a: a gatherer takes a basket off the stack and brings it back full.</summary>
+        BasketTake,
+        /// <summary>B54.b: two kids stack the baskets into a tower and it topples.</summary>
+        BasketTower,
+        /// <summary>B54.c: a log stacked under the woodpile's roof (or one fetched for the fire on a wet day).</summary>
+        WoodStack,
+        /// <summary>B54.d: people squeeze under the woodpile's roof when it rains (kids sit on the logs on a dry day).</summary>
+        WoodShelter,
+        /// <summary>B54.e: a new name is cut in the name stone.</summary>
+        NameCut,
+        /// <summary>B54.f: kids trace the names and polish the stone with their sleeves.</summary>
+        NameTrace,
+        /// <summary>B54.g: a kid jumps and flicks a charm so it spins.</summary>
+        CharmFlick,
+        /// <summary>B54.h: the together supper ladled at the big stew pot.</summary>
+        BigPot,
+        /// <summary>B54.i: kids drum on the big pot with sticks.</summary>
+        PotDrum,
+        /// <summary>B54.j: wood split on the axe stump.</summary>
+        StumpSplit,
+        /// <summary>B54.k: kids sit on the stump beside the axe.</summary>
+        StumpSit,
+        /// <summary>B54.l: the headman takes up the staff for the walk round and puts it back.</summary>
+        StaffWalk,
+        /// <summary>B54.m: kids play headman with the staff.</summary>
+        StaffPlay,
+        /// <summary>B54.n: flour sacks carried from the mill to a door.</summary>
+        FlourCarry,
+        /// <summary>B54.o: the flour fight.</summary>
+        FlourFight,
+        /// <summary>B54.p: a roofer straightens the carved bird after a storm.</summary>
+        BirdStraighten,
+        /// <summary>B54.q: kids fly round under the carved bird.</summary>
+        BirdFly,
+        /// <summary>B54.r: the shared meal at the long table.</summary>
+        TableMeal,
+        /// <summary>B54.s: kids crawl under the long table; an old one naps on the bench.</summary>
+        TableUnder,
+        /// <summary>B54.t: the offering basket filled with the best food.</summary>
+        OfferingFill,
+        /// <summary>B54.u: kids wait by the offering, watching the glass.</summary>
+        OfferingWait,
+        /// <summary>B54.x: the fish from the crate carried to the rack.</summary>
+        CrateFish,
+        /// <summary>B54.y: kids on the crate wave across the pond.</summary>
+        CrateWave,
+        /// <summary>B54.z: the name tag tied on the peg with a fresh cord.</summary>
+        PegRetie,
+        /// <summary>B54.zz: the named child taps their peg in passing.</summary>
+        PegTap,
     }
 
     /// <summary>A pose laid over the doll's pose for one part: <paramref name="into"/> seconds into the part, <paramref name="len"/> its length.</summary>
@@ -211,7 +262,26 @@ namespace AquariumCiv.View
         /// <summary>B53.d: the bough's soft creak at an end of the swing's arc.</summary>
         Creak,
         /// <summary>B43: a bush at <see cref="CampFx.at"/> sways (HitFx's bush shake).</summary>
-        BushSway }
+        BushSway,
+        /// <summary>#693: something happens to the scene's choice prop (what: <see cref="CampFx.count"/>, a <see cref="PropFx"/>; a value in
+        /// <see cref="CampFx.scale"/>). CampLife.Props handles it.</summary>
+        Prop }
+
+    /// <summary>#693: what a <see cref="CampFxKind.Prop"/> does to the scene's prop (or draws beside it).</summary>
+    public enum PropFx { None,
+        /// <summary>The prop jolts (a small wobble and squash).</summary>
+        Jolt,
+        /// <summary>Its look changes to variant <see cref="CampFx.scale"/> (baskets taken, the axe out, the staff up, a new name row, fish
+        /// taken, the cloth lifted...: ConsequenceMeshes.Build's variant).</summary>
+        Look,
+        /// <summary>It tips back upright (the roof bird, 20 → 0 deg over 0.3 s).</summary>
+        Upright,
+        /// <summary>White flour on member <see cref="CampFx.member"/> until the evening wash.</summary>
+        Flour,
+        /// <summary>The name stone's new row is cut (the shown rows go up by one).</summary>
+        NameRow,
+        /// <summary>The offering basket is full today (B54.u waits by it).</summary>
+        Offered }
 
     /// <summary>#692 part 3: what a <see cref="CampFxKind.Mark"/> leaves on the land (CampLife.Land draws them).</summary>
     public enum CampMark { None, WetPatch, RingStone, Twig, Pebble, Topple, Horse, GrassBits, EarFlower, Flatten,

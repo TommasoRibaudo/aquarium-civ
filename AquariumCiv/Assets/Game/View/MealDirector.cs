@@ -29,9 +29,12 @@ namespace AquariumCiv.View
         public bool HasFire { get; private set; }
         public Vector2 Fire { get; private set; }
         /// <summary>The pot's middle now: on its cooking stones beside the fire, or where #692 (B30) has it (cold and set out, carried).</summary>
-        public Vector2 Pot => PotAt ?? Fire + PotOffset;
+        public Vector2 Pot => PotAt ?? PotHotSpot;
         /// <summary>#692 (B30): the pot's cooking spot (on the fire's stones) and its cold spot (on three stones 0.15 u further out).</summary>
-        public Vector2 PotHotSpot => Fire + PotOffset;
+        public Vector2 PotHotSpot => BigPotAt ?? Fire + PotOffset;
+        /// <summary>#693 (B54.h): on a "one big pot" night the supper is cooked and ladled at the big stew pot the travellers' choice left
+        /// (CampLife sets it): the camp's own pot is not drawn, and every B30 beat plays at this spot.</summary>
+        public Vector2? BigPotAt;
         public Vector2 PotColdSpot => CampScenes1.ColdPot(Fire, PotOffset);
 
         // ---- #692 (B30): the pot's day, set each frame by CampLife before DrawPot
@@ -217,7 +220,7 @@ namespace AquariumCiv.View
         /// simmers: a slow wisp of steam (more in <paramref name="winter"/>) and a few bubbles that swell and pop on the stew.</summary>
         public void DrawPot(Transform parent, Material material, bool show, Func<float, float, float> heightAt, bool winter = false, StewKind stew = StewKind.Berries)
         {
-            show &= HasFire;
+            show &= HasFire && BigPotAt == null; // #693 (B54.h): the big pot is the pot tonight
             if (!show) { if (potGo != null) potGo.SetActive(false); return; }
             if (potGo == null)
             {
