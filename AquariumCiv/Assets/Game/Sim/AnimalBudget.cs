@@ -9,6 +9,8 @@ namespace AquariumCiv.Sim
     /// area and is rounded, so today's 6 x 4.4 land draws 24 and the deeper box (6 x 6) draws 33.
     /// A NEW KIND OF ANIMAL MUST TAKE ITS SHARE FROM THE OTHERS: add a row, lower the others so <see cref="BaseTotal"/> stays about 33,
     /// and keep the total test (AnimalBudgetTests) green. Never add a kind on top.
+    /// Outside the table, by the user's call: the nest's parent bird (#709 Q4, <see cref="NestBirdSlots"/>) and the one goat in the pond
+    /// family's pen (2026-11-16 Q7, <see cref="SimCore.PenGoat"/>: it lives only in the pen, is never hunted and is in no herd).
     /// </summary>
     public static class AnimalBudget
     {

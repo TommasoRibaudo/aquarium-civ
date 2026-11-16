@@ -24,8 +24,8 @@ namespace AquariumCiv.Sim
         /// <summary>Words the people never say: they state the game.</summary>
         public static readonly string[] NeverSaid = { "aquarium", "box", "player", "phone", "game", "terrarium", "screen" };
 
-        /// <summary>Things the box never has.</summary>
-        public static readonly string[] NotInTheBox = { "goat", "goats", "sheep", "hen", "hens", "fox", "kitten", "cat", "hills", "chimney", "hat day", "sack race", "pies", "library" };
+        /// <summary>Things the box never has. ("goat" left this list on 2026-11-16: it is gated on the pond family's pen, see <see cref="Gates"/>.)</summary>
+        public static readonly string[] NotInTheBox = { "sheep", "hen", "hens", "fox", "kitten", "cat", "hills", "chimney", "hat day", "sack race", "pies", "library" };
 
         /// <summary>A people's ask (a choice's question) has this many words at most.</summary>
         public const int AskMaxWords = 15;
@@ -72,6 +72,7 @@ namespace AquariumCiv.Sim
             ("the Keeper's tree", new[] { "the keeper's tree" }, s => s.KeeperTreeGrown),
             ("the pond", new[] { "pond" }, s => s.OpenWater),
             ("the stream", new[] { "stream" }, s => s.OpenWater), // #652: no "stream" while the land shows no water (its dry ground is "the hollow")
+            ("the goat pen", new[] { "goat", "goats", "goat's" }, s => s.HasGoatPen), // 2026-11-16 "Bring a pen back": the pond family's one goat, only with its pen (the pasture's herd is deer)
             ("the market", new[] { "the market" }, s => s.Count(BuildingType.Market) > 0),
             ("two or more kids", new[] { "children", "kids" }, s => s.KidCount >= 2), // a line about "the children" needs at least two; one kid is "the baby" or "the little one"
             ("water for mud", new[] { "mud", "muddy" }, s => s.OpenWater), // no water, no mud: the dry land is "the dry hollow"

@@ -64,11 +64,15 @@ namespace AquariumCiv.Tests
                     if (d.kind == DilemmaKind.Tradition) Assert.IsFalse(string.IsNullOrEmpty(o.custom), $"{at}: a tradition is a custom");
                     if (d.kind == DilemmaKind.Strangers) Assert.IsTrue(d.options.Any(x => x.strangers > 0), $"{d.id}: someone can arrive");
                     Assert.IsNotNull(o.callbacks, at);
-                    Assert.That(o.callbacks.Length, Is.InRange(1, 2), $"{at}: 1-2 callbacks");
+                    // 2026-11-16: an option that leaves a second thing (the pond family's goat pen) has one more callback, about that thing
+                    int extra = string.IsNullOrEmpty(o.prop2) ? 0 : 1;
+                    Assert.That(o.callbacks.Length, Is.InRange(1, 2 + extra), $"{at}: 1-2 callbacks (one more for a second thing)");
+                    Assert.AreEqual(extra, o.callbacks.Count(c => !string.IsNullOrEmpty(c.needsProp)), $"{at}: the second thing's callback needs it");
                     foreach (var c in o.callbacks)
                     {
                         Assert.IsTrue(ids.Add(c.id), $"{at}: callback id {c.id} is unique");
-                        Assert.That(c.minYears, Is.InRange(4, 15), $"{at}/{c.id}");
+                        Assert.That(c.minYears, Is.InRange(string.IsNullOrEmpty(c.needsProp) ? 4 : 2, 15), $"{at}/{c.id}: a thing's own callback may come from year 2");
+                        if (!string.IsNullOrEmpty(c.needsProp)) Assert.AreEqual(o.prop2, c.needsProp, $"{at}/{c.id}");
                         Assert.That(c.maxYears, Is.InRange(c.minYears, 15), $"{at}/{c.id}");
                         Assert.IsFalse(string.IsNullOrEmpty(c.text), $"{at}/{c.id}");
                     }

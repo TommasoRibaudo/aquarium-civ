@@ -10,8 +10,8 @@ namespace AquariumCiv.Tests
     /// <summary>
     /// Research 21's weeding (#714 to #721; docs/design/writing-events.md). #714: no choice changes the economy (the leans are gone);
     /// the asks name who they are about (the travellers, the young people, the one who saw the wolves); the travellers' camp of their
-    /// own is for good; one white-stag rule; the headman's well callbacks need a well; the pond family brings a boat, not a goat (old
-    /// saves migrate). Pure C#, so it also runs in Tools/SimTests.
+    /// own is for good; one white-stag rule; the headman's well callbacks need a well; the pond family brings a boat (old saves
+    /// migrate), and since 2026-11-16 a goat pen with one goat beside it. Pure C#, so it also runs in Tools/SimTests.
     /// </summary>
     public class WritingWeedingTests
     {
@@ -66,10 +66,42 @@ namespace AquariumCiv.Tests
             var old = JsonUtility.FromJson<SimState>(json);
             old.consequenceProps.Add(new ConsequenceProp { id = 1, dilemmaId = 1, option = 0, kind = ConsequenceKind.LegacyGoatFence, placed = true });
             var back = new SimCore(new SimConfig { dilemmas = true }, old);
-            Assert.AreEqual(ConsequenceKind.ShoreBoat, back.ConsequenceProps.Single().kind, "the goat pen is their boat now");
+            // 2026-11-16 "Bring a pen back": the old pen is their boat, and a goat pen comes back beside it
+            Assert.AreEqual(2, back.ConsequenceProps.Count, "the boat and the pen");
+            var boat = back.ConsequenceProps[0];
+            Assert.AreEqual(ConsequenceKind.ShoreBoat, boat.kind, "the old goat pen is their boat");
+            Assert.IsTrue(boat.placed, "the boat keeps the old pen's spot");
+            var pen = back.GoatPenProp;
+            Assert.IsNotNull(pen);
+            Assert.AreEqual(2, pen.id);
+            Assert.AreEqual(1, pen.dilemmaId); Assert.AreEqual(0, pen.option);
+            Assert.AreEqual(PropAnchor.Fire, pen.anchor);
+            Assert.IsTrue(back.HasGoatPen, "the box has its pen as it loads: the goat may be named");
             Assert.AreEqual("their boat, upside down by the fire", KeeperChoices.PropName(ConsequenceKind.ShoreBoat));
             for (int m = 0; m < 12; m++) back.Step();
+            Assert.IsTrue(pen.placed, "the pen is placed within the year");
+            Assert.AreEqual(1, back.PenGoats);
             CollectionAssert.DoesNotContain(ConsequenceKind.All, ConsequenceKind.LegacyGoatFence);
+            // loading again adds no second pen
+            var again = new SimCore(new SimConfig { dilemmas = true }, JsonUtility.FromJson<SimState>(JsonUtility.ToJson(back.State)));
+            Assert.AreEqual(1, again.ConsequenceProps.Count(p => p.kind == ConsequenceKind.GoatPen));
+        }
+
+        /// <summary>2026-11-16: a box that took "a home here" after #714 (a boat and no pen) gets its pen on load; the other answer does not.</summary>
+        [Test]
+        public void ABoatOnlySaveGetsItsGoatPenOnLoad()
+        {
+            var def = DilemmaDefs.All.Single(d => d.id == "village_hill_family");
+            int home = System.Array.FindIndex(def.options, o => o.label == "a home here");
+            for (int option = 0; option < 2; option++)
+            {
+                var sim = Raised(def);
+                Assert.IsNotNull(sim);
+                Assert.IsTrue(sim.AnswerDilemma(sim.OpenDilemma.id, option, DilemmaPath.Card));
+                sim.State.consequenceProps.RemoveAll(p => p.kind == ConsequenceKind.GoatPen); // as a save from between #714 and now
+                var back = new SimCore(new SimConfig { dilemmas = true }, JsonUtility.FromJson<SimState>(JsonUtility.ToJson(sim.State)));
+                Assert.AreEqual(option == home, back.HasGoatPen, option == home ? "the boat's family brings its pen back" : "the far-shore family has no pen");
+            }
         }
 
         [Test]
@@ -83,7 +115,7 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void TheRenamedCallbackIdsAndNoGoat()
+        public void TheRenamedCallbackIdsAndTheGoatOnlyWithItsPen()
         {
             var ids = DilemmaDefs.All.SelectMany(d => d.options).SelectMany(o => o.callbacks).Select(c => c.id).ToList();
             CollectionAssert.Contains(ids, "hill_neighbours_fish"); CollectionAssert.Contains(ids, "spring_timber_sunset");
@@ -91,8 +123,18 @@ namespace AquariumCiv.Tests
             CollectionAssert.DoesNotContain(ids, "hill_neighbours_eggs"); CollectionAssert.DoesNotContain(ids, "spring_timber_squirrels");
             foreach (var d in DilemmaDefs.All)
                 foreach (var o in d.options)
+                {
+                    // 2026-11-16 "Bring a pen back": only the option that brings the pen names the goat, and the goat's callback needs the pen
+                    if (o.prop2 == ConsequenceKind.GoatPen)
+                    {
+                        StringAssert.Contains("goat", o.done);
+                        foreach (var c in o.callbacks.Where(c => (c.text + c.fallback).Contains("goat"))) Assert.AreEqual(ConsequenceKind.GoatPen, c.needsProp, c.id);
+                        StringAssert.DoesNotContain("goat", o.label + o.hint, d.id);
+                        continue;
+                    }
                     foreach (var t in new[] { o.label, o.hint, o.done }.Concat(o.callbacks.SelectMany(c => new[] { c.text, c.fallback })))
                         StringAssert.DoesNotContain("goat", t ?? "", d.id);
+                }
         }
 
         // ---------- #714: name who is asked about ----------
@@ -396,7 +438,7 @@ namespace AquariumCiv.Tests
         [Test]
         public void NoLineOnEitherLandSaysAGoatOrAPatchedPhrase()
         {
-            string[] bad = { "the warmest spot", "chose the camp", "goat", "hens", "kitten" };
+            string[] bad = { "the warmest spot", "chose the camp", "hens", "kitten" }; // "goat": gated on the pen since 2026-11-16 (below, and ContentRules.Gates)
             var defs = DilemmaDefs.All.Concat(SmallChoices.All).Concat(LifeChoices.All).ToList();
             foreach (bool living in new[] { false, true })
                 foreach (int seed in new[] { 1, 2 })
@@ -404,7 +446,7 @@ namespace AquariumCiv.Tests
                     var cfg = new SimConfig { dilemmas = true, ecology = living };
                     var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
                     var told = new List<string>();
-                    sim.Chronicled += e => told.Add(e.text);
+                    sim.Chronicled += e => { told.Add(e.text); if (!sim.HasGoatPen) StringAssert.DoesNotContain("goat", e.text.ToLowerInvariant(), "no pen, no goat"); };
                     for (int y = 0; y < 50; y++) { sim.Advance(1); if (sim.State.eraReady) sim.AdvanceEra(); if (y % 12 == 0) foreach (var d in defs) told.AddRange(DilemmaContentTests.AllText(d).Select(t => sim.LandWords(DilemmaContentTests.Fill(t)))); }
                     foreach (var t in told.Where(x => !string.IsNullOrEmpty(x)))
                         foreach (var w in bad) StringAssert.DoesNotContain(w, t.ToLowerInvariant(), $"{(living ? "living land" : "slice")} seed {seed}: \"{t}\"");

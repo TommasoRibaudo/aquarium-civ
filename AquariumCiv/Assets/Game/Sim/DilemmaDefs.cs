@@ -36,6 +36,8 @@ namespace AquariumCiv.Sim
         public DilemmaCallbackDef[] callbacks;  // storylets that fire 4-15 years after this option was taken (answered or lapsed); null = none
         public string prop = "";            // #371: the thing this option leaves in the box (ConsequenceKind), within a game year; "" = none
         public PropAnchor propAt;           // where it goes (the person's home, the option's building, the fire, the edge, the pond)
+        public string prop2 = "";           // 2026-11-16: a second thing the option leaves beside the first (the pond family's goat pen by their boat); "" = none
+        public PropAnchor prop2At;          // where the second thing goes
         public string propBuilding = "";    // PropAnchor.Building: the building type to stand by when the option has no building of its own (else buildingType)
         public string[] favouredBy;         // traits (NameData.Traits) that tilt a lapse toward this option, when the role-holder has one
         public string icon = "";            // t4-fixes: the option's own mark on its tag in the box (a GlassIcon name); "" = none (a person option shows a person)
@@ -57,6 +59,7 @@ namespace AquariumCiv.Sim
         public string needsBuilding;        // building types that must stand ("a|b" = either); null = none
         public string needsCustom;          // a custom (SimCore.HasCustom) that must be set; null = none
         public bool needsApart;             // the dilemma's apart group (#231) must have someone alive
+        public string needsProp;            // 2026-11-16: a thing the option left (ConsequenceKind) must stand in the box; null = none. The callback is about that thing
         public string text = "";
         public string fallback = "";        // told when a condition fails; empty = drop the callback quietly
         public float salience = 0.7f;
@@ -110,8 +113,8 @@ namespace AquariumCiv.Sim
     public static class DilemmaDefs
     {
         static DilemmaCallbackDef Cb(string id, string text, string fallback = "", bool aliveA = false, bool aliveB = false, string needsBuilding = null,
-            int minYears = 4, int maxYears = 15, bool needsApart = false) =>
-            new DilemmaCallbackDef { id = id, text = text, fallback = fallback, aliveA = aliveA, aliveB = aliveB, needsBuilding = needsBuilding, minYears = minYears, maxYears = maxYears, needsApart = needsApart };
+            int minYears = 4, int maxYears = 15, bool needsApart = false, string needsProp = null) =>
+            new DilemmaCallbackDef { id = id, text = text, fallback = fallback, aliveA = aliveA, aliveB = aliveB, needsBuilding = needsBuilding, minYears = minYears, maxYears = maxYears, needsApart = needsApart, needsProp = needsProp };
 
         // ---------- camp ----------
 
@@ -475,7 +478,8 @@ namespace AquariumCiv.Sim
         };
 
         /// <summary>Strangers: a family who wandered in from a far-away tank, camped across the pond. Three join, or they keep a hut on
-        /// the far shore (#231: an apart group) and trade their catch. No lean (#714); "a home here" brings their boat, not a goat.</summary>
+        /// the far shore (#231: an apart group) and trade their catch. No lean (#714); "a home here" brings their boat and, since 2026-11-16 ("Bring a pen
+        /// back"), a little goat pen with one goat beside it.</summary>
         static readonly DilemmaDef VillageHillFamily = new DilemmaDef
         {
             id = "village_hill_family", kind = DilemmaKind.Strangers, minEra = Era.Village, maxEra = Era.Village,
@@ -494,14 +498,16 @@ namespace AquariumCiv.Sim
                 new DilemmaOptionDef
                 {
                     icon = "hill", touch = "a home here", label = "a home here", hint = "New neighbours at the next hearth, and new names in {place}.",
-                    done = "The Keeper gave the pond family a home here. They pulled their boat up by the fire.",
+                    done = "The Keeper gave the pond family a home here. They pulled their boat up by the fire and penned their goat beside it.",
                     strangers = 3, custom = "pond:joined",
                     prop = ConsequenceKind.ShoreBoat, propAt = PropAnchor.Fire,
+                    prop2 = ConsequenceKind.GoatPen, prop2At = PropAnchor.Fire, // 2026-11-16 "Bring a pen back"
                     favouredBy = new[] { "the kind", "the gossip", "the singer", "the loud", "the joker" },
                     callbacks = new[]
                     {
                         Cb("hill_joined_songs", "the pond family still sing their shore songs at supper. Half of {place} knows the words now."),
                         Cb("hill_joined_boat", "the pond family's old boat lies upside down by the fire. The children use it as a house.", minYears: 5),
+                        Cb("hill_joined_goat", "the pond family's goat has chewed the pen's corner again.", minYears: 2, needsProp: ConsequenceKind.GoatPen), // 2026-11-16
                     },
                 },
                 new DilemmaOptionDef
