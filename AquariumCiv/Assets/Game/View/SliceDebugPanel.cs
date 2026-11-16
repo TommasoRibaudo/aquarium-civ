@@ -469,6 +469,7 @@ namespace AquariumCiv.View
             if (Btn("Kids under the long table")) last = CampCheats.TableUnder(); // #693 B54.s
             if (Btn("Fill the offering basket")) last = CampCheats.OfferingFill(); // #693 B54.t
             if (Btn("Kids wait by the offering")) last = CampCheats.OfferingWait(); // #693 B54.u
+            if (Btn("Kids wait, then the Keeper knocks")) last = CampCheats.OfferingWaitKnock(); // #693 B54.u (the knock)
             EndRow();
             Row(); // #693
             if (Btn("Fish crate to the rack")) last = CampCheats.CrateFish(); // #693 B54.x

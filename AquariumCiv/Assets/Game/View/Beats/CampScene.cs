@@ -281,7 +281,9 @@ namespace AquariumCiv.View
         /// <summary>The name stone's new row is cut (the shown rows go up by one).</summary>
         NameRow,
         /// <summary>The offering basket is full today (B54.u waits by it).</summary>
-        Offered }
+        Offered,
+        /// <summary>#693 retakes: the thing swings (the name peg tapped, 15 deg, dying away over 1.2 s).</summary>
+        Swing }
 
     /// <summary>#692 part 3: what a <see cref="CampFxKind.Mark"/> leaves on the land (CampLife.Land draws them).</summary>
     public enum CampMark { None, WetPatch, RingStone, Twig, Pebble, Topple, Horse, GrassBits, EarFlower, Flatten,

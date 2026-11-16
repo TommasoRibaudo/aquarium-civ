@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Linq;
 using AquariumCiv.GameUI;
+using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using NUnit.Framework;
 using UnityEngine;
@@ -83,7 +84,8 @@ namespace AquariumCiv.View.PlayTests
             yield return Play(pv, CampUse.TableMeal, CampCheats.TableMeal, null, null, "");
             yield return Play(pv, CampUse.TableUnder, CampCheats.TableUnder, null, null, "");
             yield return Play(pv, CampUse.OfferingFill, CampCheats.OfferingFill, () => look(offer) >= 2, () => camp.OfferedToday && look(offer) == 1, "the cloth lifted");
-            yield return Play(pv, CampUse.OfferingWait, CampCheats.OfferingWait, null, null, "");
+            int knocks = camp.KnockAnswers;
+            yield return Play(pv, CampUse.OfferingWait, CampCheats.OfferingWaitKnock, () => camp.KnockAnswers > knocks, null, "jump and point at the Keeper's knock");
             yield return Play(pv, CampUse.CrateFish, CampCheats.CrateFish, () => look(crate) == 3, null, "the crate emptied");
             yield return Play(pv, CampUse.CrateWave, CampCheats.CrateWave, null, null, "");
             yield return Play(pv, CampUse.PegRetie, CampCheats.PegRetie, null, null, "");
@@ -100,6 +102,64 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log("[693 uses] misses: " + string.Join(" | ", failed));
             CloseSlice();
             Assert.IsEmpty(failed, string.Join(" | ", failed));
+        }
+    }
+
+    /// <summary>#693 (D rules, as CampTreeWorkShare): 10 view days of a lived-in camp with every choice's thing standing, at x16, natural uses
+    /// on: under 5 % of each work's minutes go to a #693 use, and no meal or sleep is lost.</summary>
+    [Category("CampPropWork")]
+    public class CampPropWorkShare : PlayTestBase
+    {
+        static bool WorkKind(ActivityKind k) => k >= ActivityKind.Gather && k <= ActivityKind.Prepare
+            || k is ActivityKind.SweepStep or ActivityKind.HangWashing or ActivityKind.ChopKindling or ActivityKind.MindBabies or ActivityKind.Carry or ActivityKind.FetchWater
+                or ActivityKind.RollBarrel or ActivityKind.FeedFire or ActivityKind.ScrapeHide or ActivityKind.HangFish or ActivityKind.TakeDownFish or ActivityKind.MoveRack
+                or ActivityKind.TakeInWashing;
+
+        [UnityTest, Timeout(900000)]
+        public IEnumerator PropUsesTakeFreeTimeOnly_WorkWithin5PercentOver10ViewDays()
+        {
+            UseLivingLand(true);
+            GameUiPanel.AcceptInputUnfocused(true);
+            yield return OpenSlice(750, 1334, seed: 4242);
+            Debug.Log("[693 work] " + CampCheats.StageCamp(8f, 3, onlyCheats: false));
+            Debug.Log("[693 work] " + CampCheats.EveryThing());
+            yield return Frames(10);
+            var pv = PeopleView.Find();
+            pv.timeScale = 16f;
+            var work = new System.Collections.Generic.Dictionary<ActivityKind, float>(); var taken = new System.Collections.Generic.Dictionary<ActivityKind, float>();
+            float eat = 0f, eatTaken = 0f, sleep = 0f, sleepTaken = 0f, propReal = 0f;
+            int days = 0; float hourWas = pv.Now.hour;
+            float t0 = Time.realtimeSinceStartup;
+            while (days < 10 && Time.realtimeSinceStartup - t0 < 780f)
+            {
+                yield return null;
+                float dt = Time.deltaTime * pv.timeScale, real = Time.deltaTime; // a day's plan in view time, a scene in real seconds (CampTreeWorkShare)
+                if (pv.Now.hour < hourWas - 12f) days++;
+                hourWas = pv.Now.hour;
+                foreach (var a in pv.Activities)
+                {
+                    bool cued = pv.Camp.PropCued(a.who.Key);
+                    if (cued) propReal += real;
+                    if (WorkKind(a.kind)) { work[a.kind] = (work.TryGetValue(a.kind, out var w) ? w : 0f) + dt; if (cued) taken[a.kind] = (taken.TryGetValue(a.kind, out var x) ? x : 0f) + real; }
+                    else if (a.kind == ActivityKind.Eat) { eat += dt; if (cued) eatTaken += real; }
+                    else if (a.kind == ActivityKind.Sleep) { sleep += dt; if (cued) sleepTaken += real; }
+                }
+            }
+            pv.timeScale = 1f;
+            var props = string.Join(", ", pv.Camp.Started.Where(kv => kv.Key >= CampUse.BasketTake).Select(kv => $"{kv.Key} x{kv.Value}"));
+            Debug.Log($"[693 work] {days} view days; #693 uses started: {props}; {propReal:0} person-seconds in them");
+            float allWork = work.Values.Sum(), allTaken = taken.Values.Sum();
+            foreach (var kv in work.OrderByDescending(k => k.Value))
+                Debug.Log($"[693 work] {kv.Key}: {kv.Value:0} s at work, {(taken.TryGetValue(kv.Key, out var tk) ? tk : 0f):0.0} s of it in a #693 use");
+            Debug.Log($"[693 work] all work {allWork:0} s, in a #693 use {allTaken:0.0} s ({(allWork > 0 ? allTaken / allWork * 100f : 0f):0.00} %); meals {eat:0} s ({eatTaken:0.0} in a use), sleep {sleep:0} s ({sleepTaken:0.0})");
+            Assert.GreaterOrEqual(days, 10, "ran 10 view days");
+            Assert.Greater(allWork, 0f, "somebody worked");
+            Assert.Less(allTaken / allWork, 0.05f, "the work still gets done: under 5 % of work minutes in a #693 use");
+            foreach (var kv in work) if (kv.Value > 60f) Assert.Less((taken.TryGetValue(kv.Key, out var tk2) ? tk2 : 0f) / kv.Value, 0.05f, kv.Key + ": within 5 %");
+            Assert.Less(eat > 0f ? eatTaken / eat : 0f, 0.05f, "no meal lost");
+            Assert.Less(sleep > 0f ? sleepTaken / sleep : 0f, 0.05f, "no sleep lost");
+            Assert.IsNotEmpty(props, "the #693 uses ran by themselves");
+            CloseSlice();
         }
     }
 

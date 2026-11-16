@@ -185,13 +185,13 @@ namespace AquariumCiv.View
             int m = s.Add(who);
             var st = pile + toCam * 0.27f; // the logs reach 0.2 out from the middle
             float t = WalkTime(at, st, Walk);
-            s.Part(m, 0f, t, st, pile, DollStyle.Stand, null, fetch ? PropKind.None : PropKind.Log, Walk).slot = PropSlot.Shoulder;
+            s.Part(m, 0f, t, st, pile, DollStyle.Stand, fetch ? null : (ref DollPose p, float u, float l) => { p.armL = new Vector3(70f, 0f, -12f); p.armR = new Vector3(70f, 0f, 12f); }, PropKind.None, Walk).poseWalking = true; // #693 retakes: the log in both arms (drawn)
             CampPoseFn push = (ref DollPose p, float u, float l) =>
             {
                 float k = In(u, 0f, 0.3f) * (1f - In(u, l - 0.25f, 0.25f)); float push2 = 0.04f * In(u, 0.35f, 0.3f) * (1f - In(u, l - 0.25f, 0.25f));
                 p.armL = Lerp(p.armL, new Vector3(60f, 0f, -10f), k); p.armR = Lerp(p.armR, new Vector3(60f, 0f, 10f), k); p.lean += 18f * k; p.offset.z -= push2;
             };
-            s.Part(m, t, t + 1.0f, st, pile, DollStyle.Stand, push, fetch ? PropKind.None : PropKind.Log).slot = PropSlot.Arms;
+            s.Part(m, t, t + 1.0f, st, pile, DollStyle.Stand, push, PropKind.None);
             s.a = t + 0.6f; Jolt(s, t + 0.6f); s.Fx(t + 0.6f, CampFxKind.Chips, G(pile + toCam * 0.2f, 0.12f), 0.25f, 2);
             t += 1.0f;
             if (!fetch) { Go(s, m, t, 1.2f, st + toCam * 0.25f, st + toCam, Walk); return s; }
@@ -257,7 +257,7 @@ namespace AquariumCiv.View
             var kneel = stone + toCam * 0.13f + acr * 0.09f; // beside the face, so the stone and the tapping hand both show
             float t = WalkTime(at, kneel, Walk);
             s.Part(m, 0f, t, kneel, stone, DollStyle.Stand, null, PropKind.None, Walk);
-            s.Tip(m, t, t + 0.6f + CutFor, CampTipKind.Stone);
+            s.Tip(m, t, t + 0.6f + CutFor, CampTipKind.Stone, 1.8f); // #693 retakes: the tapping stone drawn 1.8x
             s.Part(m, t, t + 0.6f, kneel, stone, DollStyle.Stand, KneelPose); t += 0.6f;
             s.a = t + 0.25f;
             s.Part(m, t, t + CutFor, kneel, stone, DollStyle.Stand, (ref DollPose p, float u, float l) =>
@@ -266,9 +266,9 @@ namespace AquariumCiv.View
                 float ph = (u * 2f) % 1f; float x = ph < 0.5f ? Mathf.Lerp(100f, 70f, Smooth(ph * 2f)) : Mathf.Lerp(70f, 100f, Smooth((ph - 0.5f) * 2f));
                 p.armR = new Vector3(x, 0f, 8f); p.armL = new Vector3(40f, 0f, -20f);
             });
-            for (int i = 0; i < (int)(CutFor * 2f); i++) s.Fx(t + 0.25f + i * 0.5f, CampFxKind.Chips, G(stone + toCam * 0.06f + acr * 0.03f, 0.2f), 0.35f, 3);
+            for (int i = 0; i < (int)(CutFor * 2f); i++) s.Fx(t + 0.25f + i * 0.5f, CampFxKind.Chips, G(stone + toCam * 0.06f + acr * 0.03f, 0.2f), 0.6f, 4);
             t += CutFor;
-            PropDo(s, t - 0.2f, PropFx.NameRow); s.Fx(t - 0.2f, CampFxKind.Dust, G(stone + toCam * 0.06f, 0.22f), 0.4f, 3); // the new row, in a puff of stone dust
+            PropDo(s, t - 0.2f, PropFx.NameRow); s.Fx(t - 0.2f, CampFxKind.Dust, G(stone + toCam * 0.06f, 0.22f), 0.8f, 5); // the new row, in a puff of stone dust
             s.Part(m, t, t + 0.8f, kneel, stone, DollStyle.Stand, (ref DollPose p, float u, float l) => { KneelPose(ref p, 1f, l); NodPose(ref p, u, l); });
             t += 0.8f;
             Go(s, m, t, 1.2f, kneel + toCam * 0.25f, kneel + toCam, Walk);
@@ -293,9 +293,10 @@ namespace AquariumCiv.View
                 s.Part(m, t, t + 1.2f, st, stone, DollStyle.Stand, (ref DollPose p, float u, float l) =>
                 {
                     float k = In(u, 0f, 0.2f) * (1f - In(u, l - 0.15f, 0.15f));
-                    p.armR = Lerp(p.armR, new Vector3(110f, 0f, Mathf.Lerp(-18f, 22f, Smooth((u - 0.1f) / 1f))), k); // the hand sweeps along the row
-                    p.yaw += Mathf.Lerp(-10f, 10f, Smooth((u - 0.1f) / 1f)) * k; p.offset.y += 0.012f * k;
+                    p.armR = Lerp(p.armR, new Vector3(125f, 0f, Mathf.Lerp(-35f, 40f, Smooth((u - 0.1f) / 1f))), k); // the hand sweeps along the row (#693 retakes: wider)
+                    p.yaw += Mathf.Lerp(-22f, 22f, Smooth((u - 0.1f) / 1f)) * k; p.offset.y += 0.025f * k;
                 });
+                s.Fx(t + 0.6f, CampFxKind.Dust, new Vector3(0f, 0.01f, 0f), 0.35f, 2, CampAnchor.Hand, m); // the finger along the names
                 t += 1.2f;
             }
             s.Part(m, t, t + 1.5f, st, stone, DollStyle.Stand, (ref DollPose p, float u, float l) =>
@@ -374,10 +375,10 @@ namespace AquariumCiv.View
                 {
                     Seated(ref p); p.lean += 10f;
                     float r = Mathf.Sin((u + ph) * 4f * Mathf.PI * 2f), q = Mathf.Sin((u + ph + 0.125f) * 4f * Mathf.PI * 2f);
-                    p.armR = new Vector3(75f + 15f * r, 0f, 10f); p.armL = new Vector3(75f + 15f * q, 0f, -10f);
+                    p.armR = new Vector3(85f + 40f * r, 0f, 10f); p.armL = new Vector3(85f + 40f * q, 0f, -10f); p.offset.y += 0.006f * Mathf.Abs(r); // #693 retakes: x 45 <-> 125
                 }, PropKind.Twig);
             }
-            for (float b = 0.06f; b < drumFor; b += 0.25f) Jolt(s, t + b);
+            for (float b = 0.06f; b < drumFor; b += 0.25f) { Jolt(s, t + b); if (((int)(b / 0.25f)) % 2 == 0) s.Fx(t + b, CampFxKind.Chips, G(pot + toCam * 0.06f, PropGeo.PotRim * 0.7f), 0.3f, 2); }
             t += drumFor;
             if (grown >= 0)
             {
@@ -472,22 +473,22 @@ namespace AquariumCiv.View
             float t = WalkTime(at, st, Walk);
             s.Part(m, 0f, t, st, stone, DollStyle.Stand, null, PropKind.None, Walk);
             s.Part(m, t, t + 0.9f, st, stone, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = Bump(u, 0f, 0.6f); p.lean += 30f * k; p.armR = Lerp(p.armR, new Vector3(Mathf.Lerp(60f, 100f, In(u, 0.3f, 0.4f)), 0f, 6f), In(u, 0f, 0.2f)); });
-            s.a = t + 0.4f; Look(s, t + 0.4f, 1); t += 0.9f;
+            s.a = s.c = t + 0.4f; Look(s, t + 0.4f, 1); t += 0.9f;
             CampPoseFn planted = (ref DollPose p, float u, float l) => { p.armR = new Vector3(35f + 5f * Mathf.Sin(u * Mathf.PI * 2f * 1.6f), 0f, 12f); p.lean -= 4f; };
             var from = st;
             for (int i = 0; i < round.Count; i++)
             {
                 float w = WalkTime(from, round[i], Walk);
-                var pt = s.Part(m, t, t + w, round[i], round[i] + Dir(from, round[i], toCam), DollStyle.Stand, planted, PropKind.Stick, Walk); pt.poseWalking = true;
+                var pt = s.Part(m, t, t + w, round[i], round[i] + Dir(from, round[i], toCam), DollStyle.Stand, planted, PropKind.None, Walk); pt.poseWalking = true;
                 t += w; from = round[i];
                 bool last = i == round.Count - 1;
-                s.Part(m, t, t + (last ? 3f : 0.6f), round[i], round[i] + toCam, last ? DollStyle.Talk : DollStyle.Look, last ? (ref DollPose p, float u, float l) => { p.armR = new Vector3(20f, 0f, 16f); p.roll += 6f; } : planted, PropKind.Stick);
+                s.Part(m, t, t + (last ? 3f : 0.6f), round[i], round[i] + toCam, last ? DollStyle.Talk : DollStyle.Look, last ? (ref DollPose p, float u, float l) => { p.armR = new Vector3(20f, 0f, 16f); p.roll += 6f; } : planted, PropKind.None);
                 t += last ? 3f : 0.6f;
             }
             float wb = WalkTime(from, st, Walk);
-            s.Part(m, t, t + wb, st, stone, DollStyle.Stand, planted, PropKind.Stick, Walk).poseWalking = true; t += wb;
-            s.Part(m, t, t + 0.8f, st, stone, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = Bump(u, 0f, l); p.lean += 25f * k; p.armR = Lerp(p.armR, new Vector3(70f, 0f, 6f), k); }, PropKind.Stick);
-            Look(s, t + 0.45f, 0); Jolt(s, t + 0.45f); t += 0.8f;
+            s.Part(m, t, t + wb, st, stone, DollStyle.Stand, planted, PropKind.None, Walk).poseWalking = true; t += wb;
+            s.Part(m, t, t + 0.8f, st, stone, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = Bump(u, 0f, l); p.lean += 25f * k; p.armR = Lerp(p.armR, new Vector3(70f, 0f, 6f), k); }, PropKind.None);
+            s.d = t + 0.45f; Look(s, t + 0.45f, 0); Jolt(s, t + 0.45f); t += 0.8f;
             Go(s, m, t, 1f, st + toCam * 0.2f, st + toCam, Walk);
             return s;
         }
@@ -514,14 +515,14 @@ namespace AquariumCiv.View
                 s.Part(om[i], WalkTime(othersAt[i], bowAt[i], KidWalk), WalkTime(othersAt[i], bowAt[i], KidWalk) + 0.01f, bowAt[i], stone, DollStyle.Stand);
             }
             s.Part(m, t, t + 0.8f, st, stone, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = Bump(u, 0f, 0.6f); p.lean += 30f * k; p.armR = Lerp(p.armR, new Vector3(90f, 0f, 6f), In(u, 0f, 0.2f)); });
-            Look(s, t + 0.4f, 1); t += 0.8f;
+            s.c = t + 0.4f; Look(s, t + 0.4f, 1); t += 0.8f;
             // the strut: along the row of bowing kids and back
             CampPoseFn strut = (ref DollPose p, float u, float l) => { p.lean -= 10f; p.armR = new Vector3(35f + 6f * Mathf.Sin(u * 9f), 0f, 12f); p.armL = new Vector3(0f, 0f, -30f); p.offset.y += 0.008f * Mathf.Abs(Mathf.Sin(u * 9f)); };
             var a1 = stone + toCam * 0.2f - acr * 0.1f; var a2 = stone + toCam * 0.2f + acr * 0.35f;
             float w1 = WalkTime(st, a1, 0.14f);
-            s.Part(m, t, t + w1, a1, a1 + acr, DollStyle.Stand, strut, PropKind.Stick, 0.14f).poseWalking = true; t += w1;
+            s.Part(m, t, t + w1, a1, a1 + acr, DollStyle.Stand, strut, PropKind.None, 0.14f).poseWalking = true; t += w1;
             float w2 = WalkTime(a1, a2, 0.14f);
-            s.Part(m, t, t + w2, a2, a2 + acr, DollStyle.Stand, strut, PropKind.Stick, 0.14f).poseWalking = true;
+            s.Part(m, t, t + w2, a2, a2 + acr, DollStyle.Stand, strut, PropKind.None, 0.14f).poseWalking = true;
             s.a = t + w2 * 0.35f;
             for (int i = 0; i < no; i++)
             {
@@ -529,7 +530,7 @@ namespace AquariumCiv.View
                 s.Part(om[i], bt, bt + 1.4f, bowAt[i], bowAt[i] - toCam, DollStyle.Bow);
             }
             t += w2;
-            s.Part(m, t, t + 1.2f, a2, a2 + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lean -= 12f; p.armR = new Vector3(40f, 0f, 12f); p.armL = new Vector3(20f, 0f, -70f); }, PropKind.Stick);
+            s.Part(m, t, t + 1.2f, a2, a2 + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lean -= 12f; p.armR = new Vector3(40f, 0f, 12f); p.armL = new Vector3(20f, 0f, -70f); }, PropKind.None);
             t += 1.2f;
             if (headman >= 0)
             {
@@ -540,11 +541,11 @@ namespace AquariumCiv.View
                 s.Part(h, t, t + 0.8f, hs, a2, DollStyle.Stand, HipsPose);
                 s.Part(h, t + 0.8f, t + 2.2f, hs, a2, DollStyle.Laugh, HipsPose);
             }
-            s.Part(m, t, t + 0.6f, a2, a2 - acr, DollStyle.Freeze, null, PropKind.Stick); t += 0.6f;
+            s.Part(m, t, t + 0.6f, a2, a2 - acr, DollStyle.Freeze, null, PropKind.None); t += 0.6f;
             float wr = WalkTime(a2, st, KidRun);
-            var r = s.Part(m, t, t + wr, st, stone, DollStyle.Stand, null, PropKind.Stick, KidRun); r.run = true; t += wr;
-            s.Part(m, t, t + 0.4f, st, stone, DollStyle.Stand, Reach(60f, 25f), PropKind.Stick);
-            Look(s, t + 0.25f, 0); Jolt(s, t + 0.25f); t += 0.4f;
+            var r = s.Part(m, t, t + wr, st, stone, DollStyle.Stand, null, PropKind.None, KidRun); r.run = true; t += wr;
+            s.Part(m, t, t + 0.4f, st, stone, DollStyle.Stand, Reach(60f, 25f), PropKind.None);
+            s.d = t + 0.25f; Look(s, t + 0.25f, 0); Jolt(s, t + 0.25f); t += 0.4f;
             Go(s, m, t, 1f, st + toCam * 0.4f - acr * 0.2f, st + toCam, KidRun, true);
             for (int i = 0; i < no; i++) { float lf = Mathf.Max(t - 1.6f, s.parts[1 + i][^1].to); s.Part(om[i], lf, Mathf.Max(lf, t), bowAt[i], a2, DollStyle.Laugh); Go(s, om[i], Mathf.Max(lf, t), 1f, bowAt[i] + toCam * 0.2f, bowAt[i] + toCam, KidRun, true); }
             return s;
@@ -605,7 +606,7 @@ namespace AquariumCiv.View
                 s.Part(ms[thrower], t + 0.5f, t + 0.9f, dip, spot[target], DollStyle.Stand, (ref DollPose p, float u, float l) => { p.armR = Lerp(new Vector3(40f, 0f, 6f), new Vector3(120f, 0f, 6f), In(u, 0f, 0.2f)); });
                 s.arcs.Add(new CampArc { member = thrower, from = t + 0.7f, seconds = 0.35f, h = 0.06f, to = G(spot[target], 0.08f) });
                 if (s.a < 0f) s.a = hit;
-                s.Fx(hit, CampFxKind.Dust, G(spot[target], 0.07f), 0.5f, 4);
+                s.Fx(hit, CampFxKind.Dust, G(spot[target], 0.07f), 0.95f, 7); // #693 retakes: a big white puff
                 PropDo(s, hit, PropFx.Flour, 1f, target);
                 s.Part(ms[target], hit, hit + 0.35f, spot[target] - Unit(spot[thrower] - spot[target], toCam) * 0.03f, spot[thrower], DollStyle.Flinch);
                 s.Part(ms[thrower], t + 0.9f, t + 1.4f, spot[thrower], spot[target], DollStyle.Laugh);
@@ -624,6 +625,9 @@ namespace AquariumCiv.View
 
         // ================================================================== B54.p the roof bird: straighten it after a storm (work)
         public const float LadderH = 0.18f;
+        /// <summary>#693 retakes [est]: how high the roofer climbs (the drawn ladder is 2.2x so the hands reach the bird; the spec's 0.06 left them
+        /// at the pole's foot).</summary>
+        public const float ClimbH = 0.13f, LadderScale = 2.2f;
 
         /// <summary>B54.p: the roofer leans a short ladder on the ridge pole (drawn from <see cref="CampScene.b"/> to the scene's end), climbs two
         /// rungs (+0.06 u), sets the bird upright (it tips from 20 to 0 deg, a 0.3 s heave) and rubs it with a cloth (arm x 150, circles 1 s), then
@@ -639,21 +643,21 @@ namespace AquariumCiv.View
             s.Part(m, t, t + 0.7f, foot, pole, DollStyle.Stand, Reach(110f, 5f)); s.b = t + 0.35f; t += 0.7f;
             s.Part(m, t, t + 1.0f, foot - toCam * 0.03f, pole, DollStyle.Stand, (ref DollPose p, float u, float l) =>
             {
-                float c = In(u, 0f, l); p.offset.y += 0.06f * c; float ph = Mathf.Sin(u * Mathf.PI * 4f);
+                float c = In(u, 0f, l); p.offset.y += ClimbH * c; float ph = Mathf.Sin(u * Mathf.PI * 4f);
                 p.armL = new Vector3(120f + 20f * ph, 0f, -8f); p.armR = new Vector3(120f - 20f * ph, 0f, 8f);
             }, PropKind.None, 0.05f).poseWalking = true;
             t += 1.0f;
             s.Part(m, t, t + 0.8f, foot - toCam * 0.03f, pole, DollStyle.Stand, (ref DollPose p, float u, float l) =>
             {
-                p.offset.y += 0.06f; float k = In(u, 0f, 0.2f); p.armL = Lerp(p.armL, new Vector3(160f, 0f, -8f), k); p.armR = Lerp(p.armR, new Vector3(160f, 0f, 8f), k); p.lean -= 10f * Bump(u, 0.3f, 0.4f);
+                p.offset.y += ClimbH; float k = In(u, 0f, 0.2f); p.armL = Lerp(p.armL, new Vector3(160f, 0f, -8f), k); p.armR = Lerp(p.armR, new Vector3(160f, 0f, 8f), k); p.lean -= 10f * Bump(u, 0.3f, 0.4f);
             });
             s.a = t + 0.45f; PropDo(s, t + 0.45f, PropFx.Upright); t += 0.8f;
             s.Part(m, t, t + 1.2f, foot - toCam * 0.03f, pole, DollStyle.Stand, (ref DollPose p, float u, float l) =>
             {
-                p.offset.y += 0.06f; float a = u * Mathf.PI * 2f * 1.5f; p.armR = new Vector3(150f + 10f * Mathf.Sin(a), 0f, 8f + 14f * Mathf.Cos(a)); p.armL = new Vector3(120f, 0f, -8f);
+                p.offset.y += ClimbH; float a = u * Mathf.PI * 2f * 1.5f; p.armR = new Vector3(150f + 10f * Mathf.Sin(a), 0f, 8f + 14f * Mathf.Cos(a)); p.armL = new Vector3(120f, 0f, -8f);
             });
             t += 1.2f;
-            s.Part(m, t, t + 0.8f, foot, pole, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += 0.06f * (1f - In(u, 0f, l)); }, PropKind.None, 0.05f).poseWalking = true;
+            s.Part(m, t, t + 0.8f, foot, pole, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += ClimbH * (1f - In(u, 0f, l)); }, PropKind.None, 0.05f).poseWalking = true;
             t += 0.8f;
             s.Part(m, t, t + 0.6f, foot, pole, DollStyle.Stand, Reach(110f, 5f)); t += 0.6f;
             s.d = t - 0.3f; // the ladder taken down
@@ -680,7 +684,7 @@ namespace AquariumCiv.View
                 t = Mathf.Max(t, w);
             }
             s.a = t;
-            CampPoseFn flap = (ref DollPose p, float u, float l) => { float f = Mathf.Sin(u * 3f * Mathf.PI * 2f) * 15f; p.armL = new Vector3(0f, 0f, -75f - f); p.armR = new Vector3(0f, 0f, 75f + f); p.lean -= 8f; };
+            CampPoseFn flap = (ref DollPose p, float u, float l) => { float f = Mathf.Sin(u * 3f * Mathf.PI * 2f); p.armL = new Vector3(10f, 0f, -62f - 30f * f); p.armR = new Vector3(10f, 0f, 62f + 30f * f); p.lean -= 8f; p.offset.y += 0.012f * (0.5f + 0.5f * f); }; // #693 retakes: z 32 <-> 92
             const int Steps = 8;
             for (int i = 0; i < n; i++)
             {
@@ -761,7 +765,7 @@ namespace AquariumCiv.View
             float t = Mathf.Max(WalkTime(atA, inA, KidWalk), WalkTime(atB, inB, KidWalk));
             s.Part(a, 0f, t, inA, endB, DollStyle.Stand, null, PropKind.None, KidWalk);
             s.Part(b, 0f, t, inB, endB, DollStyle.Stand, null, PropKind.None, KidWalk);
-            CampPoseFn crawl = (ref DollPose p, float u, float l) => { p.squash = 0.6f; p.lean += 30f; p.offset.y -= 0.01f; float c = Mathf.Sin(u * 9f); p.armL = new Vector3(60f + 20f * c, 0f, -10f); p.armR = new Vector3(60f - 20f * c, 0f, 10f); };
+            CampPoseFn crawl = (ref DollPose p, float u, float l) => { p.squash = 0.72f; p.lean += 48f; p.offset.y -= 0.018f; p.yaw += 0f; float c = Mathf.Sin(u * 9f); p.armL = new Vector3(70f + 25f * c, 0f, -12f); p.armR = new Vector3(70f - 25f * c, 0f, 12f); p.roll += 4f * c; }; // #693 retakes: on hands and knees (lean 62, low), the arms stepping
             var outA = endB + dir * 0.08f; var outB = endB + dir * 0.02f + toCam * 0.06f;
             float ca = (outA - inA).magnitude / 0.15f, cb = (outB - inB).magnitude / 0.15f;
             s.Part(a, t, t + ca, outA, outA + dir, DollStyle.Stand, crawl, PropKind.None, 0.15f).poseWalking = true;
@@ -909,12 +913,12 @@ namespace AquariumCiv.View
                 s.Part(ms[i], t, t + 0.4f, seats[i], seats[i] + look, DollStyle.Stand, standOn);
                 s.Part(ms[i], t + 0.4f, t + 2.6f, seats[i], seats[i] + look, DollStyle.Wave, (ref DollPose p, float u, float l) =>
                 {
-                    p.offset.y += PropGeo.CrateTop; float f = Mathf.Sin(u * 3f * Mathf.PI * 2f) * 25f; p.armL = new Vector3(165f, 0f, -20f - f); p.armR = new Vector3(165f, 0f, 20f + f);
+                    p.offset.y += PropGeo.CrateTop + 0.02f * Mathf.Abs(Mathf.Sin(u * 3f * Mathf.PI)); float f = Mathf.Sin(u * 3f * Mathf.PI * 2f) * 40f; p.armL = new Vector3(165f, 0f, -25f - f); p.armR = new Vector3(165f, 0f, 25f + f); // #693 retakes: big waves, little hops
                 });
                 s.Part(ms[i], t + 2.6f, t + 3.4f, seats[i], seats[i] + look, DollStyle.Stand, standOn);
                 s.Part(ms[i], t + 3.4f, t + 5f, seats[i], seats[i] + look, DollStyle.Wave, (ref DollPose p, float u, float l) =>
                 {
-                    p.offset.y += PropGeo.CrateTop; float f = Mathf.Sin(u * 3f * Mathf.PI * 2f) * 25f; p.armL = new Vector3(165f, 0f, -20f - f); p.armR = new Vector3(165f, 0f, 20f + f); p.offset.y += 0.02f * Bump(u, 0.6f, 0.3f);
+                    p.offset.y += PropGeo.CrateTop; float f = Mathf.Sin(u * 3f * Mathf.PI * 2f) * 40f; p.armL = new Vector3(165f, 0f, -25f - f); p.armR = new Vector3(165f, 0f, 25f + f); p.offset.y += 0.04f * Bump(u, 0.6f, 0.3f);
                 });
                 var down = seats[i] - look * 0.1f + acr * (i == 0 ? -0.05f : 0.05f);
                 s.Part(ms[i], t + 5f, t + 5.4f, down, down - look, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += PropGeo.CrateTop * (1f - In(u, 0f, 0.35f)); }, PropKind.None, 0.3f).poseWalking = true;
@@ -931,13 +935,13 @@ namespace AquariumCiv.View
             toCam = Unit(toCam, Vector2.down); var acr = Across(toCam);
             var s = new CampScene(CampUse.PegRetie, t0, peg) { holdFocus = true };
             int m = s.Add(parent);
-            var st = peg + toCam * 0.1f + acr * 0.04f;
+            var st = peg + toCam * 0.04f + acr * 0.1f; // #693 retakes: side-on, so the tag shows
             float t = WalkTime(at, st, Walk);
             s.Part(m, 0f, t, st, peg, DollStyle.Stand, null, PropKind.None, Walk);
             CampPoseFn tie = (ref DollPose p, float u, float l) => { CrouchPose(ref p, u, l); float f = Mathf.Sin(u * 4f * Mathf.PI * 2f) * 12f; p.armL = new Vector3(110f + f, 0f, 12f); p.armR = new Vector3(110f - f, 0f, -12f); };
             s.Part(m, t, t + 0.8f, st, peg, DollStyle.Stand, tie); Jolt(s, t + 0.6f); t += 0.8f;
             s.Part(m, t, t + 1.0f, st, peg, DollStyle.Stand, tie);
-            s.a = t + 1.0f; Jolt(s, t + 1.0f); t += 1.0f;
+            s.a = t + 1.0f; Jolt(s, t + 1.0f); Look(s, t + 1.0f, 1); t += 1.0f; // the fresh cord (red) shows
             s.Part(m, t, t + 0.7f, st, peg, DollStyle.Stand, (ref DollPose p, float u, float l) => { CrouchPose(ref p, 1f, l); NodPose(ref p, u, l); });
             t += 0.7f;
             Go(s, m, t, 1f, st + toCam * 0.25f, st + toCam, Walk);
@@ -961,9 +965,9 @@ namespace AquariumCiv.View
             s.a = w + 0.12f;
             var b = s.Part(m, w, w + 0.35f, by + run * 0.08f, by + run, DollStyle.Stand, (ref DollPose p, float u, float l) =>
             {
-                float k = Bump(u, 0f, 0.3f); p.armR = Lerp(p.armR, new Vector3(130f, 0f, -10f), k); p.yaw -= 25f * k;
+                float k = Bump(u, 0f, 0.3f); p.armR = Lerp(p.armR, new Vector3(150f, 0f, -10f), k); p.yaw -= 25f * k;
             }, PropKind.None, KidRun); b.run = true; b.poseWalking = true;
-            Jolt(s, w + 0.12f);
+            PropDo(s, w + 0.12f, PropFx.Swing); // #693 retakes: the tapped peg swings (15 deg, 1.2 s)
             float w2 = WalkTime(by, onTo, KidRun);
             var c = s.Part(m, w + 0.35f, w + 0.35f + w2, onTo, onTo + run, DollStyle.Stand, null, PropKind.None, KidRun); c.run = true;
             return s;

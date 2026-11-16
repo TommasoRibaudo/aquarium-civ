@@ -48,7 +48,7 @@ namespace AquariumCiv.View.Tests
         {
             var stack = CampScenes6.WoodStack(1, Far, Spot, ToCam, false, Spot + Vector2.left, 0f);
             Ok(stack);
-            Assert.AreEqual(PropKind.Log, stack.parts[0][0].prop, "carries a log in");
+            Assert.AreEqual(0, stack.kind, "carries a log in (drawn 1.6x by CampLife, #693 retakes)"); Assert.Greater(PoseAt(stack.parts[0][0], 0.5f).armL.x, 60f, "in both arms");
             Assert.AreEqual(1, PropFxs(stack, PropFx.Jolt), "the pile jolts when it slides on");
             var fetch = CampScenes6.WoodStack(1, Far, Spot, ToCam, true, Spot + Vector2.left, 0f);
             Ok(fetch);
@@ -122,7 +122,7 @@ namespace AquariumCiv.View.Tests
             var walk = CampScenes6.StaffWalk(1, Far, Spot, round, ToCam, 0f);
             Ok(walk);
             CollectionAssert.AreEqual(new[] { 1f, 0f }, Looks(walk).ToArray(), "taken up, put back");
-            Assert.GreaterOrEqual(walk.parts[0].Count(p => p.prop == PropKind.Stick && p.poseWalking), round.Count, "walks round with it planted");
+            Assert.GreaterOrEqual(walk.parts[0].Count(p => p.poseWalking && p.from >= walk.c && p.to <= walk.d), round.Count, "walks round with it planted (the staff drawn 1.6x between c and d)"); Assert.Greater(walk.d, walk.c);
             var play = CampScenes6.StaffPlay(1, Far, new[] { 2, 3 }, new[] { Far2, Far3 }, 4, Far + Vector2.right, Spot, ToCam, 0f);
             Ok(play);
             Assert.IsTrue(play.parts[1].Any(p => p.style == DollStyle.Bow) && play.parts[2].Any(p => p.style == DollStyle.Bow), "the others bow");
@@ -155,7 +155,7 @@ namespace AquariumCiv.View.Tests
             Assert.Greater(fix.d, fix.a, "the ladder stands until after the bird is set");
             Assert.Greater(fix.a, fix.b, "the ladder is up before the climb");
             var up = PoseAt(fix.parts[0].First(p => p.from >= fix.a - 0.5f && p.from < fix.a), 0.4f);
-            Assert.AreEqual(0.06f, up.offset.y, 0.005f, "two rungs up"); Assert.Greater(up.armR.x, 140f);
+            Assert.AreEqual(CampScenes6.ClimbH, up.offset.y, 0.005f, "up the ladder (#693 retakes: to the bird)"); Assert.Greater(up.armR.x, 140f);
             var fly = CampScenes6.BirdFly(new[] { 1, 2 }, new[] { Far, Far2 }, Spot, ToCam, 2, 0f);
             Ok(fly);
             var flap = PoseAt(fly.parts[0].First(p => p.run), 0.08f);
@@ -175,7 +175,7 @@ namespace AquariumCiv.View.Tests
             var under = CampScenes6.TableUnder(1, 2, Far, Far2, Spot + Vector2.left * 0.36f, Spot + Vector2.right * 0.36f, 3, Far3, Spot + Vector2.down * 0.13f, Vector2.right, ToCam, 0f);
             Ok(under);
             var crawl = PoseAt(under.parts[0].First(p => p.poseWalking), 0.5f);
-            Assert.AreEqual(0.6f, crawl.squash, 0.01f, "squash 0.6"); Assert.Greater(crawl.lean, 25f);
+            Assert.Less(crawl.squash, 0.8f, "low"); Assert.Greater(crawl.lean, 40f, "on hands and knees (#693 retakes)");
             Assert.AreEqual(0.15f, under.parts[0].First(p => p.poseWalking).speed, 1e-3f, "0.15 u/s");
             Assert.IsTrue(under.parts[2].Any(p => p.style == DollStyle.Lie && p.Len >= 6f), "the old one naps on the bench, 6 s");
         }
@@ -219,7 +219,7 @@ namespace AquariumCiv.View.Tests
             var tap = CampScenes6.PegTap(1, Spot + Vector2.left * 0.6f, Spot, Spot + Vector2.right * 0.7f, ToCam, 0f);
             Ok(tap);
             Assert.IsTrue(tap.parts[0].All(p => p.run), "without stopping");
-            Assert.AreEqual(1, PropFxs(tap, PropFx.Jolt), "the tag swings");
+            Assert.AreEqual(1, PropFxs(tap, PropFx.Swing), "the peg swings");
             Assert.Less(tap.Length, 6f, "a tap in passing");
         }
 

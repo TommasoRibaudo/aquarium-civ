@@ -81,7 +81,11 @@ namespace AquariumCiv.View
                     mb.Box(new Vector3(0f, 0.325f, 0f), new Vector3(0.1f, 0.03f, 0.055f), Palette.RockLight);
                     { // #693 (B54.e): a new row for each name cut since the stone stood (at most 3 more, closer together)
                         int rows = 4 + Mathf.Clamp(variant, 0, 3); float gap = rows <= 4 ? 0.045f : 0.17f / (rows - 1);
-                        for (int i = 0; i < rows; i++) mb.Box(new Vector3(0f, 0.13f + i * gap, -0.036f), new Vector3(0.08f - (i % 2) * 0.02f, 0.01f, 0.004f), Palette.RockDark);
+                        for (int i = 0; i < rows; i++)
+                        {
+                            bool fresh = variant > 0 && i == rows - 1; // #693 retakes: the newest row is freshly cut: pale and deeper, so it reads as new
+                            mb.Box(new Vector3(0f, 0.13f + i * gap, -0.036f), new Vector3(0.08f - (i % 2) * 0.02f, fresh ? 0.014f : 0.01f, fresh ? 0.006f : 0.004f), fresh ? Palette.Plaster : Palette.RockDark);
+                        }
                     }
                     break;
                 case ConsequenceKind.CharmPole: // a bough on a post hung with charms
@@ -215,6 +219,7 @@ namespace AquariumCiv.View
                     mb.Prism(Vector3.zero, 0.012f, 0.01f, 0.2f, 5, Palette.Bark);
                     mb.Box(new Vector3(0f, 0.17f, 0f), new Vector3(0.09f, 0.05f, 0.012f), Palette.WoodLight);
                     for (int i = 0; i < 3; i++) mb.Box(new Vector3(-0.025f + i * 0.025f, 0.17f, -0.008f), new Vector3(0.012f, 0.025f, 0.003f), Palette.Timber);
+                    if (variant == 1) { mb.Box(new Vector3(0f, 0.2f, 0f), new Vector3(0.018f, 0.012f, 0.018f), new Color(0.8f, 0.16f, 0.14f)); mb.Box(new Vector3(0f, 0.195f, 0f), new Vector3(0.006f, 0.02f, 0.006f), new Color(0.8f, 0.16f, 0.14f)); } // #693 retakes (B54.z): the fresh red cord
                     break;
                 default:
                     for (int i = 0; i < 4; i++) mb.Ico(new Vector3(0f, 0.02f + i * 0.04f, 0f) + new Vector3((i % 2) * 0.02f, 0f, 0f), 0.06f - i * 0.01f, new Vector3(1f, 0.7f, 1f), Palette.Rock, 0.2f);
@@ -525,6 +530,16 @@ namespace AquariumCiv.View
             return Mathf.Lerp(t.from, t.to, k * k * (3f - 2f * k));
         }
         public const float UprightSeconds = 0.3f;
+        static readonly Dictionary<int, float> swings = new();
+        /// <summary>#693 retakes (B54.zz): a tapped peg swings, 15 deg dying away over 1.2 s.</summary>
+        public static void Swing(int propId) => swings[propId] = Time.time;
+        static float SwingOf(int propId)
+        {
+            if (!swings.TryGetValue(propId, out float st)) return 0f;
+            float a = Time.time - st;
+            if (a < 0f || a > 1.2f) { swings.Remove(propId); return 0f; }
+            return 15f * Mathf.Sin(a * 2.5f * Mathf.PI * 2f) * Mathf.Exp(-a / 0.4f);
+        }
         static Quaternion JoltOf(int propId, out float squash)
         {
             squash = 1f;
@@ -536,7 +551,7 @@ namespace AquariumCiv.View
             return Quaternion.Euler(Mathf.Sin(ja * 40f) * 4f * e, 0f, Mathf.Sin(ja * 31f) * 3f * e);
         }
         /// <summary>#693 tests: forget every use's look (a new box).</summary>
-        public static void ResetLooks() { looks.Clear(); jolts.Clear(); tilts.Clear(); }
+        public static void ResetLooks() { looks.Clear(); jolts.Clear(); tilts.Clear(); swings.Clear(); }
 
         /// <summary>#692 (B31.a/b): a new feather tied on, a kid's touch: the pole jolts and its feathers flutter.</summary>
         public static void FlutterPole(float amp = 1f)
@@ -718,6 +733,7 @@ namespace AquariumCiv.View
                     tilt = Quaternion.Euler(Mathf.Sin(ft * 6f * Mathf.PI * 2f) * 8f * Mathf.Min(flutterAmp, 1.3f) * Mathf.Exp(-ft / flutterTau), 0f, Mathf.Sin(ft * 4.3f * Mathf.PI * 2f) * 4f * Mathf.Exp(-ft / flutterTau) * (flutterAmp > 1.2f ? 1f : 0f));
                 }
                 tilt *= jq; if (jSquash < 1f) m.t.localScale = new Vector3(s, s * jSquash, s); // #693: a use's jolt
+                if (swings.ContainsKey(p.id)) tilt *= Quaternion.AngleAxis(SwingOf(p.id), new Vector3(1f, 0f, -1f).normalized);
                 if (tilts.ContainsKey(p.id)) tilt *= Quaternion.AngleAxis(TiltOf(p.id), new Vector3(1f, 0f, 1f).normalized); // leaning half across, half along: it shows from any side
                 float yaw = p.kind != ConsequenceKind.ShoreBoat ? p.yaw : haveFire && p.anchor == PropAnchor.Fire ? BoatYaw(px, pz) : Mathf.Round(p.yaw / 90f) * 90f; // #714 round 2: square to the glass (old saves too)
                 m.t.SetLocalPositionAndRotation(box.land.OnGround(px, pz) + Vector3.up * lift, Quaternion.Euler(0f, yaw, 0f) * tilt);
