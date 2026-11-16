@@ -89,7 +89,10 @@ namespace AquariumCiv.View
             since += Time.unscaledDeltaTime;
             if (!Auto) { pending = false; LastWhy = "off (tests)"; return; }
             string busy = Busy();
-            if (busy != null)
+            // tester batch 3: a lean (a group just placed, the first logs, a hint) still holds the camera on a return. The frame waited 8 s and
+            // was let go, and the lean glided back to the last visit's view (or, cancelled, stayed close). Now the lean's way home is the frame.
+            bool glideOnly = busy == InUse && camNow != null && camNow.GlideArmed && !camNow.Touching && !camNow.IsFollowing;
+            if (busy != null && !glideOnly)
             {
                 if (since > GiveUpSeconds) { pending = false; LastWhy = "let go: " + busy; }
                 return;
@@ -100,8 +103,12 @@ namespace AquariumCiv.View
             pv.StandingNow(who, xs, zs);
             if (who.Count == 0 && since < DollWaitSeconds) return;
             pending = false;
-            LastWhy = Go(CampFrame.EaseSeconds);
+            LastWhy = Go(CampFrame.EaseSeconds, glideOnly);
         }
+
+        const string InUse = "the camera is in use";
+        /// <summary>Returns framed through a held lean's way home (tests).</summary>
+        public int FramedViaGlide { get; private set; }
 
         /// <summary>What has the view now (null = free).</summary>
         static string Busy()
@@ -117,7 +124,7 @@ namespace AquariumCiv.View
             var cam = Cam;
             if (cam == null) return "no camera";
             if (!cam.isActiveAndEnabled) return "the camera is held";
-            if (cam.Touching || cam.IsFlying || cam.GlideArmed || cam.IsFollowing) return "the camera is in use";
+            if (cam.Touching || cam.IsFlying || cam.GlideArmed || cam.IsFollowing) return InUse;
             return null;
         }
 
@@ -153,7 +160,10 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Eases the camera to the camp frame now and makes it home. Returns what it did.</summary>
-        public string Go(float seconds)
+        public string Go(float seconds) => Go(seconds, false);
+
+        /// <summary>As <see cref="Go(float)"/>; <paramref name="viaGlide"/>: a lean holds the camera, so its way home becomes the frame.</summary>
+        public string Go(float seconds, bool viaGlide)
         {
             var cam = Cam;
             var pv = PeopleView.Find();
@@ -169,7 +179,8 @@ namespace AquariumCiv.View
             if (pv.Planner.FirePoint(out float fx, out float fz)) { cx = fx; cz = fz; }
             var world = pv.transform.TransformPoint(new Vector3(cx, 0f, cz));
             world.y = cam.target.y;
-            cam.EaseTo(world, CampFrame.Yaw, pitch, zoom, seconds);
+            if (viaGlide && cam.SetGlideHome(world, CampFrame.Yaw, pitch, zoom)) FramedViaGlide++;
+            else cam.EaseTo(world, CampFrame.Yaw, pitch, zoom, seconds);
             cam.SetHome(new Vector3(world.x, cam.target.y, world.z), CampFrame.Yaw, pitch, zoom);
             Last = f; LastZoom = zoom; Framed++;
             framedAspect = aspect;
