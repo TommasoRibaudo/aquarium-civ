@@ -64,7 +64,7 @@ namespace AquariumCiv.View
 
         public void Reset()
         {
-            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree(); ResetLand();
+            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree(); ResetLand(); ResetAnimals();
             fxDone = float.NaN; potState = PotState.Cold; potDay = long.MinValue; spitDay = long.MinValue;
         }
 
@@ -90,6 +90,7 @@ namespace AquariumCiv.View
             if (sim == null || planner == null || sim.State.era != Era.Camp) { StepPot(acts, time, false); return; }
             StepTree(acts, time); // #692 part 2: the Keeper's tree visits (no fire needed)
             StepLand(acts, time); // #692 part 3: grass, saplings, rocks, fallen branches
+            StepAnimals(acts, time); // #692 part 4: frogs, deer, a rabbit kit, the ducks
             bool fire = meals.HasFire && planner.FireNow != CampFireStage.None;
             StepPot(acts, time, fire);
             if (fire && !OnlyCheats) Trigger(acts, time);
@@ -641,6 +642,7 @@ namespace AquariumCiv.View
             DrawLadle(root, time);
             DrawTree(root, time); // #692 part 2: the newborn lifted, the glow, the charm held back until it is tied, the hush
             DrawLand(root, material, time, groundAt); // #692 part 3: the boulders and what the land's uses leave
+            DrawAnimals(root, material, time, groundAt); // #692 part 4: the frog in the hands, the kit, the crumbs
         }
 
         void FireFx(Transform root, float time, Func<float, float, float> groundAt)
@@ -852,6 +854,7 @@ namespace AquariumCiv.View
             if (spitGo != null) UnityEngine.Object.Destroy(spitGo);
             spitGo = null;
             DestroyLand();
+            DestroyAnimals();
         }
 
         // ================================================================== cheats (SliceDebugPanel "#692")
@@ -859,7 +862,7 @@ namespace AquariumCiv.View
         public string Force(CampUse use)
         {
             int before = scenes.Count;
-            string r = IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : ForceUse(use);
+            string r = IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : ForceUse(use);
             if (scenes.Count > before) forced = scenes[^1];
             return r;
         }

@@ -73,6 +73,17 @@ namespace AquariumCiv.View
         StickFight,
         /// <summary>B36.b: a kid rides a stick horse.</summary>
         StickHorse,
+        // #692 part 4: animals (View/Beats/CampScenes4.cs, View/CampLife.Animals.cs)
+        /// <summary>B37: kids catch a frog and let it go (or miss and flop).</summary>
+        FrogCatch,
+        /// <summary>B38.a: watch the deer grazing from the wood's edge.</summary>
+        DeerWatch,
+        /// <summary>B38.b: kids creep up on the deer and the deer bolt.</summary>
+        DeerCreep,
+        /// <summary>B39.a: a kid holds a rabbit kit.</summary>
+        KitHold,
+        /// <summary>B15.d (B39.b's rate check): kids feed the ducks.</summary>
+        FeedDucks,
     }
 
     /// <summary>A pose laid over the doll's pose for one part: <paramref name="into"/> seconds into the part, <paramref name="len"/> its length.</summary>
@@ -149,6 +160,15 @@ namespace AquariumCiv.View
         /// mouth (B33.d), the stick horse from the hand back to the ground (B36.b).</summary>
         Stone, Stones, Pebble, Bunch, Blade, Horse }
 
+    /// <summary>#692 part 4: a small thing thrown from a member's hand along an arc to a box point (B15.d's crumbs), drawn by CampLife.Animals.</summary>
+    public struct CampArc
+    {
+        public int member;
+        public float from, seconds, h;
+        /// <summary>Where it lands (box x, z; y above the ground or the water).</summary>
+        public Vector3 to;
+    }
+
     public struct CampTip
     {
         public int member;
@@ -176,8 +196,13 @@ namespace AquariumCiv.View
         public readonly List<CampTip> tips = new();
         /// <summary>#692 part 2: pair beats inside the scene (B32.d's hug), handed to PairStage when the scene is added (absolute times).</summary>
         public readonly List<PairEvent> pairs = new();
+        /// <summary>#692 part 4: things thrown along an arc (B15.d's crumbs).</summary>
+        public readonly List<CampArc> arcs = new();
         /// <summary>Extra state a use carries (the spit's meat, the pot's lift), read by the director.</summary>
         public float a, b;
+        /// <summary>#692 part 4: more moments and spots a use hands its animal (the frog's wriggle, the kit's hops: B37, B39.a).</summary>
+        public float c, d;
+        public Vector2 p0, p1;
         public int kind;
         /// <summary>The camera keeps to <see cref="focus"/> (the thing), not pulled toward the lead actor (the feather pole: the user's review).</summary>
         public bool holdFocus;
@@ -195,6 +220,7 @@ namespace AquariumCiv.View
                 float e = 0f;
                 foreach (var l in parts) foreach (var p in l) e = Mathf.Max(e, p.to);
                 foreach (var f in fx) e = Mathf.Max(e, f.time);
+                foreach (var r in arcs) e = Mathf.Max(e, r.from + r.seconds);
                 return e;
             }
         }

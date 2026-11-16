@@ -36,6 +36,8 @@ namespace AquariumCiv.View
             public Transform root, throat; public GameObject go;
             public Vector3 at, from, to; public int state; // 0 hidden, 1 sit, 2 hop in, 3 gone (waiting)
             public float t, timer, puff; public bool onPad;
+            /// <summary>#692 part 4 (B37): a camp scene has it: it sits on (no fleeing), or is posed in a kid's hands until <see cref="heldUntil"/>.</summary>
+            public bool claimed; public float heldUntil = -1f;
         }
         sealed class Duck
         {
@@ -391,7 +393,7 @@ namespace AquariumCiv.View
             float r2 = radius * radius;
             int n = 0;
             foreach (var f in frogs)
-                if (f.state == 1 && f.go.activeSelf && (new Vector2(f.at.x, f.at.z) - from).sqrMagnitude < r2) { Hop(f, eco); n++; }
+                if (f.state == 1 && !f.claimed && f.go.activeSelf && (new Vector2(f.at.x, f.at.z) - from).sqrMagnitude < r2) { Hop(f, eco); n++; }
             foreach (var d in ducks)
             {
                 if (d.state == 0 || d.state == 3 || d.state == 4 || water.Count == 0 || (d.at - from).sqrMagnitude >= r2) continue;
@@ -426,6 +428,11 @@ namespace AquariumCiv.View
                     f.timer -= dt;
                     if (f.timer <= 0f) Place(f, eco, i);
                     continue;
+                }
+                if (f.claimed && f.state == 1)
+                {   // #692 part 4 (B37): held in the hands (posed by CampLife each frame), or sitting on while the kid creeps up
+                    if (f.heldUntil >= 0f && Time.unscaledTime > f.heldUntil) { f.claimed = false; f.heldUntil = -1f; f.at = f.root.localPosition; Hop(f, eco); }
+                    else { f.throat.localScale = Vector3.zero; shown++; continue; }
                 }
                 if (!wanted && f.state == 1) { f.go.SetActive(false); f.state = 0; f.timer = 1f; continue; }
                 switch (f.state)
@@ -499,6 +506,115 @@ namespace AquariumCiv.View
             var dir = best - f.at; if (dir.sqrMagnitude > 1e-6f) f.root.localRotation = Quaternion.Euler(0f, Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg, 0f);
         }
 
+        // ---------------------------------------------------------------- #692 part 4: the camp's uses (B37 a frog caught, B15.d crumbs)
+        /// <summary>B37: claims the sitting bank frog (not on a pad) nearest <paramref name="near"/> within <paramref name="reach"/>: it sits on and
+        /// never flees until <see cref="FrogHopIn"/> or <see cref="FreeFrog"/>. Its index, or −1.</summary>
+        public int ClaimFrog(Vector2 near, float reach, out Vector3 at)
+        {
+            at = default; int best = -1; float bd = reach * reach;
+            for (int i = 0; i < frogs.Count; i++)
+            {
+                var f = frogs[i];
+                if (f.state != 1 || f.onPad || f.claimed || !f.go.activeSelf) continue;
+                float d = (new Vector2(f.at.x, f.at.z) - near).sqrMagnitude;
+                if (d < bd) { bd = d; best = i; }
+            }
+            if (best >= 0) { frogs[best].claimed = true; frogs[best].heldUntil = -1f; at = frogs[best].at; }
+            return best;
+        }
+
+        /// <summary>B37's cheat: a frog sits at the bank spot <paramref name="spot"/> now (claimed). Its index, or −1 (no pond, no frog free).</summary>
+        public int PlaceFrogAt(Vector2 spot)
+        {
+            if (box == null || box.Root == null) return -1;
+            if (holder == null || frogs.Count == 0) return -1;
+            var eco = box.layout.eco;
+            for (int i = 0; i < frogs.Count; i++)
+            {
+                var f = frogs[i];
+                if (f.claimed || f.state == 2) continue;
+                f.at = OnBank(eco, spot.x, spot.y); f.state = 1; f.onPad = false; f.t = 0f; f.timer = 3f; f.puff = 0f;
+                f.root.localPosition = f.at; f.root.localRotation = Quaternion.Euler(0f, i * 61f, 0f);
+                f.go.SetActive(true);
+                f.claimed = true; f.heldUntil = -1f;
+                return i;
+            }
+            return -1;
+        }
+
+        /// <summary>B37: the claimed frog is in a kid's hands this frame (box-local position, yaw, a wriggle roll in degrees). If nobody poses
+        /// it for a second it hops in by itself.</summary>
+        public void PoseFrog(int i, Vector3 local, float yaw, float wriggle)
+        {
+            if (i < 0 || i >= frogs.Count || !frogs[i].claimed) return;
+            var f = frogs[i];
+            f.heldUntil = Time.unscaledTime + 1f;
+            f.root.localPosition = local; f.root.localRotation = Quaternion.Euler(0f, yaw, wriggle);
+            f.go.SetActive(true);
+        }
+
+        /// <summary>B37: the claimed frog hops into the nearest water (let go, or quicker than the kid).</summary>
+        public void FrogHopIn(int i)
+        {
+            if (i < 0 || i >= frogs.Count || box == null) return;
+            var f = frogs[i];
+            if (!f.claimed) return;
+            f.claimed = false; f.heldUntil = -1f; f.at = f.root.localPosition;
+            if (f.state == 1) Hop(f, box.layout.eco);
+        }
+
+        /// <summary>The scene ended without a hop: the frog is its own again.</summary>
+        public void FreeFrog(int i) { if (i >= 0 && i < frogs.Count) { frogs[i].claimed = false; frogs[i].heldUntil = -1f; } }
+
+        public bool FrogHeld(int i) => i >= 0 && i < frogs.Count && frogs[i].claimed;
+        public bool FrogAt(int i, out Vector3 local) { local = default; if (i < 0 || i >= frogs.Count || !frogs[i].go.activeSelf) return false; local = frogs[i].root.localPosition; return true; }
+
+        float lureUntil = -1f; Vector2 lureWater, lureBank; bool climbed, climbNow;
+        /// <summary>B15.d, called each frame while the crumbs fly: the ducks paddle fast (2×) to the water in front of <paramref name="bank"/> and
+        /// peck there, never shy of the kids; with <paramref name="climb"/> the nearest climbs out onto the bank (once a lure). A new
+        /// <paramref name="fresh"/> lure starts over.</summary>
+        public void Lure(Vector2 bank, Vector2 toWater, bool climb, bool fresh)
+        {
+            if (fresh || !Luring) climbed = false;
+            lureUntil = Time.unscaledTime + 0.5f; climbNow = climb;
+            lureBank = bank + toWater * 0.03f; lureWater = bank + toWater * 0.2f;
+        }
+        public bool Luring => Time.unscaledTime < lureUntil;
+        /// <summary>Ducks that came to the crumbs (tests).</summary>
+        public int LuredDucks { get; private set; }
+        public bool DuckClimbedOut => climbed;
+
+        /// <summary>B15.d: one duck's step while the crumbs draw them; true when it took the duck.</summary>
+        bool LureStep(Duck d, int i, EcoLayer eco, float dt)
+        {
+            if (!Luring || d.state == 0 || d.fly > -10f) return false;
+            var spot = lureWater + new Vector2(Mathf.Cos(i * 2.4f), Mathf.Sin(i * 2.4f)) * 0.05f;
+            if (!climbed && climbNow && (d.state == 1 || d.state == 2 || d.state == 5))
+            {   // the nearest duck climbs out
+                float bd = float.MaxValue; Duck near = null;
+                foreach (var o in ducks) if (o.state != 0 && o.fly <= -10f) { float q = (o.at - lureBank).sqrMagnitude; if (q < bd) { bd = q; near = o; } }
+                if (near == d) { climbed = true; d.shore = lureBank; d.to = lureBank; d.state = 3; }
+            }
+            if (d.state == 3) { Move(d, eco, 0.05f, dt, true); if ((d.at - d.shore).sqrMagnitude < 0.0004f) { d.state = 4; d.dabble = 0f; } Pose(d, eco); return true; }
+            if (d.state == 4) { d.dabble += dt; Pose(d, eco); d.head.localRotation = Quaternion.Euler(30f + 25f * Mathf.Sin(Time.time * 9f), 0f, 0f); return true; } // pecking
+            if (d.state == 5) d.state = 1;
+            if ((d.at - spot).sqrMagnitude > 0.0009f)
+            {
+                if (d.state == 2) d.state = 1;
+                d.to = spot;
+                var before = d.at;
+                Move(d, eco, 0.10f, dt);
+                if ((d.at - before).sqrMagnitude < 1e-10f) { d.at = Vector2.MoveTowards(d.at, spot, 0.10f * dt); } // the edge cell: still come
+            }
+            else if (d.state != 2) { d.state = 2; d.dabble = 0f; LuredDucks++; }
+            else { d.dabble += dt; if (d.dabble > 3.2f) d.dabble = 0.3f; } // peck on
+            Pose(d, eco);
+            return true;
+        }
+
+        /// <summary>B15.d's cheat: the shown ducks (the nearest water to <paramref name="bank"/>) and whether any are on view.</summary>
+        public int DucksOnWater { get { int n = 0; foreach (var d in ducks) if (d.state != 0 && d.fly <= -10f) n++; return n; } }
+
         // ---------------------------------------------------------------- ducks
         /// <summary>#618: the shown ducks take off (winter) or the flock comes back (spring): each on its own line, a moment apart.</summary>
         void StartFlights(bool leaving, int flock)
@@ -558,6 +674,7 @@ namespace AquariumCiv.View
                 var d = ducks[i];
                 if (d.fly > -10f && Fly(d, eco, dt)) { flying++; continue; }
                 if (i >= want) { if (d.state != 0) { d.go.SetActive(false); d.state = 0; } continue; }
+                if (d.state != 0 && LureStep(d, i, eco, dt)) { shown++; continue; } // #692 part 4 (B15.d)
                 if (d.state == 0)
                 {
                     int c = water[(i * 13 + 5) % water.Count];

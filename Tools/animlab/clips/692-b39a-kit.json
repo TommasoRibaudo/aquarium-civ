@@ -1,0 +1,26 @@
+{
+ "name": "692-b39a-kit",
+ "notes": "B39.a: a kid crouches very still at the meadow's edge; a small rabbit kit hops up from its mother to the kid; the kid scoops it slowly and holds it at the chest, strokes it three times, shows it to the other kid, sets it down; it hops back to its mother and the kid waves.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.AnimalsReady();",
+   "return AquariumCiv.View.CampCheats.AnimalsReady();",
+   "AquariumCiv.View.PeopleView.DebugSetHour(11.0f); return AquariumCiv.View.CampCheats.AnimalsReady();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.KitHold());"
+  ],
+  "warm": 0.5,
+  "seconds": 24,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.45,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

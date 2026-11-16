@@ -378,6 +378,16 @@ namespace AquariumCiv.View
             if (Btn("Kids sword fight with sticks")) last = CampCheats.StickFight(); // #692 B36.a
             if (Btn("Stick horse")) last = CampCheats.StickHorse(); // #692 B36.b
             EndRow();
+            // #692 part 4: animals (each places its animals first if the box has none; B39.c is "Kids try to catch a fish by hand" above)
+            Row(); // #692
+            if (Btn("Kids catch a frog")) last = CampCheats.FrogCatch(); // #692 B37 (alternates: caught / it gets away)
+            if (Btn("Watch the deer")) last = CampCheats.DeerWatch(); // #692 B38.a
+            if (Btn("Kids creep up on the deer")) last = CampCheats.DeerCreep(); // #692 B38.b
+            EndRow();
+            Row(); // #692
+            if (Btn("A kid holds a rabbit kit")) last = CampCheats.KitHold(); // #692 B39.a
+            if (Btn("Kids feed the ducks")) last = CampCheats.FeedDucks(); // #692 B15.d (B39.b)
+            EndRow();
         }
 
         void OnGUI()
