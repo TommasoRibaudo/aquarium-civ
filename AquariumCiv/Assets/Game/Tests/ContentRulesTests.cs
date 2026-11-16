@@ -36,6 +36,28 @@ namespace AquariumCiv.Tests
             CollectionAssert.Contains(ContentRules.MissingThings("Mira walked to the market.", camp), "the market");
         }
 
+        /// <summary>#652: a box with no water never says "stream"; the slice (always a pond) and a land with water may.</summary>
+        [Test]
+        public void ADryBoxNeverSaysStreamAndAWetOneMay()
+        {
+            var cfg = new SimConfig { ecology = true };
+            var dry = new SimCore(cfg, SimCore.NewWorld(3, cfg));
+            Assert.IsFalse(dry.OpenWater, "a fresh living land holds no water");
+            CollectionAssert.Contains(ContentRules.MissingThings("Mira lost a sandal crossing the stream.", dry), "the stream");
+            CollectionAssert.Contains(ContentRules.MissingThings("Mira found a way across the stream.", dry), "the stream");
+            CollectionAssert.Contains(ContentRules.MissingThings("A dry summer: the stream ran low.", dry), "the stream");
+            var slice = new SimCore(new SimConfig(), SimCore.NewWorld(3, new SimConfig()));
+            Assert.IsTrue(slice.OpenWater);
+            Assert.IsEmpty(ContentRules.MissingThings("Mira lost a sandal crossing the stream.", slice), "the slice has its stream");
+            // the sandal's loss on the living land is written from the land: never "stream", with or without water
+            for (int seed = 1; seed <= 4; seed++)
+            {
+                var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+                sim.Chronicled += e => { if (!sim.OpenWater) StringAssert.DoesNotContain("stream", e.text.ToLowerInvariant(), $"seed {seed}: {e.text}"); };
+                for (int y = 0; y < 30; y++) { sim.Advance(1); if (sim.State.eraReady) sim.AdvanceEra(); }
+            }
+        }
+
         [Test]
         public void EveryChoiceCallbackOfficeAndBankLineFollowsTheRules()
         {

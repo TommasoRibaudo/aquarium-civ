@@ -71,6 +71,7 @@ namespace AquariumCiv.Sim
             ("a dog", new[] { "dog", "dogs" }, s => s.AllDogs.Count > 0 || !s.EcologyOn),
             ("the Keeper's tree", new[] { "the keeper's tree" }, s => s.KeeperTreeGrown),
             ("the pond", new[] { "pond" }, s => s.OpenWater),
+            ("the stream", new[] { "stream" }, s => s.OpenWater), // #652: no "stream" while the land shows no water (its dry ground is "the hollow")
             ("the market", new[] { "the market" }, s => s.Count(BuildingType.Market) > 0),
         };
 
