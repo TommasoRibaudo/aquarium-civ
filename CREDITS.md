@@ -38,6 +38,7 @@ nicholasjudy567, antumdeluge and pattingthestar (OpenGameArt.org, CC0).
 
 ## 3D models
 
+- Watercraft Kit (the small rowing boat) by Kenney (CC0 1.0, credit appreciated): https://kenney.nl/assets/watercraft-kit
 - KayKit Medieval Hexagon Pack, City Builder Bits and Adventurers Character Pack by Kay Lousberg (CC0 1.0, credit appreciated): https://kaylousberg.itch.io/
 
 ## Fonts

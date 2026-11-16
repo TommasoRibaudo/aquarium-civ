@@ -154,8 +154,10 @@ namespace AquariumCiv.View
                     mb.Prism(new Vector3(0f, 0.04f, 0f), 0.055f, 0.07f, 0.07f, 8, Palette.Thatch, topCol: Palette.Straw);
                     mb.Ico(new Vector3(0f, 0.12f, 0f), 0.05f, new Vector3(1f, 0.5f, 1f), Palette.Accents[3], 0.08f);
                     break;
-                case ConsequenceKind.ShoreBoat: // #714 [est; a placeholder awaiting the user's asset OK]: the pond family's boat, upside down by the fire
+                case ConsequenceKind.ShoreBoat: // #714: the pond family's boat, upside down by the fire (the children's house)
                 {
+                    if (KenneyBoat(mb)) break; // the user's pick: Kenney Watercraft Kit's small rowing boat, recoloured to wood
+                    // the code-built stand-in, only if the model is missing:
                     // The Editor pass's close shot read the old squashed lump as a plank: now a planked hull upside down, widest in the middle and
                     // pointed at both ends (a pale gunwale at the ground, darker planks to the keel), its stern propped on a log so the dark
                     // hollow under it shows (the children's house), and its two oars laid beside it.
@@ -201,6 +203,101 @@ namespace AquariumCiv.View
             mesh.hideFlags = HideFlags.DontSave;
             return mesh;
         }
+
+        /// <summary>#714: the boat's model (Kenney Watercraft Kit 2.1, CC0: boat-row-small), under a Resources folder so a build has it.</summary>
+        public const string BoatModel = "KenneyWatercraft/boat-row-small", BoatColormap = "KenneyWatercraft/Textures/colormap";
+        /// <summary>#714: the boat's length on the land before <see cref="Scale"/> (0.27 × 1.5 = 0.4 box units: about two people lying down,
+        /// a family of three fits in it, and two children crawl under it).</summary>
+        public const float BoatLength = 0.27f;
+
+        /// <summary>#714: Kenney's small rowing boat, turned upside down by the fire with its stern propped on a log (the dark hollow under it
+        /// is the children's house), its two oars laid beside it. Recoloured to wood in the vertex colours: each corner's colour in Kenney's
+        /// colour map is read for its lightness only, then mapped onto the box's timber browns (bark, timber, light wood); the shared texture
+        /// is not edited. False when the model can't be read (the code-built stand-in draws instead).</summary>
+        static bool KenneyBoat(MeshBuilder mb)
+        {
+            var go = Resources.Load<GameObject>(BoatModel);
+            if (go == null) return false;
+            var map = Resources.Load<Texture2D>(BoatColormap);
+            var hull = new List<(Mesh mesh, Matrix4x4 m)>();
+            var oars = new List<(Mesh mesh, Matrix4x4 m)>();
+            foreach (var mf in go.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (mf.sharedMesh == null || !mf.sharedMesh.isReadable) return false;
+                var m = go.transform.worldToLocalMatrix * mf.transform.localToWorldMatrix;
+                (mf.name.ToLowerInvariant().Contains("paddle") ? oars : hull).Add((mf.sharedMesh, m));
+            }
+            if (hull.Count == 0) return false;
+            // the hull's bounds in the model's space: its long side becomes x
+            var b = new Bounds();
+            bool first = true;
+            foreach (var (mesh, m) in hull)
+                foreach (var v in mesh.vertices) { var p = m.MultiplyPoint3x4(v); if (first) { b = new Bounds(p, Vector3.zero); first = false; } else b.Encapsulate(p); }
+            bool alongZ = b.size.z > b.size.x;
+            float k = BoatLength / Mathf.Max(1e-4f, alongZ ? b.size.z : b.size.x);
+            var toX = Quaternion.Euler(0f, alongZ ? 90f : 0f, 0f);
+            var flip = Quaternion.Euler(180f, 0f, 0f);                       // keel up: rolled over its long axis
+            var tilt = Quaternion.Euler(0f, 0f, 18f);                        // the stern up on its log
+            float height = b.size.y * k;
+            // centre, turn long side to x, roll over, scale, sit the gunwale on the ground, then tilt about the bow's foot
+            var place = Matrix4x4.TRS(new Vector3(0f, height * 0.5f, 0f), flip * toX, Vector3.one * k) * Matrix4x4.Translate(-b.center);
+            var bow = new Vector3(-BoatLength * 0.5f, 0f, 0f);
+            var lift = Matrix4x4.Translate(bow) * Matrix4x4.Rotate(tilt) * Matrix4x4.Translate(-bow);
+            var keep = mb.M;
+            mb.Box(new Vector3(0.02f, 0.004f, 0f), new Vector3(BoatLength * 0.62f, 0.008f, BoatLength * 0.3f), new Color(0.16f, 0.11f, 0.07f)); // the dark hollow under it
+            foreach (var (mesh, m) in hull) AddWood(mb, mesh, m, keep * lift * place, map, 0f);
+            // the log under the stern (the high end), across the boat
+            mb.Prism(new Vector3(BoatLength * 0.3f, 0.03f, -BoatLength * 0.24f), 0.033f, 0.033f, BoatLength * 0.48f, 7, Palette.Bark, Quaternion.Euler(90f, 0f, 0f), true, true, Palette.WoodLight);
+            // the oars, laid flat on the ground beside it, side by side: the model's paddles are one mesh, an oar out to each side,
+            // so each side's half is taken alone, centred, and laid along x (the left one turned round so both blades point one way)
+            int i = 0;
+            foreach (var (mesh, m) in oars)
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    var ob = new Bounds(); bool f = true;
+                    foreach (var v in mesh.vertices) { var p = m.MultiplyPoint3x4(v); if (p.x * side <= 0f) continue; if (f) { ob = new Bounds(p, Vector3.zero); f = false; } else ob.Encapsulate(p); }
+                    if (f) continue;
+                    var lay = Matrix4x4.TRS(new Vector3(-0.01f + i * 0.03f, ob.size.y * k * 0.5f + 0.002f, BoatLength * 0.34f + i * 0.04f), Quaternion.Euler(0f, (side < 0 ? 180f : 0f) + (i == 0 ? 4f : -6f), 0f), Vector3.one * k)
+                              * Matrix4x4.Translate(-ob.center);
+                    int s = side;
+                    AddWood(mb, mesh, m, keep * lay, map, 0.1f, p => p.x * s > 0f);
+                    i++;
+                }
+            mb.M = keep;
+            return true;
+        }
+
+        /// <summary>One model mesh into <paramref name="mb"/> in wood colours: lightness from Kenney's colour map at each corner's UV, mapped onto
+        /// bark, timber and light wood (<paramref name="lighter"/> moves it up the ramp: the oars are lighter, newer wood). <paramref name="part"/>:
+        /// only the triangles whose middle (model space) it keeps.</summary>
+        static void AddWood(MeshBuilder mb, Mesh mesh, Matrix4x4 local, Matrix4x4 world, Texture2D map, float lighter, System.Func<Vector3, bool> part = null)
+        {
+            var vs = mesh.vertices; var uv = mesh.uv; var ts = mesh.triangles;
+            var cols = new Color[vs.Length];
+            // the height in the model (gunwale light, keel dark, as wooden boats weather), mixed with Kenney's own light and dark
+            float y0 = float.MaxValue, y1 = float.MinValue;
+            foreach (var v in vs) { float y = local.MultiplyPoint3x4(v).y; y0 = Mathf.Min(y0, y); y1 = Mathf.Max(y1, y); }
+            for (int v = 0; v < vs.Length; v++)
+            {
+                float lum = 0.6f;
+                if (map != null && map.isReadable && uv != null && uv.Length == vs.Length)
+                {
+                    var c = map.GetPixelBilinear(uv[v].x, uv[v].y);
+                    lum = 0.299f * c.r + 0.587f * c.g + 0.114f * c.b;
+                }
+                float up = Mathf.InverseLerp(y0, y1, local.MultiplyPoint3x4(vs[v]).y);
+                cols[v] = WoodOf(Mathf.Clamp01(0.45f * Mathf.InverseLerp(0.35f, 0.85f, lum) + 0.65f * up - 0.05f + lighter));
+            }
+            mb.M = world * local;
+            for (int t = 0; t + 2 < ts.Length; t += 3)
+            {
+                if (part != null && !part(local.MultiplyPoint3x4((vs[ts[t]] + vs[ts[t + 1]] + vs[ts[t + 2]]) / 3f))) continue;
+                mb.TriC(vs[ts[t]], vs[ts[t + 1]], vs[ts[t + 2]], cols[ts[t]], cols[ts[t + 1]], cols[ts[t + 2]]);
+            }
+        }
+
+        /// <summary>The box's timber ramp: bark (0), timber (0.5), light wood (1).</summary>
+        public static Color WoodOf(float t) => t < 0.5f ? Color.Lerp(Palette.Bark, Palette.Timber, t * 2f) : Color.Lerp(Palette.Timber, Palette.WoodLight, (t - 0.5f) * 2f);
 
         /// <summary>#635: <paramref name="count"/> charms hanging from a tree's lower crown: each a pale cord and a little coloured charm,
         /// spread round the trunk. Origin = the tree's ground point; box units, not scaled. <paramref name="attachY"/> / <paramref name="ringR"/>:
