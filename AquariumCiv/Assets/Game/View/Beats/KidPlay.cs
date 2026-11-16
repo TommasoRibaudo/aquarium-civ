@@ -139,6 +139,7 @@ namespace AquariumCiv.View
         public static KidGame Create(PlayGame g, int seed, float t0, IReadOnlyList<int> members, Vector2 centre, PlaySite site = null) => g switch
         {
             PlayGame.Splash => new SplashGame(seed, t0, members, centre, site),
+            PlayGame.FishGrab => new FishGrabGame(seed, t0, members, centre, site), // #708 (B39.c)
             PlayGame.Woods => new WoodsGame(seed, t0, members, centre, site),
             PlayGame.HideSeek => new HideSeekGame(seed, t0, members, centre, site),
             PlayGame.Snowball => new SnowballGame(seed, t0, members, centre),

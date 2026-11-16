@@ -73,7 +73,6 @@ namespace AquariumCiv.View
             {
                 planner.ResolveFishChain(pv.Now);
                 planner.ResolveEggGathers(pv.Now); // #574: the egg gather's take is settled here, once per gather (same per-frame hook)
-                planner.ResolveNestVisits(pv.Now); // #709: the nest egg's take, and the kids' look, settled here the same way
             }
             if (planner.RackMoveCovers(RackKind.Fish, pv.Now)) { Hide(); return; } // #700 (B27): the take-down and set-up beat draws it (RackMoveView)
             if (!planner.TryGetFishRack(pv.Now, out var look)) { Hide(); return; }

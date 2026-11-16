@@ -43,6 +43,7 @@ namespace AquariumCiv.View
             if (rabbitsOk && HerdNear(planner, viewNow, at).HasValue) s |= PlaySites.Rabbits;
             if (real.kind == PlaceKind.Pond && IceSite(planner, at, out _)) s |= PlaySites.Ice; // #618
             if (IsWaterPlace(real.kind) && WaterSite(planner, real, at, out _)) s |= PlaySites.Water;
+            if (real.kind == PlaceKind.Pond && (s & PlaySites.Water) != 0 && FishToCatch(viewNow)) s |= PlaySites.Fish; // #708 (B39.c)
             if (!roomy) return s;
             if (snow) s |= PlaySites.Snow;
             if (NearestTree(at, WoodsReach, null, out _, out _)) s |= PlaySites.Tree;
@@ -59,6 +60,8 @@ namespace AquariumCiv.View
             {
                 case PlayGame.Splash:
                     return WaterSite(planner, real, centre, out var w) ? w : null;
+                case PlayGame.FishGrab: // #708 (B39.c): the pond's own edge only (no fish in a puddle)
+                    return real.kind == PlaceKind.Pond && WaterSite(planner, real, centre, out var fw) ? fw : null;
                 case PlayGame.IceSlide:
                 {
                     if (!IceSite(planner, centre, out var ice)) return null;
@@ -396,6 +399,14 @@ namespace AquariumCiv.View
                     }
                     return LifeClock.SeasonOf(pv.Now.day) == Season.Winter ? "winter: no splashing" : "no water: no pond yet and no puddle ('Puddles now' first)";
                 }
+                case PlayGame.FishGrab: // #708 (B39.c): at the pond's edge, with fish shown in it
+                {
+                    var pond = Place.Land(PlaceKind.Pond);
+                    if (FishView.Instance == null || FishView.Instance.Wanted == 0) return "no fish in the pond ('Fish: the shadows' first)";
+                    if (!WaterSite(planner, pond, spot, out site)) return LifeClock.SeasonOf(pv.Now.day) == Season.Winter ? "winter: nobody reaches into the water" : "no pond water";
+                    place = pond; centre = site.edge;
+                    break;
+                }
                 case PlayGame.IceSlide:
                     if (!IceSite(planner, spot, out site)) return IceView.Instance != null && IceView.Instance.Frozen ? "the ice is not whole yet, or the pond is too small to go on" : "no ice: the pond isn't frozen ('Ice: on' first)";
                     place = Place.Land(PlaceKind.Pond); centre = site.slideA; spot = site.slideA;
@@ -412,7 +423,7 @@ namespace AquariumCiv.View
                     centre = Vector2.Lerp(site.home.pos, spot, 0.5f);
                     break;
             }
-            int want = game switch { PlayGame.IceSlide => 3, PlayGame.Woods => 2, PlayGame.HideSeek => site != null ? Mathf.Min(4, 1 + site.covers.Count) : 3, PlayGame.Splash => 2, _ => 3 };
+            int want = game switch { PlayGame.IceSlide => 3, PlayGame.Woods => 2, PlayGame.HideSeek => site != null ? Mathf.Min(4, 1 + site.covers.Count) : 3, PlayGame.Splash => 2, PlayGame.FishGrab => 2, _ => 3 };
             var who = new List<int>();
             while (who.Count < want)
             {
@@ -420,7 +431,7 @@ namespace AquariumCiv.View
                 if (k < 0) break;
                 who.Add(k);
             }
-            int least = game == PlayGame.HideSeek ? 3 : 2;
+            int least = game == PlayGame.HideSeek ? 3 : game == PlayGame.FishGrab ? 1 : 2;
             if (who.Count < least) return $"only {who.Count} kids on view for {game}";
             foreach (int k in who) if (byKey.TryGetValue(k, out var gi)) { int ix = groups.IndexOf(gi.g); if (ix >= 0) Remove(ix); }
             var g = new Group
@@ -430,6 +441,22 @@ namespace AquariumCiv.View
             };
             Add(g);
             return $"{game}: {who.Count} kids for {ForcedSeconds:0} s";
+        }
+
+        /// <summary>#708 (B39.c): the kids try for a fish by hand in summer, once fish are placed and shown.</summary>
+        static bool FishToCatch(ViewTime viewNow) => FishView.Instance != null && FishView.Instance.Wanted > 0 && LifeClock.SeasonOf(viewNow.day) == Season.Summer;
+
+        /// <summary>#708 (B39.c): where the first group trying for a fish kneels (the AnimLab follow, tests). False: nobody is.</summary>
+        public bool FishGrabSpot(out Vector2 at)
+        {
+            foreach (var g in groups) if (g.game is FishGrabGame fg) { at = fg.Site.edge; return true; }
+            at = default; return false;
+        }
+
+        /// <summary>#708 (B39.c): the hands at the edge the fish come to now (FishView).</summary>
+        public void FishLures(float time, List<Vector2> into)
+        {
+            foreach (var g in groups) if (g.game is FishGrabGame fg) fg.Lures(time, into);
         }
     }
 }

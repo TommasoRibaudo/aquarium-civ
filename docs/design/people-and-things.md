@@ -25,6 +25,7 @@ user picks them. **Gap** marks a thing that has no use, or no life use.
 | Hide rack | W scrape hide | L kids duck under it | **Gap (L)** · spec B42 (2026-11-15, waits for sign-off) |
 | Fish rack | W hang and take down fish | L kids count the fish, a kid sneaks one and gets caught | **Gap (L)** · spec B42 (2026-11-15, waits for sign-off) |
 | Berry bushes / thicket | W gather · L kids eat berries, first-bush inspect | L hide in the thicket, peek at rabbits from it, berry-stained faces | thicket: **Gap** · spec B43, B71 (nest) (2026-11-15, waits for sign-off) |
+| Nest (in the biggest thicket, #709) | W a gatherer takes an egg now and then, never the last (B71.d) · L kids creep up, peer in and count the eggs, step back when the bird puts its wings out (B71.c) | — | built (#709 view): cheats in the "Nest (#709)" block (place, spring, lay, take, hatch, chicks fly off, next stage, gatherer takes an egg, kids look, show me); clips wait for sign-off |
 | Wild trees | W chop, carry · L woods games, hide-and-seek | L climb a low branch, nap in the shade, lean on the trunk | spec B44 (2026-11-15, waits for sign-off) |
 | Fallen branches | W gather | L sword fight with sticks, a stick horse | **Gap (L)** · spec B36 (2026-11-15, waits for sign-off) |
 | Keeper's tree | never chopped; charms hang there | L sit under it, touch the bark, kids circle it, **a quiet visit after a death** (the user's favourite). More quiet visits, proposed: a newlywed pair walks there after the wedding, a parent brings the newborn, an old one sits there on their last days, the eldest tells the kids who planted it | **Gap (L)** · spec B32 (2026-11-15, waits for sign-off) |
@@ -43,7 +44,7 @@ user picks them. **Gap** marks a thing that has no use, or no life use.
 | Rabbits | W hunt · L chase, sighting | L a kid holds a kit | spec B39.a (2026-11-15, waits for sign-off) |
 | Deer | W hunt · L watch the arrival, white stag | L watch them graze from the edge, kids creep up and the deer bolt | **Gap (L)** · spec B38 (2026-11-15, waits for sign-off) |
 | Ducks | W eggs · L kids chase | L throw crumbs | spec B39.b (2026-11-15, waits for sign-off) |
-| Fish | W fish · L watch the arrival | L kids peer into the water, try to catch one by hand | **Gap (L)** · spec B39.c, B70 (2026-11-15, waits for sign-off) |
+| Fish | W fish (a shadow noses the hook before a bite, B16.e) · L watch the arrival · L kids kneel at the edge and try to catch one by hand, never do (B39.c, built 2026-11-15, `FishGrabGame`) · the Keeper sees them as shadows and through the glass (B70) | L kids peer into the water | built (#708 view): cheats "Fish: the shadows", "Fish: show them at the glass", "Fish: startle", "Kids try to catch a fish by hand"; clips wait for sign-off |
 | Frogs | none (they flee and croak) | L kids catch one and let it go | **Gap** · spec B37 (2026-11-15, waits for sign-off) |
 | Wolves | stand and watch; white wolf | L shout and wave torches to drive them off (decided), hold the kids close | **Gap** · spec B55 (2026-11-15, waits for sign-off) |
 | Dogs | none in `Life/` | W go on the hunt, guard · L fetch, kids ride, a dog sleeps by the fire | **Gap** · spec B56 (2026-11-15, waits for sign-off) |

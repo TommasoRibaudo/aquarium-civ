@@ -358,6 +358,23 @@ namespace AquariumCiv.Sim
             return child;
         }
 
+        /// <summary>Debug (#708/#709: the kids' beats need kids; a new living land starts with five grown-ups): <paramref name="n"/> children of
+        /// <paramref name="age"/> years join a living adult's family. How many came.</summary>
+        public int DebugAddKids(int n = 2, float age = 7f)
+        {
+            int made = 0;
+            for (int i = 0; i < n; i++)
+            {
+                var parent = State.notables.Where(x => x.alive && x.age >= 18f).OrderBy(x => x.id).Skip(i).FirstOrDefault()
+                             ?? State.notables.Where(x => x.alive && x.age >= 18f).OrderBy(x => x.id).FirstOrDefault();
+                if (parent == null) break;
+                var child = AddNotable(age + i * 0.7f, parent.id, parent.family);
+                Chronicle("birth", $"{child.FullName} came to live with {parent.FullName}.", 0.2f, child.id);
+                made++;
+            }
+            return made;
+        }
+
         // ---------- queries for views ----------
         public Notable FindNotable(int id) => State.notables.FirstOrDefault(n => n.id == id);
 

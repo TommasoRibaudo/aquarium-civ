@@ -846,6 +846,7 @@ namespace AquariumCiv.View
             }
             StagedPose?.Invoke(a, v, ref pose); // #370: a staged moment's one-shot beats (a cheer, a bow, the lift, the ring)
             LifePose?.Invoke(a, v, ref pose); // #427: a placed-life scene's beats (the kid holding still, the "shh", a point)
+            NestPose?.Invoke(a, v, ref pose); // #709: the kids' look and the gatherer's take at the nest (NestView)
             if (poking) MealBeats.Poke.Apply(ref pose, pokeSince); // #365 B9.c: up from the sit, the stick into the fire, back down
             if (toddling) ToddleFollow.ToddlerPose(ref pose, a.who.Key, time); // 2026-11-06: the plop
             else if (bendTo.HasValue) ToddleFollow.CarerPose(ref pose, a.carrying.Key, time);
@@ -1590,6 +1591,8 @@ namespace AquariumCiv.View
         /// <summary>#427: the placed-life scenes' own hooks (DeerScenesView: the dawn at the pond), beside the staged moments'.</summary>
         public static StagedSpotHook LifeSpot;
         public static StagedPoseHook LifePose;
+        /// <summary>#709: the nest's beats (NestView): B71.c the kids' look, B71.d the gatherer's take, laid over the pose after the scenes'.</summary>
+        public static StagedPoseHook NestPose;
 
         /// <summary>#656/#677: what a new-start scene asks of one person this frame: where they stand (box units), what they face, the
         /// pose while they stand still, and what they hold.</summary>
