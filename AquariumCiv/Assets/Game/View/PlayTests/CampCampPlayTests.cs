@@ -23,6 +23,8 @@ namespace AquariumCiv.View.PlayTests
         /// (the test fails at the end with every miss listed, so one run shows them all).</summary>
         IEnumerator Play(PeopleView pv, CampUse use, Func<string> cheat, Func<bool> left, string what, bool retry = true)
         {
+            // the run takes ~10 min: keep the view in the day, or the camp goes to bed (people in tents can't be cast, a crown comes off at night)
+            if (pv.Now.hour < 9f || pv.Now.hour > 15.5f) { PeopleView.DebugSetHour(11f); yield return new WaitForSeconds(1f); }
             int before = pv.Camp.Started.TryGetValue(use, out int n) ? n : 0;
             string r = cheat();
             Debug.Log($"[692p5 uses] {use}: {r}");
