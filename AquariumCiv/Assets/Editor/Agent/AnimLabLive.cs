@@ -47,6 +47,7 @@ namespace AquariumCiv.EditorTools
         static int loadFrame = -1, frame, warmFrames, recFrames;
         static Camera cam;
         static Texture2D readback;
+        static readonly Dictionary<(int, int), Texture2D> readbacks = new Dictionary<(int, int), Texture2D>();
         static Vector2 followAt;
         static bool followSet;
         static int ecologyWas = -1;
@@ -268,8 +269,11 @@ namespace AquariumCiv.EditorTools
             cam.targetTexture = null;
             var keep = RenderTexture.active;
             RenderTexture.active = rt;
-            if (readback == null || readback.width != w || readback.height != h)
-                readback = new Texture2D(w, h, TextureFormat.RGB24, false) { hideFlags = HideFlags.DontSave };
+            // #692: one readback per size (the two cameras alternate 480x360 and 360x360): a new one each frame without destroying the
+            // last leaked ~2 MB a frame, 23 GB over a few clips, and the Editor died out of memory (tooling.md 2026-11-15)
+            var key = (w, h);
+            if (!readbacks.TryGetValue(key, out readback) || readback == null)
+                readbacks[key] = readback = new Texture2D(w, h, TextureFormat.RGB24, false) { hideFlags = HideFlags.DontSave };
             readback.ReadPixels(new Rect(0, 0, w, h), 0, 0);
             readback.Apply(false);
             RenderTexture.active = keep;
