@@ -73,6 +73,10 @@ namespace AquariumCiv.Sim
             ("the pond", new[] { "pond" }, s => s.OpenWater),
             ("the stream", new[] { "stream" }, s => s.OpenWater), // #652: no "stream" while the land shows no water (its dry ground is "the hollow")
             ("the market", new[] { "the market" }, s => s.Count(BuildingType.Market) > 0),
+            ("two or more kids", new[] { "children", "kids" }, s => s.KidCount >= 2), // a line about "the children" needs at least two; one kid is "the baby" or "the little one"
+            ("water for mud", new[] { "mud", "muddy" }, s => s.OpenWater), // no water, no mud: the dry land is "the dry hollow"
+            ("a bench", new[] { "bench", "benches" }, s => false), // the box has no bench prop (people-and-things.md); the fire is where they sit
+            ("a broom", new[] { "broom", "brooms" }, s => s.Sweepers > 0), // only the town's sweepers carry one
         };
 
         /// <summary>The gated things a line names that the box does not have now (empty = fine).</summary>

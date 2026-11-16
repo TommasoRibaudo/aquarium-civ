@@ -105,7 +105,7 @@ namespace AquariumCiv.Sim
         static readonly Dictionary<string, string> FirstActs = new()
         {
             [RoleType.Chief] = "First act: moving the fire closer to their tent.",
-            [RoleType.Headman] = "First act: a new bench on the green.",
+            [RoleType.Headman] = "First act: a bigger fire on the green.",
             [RoleType.Lord] = "First act: a chair for the market steps.",
             [RoleType.Miller] = "The sails turned a little faster that week.",
             [RoleType.Priest] = "The bell was rung three times, just to be sure.",

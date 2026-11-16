@@ -256,7 +256,7 @@ namespace AquariumCiv.Sim
 
         /// <summary>#715 [est]: where the sandal went, in the land's own words at the source (a living land has no stream; the
         /// pond only once it holds water).</summary>
-        string SandalWhere => !EcologyOn ? "crossing the stream" : OpenWater ? "in the mud at the pond's edge" : "in the mud of the hollow";
+        string SandalWhere => !EcologyOn ? "crossing the stream" : OpenWater ? "in the mud at the pond's edge" : "in the dry hollow";
 
         /// <summary>The Sandal's loss was told: seed the relic (owner, spot) to be found ≥ 20 years later.</summary>
         void SandalLost(Notable n, ChronicleEntry e)

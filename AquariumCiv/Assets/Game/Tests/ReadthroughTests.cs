@@ -96,9 +96,9 @@ namespace AquariumCiv.Tests
             var log = Century(seed, out var sim);
             foreach (var (e, _) in log.Where(x => x.e.kind == "rivalry"))
             {
-                int coda = e.text.IndexOf("share a bench. ");
+                int coda = e.text.IndexOf("share a fire. ");
                 if (coda < 0) continue;
-                string tail = e.text.Substring(coda + "share a bench. ".Length);
+                string tail = e.text.Substring(coda + "share a fire. ".Length);
                 foreach (var id in new[] { e.notableId, e.otherNotableId })
                     Assert.IsFalse(tail.StartsWith(sim.FindNotable(id).FullName + " the "), e.text);
             }

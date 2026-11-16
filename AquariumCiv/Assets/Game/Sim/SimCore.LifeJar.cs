@@ -184,7 +184,7 @@ namespace AquariumCiv.Sim
             foreach (var s in gone)
                 Chronicle("life_left_" + s.ToString().ToLowerInvariant(), s == LifeSpecies.Ducks
                     ? "The ducks had no water left to swim on. One morning they were gone, and only a few feathers lay in the dry hollow."
-                    : "The water was gone from the hollow, and the fish with it. The children looked for them in the mud.", 0.6f);
+                    : "The water was gone from the hollow, and the fish with it. Everyone looked for them in the dry hollow.", 0.6f);
         }
 
         // ---------- debug (the panel's "Life jar" block; CLAUDE.md "debug panel stays current") ----------

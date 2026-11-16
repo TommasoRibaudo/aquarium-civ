@@ -218,7 +218,7 @@ namespace AquariumCiv.Sim
                 stories = new[]
                 {
                     new TermStory("term_expedition", 2f, "{0}, the {5}'s {1}, walked the whole edge of the glass in one day. They came back with stories.", // #716 [est]
-                        "{0} the {1} took {3} and {4} on a long hunt. They came back muddy and very proud."),
+                        "{0} the {1} took {3} and {4} on a long hunt. They came back dusty and very proud."),
                 },
                 teaser = "{0} wants to walk the whole edge of the {5}.", // #716 [est]
             },
