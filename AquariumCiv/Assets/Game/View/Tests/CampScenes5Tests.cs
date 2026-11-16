@@ -88,7 +88,7 @@ namespace AquariumCiv.View.Tests
             var lean = CampScenes5.TrunkLean(1, 2, Far, Far2, Spot, 0.035f, ToCam, 5f, 0f);
             Ok(lean);
             var l = DollPose.Rest; lean.parts[0][1].pose(ref l, 1f, 5f);
-            Assert.AreEqual(-12f, l.roll, 0.5f, "a shoulder on the trunk (roll 12)");
+            Assert.AreEqual(-CampScenes5.LeanRoll, l.roll, 0.5f, "a shoulder on the trunk (roll 16, the retakes)");
         }
 
         [Test]
@@ -184,6 +184,43 @@ namespace AquariumCiv.View.Tests
             var crown = CampScenes5b.Crown(1, Far, 2, Far2, Spot, ToCam, 0f);
             Ok(crown);
             Assert.AreEqual(1, crown.fx.Count(f => f.count == (int)CampMark.Crown && f.anchor == CampAnchor.Head && f.member == 1), "on the other kid's head");
+        }
+
+        /// <summary>#692 p5 retakes: the tents' shown side, the shore, the climb's seat, the ropes, the racers' lanes and the nap.</summary>
+        [Test]
+        public void Retakes_ShownSideShoreSeatsLanesAndTheNap()
+        {
+            var c = new Vector2(0.5f, 0.5f); var toCam = CampGeo5.HomeToCam;
+            Assert.AreEqual(1f, toCam.magnitude, 1e-4f);
+            var d1 = c + toCam * 0.28f;
+            CampGeo5.ShownSide(c, d1, toCam, toCam, 0.17f, out var s1, out _, out bool hem1);
+            Assert.IsFalse(hem1, "a door facing the camera is the door"); Assert.AreEqual(d1, s1);
+            var d2 = c - toCam * 0.28f;
+            CampGeo5.ShownSide(c, d2, -toCam, toCam, 0.17f, out var s2, out var w2, out bool hem2);
+            Assert.IsTrue(hem2, "a door facing away: the hem on the camera's side");
+            Assert.AreEqual(CampGeo5.ShownDot, Vector2.Dot(w2, toCam), 0.01f, "turned just far enough to face the camera");
+            Assert.AreEqual(0.17f, (s2 - c).magnitude, 1e-3f, "on the tent's wall");
+            var side = new Vector2(-toCam.y, toCam.x);
+            CampGeo5.ShownSide(c, c - side * 0.28f - toCam * 0.1f, -side - toCam * 0.4f, toCam, 0.17f, out _, out var w3, out _);
+            Assert.Greater(Vector2.Dot(w3, -side), 0f, "turned the short way round");
+            var pole = CampGeo5.PoleBeside(s2, w2, toCam);
+            Assert.GreaterOrEqual(Vector2.Dot(pole - s2, toCam), 0f, "the pole on the camera's side of it");
+            Assert.AreEqual(CampGeo5.PoleOff, (pole - s2).magnitude, 0.04f);
+            System.Func<float, float, bool> wet = (x, z) => z > 1f;
+            Assert.AreEqual(1f - CampGeo5.ShoreBack, CampGeo5.ToShore(new Vector2(0f, 0.6f), Vector2.up, wet).y, 0.011f, "walked down to the drawn water");
+            Assert.AreEqual(Vector2.zero, CampGeo5.ToShore(Vector2.zero, Vector2.up, (x, z) => false), "no water near: the spot stays");
+            Assert.That(CampScenes5.ClimbSeatFor(0.16f), Is.InRange(0.08f, 0.16f));
+            var climb = CampScenes5.ClimbTree(1, Far, Spot, ToCam, 8f, -1, default, 0f, 0.12f, 0.7f);
+            Ok(climb);
+            var up = DollPose.Rest; climb.parts[0].First(x => x.style == DollStyle.Sit).pose(ref up, 1f, 8f);
+            Assert.GreaterOrEqual(up.offset.y * 0.7f, 0.12f, "the seat in box units, after the kid's scale");
+            Assert.GreaterOrEqual(CampGeo5.RopeTop(0.18f), CampGeo5.SeatH + CampGeo5.RopeLen, "the ropes reach at least the bough");
+            var race = CampScenes5.PuddleRace(new[] { 1, 2, 3 }, new[] { Far, Far2, Spot }, new[] { Spot + Across * 0.4f }, 0f);
+            Ok(race);
+            var at = race.parts.Select(m => m.First(x => x.style == DollStyle.Stomp).pos).ToList();
+            for (int i = 0; i < at.Count; i++) for (int j = i + 1; j < at.Count; j++) Assert.GreaterOrEqual((at[i] - at[j]).magnitude, CampScenes5.RaceLane - 1e-3f, "each in a lane");
+            var nap = DollPose.Rest; CampScenes5.NapPose(99f)(ref nap, 3f, 9f);
+            Assert.Greater(Mathf.Abs(nap.roll), 10f, "asleep: slumped to the side");
         }
 
         [Test]

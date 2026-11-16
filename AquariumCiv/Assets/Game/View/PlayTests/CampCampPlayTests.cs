@@ -2,8 +2,8 @@
 // - CampCampUses (category CampCamp, ~6 min): one lived-in camp (the land ready, fish and hides on the racks, puddles); each cheat in turn starts
 //   its use, and what the use leaves shows (a toy on a tent, lanterns lit, meat strips, a purple mouth, a crown, a gift, a dam, a leaf boat,
 //   the swing hung).
-// - Camp692CampShots (Explicit): phone shots (1080x1920) of each use at the default camera AND zoomed onto the use, in a fresh box each;
-//   they land in Temp/agent/692p5/.
+// - Camp692CampShots (Explicit): phone shots (1080x1920) of each use zoomed onto it AND at the default camera, in a fresh box each, timed
+//   by the use's hit (CampLife.UntilA); they land in Temp/agent/692p5/.
 using System;
 using System.Collections;
 using System.Linq;
@@ -113,10 +113,10 @@ namespace AquariumCiv.View.PlayTests
     [Explicit, Category("Camp692CampShots")]
     public class Camp692CampShots : PlayTestBase
     {
-        /// <summary>A fresh box: a lived-in camp at <paramref name="hour"/> with the land ready (a wild tree, saplings), fish and hides on the racks,
-        /// <paramref name="prep"/> (or null), then the cheat; at each of <paramref name="at"/> seconds a shot at the default camera, and at
-        /// <paramref name="zoomAt"/> one zoomed onto the use.</summary>
-        IEnumerator Use(string name, float hour, Func<string> cheat, float zoomAt, int kids, Func<string> prep, params float[] at)
+        /// <summary>A fresh box: a lived-in camp at <paramref name="hour"/> with the land ready (a wild tree, saplings), <paramref name="prep"/> (or
+        /// null), then the cheat. #692 p5 retakes: timed by the use itself (a cheat's walk can take 9 s): when it is <paramref name="lead"/> s before
+        /// its hit (CampScene.a) a shot zoomed onto it and one at the default camera, and <paramref name="after"/> s later one more zoomed.</summary>
+        IEnumerator Use(string name, float hour, Func<string> cheat, int kids, Func<string> prep, float lead = 0.2f, float after = 1.5f)
         {
             UseLivingLand(true);
             GameUiPanel.AcceptInputUnfocused(true);
@@ -127,71 +127,77 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log("[692p5 shots] " + CampCheats.LandReady());
             yield return new WaitForSeconds(3f);
             Debug.Log("[692p5 shots] " + CampCheats.LandReady());
-            if (prep != null) { Debug.Log("[692p5 shots] prep: " + prep()); yield return new WaitForSeconds(2f); }
+            if (prep != null) { Debug.Log("[692p5 shots] prep: " + prep()); yield return new WaitForSeconds(3f); }
             yield return new WaitForSeconds(1f);
             string r = cheat();
             Debug.Log($"[692p5 shots] {name}: {r}");
             var pv = PeopleView.Find();
             var rig = Camera.main.GetComponent<BoxCamera>();
             var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
-            var times = at.Concat(new[] { zoomAt }).OrderBy(x => x).ToList();
-            float t = 0f;
-            foreach (float s in times)
-            {
-                yield return new WaitForSeconds(Mathf.Max(0f, s - t));
-                t = s;
-                if (Mathf.Approximately(s, zoomAt) && pv.Camp.FocusNow() is Vector2 f)
-                {
-                    Vector3 tgt0 = rig.target; float z0 = rig.zoom, p0 = rig.pitch, m0 = rig.minZoom;
-                    var w = box.Root.TransformPoint(new Vector3(f.x, box.SurfaceHeight(f.x, f.y) + 0.06f, f.y));
-                    for (int i = 0; i < 14; i++) { rig.CancelFlight(); rig.minZoom = 0.05f; rig.target = w; rig.zoom = 0.1f; rig.pitch = 38f; rig.Apply(); yield return null; }
-                    yield return Shot($"692p5/{name}_zoom_{s:0.0}s");
-                    t += 14f / 60f;
-                    for (int i = 0; i < 4; i++) { rig.CancelFlight(); rig.target = tgt0; rig.zoom = z0; rig.pitch = p0; rig.minZoom = m0; rig.Apply(); yield return null; }
-                }
-                else yield return Shot($"692p5/{name}_default_{s:0.0}s");
-            }
+            float t0 = Time.time;
+            while (Time.time - t0 < 30f && !(pv.Camp.UntilA is float u && u <= lead)) yield return null;
+            Debug.Log($"[692p5 shots] {name}: the hit in {pv.Camp.UntilA} s, {Time.time - t0:0.0} s after the cheat");
+            yield return Zoomed(pv, rig, box, $"692p5/{name}_zoom_hit");
+            yield return Shot($"692p5/{name}_default_hit");
+            yield return new WaitForSeconds(after);
+            yield return Zoomed(pv, rig, box, $"692p5/{name}_zoom_after");
             Debug.Log($"[692p5 shots] {name} marks: {pv.Camp.CampMarks()}");
             Assert.Greater(pv.Camp.Started.Count, 0, name + ": a use played (" + r + ")");
             CloseSlice();
         }
 
-        static string Rack() => FishRackView.DebugRack() + "; " + EcoDebug.ShowRack(3);
-        static string Dusk() { var s = CampCheats.LightLanterns(); DayLightDriver.DebugPauseClock(true); return s; }
+        /// <summary>A phone shot with the camera zoomed in on the use's focus (CampLife.FocusNow), then the camera back.</summary>
+        IEnumerator Zoomed(PeopleView pv, BoxCamera rig, BoxView box, string path)
+        {
+            if (!(pv.Camp.FocusNow() is Vector2 f)) { yield return Shot(path + "_nofocus"); yield break; }
+            Vector3 tgt0 = rig.target; float z0 = rig.zoom, p0 = rig.pitch, m0 = rig.minZoom;
+            var w = box.Root.TransformPoint(new Vector3(f.x, box.SurfaceHeight(f.x, f.y) + 0.06f, f.y));
+            for (int i = 0; i < 14; i++) { rig.CancelFlight(); rig.minZoom = 0.05f; rig.target = w; rig.zoom = 0.1f; rig.pitch = 38f; rig.Apply(); yield return null; }
+            yield return Shot(path);
+            for (int i = 0; i < 4; i++) { rig.CancelFlight(); rig.target = tgt0; rig.zoom = z0; rig.pitch = p0; rig.minZoom = m0; rig.Apply(); yield return null; }
+        }
 
-        [UnityTest, Timeout(300000)] public IEnumerator B40a() => Use("b40a-tent-peek", 7f, CampCheats.TentPeek, 2.5f, 2, null, 2.2f);
-        [UnityTest, Timeout(300000)] public IEnumerator B40b() => Use("b40b-tent-toy", 11f, CampCheats.TentToy, 6f, 2, null, 5.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B40c() => Use("b40c-door-sit", 18f, CampCheats.TentDoorSit, 8f, 2, () => { DayLightDriver.DebugPauseClock(true); return "paused"; }, 7.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B41a() => Use("b41a-count-stash", 15f, CampCheats.CountStash, 5f, 2, null, 4.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B41b() => Use("b41b-snack-sneak", 11f, CampCheats.SnackSneak, 6f, 2, null, 5.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B42a() => Use("b42a-tend-racks", 10f, CampCheats.TendRacks, 5f, 2, () => Rack() + "; " + CampCheats.HangMeat(), 4.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B42b() => Use("b42b-duck-hides", 11f, CampCheats.DuckUnderHides, 3f, 2, Rack, 2.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B42c() => Use("b42c-count-fish", 11f, CampCheats.CountFish, 5f, 2, Rack, 4.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B42d() => Use("b42d-sneak-fish", 11f, CampCheats.SneakFish, 4f, 2, Rack, 3.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B43b() => Use("b43b-thicket-peek", 11f, CampCheats.ThicketPeek, 6f, 2, null, 5.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B43c() => Use("b43c-berry-wipe", 15f, CampCheats.BerryKid, 6f, 2, null, 5.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B44a() => Use("b44a-climb", 11f, CampCheats.ClimbTree, 6f, 2, null, 5.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B44b() => Use("b44b-nap", 12f, CampCheats.TreeNap, 8f, 2, null, 7.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B44c() => Use("b44c-trunk-lean", 11f, CampCheats.TrunkLean, 5f, 2, null, 4.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B45a() => Use("b45a-skip-stones", 11f, CampCheats.SkipStones, 4.6f, 2, null, 4.4f);
-        [UnityTest, Timeout(300000)] public IEnumerator B45b() => Use("b45b-leaf-boat", 12f, CampCheats.LeafBoat, 8f, 2, null, 7.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B45c() => Use("b45c-feet-water", 14f, CampCheats.FeetInWater, 7f, 2, null, 6.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B46a() => Use("b46a-puddle-look", 11f, CampCheats.PuddleLook, 4f, 2, EcoDebug.PuddlesNow, 3.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B46b() => Use("b46b-puddle-race", 11f, CampCheats.PuddleRace, 5f, 3, EcoDebug.PuddlesNow, 4.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B47a() => Use("b47a-cut-reeds", 9f, CampCheats.CutReeds, 6f, 2, null, 5.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B47b() => Use("b47b-reed-whistle", 11f, CampCheats.ReedWhistle, 8f, 3, null, 7.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B48a() => Use("b48a-follow-stream", 11f, CampCheats.FollowStream, 6f, 3, null, 5.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B48b() => Use("b48b-dam", 11f, CampCheats.BuildDam, 12f, 2, null, 11.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B49a() => Use("b49a-hill-dusk", 17.3f, CampCheats.HillDusk, 10f, 2, () => { DayLightDriver.DebugPauseClock(true); return "paused"; }, 9.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B49b() => Use("b49b-hill-roll", 11f, CampCheats.HillRoll, 4f, 3, null, 3.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B50a() => Use("b50a-path-race", 11f, CampCheats.PathRace, 4f, 3, null, 3.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B50b() => Use("b50b-path-chat", 11f, CampCheats.PathChat, 5f, 2, null, 4.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B51() => Use("b51-stone-gift", 8f, CampCheats.StoneGift, 5f, 2, null, 4.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B52a() => Use("b52a-lanterns", 18f, CampCheats.LightLanterns, 6f, 2, () => { DayLightDriver.DebugPauseClock(true); return "paused"; }, 5.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B52b() => Use("b52b-moths", 19.4f, CampCheats.ChaseMoths, 3f, 2, Dusk, 2.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B53a() => Use("b53a-pull-weed", 10f, CampCheats.PullWeed, 3.5f, 2, null, 3.3f);
-        [UnityTest, Timeout(300000)] public IEnumerator B53c() => Use("b53c-crown", 11f, CampCheats.Crown, 4.5f, 2, null, 4.3f);
-        [UnityTest, Timeout(300000)] public IEnumerator B53dHang() => Use("b53d-hang-swing", 14f, CampCheats.HangSwing, 7f, 2, null, 6.8f);
-        [UnityTest, Timeout(300000)] public IEnumerator B53dSwing() => Use("b53d-swing", 14f, CampCheats.Swing, 5f, 2, null, 4.8f);
+        static string Rack() => CampCheats.FishStay() + "; " + EcoDebug.ShowRack(3);
+        /// <summary>Dusk for real: the first run's day hold off (it held the light at 11 h), the hour set again, the clock paused.</summary>
+        static string DuskAt(float h) { var s = FirstRunView.DebugSkipAll(); PeopleView.DebugSetHour(h); DayLightDriver.DebugPauseClock(true); return s + " | " + DayLightDriver.Status(); }
+        static string Moths() { var s = DuskAt(19.6f); return s + " | " + CampCheats.LightLanterns(); }
+        static string NameStone() => CampCheats.PondReady() + " | " + DilemmaCheats.Toggle(true) + " | " + DilemmaCheats.Raise("camp_remember") + " | " + DilemmaCheats.AnswerOnCard(0);
+        static string Pond() => CampCheats.PondReady();
+        static string Reeds() => CampCheats.PondReady() + " | " + CampCheats.ReedsReady();
+
+        [UnityTest, Timeout(300000)] public IEnumerator B40a() => Use("b40a-tent-peek", 7f, CampCheats.TentPeek, 2, null, -0.8f);
+        [UnityTest, Timeout(300000)] public IEnumerator B40b() => Use("b40b-tent-toy", 11f, CampCheats.TentToy, 2, null, 0.3f);
+        [UnityTest, Timeout(300000)] public IEnumerator B40c() => Use("b40c-door-sit", 18f, CampCheats.TentDoorSit, 2, () => DuskAt(18f), -0.5f);
+        [UnityTest, Timeout(300000)] public IEnumerator B41a() => Use("b41a-count-stash", 15f, CampCheats.CountStash, 2, null, 1f);
+        [UnityTest, Timeout(300000)] public IEnumerator B41b() => Use("b41b-snack-sneak", 11f, CampCheats.SnackSneak, 2, null);
+        [UnityTest, Timeout(300000)] public IEnumerator B42a() => Use("b42a-tend-racks", 10f, CampCheats.TendRacks, 2, () => Rack() + "; " + CampCheats.HangMeat(), 2f);
+        [UnityTest, Timeout(300000)] public IEnumerator B42b() => Use("b42b-duck-hides", 11f, CampCheats.DuckUnderHides, 2, Rack);
+        [UnityTest, Timeout(300000)] public IEnumerator B42c() => Use("b42c-count-fish", 11f, CampCheats.CountFish, 2, Rack, 1f);
+        [UnityTest, Timeout(300000)] public IEnumerator B42d() => Use("b42d-sneak-fish", 11f, CampCheats.SneakFish, 2, Rack);
+        [UnityTest, Timeout(300000)] public IEnumerator B43b() => Use("b43b-thicket-peek", 11f, CampCheats.ThicketPeek, 2, CampCheats.ThicketReady);
+        [UnityTest, Timeout(300000)] public IEnumerator B43c() => Use("b43c-berry-wipe", 15f, CampCheats.BerryKid, 2, null);
+        [UnityTest, Timeout(300000)] public IEnumerator B44a() => Use("b44a-climb", 11f, CampCheats.ClimbTree, 2, null, -2f);
+        [UnityTest, Timeout(300000)] public IEnumerator B44b() => Use("b44b-nap", 12f, CampCheats.TreeNap, 2, null, -3f);
+        [UnityTest, Timeout(300000)] public IEnumerator B44c() => Use("b44c-trunk-lean", 11f, CampCheats.TrunkLean, 2, null, -1f);
+        [UnityTest, Timeout(300000)] public IEnumerator B45a() => Use("b45a-skip-stones", 11f, CampCheats.SkipStones, 2, Pond, -0.45f, 0.4f);
+        [UnityTest, Timeout(300000)] public IEnumerator B45b() => Use("b45b-leaf-boat", 12f, CampCheats.LeafBoat, 2, Pond, -2f, 3f);
+        [UnityTest, Timeout(300000)] public IEnumerator B45c() => Use("b45c-feet-water", 14f, CampCheats.FeetInWater, 2, Pond, -1.3f);
+        [UnityTest, Timeout(300000)] public IEnumerator B46a() => Use("b46a-puddle-look", 11f, CampCheats.PuddleLook, 2, EcoDebug.PuddlesNow);
+        [UnityTest, Timeout(300000)] public IEnumerator B46b() => Use("b46b-puddle-race", 11f, CampCheats.PuddleRace, 3, EcoDebug.PuddlesNow, -0.1f);
+        [UnityTest, Timeout(300000)] public IEnumerator B47a() => Use("b47a-cut-reeds", 9f, CampCheats.CutReeds, 2, Reeds, -3f);
+        [UnityTest, Timeout(300000)] public IEnumerator B47b() => Use("b47b-reed-whistle", 11f, CampCheats.ReedWhistle, 3, Reeds, -0.5f);
+        [UnityTest, Timeout(300000)] public IEnumerator B48a() => Use("b48a-follow-stream", 11f, CampCheats.FollowStream, 3, null);
+        [UnityTest, Timeout(300000)] public IEnumerator B48b() => Use("b48b-dam", 11f, CampCheats.BuildDam, 2, null);
+        [UnityTest, Timeout(300000)] public IEnumerator B49a() => Use("b49a-hill-dusk", 17.3f, CampCheats.HillDusk, 2, () => DuskAt(17.3f));
+        [UnityTest, Timeout(300000)] public IEnumerator B49b() => Use("b49b-hill-roll", 11f, CampCheats.HillRoll, 3, null, -0.5f);
+        [UnityTest, Timeout(300000)] public IEnumerator B50a() => Use("b50a-path-race", 11f, CampCheats.PathRace, 3, null);
+        [UnityTest, Timeout(300000)] public IEnumerator B50b() => Use("b50b-path-chat", 11f, CampCheats.PathChat, 2, null, -1f);
+        [UnityTest, Timeout(300000)] public IEnumerator B51() => Use("b51-stone-gift", 8f, CampCheats.StoneGift, 2, NameStone);
+        [UnityTest, Timeout(300000)] public IEnumerator B52a() => Use("b52a-lanterns", 18f, CampCheats.LightLanterns, 2, () => DuskAt(18f), -0.3f);
+        [UnityTest, Timeout(300000)] public IEnumerator B52b() => Use("b52b-moths", 19.6f, CampCheats.ChaseMoths, 2, Moths, -0.3f);
+        [UnityTest, Timeout(300000)] public IEnumerator B53a() => Use("b53a-pull-weed", 10f, CampCheats.PullWeed, 2, null, -0.3f);
+        [UnityTest, Timeout(300000)] public IEnumerator B53c() => Use("b53c-crown", 11f, CampCheats.Crown, 2, null, -0.5f);
+        [UnityTest, Timeout(300000)] public IEnumerator B53dHang() => Use("b53d-hang-swing", 14f, CampCheats.HangSwing, 2, null, -0.3f);
+        [UnityTest, Timeout(300000)] public IEnumerator B53dSwing() => Use("b53d-swing", 14f, CampCheats.Swing, 2, null, -1f);
     }
 }

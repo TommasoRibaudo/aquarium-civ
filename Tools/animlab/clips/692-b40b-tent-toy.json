@@ -17,15 +17,16 @@
    "return \"waiting for the tent to stand\";",
    "return \"waiting for the tent to stand\";",
    "return \"waiting for the tent to stand\";",
-   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TentToy());"
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.TentToy());"
   ],
   "warm": 0.5,
-  "seconds": 12,
+  "seconds": 7,
   "fps": 30,
   "follow": "camp",
   "span": 1.6,
   "closeSpan": 0.4,
   "yaw": 28,
-  "pitch": 38
+  "pitch": 38,
+  "lead": 3.0
  }
 }

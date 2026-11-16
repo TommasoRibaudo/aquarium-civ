@@ -399,6 +399,7 @@ namespace AquariumCiv.View
             Row(); // #692
             if (Btn("Tend the racks now")) last = CampCheats.TendRacks(); // #692 B42.a
             if (Btn("Hang meat on the rack")) last = CampCheats.HangMeat(); // #692 B42.a
+            if (Btn("Fish on the rack (they stay)")) last = CampCheats.FishStay(); // #692 B42 retakes
             if (Btn("Kids run under the hide rack")) last = CampCheats.DuckUnderHides(); // #692 B42.b
             if (Btn("Kids count the fish")) last = CampCheats.CountFish(); // #692 B42.c
             if (Btn("A kid sneaks a fish")) last = CampCheats.SneakFish(); // #692 B42.d

@@ -18,7 +18,7 @@ namespace AquariumCiv.View
         public static CampScene CutReeds(int weaver, Vector2 at, Vector2 reeds, Vector2 toWater, Vector2 door, Vector2 doorOut, float t0)
         {
             toWater = Unit(toWater, Vector2.up);
-            var s = new CampScene(CampUse.CutReeds, t0, reeds) { followReach = 1.2f };
+            var s = new CampScene(CampUse.CutReeds, t0, reeds) { followReach = 4f }; // #692 p5 retakes: the camera stays with the armful all the way to the tent
             int m = s.Add(weaver);
             var edge = reeds - toWater * 0.05f;
             float t = WalkTime(at, edge, Walk);
@@ -385,7 +385,9 @@ namespace AquariumCiv.View
             s.a = -1f;
             for (int i = 0; i < poles.Count; i++)
             {
-                var st = poles[i] + toCam * 0.06f;
+                // #692 p5 retakes (the lighter hid the lantern): beside the pole across the camera's view, on the side they come from
+                var side = new Vector2(-toCam.y, toCam.x); if (Vector2.Dot(side, from - poles[i]) < 0f) side = -side;
+                var st = poles[i] + side * 0.065f + toCam * 0.02f;
                 float w = WalkTime(from, st, Walk);
                 s.Part(m, t, t + w, st, poles[i], DollStyle.Stand, null, PropKind.Twig, Walk); t += w;
                 s.Part(m, t, t + LightGap, st, poles[i], DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = In(u, 0f, 0.3f) * (1f - In(u, 1.0f, 0.3f)); p.armR = Lerp(p.armR, new Vector3(150f, 0f, 6f), k); p.offset.y += 0.01f * k; }, PropKind.Twig);
@@ -409,7 +411,9 @@ namespace AquariumCiv.View
             toCam = Unit(toCam, Vector2.down);
             var s = new CampScene(CampUse.ChaseMoths, t0, pole) { holdFocus = true };
             int m = s.Add(kid);
-            var st = pole + toCam * 0.05f;
+            // #692 p5 retakes (the kid hid the lantern): beside the pole across the camera's view, a little in front
+            var side = new Vector2(-toCam.y, toCam.x); if (Vector2.Dot(side, at - pole) < 0f) side = -side;
+            var st = pole + side * 0.06f + toCam * 0.02f;
             float t = WalkTime(at, st, KidWalk);
             s.Part(m, 0f, t, st, pole, DollStyle.Stand, null, PropKind.None, KidWalk);
             s.Part(m, t, t + 1f, st, pole, DollStyle.LookUp); t += 1f;
@@ -576,7 +580,7 @@ namespace AquariumCiv.View
             {
                 int on = k == 0 ? r : p2, push = k == 0 ? p2 : r;
                 // sit on the plank
-                s.Part(on, t, t + 0.4f, pivot, pivot + fwd, DollStyle.Sit, (ref DollPose p, float u, float l) => { p.offset.y += CampGeo5.SeatH / sc * In(u, 0f, 0.4f); }, PropKind.None, 0.3f);
+                s.Part(on, t, t + 0.4f, pivot, pivot + fwd, DollStyle.Sit, (ref DollPose p, float u, float l) => { p.offset.y += (CampGeo5.SeatTop / sc + CampGeo5.SitDrop) * In(u, 0f, 0.4f); }, PropKind.None, 0.3f);
                 t += 0.4f;
                 float from = t;
                 if (s.a < 0f) s.a = from;
@@ -586,7 +590,7 @@ namespace AquariumCiv.View
                 {
                     float th = CampGeo5.SwingTheta(u, ride);
                     var o = CampGeo5.SeatOffset(th);
-                    p.offset.y += (CampGeo5.SeatH + o.y) / sc; p.offset.z -= o.x / sc;
+                    p.offset.y += (CampGeo5.SeatTop + o.y) / sc + CampGeo5.SitDrop; p.offset.z -= o.x / sc; // forward is −z; #692 p5 retakes: the sit sank the rider through the plank (SitDrop)
                     p.armL = new Vector3(160f, 0f, -12f); p.armR = new Vector3(160f, 0f, 12f);
                     p.lean += -20f + (alone ? -15f * Mathf.Cos(Mathf.PI * 2f * CampGeo5.ArcHz * u) : 0f);
                     // the kick at each front end (sin = 1 at u = 0.5, 2.5, ...)

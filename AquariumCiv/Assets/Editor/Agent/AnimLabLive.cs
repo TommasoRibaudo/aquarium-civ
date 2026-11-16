@@ -30,6 +30,9 @@ namespace AquariumCiv.EditorTools
         public string clip, outDir;
         /// <summary>Seconds stepped before recording (unrecorded), then recorded, at fps.</summary>
         public float warm = 1f, seconds = 6f, fps = 30f;
+        /// <summary>#692 p5 retakes: ≥ 0 keeps warming (unrecorded, at most 30 s more) until the camp use playing now is this many seconds before
+        /// its hit (<c>CampScene.a</c>), so a long walk to the spot is not the clip. −1: off.</summary>
+        public float lead = -1f;
         /// <summary>"hunt" (whoever is on a hunt step), "play" (the kids at play), a doll name substring, or "" (the fixed focus).</summary>
         public string follow = "";
         public float fx, fz, span = 1.5f, closeSpan = 0.6f, yaw = 28f, pitch = 34f;
@@ -45,6 +48,7 @@ namespace AquariumCiv.EditorTools
         static string state = "idle";
         static LiveSpec spec;
         static int loadFrame = -1, frame, warmFrames, recFrames;
+        static bool leadMet;
         static Camera cam;
         static Texture2D readback;
         static readonly Dictionary<(int, int), Texture2D> readbacks = new Dictionary<(int, int), Texture2D>();
@@ -129,6 +133,7 @@ namespace AquariumCiv.EditorTools
             spec = s;
             frame = 0;
             warmFrames = Mathf.RoundToInt(s.warm * s.fps);
+            leadMet = s.lead < 0f;
             recFrames = Mathf.RoundToInt(s.seconds * s.fps) + 1;
             followSet = false; followY = float.NaN;
             pv.HandDriven = true;
@@ -301,6 +306,12 @@ namespace AquariumCiv.EditorTools
             var pv = PeopleView.Find();
             if (pv == null) { state = "ERROR: PeopleView gone"; Stop(); return; }
             pv.Tick(1f / spec.fps);
+            if (frame == warmFrames && !leadMet)
+            {
+                var until = pv.Camp.UntilA;
+                if ((until == null || until.Value > spec.lead) && warmFrames < Mathf.RoundToInt((spec.warm + 30f) * spec.fps)) warmFrames++;
+                else { leadMet = true; followSet = false; /* the camera snaps onto the use, not easing in from the last focus */ Debug.Log($"[AnimLab] lead met: recording from {warmFrames / spec.fps:0.0} s ({(until.HasValue ? until.Value.ToString("0.0") : "no scene")} s before the hit)"); }
+            }
             if (frame >= warmFrames)
             {
                 int f = frame - warmFrames;

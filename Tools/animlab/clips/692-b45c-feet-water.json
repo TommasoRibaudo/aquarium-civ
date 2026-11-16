@@ -11,15 +11,16 @@
    "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(14.0f, 2);",
    "return AquariumCiv.View.CampCheats.PondReady();",
    "return AquariumCiv.View.CampCheats.PondReady();",
-   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.FeetInWater());"
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.FeetInWater());"
   ],
   "warm": 0.5,
-  "seconds": 14,
+  "seconds": 10,
   "fps": 30,
   "follow": "camp",
   "span": 1.6,
   "closeSpan": 0.5,
   "yaw": 28,
-  "pitch": 38
+  "pitch": 38,
+  "lead": 0.8
  }
 }
