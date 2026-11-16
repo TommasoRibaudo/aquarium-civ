@@ -190,6 +190,7 @@ namespace AquariumCiv.View
             hud?.WithdrawToast(AquariumCiv.Sim.CleanHint.Text); // Clean was tapped: the line asking for that is done, and the wipe hint needs the lane
             if (!on)
             {
+                reach = null; reachPending = false;
                 hud?.WithdrawToast(NothingToClean); // waiting or on screen: it no longer applies
                 hud?.WithdrawToast(WipeHint); hud?.WithdrawToast(WipeHintLand);
                 Cancel();
@@ -197,7 +198,62 @@ namespace AquariumCiv.View
             }
             var sim = Sim;
             if (sim != null && sim.State.firstRun.active) return; // the ghost finger is saying this, and one message at a time
+            reach = null; reachPending = true; // measured at the cloth's first stroke, once the kit has closed and the view is settled
             hud?.Toast(sim != null && (sim.EcologyOn ? sim.State.grime : sim.MessLevel) <= 0.0005f ? NothingToClean : sim != null && sim.EcologyOn ? WipeHintLand : WipeHint, 5f);
+        }
+
+        // ---------------- tester batch 3: the cloth wipes what it can reach ----------------
+        /// <summary>Cloth uses that measured the glass in reach (at their first stroke; tests).</summary>
+        public int ReachClears { get; private set; }
+        /// <summary>The share of the glass's grime out of reach when the cloth was last taken (tests).</summary>
+        public float LastUnreachableShare { get; private set; }
+        /// <summary>The glass in reach is wiped clean below this share of the grime it had: the box is clean.</summary>
+        public const float ReachSpotless = 0.06f;
+        bool[][] reach;
+        bool reachPending;
+        double reachGrime0;
+        float reachSim0;
+
+        double ReachGrime()
+        {
+            double s = 0;
+            for (int i = 0; i < masks.Length && i < reach.Length; i++) s += masks[i].sum - masks[i].GrimeOutside(reach[i]);
+            return s;
+        }
+
+        /// <summary>The share of the screen, clear of the UI, with wipeable glass under it (a coarse grid; tests).</summary>
+        public float GlassInView()
+        {
+            var c = Cam;
+            if (c == null || masks.Length == 0) return 0f;
+            int on = 0, all = 0;
+            for (int yi = 0; yi < 14; yi++)
+            for (int xi = 0; xi < 8; xi++)
+            {
+                var p = new Vector2((xi + 0.5f) / 8f * Screen.width, (yi + 0.5f) / 14f * Screen.height);
+                if (UiInput.Over(p)) continue;
+                all++;
+                if (GlassHit(c.ScreenPointToRay(p), out _, out _, out _)) on++;
+            }
+            return all == 0 ? 0f : on / (float)all;
+        }
+
+        /// <summary>The sim's grime is the mean over every pane, but from one view a finger reaches part of the glass (from the camp frame,
+        /// about a quarter: the front pane's lower half and a strip of the back one). So seven fast strokes over all the glass on screen at
+        /// grime 0.72 took off 0.08 (tester batch 3). The cloth's first stroke now notes the glass in reach from here, and while the cloth is in
+        /// hand the sim's grime follows that glass: wiping what the player sees cleans the box, and that glass wiped clear is a clean box.</summary>
+        void KeepToTheReach(SimCore sim)
+        {
+            reach = null; reachGrime0 = 0;
+            if (sim == null || sim.State.grime <= 0.0005f || masks.Length == 0) return;
+            reach = Reach();
+            double all = 0;
+            foreach (var m in masks) all += m.sum;
+            reachGrime0 = ReachGrime();
+            reachSim0 = sim.State.grime;
+            LastUnreachableShare = all <= 1e-6 ? 0f : 1f - (float)(reachGrime0 / all);
+            ReachClears++;
+            if (reachGrime0 <= 1e-6) reach = null; // nothing in reach: the old rule
         }
 
         // ---------------- the camera gate ----------------
@@ -263,6 +319,7 @@ namespace AquariumCiv.View
             var root = box.Root;
             if (root == null || root == boundRoot) return;
             boundRoot = root;
+            reach = null; // the panes are new: the cloth's reach is measured again when it is next taken
             foreach (var t in textures) if (t != null) Destroy(t);
             if (noise == null)
             {
@@ -742,6 +799,7 @@ namespace AquariumCiv.View
             }
             else if (kind == Stroke.Wipe)
             {
+                if (reachPending) { reachPending = false; KeepToTheReach(Sim); }
                 strokeRemoved = 0f;
                 strokeStart = Time.unscaledTime;
                 startCue = true; // played when the stroke first touches a pane (#301: it may start off the glass)
@@ -782,9 +840,20 @@ namespace AquariumCiv.View
             strokeRemoved += share;
             if (share > 0f)
             {
-                // the sim's grime follows the masks in proportion
-                float after = CareMath.WeightedMean(masks);
-                sim.CleanGrime(sim.State.grime - sim.State.grime * after / (after + share));
+                if (reach != null && reachGrime0 > 1e-6)
+                {
+                    // tester batch 3: the sim's grime follows the glass in reach (KeepToTheReach), and that glass wiped clear is a clean box
+                    float k = Mathf.Clamp01((float)(ReachGrime() / reachGrime0));
+                    float want = reachSim0 * k;
+                    if (want < sim.State.grime) sim.CleanGrime(sim.State.grime - want);
+                    if (k < ReachSpotless) { foreach (var m in masks) m.Clear(); if (sim.State.grime > 0f) sim.CleanGrime(sim.State.grime); }
+                }
+                else
+                {
+                    // the sim's grime follows the masks in proportion
+                    float after = CareMath.WeightedMean(masks);
+                    sim.CleanGrime(sim.State.grime - sim.State.grime * after / (after + share));
+                }
                 synced = sim.State.grime;
             }
             if (CareMath.WeightedMean(masks) < CareMath.SpotlessMean && (CareMath.WeightedMean(masks) > 0f || sim.State.grime > 0f))

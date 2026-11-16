@@ -269,6 +269,9 @@ namespace AquariumCiv.View
             if (seen * 2 >= cells.Count && !small) return;
             int at = sim.LifePlaceCellNearCamp(s);
             if (at < 0) at = cells[0];
+            // tester batch 3: a lean still on its way home (the group just placed) keeps that way home; this flight used to cancel it,
+            // and the camera stayed at the lean's close zoom for the rest of the visit (an earned bush taken right after a placing)
+            if (bc.GlideArmed) bc.ReturnAfterFlight();
             bc.FlyTo(box.transform.TransformPoint(box.land.OnGround(SiteMap.CXc(at), SiteMap.CZc(at))), Mathf.Min(bc.zoom, GroundFrameZoom));
             GroundFrames++;
         }
