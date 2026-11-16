@@ -410,10 +410,14 @@ namespace AquariumCiv.View
                 // ropes show apart and the swing still moves across the screen [est]
                 var across = CameraAcross();
                 var piv = p + (toCam * 0.6f + across * 0.8f).normalized * Mathf.Clamp(crownOf(c) * 1.0f, 0.14f, 0.2f);
-                foreach (float deg in new[] { 45f, 25f, 65f, -45f, 0f })
+                // #692 p5 notes 2 (the user: "rotate the swing 90 degrees, it's perpendicular to the branch"): both ropes hang along the branch
+                // (trunk -> pivot), so the swing arcs at right angles to it; a few degrees of give if the straight arc is blocked
+                var branch = (piv - p).sqrMagnitude > 1e-8f ? (piv - p).normalized : across;
+                var perp = new Vector2(-branch.y, branch.x);
+                if (Vector2.Dot(perp, toCam) < 0f) perp = -perp; // reshoot2: the front of the arc toward the camera, so the pusher stands behind the swing
+                foreach (float deg in new[] { 0f, 10f, -10f, 20f, -20f })
                 {
-                    var f = Rotate(across, deg);
-                    if (Vector2.Dot(f, toCam) < 0f) f = Rotate(across, -deg); // reshoot2: the front of the arc toward the camera, so the pusher stands behind the swing, not in front of it
+                    var f = Rotate(perp, deg);
                     if (CampGeo5.SwingSpotOk(piv, f, fire, Bad)) { pvt = piv; fw = f.normalized; return true; }
                 }
                 return false;
