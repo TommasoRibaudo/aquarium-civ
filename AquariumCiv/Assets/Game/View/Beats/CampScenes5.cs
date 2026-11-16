@@ -22,6 +22,46 @@ namespace AquariumCiv.View
         /// <summary>A door is shown when it faces the home camera at least this much (cos of 60 deg) [est].</summary>
         public const float ShownDot = 0.5f;
 
+        // ---- #692 p5 notes (the user, 2026-11-16): no lantern poles in the camp; a toy hangs on the tent itself; the doorway sit and the
+        // lantern round are houses-only; the moths come to the fire
+        /// <summary>The uses that never play while the people live in tents (B40.c the doorway sit, B52.a the lantern round): houses only.</summary>
+        public static bool HousesOnly(CampUse u) => u == CampUse.TentDoorSit || u == CampUse.LightLanterns;
+        /// <summary>Whether <paramref name="u"/> may play in the camp phase (<paramref name="tents"/>: the people live in tents).</summary>
+        public static bool AllowedNow(CampUse u, bool tents) => !(tents && HousesOnly(u));
+        /// <summary>B40.b: the toy's hanging height on the tent's canvas, and how far off the canvas it hangs [est].</summary>
+        public const float ToyH = 0.2f, ToyOff = 0.012f;
+        /// <summary>B52.b at the fire: the moths circle this far out from the fire toward the camera, this high [est].</summary>
+        public const float MothOut = 0.24f, MothH = 0.15f;
+
+        /// <summary>The drawn tent's height on a hut lot (Pieces.Teepee's: 1.1 x the short side, 0.42 to 0.66).</summary>
+        public static float TentHeight(float w, float d) => Mathf.Clamp(Mathf.Min(w, d) * 1.1f, 0.42f, 0.66f);
+        /// <summary>The tent's canvas radius <paramref name="y"/> up (the cone: <paramref name="r"/> at its foot, 0.02 under the ground, to 0.03 at
+        /// the top).</summary>
+        public static float CanvasR(float r, float h, float y) => Mathf.Lerp(r, 0.03f, Mathf.Clamp01((y + 0.02f) / Mathf.Max(0.05f, h)));
+        /// <summary>B40.b: where a toy hangs on the tent: on the canvas of its shown side at <see cref="ToyH"/>, <see cref="ToyOff"/> proud.</summary>
+        public static Vector2 HangPoint(Vector2 centre, Vector2 lookOut, float r, float h) => centre + lookOut.normalized * (CanvasR(r, h, ToyH) + ToyOff);
+        /// <summary>B52.b: the moths' middle, out from the fire toward the camera.</summary>
+        static Vector2 Rot(Vector2 v, float deg) { float r = deg * Mathf.Deg2Rad, c = Mathf.Cos(r), sn = Mathf.Sin(r); return new Vector2(v.x * c - v.y * sn, v.x * sn + v.y * c); }
+        public static Vector2 MothCentre(Vector2 fire, Vector2 toCam) => fire + Rot(toCam.sqrMagnitude > 1e-6f ? toCam.normalized : Vector2.down, 60f) * MothOut; // off to the side: pale specks against the dark, not the flames
+
+        /// <summary>B53.d: the swing's angle at <paramref name="time"/>: the ride that has begun most recently drives it (the last ride in the list
+        /// is often a later one, the swap's, and drawing only that one held the swing still through the first ride).</summary>
+        public static float SwingThetaAt(IList<(float from, float len)> rides, float time)
+        {
+            int best = -1;
+            for (int i = 0; i < rides.Count; i++) if (time >= rides[i].from && (best < 0 || rides[i].from >= rides[best].from)) best = i;
+            return best < 0 ? 0f : SwingTheta(time - rides[best].from, rides[best].len);
+        }
+
+        /// <summary>B44.c: a wild tree's trunk face (the six-sided prism's flat, 0.87 x its corner radius) <paramref name="y"/> up, for a tree of
+        /// scale <paramref name="s"/> (Pieces.Tree: 0.045 s at the foot, 0.032 s at 0.3 s, 0.02 under the ground).</summary>
+        public static float TrunkFaceAt(float s, float y)
+        {
+            s = Mathf.Max(0.3f, s);
+            float k = Mathf.Clamp01((y + 0.02f) / (0.3f * s));
+            return 0.87f * Mathf.Lerp(0.045f * s, 0.032f * s, k);
+        }
+
         /// <summary>The drawn tent's radius on a hut lot <paramref name="w"/> x <paramref name="d"/> (Pieces.Teepee's: 0.42 x the short side,
         /// 0.14 to 0.38).</summary>
         public static float TentRadius(float w, float d) => Mathf.Clamp(Mathf.Min(w, d) * 0.42f, 0.14f, 0.38f);
@@ -69,7 +109,7 @@ namespace AquariumCiv.View
         // ---- B48.b: the little pool behind the dam
         public const float DamPoolR = 0.06f;
         // ---- B52.b: the moths circle the lantern (r 0.04 at 2 Hz), pale specks 0.016 u [est]
-        public const float MothR = 0.04f, MothHz = 2f, MothSize = 0.016f;
+        public const float MothR = 0.04f, MothHz = 2f, MothSize = 0.024f; // #692 p5 notes: 0.016 was lost in the firelight [est]
         // ---- B53.d the rope swing: two ropes 0.16 u to a plank 0.07 x 0.025 u; the plank's seat 0.05 u off the ground [est]; the arc ±25 deg at 0.5 Hz
         // [est]; the empty swing rocks to a stop (tau 1.5 s); the ropes drawn at least 2 px wide [est]
         public const float RopeLen = 0.16f, RopeW = 0.006f, RopeMinPx = 2f, PlankW = 0.08f, PlankD = 0.03f, PlankT = 0.01f, SeatH = 0.05f, ArcDeg = 25f, ArcHz = 0.5f, ArcTau = 1.5f;
@@ -271,7 +311,7 @@ namespace AquariumCiv.View
         /// <summary>B40.b: reaches up to the tent's pole on tiptoe (arms x 160, +0.02 u), ties the thing (fiddle 1 s) → hit: it pops on and dangles
         /// (a <see cref="CampMark.Toy"/> or <see cref="CampMark.Beads"/> at the pole); the door flap jolts; a flick (arm x 140) spins it; they watch.
         /// <see cref="CampScene.a"/>: the tie.</summary>
-        public static CampScene TentToy(int who, Vector2 at, Vector2 pole, Vector2 door, bool beads, float t0, Vector2 toCam = default)
+        public static CampScene TentToy(int who, Vector2 at, Vector2 pole, Vector2 door, bool beads, float t0, Vector2 toCam = default, float standOut = -1f)
         {
             var s = new CampScene(CampUse.TentToy, t0, pole) { holdFocus = true };
             int m = s.Add(who);
@@ -284,6 +324,7 @@ namespace AquariumCiv.View
                 if (Vector2.Dot(across, away) < 0f) across = -across;
                 stand = pole + across * 0.065f - toCam * 0.01f;
             }
+            if (standOut > 0f) stand = pole + away * standOut + Rot(away, 90f) * 0.025f; // #692 p5 notes: at the canvas, the toy over the kid's head
             float t = 0f, w = WalkTime(at, stand, KidWalk);
             s.Part(m, t, t + w, stand, pole, DollStyle.Stand, null, PropKind.None, KidWalk); t += w;
             s.Tip(m, 0f, t + 1.25f, beads ? CampTipKind.Beads : CampTipKind.Toy);
@@ -566,48 +607,61 @@ namespace AquariumCiv.View
         }
 
         // ================================================================== B43.b peek at rabbits from the thicket
-        /// <summary>B43.b: 1–2 kids lie on the belly at the thicket's edge facing the meadow (<paramref name="toMeadow"/>), part a bush with both arms
-        /// (x 90, z ∓40; the bush leans: a <see cref="CampFxKind.BushSway"/>, held) and watch 4–6 s; a rabbit sits up: the kids freeze; then they slide
-        /// back out. <see cref="CampScene.a"/>: the freeze.</summary>
-        public static CampScene ThicketPeek(IList<int> kids, IList<Vector2> at, Vector2 edge, Vector2 bush, Vector2 toMeadow, float watch, float t0)
+        /// <summary>B43.b: 1–2 kids creep up to the bush and crouch at its sides (as the camera sees them), facing the meadow
+        /// (<paramref name="toMeadow"/>), one arm parting the branches (the bush leans: a <see cref="CampFxKind.BushSway"/>), and watch 4–6 s; a rabbit
+        /// sits up: the kids freeze; then they creep back and giggle. <see cref="CampScene.a"/>: the freeze.</summary>
+        public static CampScene ThicketPeek(IList<int> kids, IList<Vector2> at, Vector2 edge, Vector2 bush, Vector2 toMeadow, float watch, float t0, Vector2 toCam = default)
         {
+            // #692 p5 notes (the user: "they fall down, multiple times"): lying on the belly (lean 90, face down) read as falling over, and each
+            // drop and rise read as another fall. Now they creep up and crouch at the bush's sides as the camera sees them, peek round it at
+            // the rabbits, freeze, and creep back: upright the whole time [est].
             toMeadow = Unit(toMeadow, Vector2.up);
-            var side = new Vector2(-toMeadow.y, toMeadow.x);
-            var s = new CampScene(CampUse.ThicketPeek, t0, edge + toMeadow * 0.1f) { holdFocus = true };
+            toCam = Unit(toCam, -toMeadow);
+            var across = new Vector2(-toCam.y, toCam.x);
+            float br = Mathf.Max(0.05f, (edge - bush).magnitude / 0.7f);
+            var s = new CampScene(CampUse.ThicketPeek, t0, bush) { holdFocus = true };
             watch = Mathf.Clamp(watch, 4f, 6f);
             float t = 0f;
             var spots = new Vector2[kids.Count];
             for (int i = 0; i < kids.Count; i++)
             {
                 s.Add(kids[i]);
-                spots[i] = edge + side * ((i - (kids.Count - 1) * 0.5f) * 0.07f);
-                t = Mathf.Max(t, WalkTime(at[i], spots[i] - toMeadow * 0.1f, KidWalk));
+                float sd = i % 2 == 0 ? 1f : -1f;
+                spots[i] = bush + across * (sd * (br + PeekGap)) + toCam * (0.02f + 0.04f * (i / 2));
+                t = Mathf.Max(t, WalkTime(at[i], spots[i], KidWalk * 0.7f));
             }
-            for (int i = 0; i < kids.Count; i++) s.Part(i, 0f, t, spots[i] - toMeadow * 0.1f, spots[i] + toMeadow, DollStyle.Stand, null, PropKind.None, KidWalk);
-            // down onto the belly (lean +90: face down, the head toward the meadow), crawl in to the edge
             for (int i = 0; i < kids.Count; i++)
-                s.Part(i, t, t + 0.8f, spots[i], spots[i] + toMeadow, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = In(u, 0f, 0.4f); p.lean = 90f * k; p.offset.y = 0.02f * k; p.armL = new Vector3(150f, 0f, -20f); p.armR = new Vector3(150f, 0f, 20f); }, PropKind.None, 0.12f).poseWalking = true;
-            t += 0.8f;
+                s.Part(i, 0f, t, spots[i], spots[i] + toMeadow, DollStyle.Stand, LookRound(20f, 0.5f, 6f), PropKind.None, KidWalk * 0.7f).poseWalking = true; // the sneak
+            for (int i = 0; i < kids.Count; i++) s.Part(i, t, t + 0.5f, spots[i], spots[i] + toMeadow, DollStyle.Stand, PeekCrouch(0f, i));
+            t += 0.5f;
             s.Fx(t + 0.2f, CampFxKind.BushSway, G(bush), 0.6f);
             float freeze = t + watch * 0.55f;
             s.a = freeze;
-            for (int i = 0; i < kids.Count; i++)
-            {
-                int ii = i;
-                s.Part(i, t, t + watch, spots[i], spots[i] + toMeadow, DollStyle.Stand, (ref DollPose p, float u, float l) =>
-                {
-                    p.lean = 90f; p.offset.y = 0.02f;
-                    float k = In(u, 0f, 0.3f);
-                    p.armL = Lerp(new Vector3(150f, 0f, -20f), new Vector3(90f, 0f, -40f), k); p.armR = Lerp(new Vector3(150f, 0f, 20f), new Vector3(90f, 0f, 40f), k);
-                    float fz = In(u, watch * 0.55f, 0.1f) * (1f - In(u, watch * 0.55f + 1.4f, 0.2f));
-                    p.roll += (ii == 0 ? 6f : -6f) * Mathf.Sin(u * 1.3f) * (1f - fz); // the heads move a little, then still
-                });
-            }
+            for (int i = 0; i < kids.Count; i++) s.Part(i, t, t + watch, spots[i], spots[i] + toMeadow, DollStyle.Stand, PeekCrouch(watch * 0.55f, i));
             t += watch;
             for (int i = 0; i < kids.Count; i++)
-                s.Part(i, t, t + 1f, spots[i] - toMeadow * 0.1f, spots[i] + toMeadow, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = 1f - In(u, 0.6f, 0.4f); p.lean = 90f * k; p.offset.y = 0.02f * k; p.armL = new Vector3(150f * k, 0f, -20f); p.armR = new Vector3(150f * k, 0f, 20f); }, PropKind.None, 0.1f).poseWalking = true;
+            {
+                var back = spots[i] + toCam * 0.08f;
+                s.Part(i, t, t + 0.8f, back, spots[i] + toMeadow, DollStyle.Stand, (ref DollPose p, float u, float l) => { CrouchPose(ref p, 1f - In(u, 0.3f, 0.4f), l); }, PropKind.None, 0.1f).poseWalking = true;
+                s.Part(i, t + 0.8f, t + 1.8f, back, spots[i], DollStyle.Laugh);
+            }
             return s;
         }
+
+        /// <summary>B43.b: the kids' gap from the bush's edge, beside it.</summary>
+        public const float PeekGap = 0.05f;
+
+        /// <summary>B43.b: crouched at the bush (squash 0.78, lean 22), the near arm holding the branches aside (x 90, z ±40), the head craning
+        /// round (roll ±10 toward the bush's side, a small look about) until <paramref name="freezeAt"/>, then still for 1.4 s. Never past lean 30.</summary>
+        static CampPoseFn PeekCrouch(float freezeAt, int i) => (ref DollPose p, float u, float l) =>
+        {
+            float k = freezeAt <= 0f ? In(u, 0f, 0.4f) : 1f;
+            p.squash = Mathf.Lerp(1f, 0.78f, k); p.offset.y -= 0.012f * k; p.lean += 22f * k;
+            float sd = i % 2 == 0 ? 1f : -1f;
+            p.armR = Lerp(p.armR, new Vector3(90f, 0f, 40f * sd), k);
+            float still = freezeAt > 0f ? In(u, freezeAt, 0.1f) * (1f - In(u, freezeAt + 1.4f, 0.2f)) : 0f;
+            p.roll += (-10f * sd + 4f * Mathf.Sin(u * 1.3f + i)) * k * (1f - still);
+        };
 
         // ================================================================== B43.c berry-stained faces
         /// <summary>B43.c (B17.a's purple mouth): a kid at the stash eats three berries (arm x 135, a chew bob), and has a purple mouth (worn until
@@ -658,12 +712,16 @@ namespace AquariumCiv.View
 
         /// <summary>The seat for a wild tree whose spot radius is <paramref name="crownR"/> (scale = r / 0.16): 0.1 u under the crown's underside
         /// (0.23 x scale − 0.02), between 0.08 and 0.16 u: the kid's head just under the leaves.</summary>
-        public static float ClimbSeatFor(float crownR) => Mathf.Clamp(0.23f * crownR / 0.16f - 0.02f - 0.1f, 0.08f, 0.16f);
+        public static float ClimbSeatFor(float crownR) => Mathf.Clamp(0.23f * crownR / 0.16f - 0.04f, ClimbMin, 0.26f);
+        /// <summary>#692 p5 notes (the user: "he should climb higher"): the seat at least a grown-up's height up (0.18 u), out along the bough
+        /// 1.3 x the crown's spot radius (0.17–0.26 u) so the kid sits at the crown's edge, not in its leaves [est].</summary>
+        public const float ClimbMin = 0.18f;
+        public static float ClimbOutFor(float crownR) => Mathf.Clamp(1.3f * crownR, 0.17f, 0.26f);
 
         /// <summary>B44.a: reaches up (x 170), pulls up (0 → +0.09 u over 0.8 s, a wiggle roll ±10 at 6 Hz), sits on the low branch on the camera's
         /// side of the trunk (+0.09 u, 0.05 u out), swinging (roll ±5 at 1 Hz) <paramref name="sitFor"/> (6–10 s), waves to a kid below (−1: none);
         /// jumps down (a hop, a dust puff). The crown sways at the climb and the jump. <see cref="CampScene.a"/>: up; <see cref="CampScene.b"/>: down.</summary>
-        public static CampScene ClimbTree(int kid, Vector2 at, Vector2 trunk, Vector2 toCam, float sitFor, int friend, Vector2 fAt, float t0, float seatH = ClimbSeat, float sc = 1f)
+        public static CampScene ClimbTree(int kid, Vector2 at, Vector2 trunk, Vector2 toCam, float sitFor, int friend, Vector2 fAt, float t0, float seatH = ClimbSeat, float sc = 1f, float seatOut = 0.05f)
         {
             toCam = Unit(toCam, Vector2.down);
             sc = Mathf.Max(0.3f, sc);
@@ -671,8 +729,8 @@ namespace AquariumCiv.View
             sitFor = Mathf.Clamp(sitFor, 6f, 10f);
             var s = new CampScene(CampUse.ClimbTree, t0, trunk + toCam * 0.05f) { holdFocus = true };
             int m = s.Add(kid);
-            var seat = trunk + toCam * 0.05f;
-            var foot = trunk + toCam * 0.07f;
+            var seat = trunk + toCam * seatOut; // #692 p5 notes: out along the bough, under the crown's edge
+            var foot = seat + toCam * 0.02f;
             float t = WalkTime(at, foot, KidWalk);
             s.Part(m, 0f, t, foot, trunk, DollStyle.Stand, null, PropKind.None, KidWalk);
             s.Part(m, t, t + 0.4f, foot, trunk, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = In(u, 0f, 0.3f); p.armL = Lerp(p.armL, new Vector3(170f, 0f, -8f), k); p.armR = Lerp(p.armR, new Vector3(170f, 0f, 8f), k); p.offset.y += 0.01f * k; }); t += 0.4f;
@@ -730,8 +788,9 @@ namespace AquariumCiv.View
         // ================================================================== B44.c lean on the trunk
         /// <summary>B44.c: a chat (B7.a) by a wild tree: one leans a shoulder on the trunk (roll 12, 0.05 u off it), the other faces them; they
         /// talk <paramref name="chatFor"/> s (4–6). <see cref="CampScene.a"/>: the lean.</summary>
-        /// <summary>#692 p5 retakes: the shoulder lean (spec 12 deg; 16 so it reads beside the bark) [est].</summary>
-        public const float LeanRoll = 16f;
+        /// <summary>#692 p5 notes (the user: "he leans against the air"): the leaner's back on the bark, leaning back 12 deg; the body's
+        /// middle this far off the trunk's face (the tunic's 0.04 back plus the lean's 0.02 at the shoulder) [est].</summary>
+        public const float LeanBack = 12f, LeanGap = 0.058f;
 
         public static CampScene TrunkLean(int a, int b, Vector2 aAt, Vector2 bAt, Vector2 trunk, float trunkR, Vector2 toCam, float chatFor, float t0)
         {
@@ -741,15 +800,16 @@ namespace AquariumCiv.View
             int ma = s.Add(a), mb = s.Add(b);
             // #692 p5 retakes (the pair stood in front of the trunk): the leaner beside the trunk as the camera sees it, the other out to the side and
             // a little toward the camera, both clear of the trunk
-            var la = trunk + across * (trunkR + 0.045f) + toCam * 0.01f;
-            var lb = la + Unit(toCam * 0.5f + across, across) * 0.15f;
+            var outDir = Unit(across + toCam * 0.6f, across); // out from the trunk to the side the camera sees
+            var la = trunk + outDir * (trunkR + LeanGap); // trunkR: the trunk's face at the shoulder (CampGeo5.TrunkFaceAt)
+            var lb = la + outDir * 0.15f;
             float t = Mathf.Max(WalkTime(aAt, la, Walk), WalkTime(bAt, lb, Walk));
             s.Part(ma, 0f, t, la, lb, DollStyle.Stand, null, PropKind.None, Walk);
             s.Part(mb, 0f, t, lb, la, DollStyle.Stand, null, PropKind.None, Walk);
             s.a = t + 0.4f;
             chatFor = Mathf.Clamp(chatFor, 4f, 6f);
             // the shoulder toward the trunk: roll 12 deg toward it, the far arm loose
-            s.Part(ma, t, t + chatFor + 0.4f, la, lb, DollStyle.Talk, (ref DollPose p, float u, float l) => { p.roll -= LeanRoll * In(u, 0f, 0.4f); });
+            s.Part(ma, t, t + chatFor + 0.4f, la, lb, DollStyle.Talk, (ref DollPose p, float u, float l) => { p.lean -= LeanBack * In(u, 0f, 0.4f); }); // the back on the bark (faces away from it)
             s.Part(mb, t, t + chatFor + 0.4f, lb, la, DollStyle.Talk);
             t += chatFor + 0.4f;
             s.Part(ma, t, t + 0.5f, la, lb, DollStyle.Stand, NodPose);
@@ -874,34 +934,42 @@ namespace AquariumCiv.View
         // ================================================================== B46.a look at their reflection
         /// <summary>B46.a: a kid kneels over a puddle (B4's kneel), head down −40, still 1.5 s; pulls a face (head roll ±15, twice) and hops back
         /// laughing; a second kid (−1: none) joins, both lean over, heads 0.05 u apart. <see cref="CampScene.a"/>: the face.</summary>
+        /// <summary>#692 p5 notes: the drawn puddle reaches this many times the sim's radius [est].</summary>
+        public const float PuddleRim = 1.6f;
+
         public static CampScene PuddleLook(int k1, int k2, Vector2 at1, Vector2 at2, Vector2 puddle, float puddleR, Vector2 toCam, float t0)
         {
             toCam = Unit(toCam, Vector2.down);
             var across = new Vector2(-toCam.y, toCam.x);
-            var s = new CampScene(CampUse.PuddleLook, t0, puddle) { holdFocus = true };
+            // the kids at the puddle's side as the camera sees it (from the camera's side only their backs showed), the camera between them and it
+            var side = Unit(across + toCam * 0.4f, across); var along = new Vector2(-side.y, side.x);
+            float rim = puddleR * PuddleRim + 0.05f;
+            var s = new CampScene(CampUse.PuddleLook, t0, puddle + side * rim * 0.6f) { holdFocus = true };
             int a = s.Add(k1);
-            var edge = puddle + toCam * (puddleR + 0.03f);
+            // #692 p5 notes (the user: "they are flat and inside the puddle"): at the drawn puddle's rim (1.6 x its sim radius, 0.05 out), crouched
+            // and bent over (lean 35 in all), never kneeling flat
+            var edge = puddle + side * rim;
             float t = WalkTime(at1, edge, KidWalk);
             s.Part(a, 0f, t, edge, puddle, DollStyle.Stand, null, PropKind.None, KidWalk);
-            CampPoseFn over = (ref DollPose p, float u, float l) => { KneelPose(ref p, u, l); p.lean += 40f * In(u, 0.2f, 0.3f); };
+            CampPoseFn over = (ref DollPose p, float u, float l) => { CrouchPose(ref p, u, l); p.lean += 15f * In(u, 0.2f, 0.3f); };
             s.Part(a, t, t + 1.8f, edge, puddle, DollStyle.Stand, over); t += 1.8f;
             s.a = t;
-            s.Part(a, t, t + 1f, edge, puddle, DollStyle.Stand, (ref DollPose p, float u, float l) => { KneelPose(ref p, 1f, l); p.lean += 40f; p.roll += 15f * Mathf.Sin(u / l * Mathf.PI * 4f); }); t += 1f;
-            var back = edge + toCam * 0.06f;
+            s.Part(a, t, t + 1f, edge, puddle, DollStyle.Stand, (ref DollPose p, float u, float l) => { CrouchPose(ref p, 1f, l); p.lean += 15f; p.roll += 15f * Mathf.Sin(u / l * Mathf.PI * 4f); }); t += 1f;
+            var back = edge + side * 0.06f;
             s.Part(a, t, t + 0.5f, back, puddle, DollStyle.HopBack, null, PropKind.None, 0.2f); t += 0.5f;
             s.Part(a, t, t + 1f, back, puddle, DollStyle.Laugh); t += 1f;
             if (k2 >= 0)
             {
                 int b = s.Add(k2);
-                var e1 = edge + across * 0.025f; var e2 = edge - across * 0.025f + toCam * 0.005f;
+                var e1 = edge + along * 0.035f; var e2 = edge - along * 0.035f;
                 float w = WalkTime(at2, e2, KidWalk);
                 s.Part(b, Mathf.Max(0f, t - w), t, e2, puddle, DollStyle.Stand, null, PropKind.None, KidWalk);
                 s.Part(a, t, t + 0.4f, e1, puddle, DollStyle.Stand, null, PropKind.None, 0.2f); t += 0.4f;
                 s.Part(a, t, t + 2.2f, e1, puddle, DollStyle.Stand, over);
                 s.Part(b, t - 0.4f, t + 2.2f, e2, puddle, DollStyle.Stand, over);
                 t += 2.2f;
-                s.Part(a, t, t + 1f, e1 + toCam * 0.05f, puddle, DollStyle.Laugh, null, PropKind.None, 0.2f);
-                s.Part(b, t, t + 1f, e2 + toCam * 0.05f, puddle, DollStyle.Laugh, null, PropKind.None, 0.2f);
+                s.Part(a, t, t + 1f, e1 + side * 0.05f, puddle, DollStyle.Laugh, null, PropKind.None, 0.2f);
+                s.Part(b, t, t + 1f, e2 + side * 0.05f, puddle, DollStyle.Laugh, null, PropKind.None, 0.2f);
             }
             return s;
         }

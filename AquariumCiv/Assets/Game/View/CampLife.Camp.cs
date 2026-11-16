@@ -43,10 +43,10 @@ namespace AquariumCiv.View
         readonly List<Boat> boats = new();
         readonly Dictionary<CampScene, (Vector2 bank, Vector2 toWater)> waterOf = new();
         /// <summary>#692 p5 retakes: each climb's tree, the way to the camera and the seat's height, for the low bough drawn under the climber.</summary>
-        readonly Dictionary<CampScene, (Vector2 trunk, Vector2 toCam, float seatH)> climbOf = new();
+        readonly Dictionary<CampScene, (Vector2 trunk, Vector2 toCam, float seatH, float seatOut)> climbOf = new();
         float mothClapAt = -99f;
         // the swing (one per box)
-        bool swingRope, swingHung; int swingCell = -1; Vector2 swingPivot, swingFwd;
+        bool swingRope, swingHung, swingTrunkSet; int swingCell = -1; Vector2 swingPivot, swingFwd, swingTrunk;
         readonly List<(float from, float len)> swingRides = new();
         readonly Dictionary<CampUse, float> triedAt = new();
         readonly List<Transform> campPool = new();
@@ -65,7 +65,8 @@ namespace AquariumCiv.View
         // ================================================================== what the camp offers
         /// <summary>A tent: its door and the way out of it (the sim's), its shown side (<see cref="CampGeo5.ShownSide"/>: where the peek, the toy,
         /// the doorway sit and the lantern pole play, so the home camera sees them), and the pole.</summary>
-        struct Tent { public int id; public Vector2 door, out1, pole, centre, look, lookOut; public bool hem; }
+        /// <remarks>#692 p5 notes: no lantern poles in the camp; <c>pole</c> is now where a toy hangs on the canvas (the lantern round is houses-only).</remarks>
+        struct Tent { public int id; public Vector2 door, out1, pole, centre, look, lookOut; public bool hem; public float r, h; }
 
         /// <summary>The camp's tents (huts on the settle lots): the door, the way out of it, and the lantern pole beside it [est].</summary>
         List<Tent> Tents()
@@ -84,7 +85,8 @@ namespace AquariumCiv.View
                 // #692 p5 retakes: the uses and the pole on the side the home camera sees (a door facing away hid them behind the tent)
                 var toCam = CampGeo5.HomeToCam;
                 CampGeo5.ShownSide(c, door, out1, toCam, CampGeo5.TentRadius(l.w, l.d), out var look, out var lookOut, out bool hem);
-                r.Add(new Tent { id = l.id, door = door, out1 = out1, pole = CampGeo5.PoleBeside(look, lookOut, toCam), centre = c, look = look, lookOut = lookOut, hem = hem });
+                float tr = CampGeo5.TentRadius(l.w, l.d), th = CampGeo5.TentHeight(l.w, l.d);
+                r.Add(new Tent { id = l.id, door = door, out1 = out1, pole = CampGeo5.HangPoint(c, toCam, tr, th), centre = c, look = look, lookOut = lookOut, hem = hem, r = tr, h = th });
             }
             return r;
         }
@@ -327,16 +329,31 @@ namespace AquariumCiv.View
         }
 
         /// <summary>B51: the remembering stone: the name stone a choice left (as drawn), else the remembering spot [est].</summary>
-        bool StoneAt(out Vector2 at, out bool nameStone)
+        bool StoneAt(out Vector2 at, out bool nameStone) => StoneAt(out at, out nameStone, out _);
+
+        /// <summary>#692 p5 notes: also the stone's drawn half-width (its renderers' bounds, box units; 0.03 for the remembering spot).</summary>
+        bool StoneAt(out Vector2 at, out bool nameStone, out float halfW)
         {
-            at = default; nameStone = false;
+            at = default; nameStone = false; halfW = 0.03f;
             var cv = ConsequencePropsView.Instance;
             if (sim != null && cv != null)
             {
                 var standing = cv.Standing;
                 foreach (var p in sim.ConsequenceProps)
                     if (p.placed && p.kind == ConsequenceKind.NameStone && standing.TryGetValue(p.id, out var t) && t != null && t.gameObject.activeInHierarchy)
-                    { at = new Vector2(t.localPosition.x, t.localPosition.z); nameStone = true; return true; }
+                    {
+                        at = new Vector2(t.localPosition.x, t.localPosition.z); nameStone = true;
+                        var rs = t.GetComponentsInChildren<Renderer>();
+                        if (rs.Length > 0)
+                        {
+                            var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+                            float sc = t.parent != null ? Mathf.Max(1e-4f, t.parent.lossyScale.x) : 1f;
+                            var c = t.parent != null ? t.parent.InverseTransformPoint(b.center) : b.center;
+                            float hw = Mathf.Max(Mathf.Abs(c.x - at.x) + b.extents.x / sc, Mathf.Abs(c.z - at.y) + b.extents.z / sc);
+                            halfW = Mathf.Clamp(hw, 0.02f, 0.4f);
+                        }
+                        return true;
+                    }
             }
             return LandSpot(PlaceKind.Remembering, 0, out at);
         }
@@ -531,14 +548,19 @@ namespace AquariumCiv.View
             if (who < 0) who = Grown1(acts, tent.door, force);
             if (who < 0) return "nobody free by a tent";
             bool beads = BeatHash.Pick(2, tent.id, (int)(today & 0x7fff), 6960) == 1;
-            Add(Thing(CampScenes5.TentToy(who, At(who).Value, tent.pole, tent.look, beads, time, CampGeo5.HomeToCam), ThingTentBase + tent.id));
+            float standOut = tent.r - CampGeo5.CanvasR(tent.r, tent.h, CampGeo5.ToyH) + 0.05f; // at the canvas's foot, the toy over the head
+            Add(Thing(CampScenes5.TentToy(who, At(who).Value, tent.pole, tent.centre, beads, time, CampGeo5.HomeToCam, standOut), ThingTentBase + tent.id));
             tentToyDone[tent.id] = today;
             doneToday.Add(CampUse.TentToy);
             return null;
         }
 
+        /// <summary>#692 p5 notes: the people live in tents (B40.c and B52.a never play then).</summary>
+        bool InTents => sim != null && sim.State.era == Era.Camp;
+
         string TryDoorSit(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
+            if (!CampGeo5.AllowedNow(CampUse.TentDoorSit, InTents)) return "houses only: nobody sits in a tent's door (the user, 2026-11-16)";
             var fire = meals.Fire;
             int grown = -1; Tent tent = default;
             foreach (var t in Tents())
@@ -684,7 +706,7 @@ namespace AquariumCiv.View
             var kids = Pick(acts, edge, a => IsKid(a), 2, force);
             if (kids.Count == 0) return "no kid free";
             var at = new List<Vector2>(); foreach (int k in kids) at.Add(At(k).Value);
-            Add(Thing(CampScenes5.ThicketPeek(kids, at, edge, bush, toMeadow, force ? 5f : BeatHash.Range(4f, 6f, (int)today, 1, 6962), time), ThingThicket));
+            Add(Thing(CampScenes5.ThicketPeek(kids, at, edge, bush, toMeadow, force ? 5f : BeatHash.Range(4f, 6f, (int)today, 1, 6962), time, ToCam(bush)), ThingThicket));
             doneToday.Add(CampUse.ThicketPeek);
             return null;
         }
@@ -696,9 +718,10 @@ namespace AquariumCiv.View
             if (kid < 0) return "no kid free";
             int friend = Kid1(acts, trunk, force, new[] { kid });
             float sc = pv.ScaleOf(kid, out float s0) ? s0 : 0.7f;
-            float seatH = CampScenes5.ClimbSeatFor(crownR);
-            var climb = CampScenes5.ClimbTree(kid, At(kid).Value, trunk, ToCam(trunk), force ? 7f : BeatHash.Range(6f, 10f, (int)today, 2, 6963), friend, friend >= 0 ? At(friend).Value : default, time, seatH, sc);
-            climbOf[climb] = (trunk, ToCam(trunk), seatH);
+            float seatH = CampScenes5.ClimbSeatFor(crownR), seatOut = CampScenes5.ClimbOutFor(crownR);
+            var boughWay = CampScenes5.Rot(ToCam(trunk), 55f); // the bough off to the side as the camera sees it, so its length shows beside the kid [est]
+            var climb = CampScenes5.ClimbTree(kid, At(kid).Value, trunk, boughWay, force ? 7f : BeatHash.Range(6f, 10f, (int)today, 2, 6963), friend, friend >= 0 ? At(friend).Value : default, time, seatH, sc, seatOut);
+            climbOf[climb] = (trunk, boughWay, seatH, seatOut);
             Add(Thing(climb, ThingWildBase + cell));
             doneToday.Add(CampUse.ClimbTree);
             return null;
@@ -730,7 +753,7 @@ namespace AquariumCiv.View
             if (a < 0) return "nobody chatting near a wild tree";
             int b = Grown1(acts, trunk, force, new[] { a });
             if (b < 0) return "nobody to chat with";
-            Add(Thing(CampScenes5.TrunkLean(a, b, At(a).Value, At(b).Value, trunk, 0.04f * leanCrown / 0.16f, ToCam(trunk), force ? 5f : BeatHash.Range(4f, 6f, (int)today, 4, 6965), time), ThingWildBase + cell));
+            Add(Thing(CampScenes5.TrunkLean(a, b, At(a).Value, At(b).Value, trunk, CampGeo5.TrunkFaceAt(leanCrown / 0.16f, 0.11f), ToCam(trunk), force ? 5f : BeatHash.Range(4f, 6f, (int)today, 4, 6965), time), ThingWildBase + cell));
             doneToday.Add(CampUse.TrunkLean);
             return null;
         }
@@ -932,7 +955,7 @@ namespace AquariumCiv.View
 
         string TryGift(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
-            if (!StoneAt(out var stone, out bool named)) return "no remembering stone";
+            if (!StoneAt(out var stone, out bool named, out float stoneR)) return "no remembering stone";
             // a family member of a name on the stone (a dead one's child, parent or partner), else (the cheat) any grown-up
             int who = -1, second = -1;
             foreach (var d in sim.State.notables)
@@ -947,7 +970,7 @@ namespace AquariumCiv.View
             if (who < 0) who = Grown1(acts, stone, true);
             if (who < 0) return "nobody";
             int gift = BeatHash.Pick(3, (int)today, who, 6972);
-            Add(Thing(CampScenes5b.StoneGift(who, At(who).Value, second, second >= 0 ? At(second).Value : default, stone, ToCam(stone), gift, time), ThingStone));
+            Add(Thing(CampScenes5b.StoneGift(who, At(who).Value, second, second >= 0 ? At(second).Value : default, stone, ToCam(stone), gift, time, stoneR), ThingStone));
             doneToday.Add(CampUse.StoneGift);
             return null;
         }
@@ -956,6 +979,7 @@ namespace AquariumCiv.View
 
         string TryLanterns(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
+            if (!CampGeo5.AllowedNow(CampUse.LightLanterns, InTents)) return "houses only: no lanterns in the tent phase (the user, 2026-11-16)";
             var tents = Tents();
             var poles = new List<Vector2>();
             // the round from the tent nearest the fire outward (each tent's nearest next)
@@ -972,16 +996,12 @@ namespace AquariumCiv.View
 
         string TryMoths(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
-            Tent tent = default; bool any = false;
-            foreach (var t in Tents()) if (Lit(t.id) && !ThingBusy(ThingTentBase + t.id)) { tent = t; any = true; break; }
-            if (!any)
-            {
-                if (!force || !NearestTent(meals.Fire, 9f, out tent)) return "no lit lantern";
-                lit[tent.id] = (now.day, clock); // the cheat lights it
-            }
-            int kid = Kid1(acts, tent.pole, force);
+            // #692 p5 notes: the moths come to the fire's light (no lanterns in the camp)
+            if (meals == null || !meals.HasFire) return "no fire";
+            var mc = CampGeo5.MothCentre(meals.Fire, ToCam(meals.Fire));
+            int kid = Kid1(acts, mc, force);
             if (kid < 0) return "no kid free";
-            Add(Thing(CampScenes5b.ChaseMoths(kid, At(kid).Value, tent.pole, ToCam(tent.pole), 3, time), ThingTentBase + tent.id));
+            Add(CampScenes5b.ChaseMoths(kid, At(kid).Value, mc, ToCam(mc), 3, time));
             doneToday.Add(CampUse.ChaseMoths);
             return null;
         }
@@ -1027,7 +1047,7 @@ namespace AquariumCiv.View
             if (force) who = Grown1(acts, pivot, true);
             else { var n = FreeNear(acts, pivot, BorrowReach, a => IsGrown(a) && a.kind == ActivityKind.SitOut, 1); who = n.Count > 0 ? n[0] : -1; }
             if (who < 0) return "no grown-up with a free afternoon";
-            swingCell = cell; swingPivot = pivot; swingFwd = fwd; swingRope = swingHung = false; swingRides.Clear();
+            swingCell = cell; swingPivot = pivot; swingFwd = fwd; swingTrunk = trunk; swingTrunkSet = true; swingRope = swingHung = false; swingRides.Clear();
             bool miss = force ? false : BeatHash.Pick(2, (int)today, 11, 6973) == 0;
             Add(Thing(CampScenes5b.HangSwing(who, At(who).Value, pivot, trunk, fwd, miss, time), ThingSwing));
             doneToday.Add(CampUse.HangSwing);
@@ -1039,8 +1059,8 @@ namespace AquariumCiv.View
             if (!swingHung)
             {
                 if (!force) return "no swing";
-                if (!SwingSpot(3f, out swingCell, out swingPivot, out swingFwd, out _)) return "no grown wild tree near the fire with room for a swing ('Land: a wild tree and saplings' first)";
-                swingRope = swingHung = true; // "Kids on the swing" hangs it first if none
+                if (!SwingSpot(3f, out swingCell, out swingPivot, out swingFwd, out swingTrunk)) return "no grown wild tree near the fire with room for a swing ('Land: a wild tree and saplings' first)";
+                swingRope = swingHung = swingTrunkSet = true; // "Kids on the swing" hangs it first if none
             }
             var pivot = swingPivot;
             var kids = force ? Pick(acts, pivot, a => IsKid(a), 2, true) : FreeNear(acts, pivot, BorrowReach, a => IsKid(a) && a.kind == ActivityKind.Play, 2);
@@ -1206,7 +1226,7 @@ namespace AquariumCiv.View
         public const float TentThingScale = 1.4f, BoatScale = 1.4f;
 
         const int MPole = 1, MLantern = 2, MLanternLit = 3, MToy = 4, MBeads = 5, MStrip = 6, MBoat = 7, MCrown = 8, MMouth = 9, MGiftBowl = 10,
-            MPool = 11, MDamStone = 12, MRope = 13, MPlank = 14, MMoth = 15, MFlatStone = 16, MReeds = 17, MReed = 18, MWeed = 19, MCoil = 20, MLeaf = 21, MBough = 22;
+            MPool = 11, MDamStone = 12, MRope = 13, MPlank = 14, MMoth = 15, MFlatStone = 16, MReeds = 17, MReed = 18, MWeed = 19, MCoil = 20, MLeaf = 21, MBough = 22, MBranch = 23;
 
         /// <summary>#692 p5 retakes: the swing's rope and plank colours, dark enough to read on sand and grass [est].</summary>
         static readonly Color ReedGreen = new Color(0.5f, 0.64f, 0.28f), ReedStraw = new Color(0.8f, 0.72f, 0.42f), ReedHead = new Color(0.42f, 0.27f, 0.15f);
@@ -1243,12 +1263,10 @@ namespace AquariumCiv.View
             }
             Vector3 On(Vector2 p, float h = 0f) => new Vector3(p.x, groundAt(p.x, p.y) + h, p.y);
 
-            // ---- B40/B52: the poles and lanterns at the tents; the toys on them
+            // ---- B40.b: the toys and beads hung on the tents' canvas (#692 p5 notes: no lantern poles in the camp)
             if (sim != null && sim.State.era == Era.Camp)
                 foreach (var t in Tents())
                 {
-                    var pole = Next(MPole); pole.localPosition = On(t.pole);
-                    var ln = Next(Lit(t.id) ? MLanternLit : MLantern); ln.localPosition = On(t.pole, CampGeo5.PoleH);
                     if (tentThings.TryGetValue(t.id, out var things))
                         for (int i = 0; i < things.Count; i++)
                         {
@@ -1257,9 +1275,9 @@ namespace AquariumCiv.View
                             float sp = time - th.spinAt;
                             float yaw = sp >= 0f && sp < 1.5f ? 720f * (1f - (1f - sp / 1.5f) * (1f - sp / 1.5f)) : 0f;
                             float sway = 4f * Mathf.Sin(time * 1.7f + i * 2f + t.id);
-                            // #692 p5 retakes (the toy hung inside the lantern): on the pole's sides under the lantern, a little bigger [est]
-                            var side = new Vector2(-t.lookOut.y, t.lookOut.x) * (i == 0 ? 0.014f : -0.014f);
-                            m.localPosition = On(t.pole + side, CampGeo5.PoleH - 0.065f - 0.012f * i);
+                            // on the canvas of the shown side, the second a little to the side and lower [est]
+                            var side = new Vector2(-CampGeo5.HomeToCam.y, CampGeo5.HomeToCam.x) * (i == 0 ? 0f : 0.03f); // on the canvas straight toward the home camera
+                            m.localPosition = new Vector3(t.pole.x + side.x, groundAt(t.centre.x, t.centre.y) + CampGeo5.ToyH - 0.015f * i, t.pole.y + side.y);
                             m.localScale = Vector3.one * TentThingScale;
                             m.localRotation = Quaternion.Euler(sway, yaw + t.id * 37f, sway * 0.5f);
                         }
@@ -1316,9 +1334,10 @@ namespace AquariumCiv.View
                 foreach (var k in new List<CampScene>(climbOf.Keys)) if (!scenes.Contains(k)) climbOf.Remove(k);
                 foreach (var kv in climbOf)
                 {
-                    var (trunk, tc, seatH) = kv.Value;
-                    var bd = CampScenes5.Rot(tc, -55f); // out past the climber's side, so it shows beside the kid [est]
-                    var m = Next(MBough); m.localPosition = On(trunk, seatH - 0.012f); m.localRotation = Quaternion.LookRotation(new Vector3(bd.x, 0f, bd.y), Vector3.up);
+                    var (trunk, tc, seatH, seatOut) = kv.Value;
+                    // #692 p5 notes: the bough runs from the trunk out under the climber's seat (and a little past it)
+                    var m = Next(MBough); m.localPosition = On(trunk, seatH - 0.012f); m.localRotation = Quaternion.LookRotation(new Vector3(tc.x, 0f, tc.y), Vector3.up);
+                    m.localScale = new Vector3(1f, 1f, (seatOut + 0.04f) / 0.14f);
                 }
             }
             foreach (var k in new List<CampScene>(waterOf.Keys)) if (!scenes.Contains(k)) waterOf.Remove(k);
@@ -1345,7 +1364,7 @@ namespace AquariumCiv.View
                 {
                     float u = time - s.t0;
                     if (u < 0f || u > s.Length) continue;
-                    var c = On(s.focus, CampGeo5.PoleH);
+                    var c = On(s.focus, CampGeo5.MothH);
                     float scatter = Mathf.Clamp01(1f - (time - mothClapAt) / 0.8f);
                     for (int i = 0; i < 3; i++)
                     {
@@ -1359,7 +1378,7 @@ namespace AquariumCiv.View
             if (swingRope && swingCell >= 0)
             {
                 float th = 0f;
-                if (swingRides.Count > 0) { var r = swingRides[^1]; if (time >= r.from) th = CampGeo5.SwingTheta(time - r.from, r.len); }
+                th = CampGeo5.SwingThetaAt(swingRides, time); // #692 p5 notes: the ride under way (only the last listed held the swing still through the first)
                 var fwd3 = new Vector3(swingFwd.x, 0f, swingFwd.y);
                 var across3 = new Vector3(-swingFwd.y, 0f, swingFwd.x);
                 var foot = On(swingPivot);
@@ -1388,6 +1407,17 @@ namespace AquariumCiv.View
                     var m = Next(MRope); m.localPosition = a; m.localRotation = Quaternion.LookRotation(d.sqrMagnitude > 1e-8f ? d : Vector3.down, fwd3); m.localScale = new Vector3(w, w, d.magnitude);
                 }
                 if (swingHung) { var pl = Next(MPlank); pl.localPosition = seat; pl.localRotation = Quaternion.LookRotation(across3, Vector3.up) * Quaternion.Euler(0f, 0f, th); }
+                // #692 p5 notes (the user: "the rope hangs to nothing"): a branch from the trunk out over the swing, the ropes tied under it, and a
+                // short fork across the rope tops
+                if (swingTrunkSet)
+                {
+                    var tf = On(swingTrunk); var tp = new Vector3(top.x, 0f, top.z) - new Vector3(tf.x, 0f, tf.z);
+                    float len = tp.magnitude + 0.05f;
+                    var br = Next(MBranch); br.localPosition = new Vector3(tf.x, top.y + 0.01f, tf.z);
+                    br.localRotation = Quaternion.LookRotation(tp.sqrMagnitude > 1e-6f ? tp : fwd3, Vector3.up); br.localScale = new Vector3(1f, 1f, len);
+                    var fk = Next(MBranch); fk.localPosition = top + Vector3.up * 0.01f - across3 * 0.05f;
+                    fk.localRotation = Quaternion.LookRotation(across3, Vector3.up); fk.localScale = new Vector3(0.8f, 0.8f, 0.1f);
+                }
             }
 
             // ---- what people wear: a crown, a purple mouth (B43.c)
@@ -1526,6 +1556,7 @@ namespace AquariumCiv.View
                     mb.Box(new Vector3(0f, 0f, 0.07f), new Vector3(0.02f, 0.016f, 0.14f), Palette.Bark);
                     mb.Ico(new Vector3(0f, 0.012f, 0.14f), 0.02f, Vector3.one, Palette.LeafA, 0.1f);
                     break;
+                case MBranch: mb.Box(new Vector3(0f, 0f, 0.5f), new Vector3(0.022f, 0.018f, 1f), Palette.Bark); break; // #692 p5 notes: a unit branch along z (scaled to its length)
                 case MCoil: // the coiled rope over the shoulder
                     for (int i = 0; i < 8; i++) { float a = i * Mathf.PI / 4f; mb.Box(new Vector3(Mathf.Cos(a) * 0.012f, Mathf.Sin(a) * 0.012f, 0f), new Vector3(0.008f, 0.004f, 0.004f), straw, Quaternion.Euler(0f, 0f, a * Mathf.Rad2Deg + 90f)); }
                     break;

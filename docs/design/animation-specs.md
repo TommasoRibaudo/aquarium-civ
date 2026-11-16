@@ -2004,6 +2004,20 @@ The read on a phone is in the beats' last words. None has a sound unless it says
 | Tests | the swing only on a grown wild tree within reach (never the Keeper's tree, never over water or a path); one per box; the hanging plays once; over 10 view days the swinging uses only `Play` time and no kid swings without a grown-up within 1 u |
 | AnimLab | `Tools/animlab/clips/692-b53d-hang-swing.json`, `692-b53d-swing.json` |
 
+##### #692 part 5 notes (the user, 2026-11-16; decisions row 157): the nine clips sent back [est] where marked
+- **No lantern poles in the camp.** B40.c (the doorway sit) and B52.a (the lantern round) are **houses-only** (`CampGeo5.HousesOnly`): never
+  in the tent phase, not even by the cheat (the orchestrator's call for B52.a, flagged to the user). B52.b: the moths circle the fire's light
+  (0.24 u out, to the side, 0.15 u up, specks 0.024 u) and a kid claps at them.
+- **B40.b:** the toy or beads hang on the tent's canvas facing the camera, 0.2 u up; the kid ties them standing at the canvas.
+- **B43.b:** the kids no longer lie on the belly (it read as falling): they creep up, crouch at the bush's two sides (lean 22), part the
+  branches with one arm, freeze, creep back and giggle.
+- **B44.a:** the seat is at least 0.18 u up (0.23 x the crown scale − 0.04, to 0.26), out along a bark bough 1.3 x the crown radius to the
+  side as the camera sees it.
+- **B44.c:** the leaner's back on the bark (lean back 12), the body's middle 0.058 u off the trunk's real face at the shoulder.
+- **B46.a:** at the drawn puddle's rim (1.6 x its sim radius + 0.05), seen from the side, crouched and bent over, never flat.
+- **B51:** the giver kneels outside the stone's drawn footprint (its renderers' bounds + 0.07).
+- **B53.d:** a bark branch from the trunk out over the swing, the ropes tied under it; the swing follows the ride under way from the first push.
+
 ##### #692 part 5 retakes (2026-11-16): what changed so the clips read at phone scale (all [est], for the user's sign-off)
 - **B40, B52, the tents' side:** a tent's uses (the peek, the toy, the doorway sit) and its lantern pole play on the side the home camera
   sees (yaw 28°): the door when it faces the camera within 60°, else the hem on the tent's wall turned just far enough toward the camera
