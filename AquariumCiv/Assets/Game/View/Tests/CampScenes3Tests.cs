@@ -40,7 +40,7 @@ namespace AquariumCiv.View.Tests
             var roll = CampScenes3.RollPose(2);
             for (int i = 0; i <= 20; i++) { float t = CampScenes3.RollSeconds * i / 20f; var p = DollPose.Rest; roll(ref p, t, CampScenes3.RollSeconds); spin = Mathf.Max(spin, 90f - p.lean); move = p.offset.z; }
             Assert.AreEqual(360f, spin, 8f, "a whole turn a roll");
-            Assert.AreEqual(CampScenes3.RollStep * 3, move, 1e-3f, "0.05 u a roll, three rolls");
+            Assert.AreEqual(CampScenes3.RollStep * 3, move, 1e-3f, "RollStep a roll (#692 p3: 0.08 [est]), three rolls");
             var g = DollPose.Rest; CampScenes3.GigglePose(ref g, 0.1f, 0.8f);
             Assert.AreEqual(90f, Mathf.Abs(g.armR.z), 1e-3f, "arms out on the back");
             Assert.AreEqual(2, Marks(s, CampMark.GrassBits), "both sit up with grass bits in the hair");
@@ -72,6 +72,8 @@ namespace AquariumCiv.View.Tests
             Assert.IsTrue(s.tips.Any(t => t.kind == CampTipKind.Bunch && t.member == 1), "the taker holds the bunch");
             Assert.AreEqual(1, Marks(s, CampMark.EarFlower), "tucked behind the ear");
             Assert.IsTrue(s.parts[1].Any(p => p.pose == (CampPoseFn)CampScenes1.SniffNodPose), "the taker sniffs it (B30.d's sniff)");
+            var take = s.parts[1].First(p => p.pose == (CampPoseFn)CampScenes1.SniffNodPose);
+            Assert.Less((take.pos - flowers[2]).magnitude, 0.2f, "#692 p3: the taker comes to the grass, so the camera stays on the flowers");
             var stone = CampScenes3.PickFlowers(1, Spot, flowers.Take(2).ToList(), -1, Spot + Vector2.up, 0f);
             Sane(stone);
             Assert.AreEqual(1, stone.Count, "laid on the stone: nobody else");
@@ -93,6 +95,8 @@ namespace AquariumCiv.View.Tests
                 var ears = s.parts[m].First(p => p.pose == (CampPoseFn)CampScenes3.EarsPose);
                 Assert.Greater(ears.from, s.a, "they cover their ears after it works");
                 Assert.AreEqual(0.8f, ears.Len, 1e-3f, "0.8 s");
+                Assert.Less((ears.pos - Spot).magnitude, 0.25f, "#692 p3: they come near the whistler, into the frame");
+                Assert.IsFalse(ears.keepSpot, "they stand where the scene puts them");
             }
             var e = DollPose.Rest; CampScenes3.EarsPose(ref e, 0.4f, 0.8f);
             Assert.AreEqual(150f, e.armL.x, 1f);
@@ -127,6 +131,20 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(LandGeo.RingStones, s.fx.Count(f => f.kind == CampFxKind.Dust), "a dust puff at each");
             Assert.IsTrue(s.parts[1].Any(p => p.style == DollStyle.Hop), "the kid hops");
             Assert.IsTrue(s.tips.Any(t => t.kind == CampTipKind.Stones && t.member == 0) && s.tips.Any(t => t.kind == CampTipKind.Stone && t.member == 1), "3 in the arms, one in the hand");
+            // #692 p3: round a young tree the ring lies outside its crown, where the camera sees it
+            float wide = LandGeo.RingFor(0.13f);
+            Assert.Greater(wide, 0.13f, "outside the crown"); Assert.AreEqual(LandGeo.RingR, LandGeo.RingFor(0.02f), 1e-5f, "a seedling keeps r 0.06");
+            var w = CampScenes3.RingSapling(1, 2, sap + new Vector2(-0.6f, 0.2f), sap + new Vector2(0.5f, -0.3f), sap, sap + new Vector2(-0.5f, -0.4f), 0f, wide);
+            Sane(w);
+            foreach (var f in w.fx.Where(f => f.kind == CampFxKind.Mark && f.count == (int)CampMark.RingStone)) Assert.AreEqual(wide, (new Vector2(f.at.x, f.at.z) - sap).magnitude, 1e-3f);
+        }
+
+        [Test]
+        public void B34_SaplingUses_StayClearOfTheGlass()
+        {
+            Assert.IsFalse(CampLife.ClearOfGlass(new Vector2(-1.42f, -0.28f)), "#692 p3: the clip's sapling, 1.9 u from the front pane");
+            Assert.IsTrue(CampLife.ClearOfGlass(new Vector2(0f, AquariumCiv.Sim.Settle.Terrain.CZ)));
+            Assert.IsFalse(CampLife.ClearOfGlass(new Vector2(AquariumCiv.Sim.Settle.Terrain.HX - 0.3f, AquariumCiv.Sim.Settle.Terrain.CZ)), "near a side pane");
         }
 
         [Test]
@@ -140,6 +158,11 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(0.06f, (new Vector2(twig.at.x, twig.at.z) - sap).magnitude, 1e-3f, "0.06 u from the sapling");
             Assert.AreEqual(2, s.fx.Count(f => f.kind == CampFxKind.Droplets), "the bucket's last drops");
             Assert.IsTrue(s.parts[0].Any(p => p.prop == PropKind.Twig), "the twig in the hand");
+            // #692 p3: with the camera's way, the kid crouches on the camera's side of the little tree
+            var c = CampScenes3.PlantTwig(1, sap + new Vector2(0f, 0.7f), sap, sap + new Vector2(-0.4f, 0.2f), 0f, ToCam, 0.1f);
+            Sane(c);
+            var crouch = c.parts[0].First(p => p.pose == (CampPoseFn)CampScenes3.PushTwigPose).pos;
+            Assert.Greater(Vector2.Dot(crouch - sap, ToCam), 0.1f, "in front of the tree as the camera sees it");
             var p0 = DollPose.Rest; CampScenes3.PushTwigPose(ref p0, 0.45f, 0.8f);
             Assert.AreEqual(35f, p0.lean, 1f);
         }
@@ -152,9 +175,15 @@ namespace AquariumCiv.View.Tests
             Sane(s); PoseRuns(s);
             var sit = DollPose.Rest; CampScenes3.RockSitPose(ref sit, 1f, 10f);
             Assert.Greater(sit.offset.y, 0f, "sits higher than the ground");
-            Assert.IsTrue(s.parts[0].Any(p => p.style == DollStyle.Sit && (p.pos - r1).magnitude < LandGeo.RockW * 0.4f && p.Len >= 10f), "on top of the boulder (its back half)");
+            Assert.IsTrue(s.parts[0].Any(p => p.style == DollStyle.Sit && (p.pos - r1).magnitude < LandGeo.RockW * 0.5f && p.Len >= 10f), "on the boulder (#692 p3: on its top, to one side)");
             Assert.IsTrue(s.parts[1].Any(p => p.style == DollStyle.PoseBig && (p.pos - r2).magnitude < 1e-3f), "king of the rock on top");
             Assert.AreEqual(1, s.fx.Count(f => f.kind == CampFxKind.Dust), "the jump off lands in a dust puff");
+            // #692 p3: one boulder shared: the sitter on one side, the kid on the other, both in the scene's frame
+            var sh = CampScenes3.SitRock(1, Spot + new Vector2(-0.8f, -0.3f), r1, ToCam, 10f, 2, Spot + new Vector2(0.9f, -0.5f), r1, 0f);
+            Sane(sh);
+            var seat = sh.parts[0].First(p => p.style == DollStyle.Sit).pos; var king = sh.parts[1].First(p => p.style == DollStyle.PoseBig).pos;
+            Assert.Greater((seat - king).magnitude, 0.06f, "side by side, not in each other");
+            Assert.Less((sh.focus - r1).magnitude, 0.05f, "the camera on the boulder");
             var alone = CampScenes3.SitRock(-1, default, r1, ToCam, 5f, 2, Spot + Vector2.left, r2, 0f);
             Sane(alone); Assert.AreEqual(1, alone.Count, "a kid alone");
         }

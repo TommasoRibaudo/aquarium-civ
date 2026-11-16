@@ -410,6 +410,13 @@ namespace AquariumCiv.View
             // #573: only cells where the box has room to draw the tree (BoxView.Free: paths, clearings, props), or the cheat plants a tree nobody sees
             return Refresh(s.DebugWildTrees(beside, 1, bv == null ? null : (x, z, r) => bv.FreeForProp(new UnityEngine.Vector2(x, z), r)));
         }
+        /// <summary>#692 p3: young wild trees near the camp where <paramref name="ok"/> says (the camp uses' "clear of the glass").</summary>
+        public static string SaplingsWhere(System.Func<float, float, bool> ok)
+        {
+            var s = Sim; if (s == null) return "no sim";
+            var src = SimLayoutSource.Find(); var bv = src != null ? src.GetComponent<BoxView>() : null;
+            return Refresh(s.DebugSaplingsWhere(ok, 3, bv == null ? null : (x, z, r) => bv.FreeForProp(new UnityEngine.Vector2(x, z), r)));
+        }
         public static string TreeStage(int stage) { var s = Sim; return s != null && s.DebugTreeStage(stage) ? Refresh($"tree stage {stage}") : "no tree"; }
     }
 }

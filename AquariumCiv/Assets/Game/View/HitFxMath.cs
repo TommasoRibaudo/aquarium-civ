@@ -38,7 +38,7 @@ namespace AquariumCiv.View
 
         static readonly Color SparkRim = new(0.35f, 0.08f, 0.03f), WoodRim = new(0.25f, 0.14f, 0.06f),
             WaterRim = new(0.05f, 0.22f, 0.45f), GrassRim = new(0.12f, 0.28f, 0.05f), LeafRim = new(0.35f, 0.2f, 0.03f), SoilRim = new(0.2f, 0.12f, 0.06f), SandRim = new(0.95f, 0.85f, 0.65f),
-            SparkRimSand = new(0.22f, 0.04f, 0.02f), WaterRimSand = new(0.02f, 0.12f, 0.34f); // t2-polish: deeper outlines on sand
+            SparkRimSand = new(0.22f, 0.04f, 0.02f), WaterRimSand = new(0.02f, 0.12f, 0.34f), RingRim = new(0.5f, 0.68f, 0.85f); // t2-polish: deeper outlines on sand
 
         /// <summary>The fill and rim (sRGB) for a kind of bit on a ground. False = keep the palette's own colour (it already reads).</summary>
         public static bool Pick(PuffColour c, PuffGround g, out Color fill, out Color rim)
@@ -57,7 +57,8 @@ namespace AquariumCiv.View
                 case PuffColour.SparkYellow: fill = new Color(1f, 0.88f, 0.2f); rim = g == PuffGround.Sand ? SparkRimSand : SparkRim; return true;
                 case PuffColour.Gold: fill = new Color(1f, 0.8f, 0.1f); rim = SparkRim; return true;
                 case PuffColour.Water: fill = g == PuffGround.Sand ? new Color(0.78f, 0.92f, 1f) : new Color(0.88f, 0.96f, 1f); rim = g == PuffGround.Sand ? WaterRimSand : WaterRim; return true; // t2-polish: bluer on sand
-                case PuffColour.RingWater: fill = new Color(0.95f, 1f, 1f); rim = WaterRim; return true;
+                case PuffColour.RingWater: fill = new Color(0.95f, 1f, 1f); rim = RingRim; return true; // #692 p3: a pale ring; its band is HitFxMath.RingBand (the rim is not drawn for rings)
+                case PuffColour.RingMud: fill = new Color(0.93f, 0.95f, 0.92f); rim = RingRim; return true; // #692 p3: a puddle's ring is pale too, never brown-black
                 case PuffColour.Grass:
                     fill = g == PuffGround.Sand ? new Color(0.55f, 0.8f, 0.2f) : new Color(0.85f, 0.95f, 0.4f); rim = GrassRim; return true;
                 case PuffColour.Leaf:
@@ -283,13 +284,14 @@ namespace AquariumCiv.View
                     }
                     case PuffKind.Ring:
                     {
-                        // 1–2 flat rings on the water: r 0.03 -> 0.20 (Out), line 0.012 -> 0.004, the 2nd 0.15 s later at 0.7x. Needs no velocity.
+                        // 1–2 flat rings on the water: r 0.03 -> 0.12 (Out), line 0.006 -> 0.002, the 2nd 0.15 s later at 0.7x. Needs no velocity.
+                        // #692 p3 (the user's review: big black discs): a modest ring, r 0.20 -> 0.12, the line halved.
                         float k = i == 0 ? 1f : 0.7f;
                         b.p0 = new Vector3(origin.x, groundY + 0.002f * scale, origin.z);
                         b.v0 = Vector3.zero; b.gravity = 0f;
                         b.shape = PuffShape.Ring;
-                        b.size = 0.03f * scale * k; b.endSize = 0.20f * scale * k;
-                        b.line0 = 0.012f * scale * k; b.line1 = 0.004f * scale * k;
+                        b.size = 0.03f * scale * k; b.endSize = RingEnd * scale * k;
+                        b.line0 = 0.006f * scale * k; b.line1 = 0.002f * scale * k;
                         b.delay = i == 0 ? 0f : 0.15f;
                         b.roll0 = 0f;
                         b.colour = o.mud ? PuffColour.RingMud : PuffColour.RingWater;
@@ -429,7 +431,21 @@ namespace AquariumCiv.View
             return b.shape == PuffShape.Ring ? s : s * Shrink(age, b.life);
         }
 
-        /// <summary>A ring's line width now (u): 0.012 -> 0.004 over its life, gone at the end.</summary>
+        /// <summary>#692 p3: a ring's end radius at scale 1 (u).</summary>
+        public const float RingEnd = 0.12f;
+
+        /// <summary>#692 p3: the line a ring draws with: its own width, at least 1.5 px while it lives, never more than a quarter of the radius
+        /// (so it never closes into a disc).</summary>
+        public static float RingDrawLine(float line, float radius, float perPx, float shrink)
+        {
+            float l = Mathf.Max(line, perPx * 1.5f * shrink);
+            return Mathf.Min(l, radius * 0.25f);
+        }
+
+        /// <summary>#692 p3: the soft band beside a ring: its own pale colour a little bluer, never dark (at least 0.7 of the fill).</summary>
+        public static Color RingBand(Color fill) => new Color(fill.r * 0.72f, fill.g * 0.86f, fill.b * 0.95f, 1f);
+
+        /// <summary>A ring's line width now (u): 0.006 -> 0.002 over its life, gone at the end.</summary>
         public static float Line(in PuffBit b, float age)
         {
             if (age < 0f || age >= b.life) return 0f;

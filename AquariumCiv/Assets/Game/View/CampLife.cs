@@ -686,7 +686,7 @@ namespace AquariumCiv.View
                 case CampFxKind.TreeShake: HitFx.Shake(ShakeTarget.Tree, world, CameraAcross3(root), 0f); break;
                 case CampFxKind.Glow: TreeGlow(world, time: clock); break;
                 case CampFxKind.Chips: HitFx.Puff(PuffKind.Chips, world, Vector3.up, f.scale, o); break; // #692 part 3
-                case CampFxKind.Whistle: HitFx.Puff(PuffKind.Steam, world, Vector3.up, f.scale, o); break; // #692 part 3 (B33.d) [est: a Steam puff for the two white lines]
+                case CampFxKind.Whistle: o.count = Mathf.Clamp(f.count, 1, 2); HitFx.Puff(PuffKind.Grass, world, Vector3.up, 0.25f, o); break; // #692 p3 (the user's review: a grey disc hid the kid): a tiny grass flick at the hands
                 case CampFxKind.Mark: LandMark(s, f); break; // #692 part 3
                 case CampFxKind.Perk: HitFx.Shake(ShakeTarget.Tree, world, CameraAcross3(root), 0f, true); break; // #692 part 3 (B34.a)
                 case CampFxKind.Clash: // #692 part 3 (B36.a): the white flash at the cross and a light wood knock

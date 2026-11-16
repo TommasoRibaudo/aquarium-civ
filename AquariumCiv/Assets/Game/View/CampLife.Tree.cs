@@ -434,7 +434,7 @@ namespace AquariumCiv.View
             var hand = v.armR.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f));
             t.position = hand + Vector3.up * (0.006f * rs);
             t.rotation = Quaternion.identity;
-            t.localScale = Vector3.one * (tip.kind == CampTipKind.Flower ? 0.013f : 0.011f) * Mathf.Max(0.8f, sc);
+            t.localScale = Vector3.one * (tip.kind == CampTipKind.Flower ? 0.018f : 0.011f) * Mathf.Max(0.8f, sc); // #692 p3: the flower in hand reads on a phone
         }
 
         /// <summary>The leaf (a flat oval in the season's leaf green), the flower (a stem, a pink head, a yellow middle), the charm (a red bead on a

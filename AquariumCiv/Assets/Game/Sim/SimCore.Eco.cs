@@ -541,6 +541,38 @@ namespace AquariumCiv.Sim
             return $"a grown wild tree (cell {far}) away from the Keeper's tree";
         }
 
+        /// <summary>#692 p3 debug ("Land: a wild tree and saplings"): plant up to <paramref name="count"/> young wild trees on the free cells nearest the
+        /// camp that <paramref name="ok"/> takes (x, z: the view's "clear of the glass" test) and the view can draw (<paramref name="drawable"/>),
+        /// outside the camp's bare clearing, at least 0.3 u apart.</summary>
+        public string DebugSaplingsWhere(Func<float, float, bool> ok, int count = 3, Func<float, float, float, bool> drawable = null)
+        {
+            if (!EcologyOn) return "living land off";
+            var e = State.eco; var g = EcoGround;
+            float cm = Settle.SiteMap.GreenR + 0.45f;
+            var got = new List<int>();
+            for (int k = 0; k < count; k++)
+            {
+                int best = -1; float bd = float.MaxValue;
+                for (int c = 0; c < EcoLand.N; c++)
+                {
+                    var cv = (EcoCover)e.cover[c];
+                    if (c == e.treeCell || (cv != EcoCover.Bare && cv != EcoCover.Grass && cv != EcoCover.Tall) || g.InBasin(c) || g.yard[c]) continue;
+                    float x = Settle.SiteMap.CXc(c), z = Settle.SiteMap.CZc(c);
+                    if (ok != null && !ok(x, z)) continue;
+                    float dc = Settle.Terrain.Dist(x, z, g.campX, g.campZ);
+                    if (dc < cm) continue;
+                    bool close = false; foreach (int o in got) if (Settle.Terrain.Dist(x, z, Settle.SiteMap.CXc(o), Settle.SiteMap.CZc(o)) < 0.3f) close = true;
+                    if (close || drawable != null && !drawable(x, z, 0.07f)) continue;
+                    if (dc < bd) { bd = dc; best = c; }
+                }
+                if (best < 0) break;
+                e.cover[best] = (byte)EcoCover.Young; got.Add(best);
+            }
+            if (got.Count == 0) return "no room for a sapling clear of the glass";
+            EcoTell();
+            return $"{got.Count} sapling(s) clear of the glass (cells {string.Join(",", got)})";
+        }
+
         /// <summary>Debug: set the Keeper's tree to stage 0 (seed) .. 4 (grown), planting it near the camp if there is none.</summary>
         public bool DebugTreeStage(int stage)
         {
