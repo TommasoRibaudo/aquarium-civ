@@ -32,7 +32,7 @@ namespace AquariumCiv.View.PlayTests
                 t = at[i];
                 yield return Shot($"692/{name}_{i + 1}_{at[i]:0}s");
             }
-            Assert.IsNotNull(PeopleView.Find().Camp.Latest, name + ": a use played (" + r + ")");
+            Assert.Greater(PeopleView.Find().Camp.Started.Count, 0, name + ": a use played (" + r + ")");
         }
 
         [UnityTest, Timeout(300000)] public IEnumerator B29a() => Use("b29a-warm-hands", 17.8f, Season.Winter, CampCheats.WarmHands, 6f, 9f);
@@ -43,7 +43,7 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(300000)] public IEnumerator B30b() => Use("b30b-ladle", 17.9f, null, CampCheats.Ladle, 6f, 9f);
         [UnityTest, Timeout(300000)] public IEnumerator B30c() => Use("b30c-kids-peek", 18f, null, CampCheats.PotPeek, 3f, 5f);
         [UnityTest, Timeout(300000)] public IEnumerator B30d() => Use("b30d-sniff", 18f, null, CampCheats.PotSniff, 3f);
-        [UnityTest, Timeout(300000)] public IEnumerator B30e() => Use("b30e-pot-off", 19.3f, null, CampCheats.PotOff, 4f, 9f);
+        [UnityTest, Timeout(300000)] public IEnumerator B30e() => Use("b30e-pot-off", 18.9f, null, CampCheats.PotOff, 4f, 9f);
         [UnityTest, Timeout(300000)] public IEnumerator B31a() => Use("b31a-feather", 17.4f, null, () => CampCheats.TieFeather(AquariumCiv.Sim.PoleFeatherKind.Newborn), 5f, 9f);
         [UnityTest, Timeout(300000)] public IEnumerator B31b() => Use("b31b-pole-dare", 11f, null, CampCheats.PoleDare, 7f, 10f);
     }
