@@ -1,5 +1,6 @@
 // Batch 3 cheat pass: every #692 (parts 1-3), #708 and #709 debug-panel cheat at the default phone camera (1080x1920, the camp
-// frame), one shot each, with a doll-jump watch (a doll that moves more than PopStep in one frame "pops"). Explicit: run as category
+// frame), one shot each, with a doll-jump watch (a doll that moves more than PopStep in one frame, faster than a doll is ever drawn
+// moving, "pops"; every step over StepLog is logged as "[b3pop]"). Explicit: run as category
 // "Batch3CheatPass"; shots land in Temp/agent/b3cheats/ and a summary line per cheat in the log ("[b3cheats]").
 using System;
 using System.Collections;
@@ -19,10 +20,14 @@ namespace AquariumCiv.View.PlayTests
     public class Batch3CheatPassShots : PlayTestBase
     {
         const float PopStep = 0.12f;
+        /// <summary>The fastest a doll is drawn moving (PeopleView: a use's or a game's pace caps at 0.75 u/s, the drawn point follows at most
+        /// 0.35 u/s past its plan's own speed), and the step over which a line is logged.</summary>
+        const float MaxDrawnSpeed = 1.1f, StepLog = 0.1f;
         static SimCore Sim => GameClock.Instance.ActiveSim;
 
         IEnumerator Box(float hour, int kids = 2, Season? season = null)
         {
+            PeopleView.StepWatch = null;
             UseLivingLand(true);
             GameUiPanel.AcceptInputUnfocused(true);
             yield return OpenSlice(1080, 1920, seed: 4242);
@@ -42,8 +47,9 @@ namespace AquariumCiv.View.PlayTests
             string r;
             try { r = cheat(); } catch (Exception e) { r = "THREW " + e.Message; }
             var who = new List<PersonRef>(); var xs = new List<float>(); var zs = new List<float>();
-            var last = new Dictionary<long, Vector2>();
+            var last = new Dictionary<long, (Vector2 p, int frame)>();
             int pops = 0; float worst = 0f; bool shot = false; float t = 0f;
+            PeopleView.StepWatch = m => Debug.Log($"[b3watch] {name}: {m}");
             while (t < seconds)
             {
                 yield return null;
@@ -54,17 +60,35 @@ namespace AquariumCiv.View.PlayTests
                     for (int i = 0; i < who.Count; i++)
                     {
                         var p = new Vector2(xs[i], zs[i]);
+                        // A step is measured between two frames the doll was out in both (one coming out of a tent, or back in view, is
+                        // logged, not counted). A pop is a step over PopStep that is also faster than any doll is drawn moving (MaxDrawnSpeed):
+                        // a slow frame (the shot's own, 200+ ms) carries a walk past PopStep without a snap.
                         if (last.TryGetValue(who[i].Key, out var q))
                         {
-                            float d = Vector2.Distance(p, q);
-                            if (d > worst) worst = d;
-                            if (d > PopStep) pops++;
+                            float d = Vector2.Distance(p, q.p);
+                            bool seen = q.frame == Time.frameCount - 1;
+                            float frame = Mathf.Min(Time.unscaledDeltaTime, Time.maximumDeltaTime);
+                            bool pop = seen && d > PopStep && d > MaxDrawnSpeed * frame;
+                            if (seen && d > worst) worst = d;
+                            if (pop) pops++;
+                            if (d > StepLog)
+                            {
+                                string act = pv.TryGetActivityOf(who[i], out var a) ? $"{a.kind} at {a.place.kind} moving {a.moving}" : "?";
+                                Debug.Log($"[b3pop] {name}: {(pop ? "POP" : seen ? "step" : "back in view")} {who[i]} {d:0.000} u in {Time.unscaledDeltaTime * 1000f:0} ms ({d / Mathf.Max(1e-4f, frame):0.00} u/s, {q.p} -> {p}) t {t:0.00} s · {act} · camp {(pv.Camp != null && pv.Camp.Busy(who[i].Key))}");
+                            }
                         }
-                        last[who[i].Key] = p;
+                        last[who[i].Key] = (p, Time.frameCount);
                     }
                 }
-                if (!shot && t >= shotAt) { shot = true; yield return Shot($"b3cheats/{name}"); }
+                if (!shot && t >= shotAt)
+                {
+                    shot = true;
+                    var fx = HitFx.Instance;
+                    Debug.Log($"[b3fx] {name}: {(fx != null ? fx.DebugLive() : "no HitFx")}");
+                    yield return Shot($"b3cheats/{name}");
+                }
             }
+            PeopleView.StepWatch = null;
             int played = pv != null && pv.Camp != null ? pv.Camp.Started.Count - started : -1;
             Debug.Log($"[b3cheats] {name}: \"{r}\" · camp uses started {played} · doll pops {pops} (worst step {worst:0.000} u)");
         }
