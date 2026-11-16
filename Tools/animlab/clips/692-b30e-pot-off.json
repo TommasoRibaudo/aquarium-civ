@@ -1,0 +1,23 @@
+{
+ "name": "692-b30e-pot-off",
+ "notes": "B30.e: after supper the cook scrapes the pot, two lift it off the fire onto its stones; a kid stacks the bowls; the pot cold and set out.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(19.3f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.PotOff());"
+  ],
+  "warm": 0.5,
+  "seconds": 14,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.4,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 42
+ }
+}

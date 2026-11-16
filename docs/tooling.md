@@ -929,3 +929,9 @@ Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or
   (panel: "Two kids join the camp") adds children for the kids' beats.
 - **Trap: the box's solid material culls back faces.** `LifeLooks.FishShape`'s body is wound downward (the arrival's transparent shadow
   material draws both sides); with `box.SolidMaterial` only the tail showed. Its `FishPart.Body`/`Tail` pieces are now two-sided.
+
+### 2026-11-15 · #692 camp uses: AnimLab live clips of a cheat-started scene
+- **A cheat started by the last setup step is half over at frame 0** (each step leaves ~2 s of game before `Begin`). `CampCheats.Later(2f, () => CampCheats.X())` runs it in game time instead; `CampCheats.StageCamp(hour, kids)` stages a lived-in camp (no `EcoDebug.Table`: a new pond sends everyone to look at it and the scene holds them) and sets `CampLife.OnlyCheats`, so no natural use (a pot lifted off, a sniff) crowds the clip. Follow `"camp"` = the newest forced scene's lead actor. Requests: `Tools/animlab/clips/692-*.json`, one per `animlab.sh live` call (fresh box each).
+- **Trap: a person held by a new-start scene (`PeopleView.StartHook`) or a placed-life scene (`LifeSpot`) ignores every other cue.** A cheat's use now takes them from a new-start scene; natural uses never borrow anyone those hooks hold.
+- **Debug a scene's cast** with a setup step `return AquariumCiv.View.PeopleView.Find().Camp.DebugCues();` (each member's activity, part and drawn spot).
+- **2026-11-15 · The pt1b Editor ran out of memory after ~6 fresh AnimLab live sessions** (`Could not allocate memory: System out of memory!`, a "Fatal Error!" dialog with only Quit; the Editor process held 23 GB private). Not yet diagnosed (suspect: objects left over per play session). Until it is: restart the Editor every 3 live clips (`Tools/restart-editor.sh`), and check `Get-Process Unity` memory between clips. [open]

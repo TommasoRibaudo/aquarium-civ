@@ -164,7 +164,8 @@ namespace AquariumCiv.View
 
         /// <summary>The chain of hand-overs from <paramref name="giverPos"/>, the first at <paramref name="start"/>. <paramref name="servedAt"/> gets the moment each taker has the bowl (the Contact);
         /// the giver is served last. Dolls past <see cref="MaxServed"/> are served at <paramref name="start"/> (they took their own).</summary>
-        public static List<PairEvent> Pass(int seed, float start, int giverKey, Vector2 giverPos, Vector2 fire, Vector2 pot, IList<int> takerKeys, IList<Vector2> takerPos, IDictionary<int, float> servedAt)
+        public static List<PairEvent> Pass(int seed, float start, int giverKey, Vector2 giverPos, Vector2 fire, Vector2 pot, IList<int> takerKeys, IList<Vector2> takerPos, IDictionary<int, float> servedAt,
+                                           List<Vector2> dips = null, PropKind thing = PropKind.Bowl, float dipSeconds = 0.7f)
         {
             var events = new List<PairEvent>();
             var order = Order(fire, pot, takerKeys, takerPos);
@@ -175,8 +176,16 @@ namespace AquariumCiv.View
             {
                 if (takerKeys[i] == giverKey) continue;
                 if (served >= MaxServed) { servedAt[takerKeys[i]] = start; continue; }
-                var ev = PairStage.HandOver(seed, t, giverKey, takerKeys[i], from, takerPos[i], PropKind.Bowl, PerPerson, 4f);
-                if (ev == null) { servedAt[takerKeys[i]] = start; continue; }
+                // #692 (B30.b): before each hand-over the giver stands at the pot (or the spit's stone) and dips: a window [from, to] of scene time
+                if (dips != null)
+                {
+                    float back = served == 0 ? 0f : (from - giverPos).magnitude / PairStage.GiverPace;
+                    dips.Add(new Vector2(t, t + back + dipSeconds));
+                    t += back + dipSeconds;
+                    from = giverPos;
+                }
+                var ev = PairStage.HandOver(seed, t, giverKey, takerKeys[i], from, takerPos[i], thing, PerPerson, 4f);
+                if (ev == null) { servedAt[takerKeys[i]] = start; if (dips != null) dips.RemoveAt(dips.Count - 1); continue; }
                 ev.takerSeated = true;
                 servedAt[takerKeys[i]] = ev.BeatStart + ev.giverBeat.ContactAt;
                 events.Add(ev);

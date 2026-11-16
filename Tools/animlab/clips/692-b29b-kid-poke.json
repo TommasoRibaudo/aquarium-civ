@@ -1,0 +1,23 @@
+{
+ "name": "692-b29b-kid-poke",
+ "notes": "B29.b: a kid pokes a twig in the fire (sparks, hop back), draws ember circles, hands the twig to a grown-up who tosses it in; sits by them, a hand on its head.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(18.3f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.KidPoke());"
+  ],
+  "warm": 0.5,
+  "seconds": 19,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.4,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 42
+ }
+}

@@ -171,7 +171,7 @@ namespace AquariumCiv.Life.Tests
         }
 
         [Test]
-        public void ThereAreMoreVisitsAtDuskThanAtMidday()
+        public void AMiddayVisitEveryDayAndADuskOneMostDays() // #692 (B31.c): the midday visit every day (55 % before), so a normal visit sees one
         {
             var sim = PoleCamp(5);
             var planner = LifePlanner.Wired(sim);
@@ -183,9 +183,9 @@ namespace AquariumCiv.Life.Tests
                 planner.PrayerVisitsOn(day, visits);
                 foreach (var s in visits.Where(v => !v.kid).Select(v => v.start).Distinct()) { if (s >= LifePlanner.DuskFrom) dusk++; else midday++; }
             }
-            Assert.Greater(dusk, midday);
-            Assert.GreaterOrEqual(midday, 5, "and a midday one on some days");
-            Assert.GreaterOrEqual(dusk, 30);
+            Assert.GreaterOrEqual(midday, 38, "a midday one every day");
+            Assert.GreaterOrEqual(dusk, 26, "a dusk one most days (80 %)");
+            Assert.Less(dusk, 40, "not every dusk");
         }
 
         [Test]

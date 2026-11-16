@@ -334,6 +334,14 @@ namespace AquariumCiv.View
                 case PropKind.Tinder: Tinder(mb); break;
                 case PropKind.Scraper: Scraper(mb); break;
                 case PropKind.Pelt: Pelt(mb); break;
+                case PropKind.MeatPiece: // #692 (B29.d): a torn piece of roast, rich brown, a lighter torn face
+                    mb.Ico(new Vector3(0f, 0.012f, 0f), 0.016f, new Vector3(1.2f, 0.8f, 1f), new Color(0.42f, 0.22f, 0.12f), 0.3f);
+                    mb.Ico(new Vector3(0.008f, 0.016f, -0.004f), 0.008f, new Vector3(1f, 0.7f, 1f), new Color(0.72f, 0.46f, 0.32f), 0.2f);
+                    break;
+                case PropKind.Feather: // #692 (B31.a): one feather, 0.06 u (x 1.5): a quill and a vane, held up by its quill
+                    mb.Box(new Vector3(0f, 0.045f, 0f), new Vector3(0.004f, 0.09f, 0.004f), new Color(0.92f, 0.9f, 0.84f));
+                    mb.Ico(new Vector3(0f, 0.065f, 0f), 0.02f, new Vector3(0.55f, 1.6f, 0.2f), new Color(0.95f, 0.94f, 0.9f), 0.15f);
+                    break;
                 case PropKind.Branch: Branch(mb); break;
                 case PropKind.FoodBasket: FoodBasket(mb); break;
                 case PropKind.StickBundle: StickBundle(mb); break;

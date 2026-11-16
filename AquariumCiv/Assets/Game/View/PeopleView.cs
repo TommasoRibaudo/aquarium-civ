@@ -481,6 +481,8 @@ namespace AquariumCiv.View
             // #365 B9: the bowls round the fire, who pokes it, the pot beside it
             meals.Step(acts, time, pl => planner.Positions.TryGetPosition(pl, out float mx, out float mz) ? new Vector2(mx, mz) : (Vector2?)null, planner.StageOf, planner.JobOf,
                 k => dolls.TryGetValue(k, out var md) && md.placed ? md.pos : (Vector2?)null);
+            if (camp && !meals.HasFire && planner.FireNow != CampFireStage.None && planner.FirePoint(out float cfx, out float cfz)) meals.FireAt(new Vector2(cfx, cfz)); // #692: the pot stands by the fire with nobody there
+            Camp.Step(plannerSim, planner, acts, now, time, meals); // #692: the camp's things used (the fire, the pot's day, the pole)
             meals.DrawPot(peopleRoot, Box.SolidMaterial, camp && planner.FireNow != CampFireStage.None /* #656: no pot by a fire that isn't lit */, (mx, mz) => Box.SurfaceHeight(mx, mz), LifeClock.SeasonOf(now.day) == Season.Winter, sim.StewOn(now.day)); // #676: it simmers, with what the camp has
             seen.Clear();
             claimed.Clear();
@@ -527,6 +529,7 @@ namespace AquariumCiv.View
             huntStage.Tick(planner, now, peopleRoot, Box.SolidMaterial,
                 who => dolls.TryGetValue(who.Key, out var hd) && hd.view != null ? hd.view.prop : null, (hx, hz) => Box.SurfaceHeight(hx, hz));
             KidPlay.DrawBalls(peopleRoot, Box.SolidMaterial, dollZoomScale); // #358
+            Camp.AfterDolls(peopleRoot, Box.SolidMaterial, time, (cx, cz) => Box.SurfaceHeight(cx, cz)); // #692
             gone.Clear();
             foreach (var kv in dolls) if (!seen.Contains(kv.Key)) gone.Add(kv.Key);
             foreach (int k in gone) { if (dolls[k].view != null) Kill(dolls[k].view.gameObject); dolls.Remove(k); }
@@ -552,7 +555,7 @@ namespace AquariumCiv.View
             bool hunting = a.hunt != HuntPhase.None && HuntSpot(a, out x, out z, out huntFace);
             // #656/#677: the new start's own scenes (the arrival with the basket and the bundle, the first logs carried home) hold their cast
             StartCue startCue = default;
-            bool started = !hunting && StartHook != null && stage != LifeStage.Baby && StartHook(a, out startCue);
+            bool started = !hunting && StartHook != null && stage != LifeStage.Baby && !Camp.Busy(a.who.Key) /* #692: a cheat's use takes them from a new-start scene */ && StartHook(a, out startCue);
             if (started) { x = startCue.pos.x; z = startCue.pos.y; huntFace = startCue.face; }
             bool tenting = !hunting && (started || (a.tent != TentPhase.None && TentSpot(a, out x, out z, out huntFace)) // #284: the planned walk to the frame and the lot
                 || (StagedSpot != null && StagedSpot(a, now, out x, out z, out huntFace)) // #370: a staged moment's own spots (the aisle, the ring, the glass) ride the same path
@@ -594,11 +597,21 @@ namespace AquariumCiv.View
             if (!hidden && !hunting && !tenting && !a.moving && !a.enRoute && a.place.kind == PlaceKind.Home && a.kind is ActivityKind.HangWashing or ActivityKind.TakeInWashing
                 && LaundryStand(a, out var lineAt, out var lineFace, out clothCount)) { target = lineAt; face = lineFace; laundryNow = true; claimed.Add(target); }
             // #365 B9.d: the cook stands at the pot, facing it
-            if (!hidden && !hunting && !tenting && !a.moving && !a.enRoute && a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && meals.HasFire) { target = meals.CookSpot(target); face = meals.Pot; }
+            if (!hidden && !hunting && !tenting && !a.moving && !a.enRoute && a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && meals.HasFire && meals.PotHot /* #692 (B30.e): a cold pot is set out, nobody stirs it */) { target = meals.CookSpot(target); face = meals.Pot; }
             // #358: a play group has them: its game says where they stand, what they face and the move (KidPlayDirector).
             PlayCue playCue = default; KidGame playGame = null; int playIx = -1;
             bool playing = !hidden && !hunting && !tenting && KidPlay.TryCue(a.who.Key, time, out playCue, out playGame, out playIx);
             if (playing) { var cueAt = PlayOffLots(playCue.pos, spot); target = FreeOfPeople(cueAt, false) ? cueAt : Standable(cueAt, cueAt, true, false, false); face = playCue.face; playSpots.Add(target); } // batch 2: never on top of a still grown-up (nor in a lot)
+            // #692: a camp use has them (borrowed from their free time, or inside their own work): its part says where, what they face, the move, the prop
+            CampPart campPart = null; float campInto = 0f;
+            bool camping = !hidden && !hunting && !tenting && Camp.Busy(a.who.Key) && !PairStage.TryCue(a.who.Key, time, out _, out _) && Camp.TryCue(a.who.Key, time, out campPart, out campInto);
+            bool campMoves = camping && !campPart.keepSpot;
+            if (camping)
+            {
+                playing = false;
+                if (campMoves) target = campPart.pos;
+                if (campPart.face != default) face = campPart.face;
+            }
             // #363 B7: a pair moment has them (hand over, walk together, hug): the pair's shared clock says where they stand and what they face.
             if (hunting && a.hunt == HuntPhase.TakeSpear) HandSpear(d, a, time);
             PairCue pairCue = default; PairEvent pairEv = null;
@@ -613,7 +626,7 @@ namespace AquariumCiv.View
             }
             // #365 B9.c: someone at the fire gets up and pokes it with a stick
             float pokeSince = 0f; bool pokeBig = false;
-            bool poking = !hidden && !paired && !playing && !tenting && !a.moving && meals.Poking(a.who.Key, time, out pokeSince, out pokeBig);
+            bool poking = !hidden && !paired && !playing && !tenting && !camping && !a.moving && meals.Poking(a.who.Key, time, out pokeSince, out pokeBig);
             if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && !(playing && playCue.sink > 0f) /* #359: wading in on purpose */ && land.IsWater(target.x, target.y)
                 && !(IceView.Instance != null && IceView.Instance.OnIce(target)) /* #618: on the ice */)
             {
@@ -652,7 +665,7 @@ namespace AquariumCiv.View
                 face = chopFace;
             }
             // sign-off 2026-11-14 (2nd run): resting at the fire (a sit, a nap, a meal, a story), on one of the laid-out bedrolls, one each
-            if (!hidden && !a.moving && !a.enRoute && CampBedrolls.Count > 0 && a.place.kind is PlaceKind.Fire or PlaceKind.Green
+            if (!hidden && !a.moving && !a.enRoute && !campMoves && CampBedrolls.Count > 0 && a.place.kind is PlaceKind.Fire or PlaceKind.Green
                 && a.kind is ActivityKind.SitOut or ActivityKind.SitTogether or ActivityKind.ListenStory or ActivityKind.Listen or ActivityKind.Nap or ActivityKind.Eat
                 && planner.FirePoint(out float rfx, out float rfz))
             {
@@ -690,6 +703,7 @@ namespace AquariumCiv.View
             if (jump) d.pos = target;
             else if (playing) d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Min(0.75f, playCue.speed * 1.15f + 0.15f + (target - d.pos).magnitude * 3f) * dt); // #358: the game's pace (a run in tag), catching up fast
             else if (paired) d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Min(0.75f, pairCue.speed * 1.1f + (target - d.pos).magnitude * 1.5f) * dt); // #363: the pair's pace
+            else if (campMoves) d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Min(0.75f, campPart.speed * 1.1f + (target - d.pos).magnitude * 1.5f) * dt); // #692: the use's pace
             else if (toddling) d.pos = Vector2.MoveTowards(d.pos, target, ToddleFollow.Speed((target - d.pos).magnitude) * dt); // 2026-11-06: a toddler's pace
             else
             {
@@ -721,6 +735,8 @@ namespace AquariumCiv.View
             if (hidden) style = DollStyle.Hidden;
             if (!walking && !hidden) style = BerryMotion.Retarget(style, a.kind, a.place.kind); // #361: berries and roots you can see
             if (playing) style = playCue.style; // #358
+            if (camping) style = walking && campMoves ? (campPart.run ? DollStyle.Run : DollStyle.Walk) : campPart.style; // #692
+            else if (!walking && a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && meals.HasFire && !meals.PotHot) style = DollStyle.Sit; // #692 (B30.e): no pot on tonight: the cook sits by the fire
             if (d.atTower && !walking) style = d.towerStyle; // #404
             if (toddling) style = DollStyle.Toddle; // 2026-11-06: it toddles, walking or not
             if (started && !walking) style = startCue.style; // #656/#677: the scene's pose (stand, set down, pick up)
@@ -729,7 +745,7 @@ namespace AquariumCiv.View
             if (!walking && !hidden && !started && style == DollStyle.Lift && a.kind == ActivityKind.Prepare && a.place.kind == PlaceKind.Stash && a.prop == LifeProp.Basket) style = DollStyle.SortBasket; // sign-off 2026-11-14
             if (!walking && !hidden && !started && style == DollStyle.SitWeave && a.prop == LifeProp.Hide) style = DollStyle.Mend; // sign-off 2026-11-14: a bedroll mended
             // #656/#677: hungry, shown, never punished: now and then someone stops and looks up at the sky
-            if (!started && !walking && !hidden && !hunting && !playing && !paired && HungryLook != null && style is DollStyle.Stand or DollStyle.Talk or DollStyle.Pick && HungryLook(a.who, time)) style = DollStyle.LookUp;
+            if (!started && !walking && !hidden && !hunting && !playing && !paired && !camping && HungryLook != null && style is DollStyle.Stand or DollStyle.Talk or DollStyle.Pick && HungryLook(a.who, time)) style = DollStyle.LookUp;
             if (paired && !walking && pairEv.kind != PairKind.WalkTogether) style = pairEv.takerSeated && pairCue.index == 1 ? DollStyle.Sit : DollStyle.Stand; // #363: the beat is the whole pose (no seated knapper under a hand-over); #365: a bowl is handed to someone who stays seated
             else if (style == DollStyle.EatMeal && !walking && meals.Waiting(a.who.Key, time)) style = DollStyle.Sit; // #365 B9.b: sitting, hands in the lap, until the bowl comes round
             if (!a.moving && !a.partner.IsNone && a.kind is ActivityKind.Chat or ActivityKind.Court or ActivityKind.SitTogether or ActivityKind.Eat or ActivityKind.Visit)
@@ -757,10 +773,11 @@ namespace AquariumCiv.View
             if (a.kind == ActivityKind.Eat && kind == PropKind.None && !walking && style == DollStyle.EatMeal) (kind, slot) = (PropKind.Bowl, PropSlot.Hand); // #365 B9.a: the meal's bowl (a berry snack at a bush is TasteBerry, not this style)
             if (poking && pokeSince > -0.05f) (kind, slot) = (PropKind.Stick, PropSlot.Hand); // #365 B9.c
             if (paired && pairCue.propMode == 1) (kind, slot) = (pairCue.prop, pairCue.slot); // #363: the handed thing is in exactly one pair of hands
+            if (camping) (kind, slot) = (campPart.prop, campPart.slot); // #692
             if (playing && !(kind == PropKind.Stick && playGame is TagGame)) kind = PropKind.None; // #358: the group's ball is the director's; a stick is kept for tag
             if (playing && playCue.stick) { kind = PropKind.Twig; slot = PropSlot.Hand; } // #359: the stick duel (batch 2: a short twig)
-            if (!started && !hunting && !playing && !paired) (kind, slot) = NewStartProp(a, kind, slot, walking); // #656/#677: dry grass and twigs, a fallen branch
-            if (!walking && !started && !hunting && !playing && !paired) // sign-off 2026-11-14 (ChoreBeats): what each hand-work move holds
+            if (!started && !hunting && !playing && !paired && !camping) (kind, slot) = NewStartProp(a, kind, slot, walking); // #656/#677: dry grass and twigs, a fallen branch
+            if (!walking && !started && !hunting && !playing && !paired && !camping) // sign-off 2026-11-14 (ChoreBeats): what each hand-work move holds
             {
                 if (style == DollStyle.FeedFire) (kind, slot) = ChoreBeats.FeedHolds(ChoreBeats.Clock(ChoreBeats.FeedBeat, time + d.phase, a.pace))
                     ? (plannerSim != null && plannerSim.FireStage == CampFireStage.Logs ? PropKind.Log : PropKind.Tinder, PropSlot.Arms) : (PropKind.None, PropSlot.Hand); // a log for the log fire
@@ -848,6 +865,7 @@ namespace AquariumCiv.View
             LifePose?.Invoke(a, v, ref pose); // #427: a placed-life scene's beats (the kid holding still, the "shh", a point)
             NestPose?.Invoke(a, v, ref pose); // #709: the kids' look and the gatherer's take at the nest (NestView)
             if (poking) MealBeats.Poke.Apply(ref pose, pokeSince); // #365 B9.c: up from the sit, the stick into the fire, back down
+            if (camping && campPart.pose != null && (!walking || campPart.poseWalking || !campMoves)) campPart.pose(ref pose, campInto, campPart.Len); // #692
             if (toddling) ToddleFollow.ToddlerPose(ref pose, a.who.Key, time); // 2026-11-06: the plop
             else if (bendTo.HasValue) ToddleFollow.CarerPose(ref pose, a.carrying.Key, time);
             if (a.kind == ActivityKind.FetchWater) // #360: the draw (kneel, dip, lift) at the water; the heavy walk home with the full bucket
@@ -1540,6 +1558,13 @@ namespace AquariumCiv.View
         }
         internal BoxView BoxForPlay => Box; // #359
         internal PegDollView ViewOf(int key) => dolls.TryGetValue(key, out var d) ? d.view : null;
+        /// <summary>#692: where a person's doll is drawn now (box x, z), if it is on view.</summary>
+        internal Vector2? DrawnAt(int key) => dolls.TryGetValue(key, out var d) && d.placed && d.view != null && d.view.gameObject.activeInHierarchy && !d.pose.hidden ? d.drawn : (Vector2?)null;
+        // ---------------------------------------------------------------- #692: the camp's things used (CampLife)
+        CampLife camp;
+        /// <summary>#692: the camp uses (the fire, the pot's day, the pole) and their cheats.</summary>
+        public CampLife Camp => camp ??= new CampLife(this);
+        public static string DebugCamp(CampUse use) { var p = Find(); return p == null ? "no PeopleView" : p.Camp.Force(use); }
         internal float GroundAt(float x, float z) => Box != null ? Box.SurfaceHeight(x, z) : 0f;
         /// <summary>How big a person's doll is drawn (doll scale × zoom), for where its hands are.</summary>
         internal bool ScaleOf(int key, out float s)

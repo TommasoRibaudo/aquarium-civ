@@ -177,6 +177,14 @@ namespace AquariumCiv.EditorTools
                 world = box.Root.TransformPoint(nv.NestLocal);
                 return true;
             }
+            if (spec.follow == "camp") // #692: the camp use playing now (its focus: the fire, the pot, the pole)
+            {
+                var pvc = PeopleView.Find();
+                var fc = pvc != null ? pvc.Camp.FocusNow() : null;
+                if (!(fc is Vector2 f)) return false;
+                world = box.Root.TransformPoint(new Vector3(f.x, box.SurfaceHeight(f.x, f.y), f.y));
+                return true;
+            }
             if (spec.follow == "fishgrab")
             {
                 var pv = PeopleView.Find();
@@ -207,12 +215,12 @@ namespace AquariumCiv.EditorTools
         static Vector2 Focus(PeopleView pv)
         {
             var want = new Vector2(spec.fx, spec.fz);
-            if (spec.follow is "fish" or "glass" or "nest" or "fishgrab")
+            if (spec.follow is "fish" or "glass" or "nest" or "fishgrab" or "camp")
             {
                 if (ThingFocus(out var w))
                 {
                     want = new Vector2(w.x, w.z);
-                    followY = spec.follow is "fish" or "fishgrab" ? float.NaN : (float.IsNaN(followY) ? w.y : Mathf.Lerp(followY, w.y, 0.08f));
+                    followY = spec.follow is "fish" or "fishgrab" or "camp" ? float.NaN : (float.IsNaN(followY) ? w.y : Mathf.Lerp(followY, w.y, 0.08f));
                 }
             }
             else if (!string.IsNullOrEmpty(spec.follow))

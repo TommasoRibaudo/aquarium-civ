@@ -18,8 +18,8 @@ user picks them. **Gap** marks a thing that has no use, or no life use.
 
 | Thing | Today | Add | Gap |
 |---|---|---|---|
-| Fire | W feed, cook, knap, stack wood · L evening sit, chat, stories, eat | warm hands in winter, kids poke sticks in it, roast a berry on a stick, **roast rabbit or deer meat on a spit** | spec B29 (2026-11-15, waits for sign-off) |
-| Stew pot | none of its own (only as a Show me place) | W fill, stir, ladle bowls at supper (#676) · L kids peek in, someone sniffs and nods, it stands cold off the fire when no meal is on | **Gap** · spec B30 (2026-11-15, waits for sign-off) |
+| Fire | W feed, cook, knap, stack wood · L evening sit, chat, stories, eat | warm hands in winter, kids poke sticks in it, roast a berry on a stick, **roast rabbit or deer meat on a spit** | **built** B29.a–d (#692 part 1, `View/CampLife.cs`; clips wait for sign-off) |
+| Stew pot | none of its own (only as a Show me place) | W fill, stir, ladle bowls at supper (#676) · L kids peek in, someone sniffs and nods, it stands cold off the fire when no meal is on | **built** B30.a–e (#692 part 1, `View/CampLife.cs` + `MealDirector`; clips wait for sign-off) |
 | Stash pile | W tip loads, sort the basket · L hide-and-seek base | L kids count berries, someone sneaks a snack and gets caught | spec B41 (2026-11-15, waits for sign-off) |
 | Tents | W raise, mend, sweep, sleep · L watch a raising, visit, chat at the door | L kids peek out, hang a toy or a charm, sit in the doorway at dusk | spec B40 (2026-11-15, waits for sign-off) |
 | Hide rack | W scrape hide | L kids duck under it | **Gap (L)** · spec B42 (2026-11-15, waits for sign-off) |
@@ -37,7 +37,7 @@ user picks them. **Gap** marks a thing that has no use, or no life use.
 | Reeds | hunt cover; eggs at the shore | W cut reeds to weave · L reed whistles, hide in them | **Gap** · spec B47 (2026-11-15, waits for sign-off) |
 | Stream bed | water fallback | L kids follow it, build a little dam | **Gap** · spec B48 (2026-11-15, waits for sign-off) |
 | Hill | L explore, look at the glass, run up (village on) | L sit on top at dusk, roll down it (camp too) | spec B49 (2026-11-15, waits for sign-off) |
-| Feather pole | L pray (#566) | L **tie a new feather after a good event** (the village founded, a newborn, a marriage), kids dare to touch it | spec B31 (2026-11-15, waits for sign-off) |
+| Feather pole | L pray (#566) | L **tie a new feather after a good event** (the village founded, a newborn, a marriage), kids dare to touch it | **built** B31.a–c (#692 part 1: `SimCore.PoleFeathers.cs`, `View/CampLife.cs`; clips wait for sign-off) |
 | Rocks, pebbles | none | L sit on a rock, stack pebbles | **Gap** · spec B35 (2026-11-15, waits for sign-off) |
 | Paths | walked and worn | L kids hop or race on them, people meet and chat on the way | **Gap** · spec B50 (2026-11-15, waits for sign-off) |
 | Glass | L look, gaze, press hands, tap back, gather | | |
