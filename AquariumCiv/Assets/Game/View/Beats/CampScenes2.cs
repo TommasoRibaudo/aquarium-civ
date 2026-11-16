@@ -253,25 +253,28 @@ namespace AquariumCiv.View
         /// <summary>B32.a: walk to the trunk, turn, back to it, slide down to sit, lean back on the bark; dozing (two droops each 6 s); one leaf
         /// falls on them and is brushed off; stand, stretch, one pat on the trunk (the crown shakes). A second sitter (−1: none) does the
         /// same 50° round, a second later. <paramref name="sitFor"/>: seconds sitting (at least 6).</summary>
-        public static CampScene TreeSit(int key, Vector2 at, Vector2 tree, int stage, Vector2 dir, float sitFor, float t0, int second = -1, Vector2 secondAt = default)
+        /// <remarks>#692 p5 retakes (B44.b, a wild tree): <paramref name="doze"/> (null: B32.a's doze) takes the leaf's brush time and gives the
+        /// sitting pose; <paramref name="trunkR"/> (≤ 0: the Keeper's tree at <paramref name="stage"/>) puts the back against a thinner trunk.</remarks>
+        public static CampScene TreeSit(int key, Vector2 at, Vector2 tree, int stage, Vector2 dir, float sitFor, float t0, int second = -1, Vector2 secondAt = default,
+            System.Func<float, CampPoseFn> doze = null, float trunkR = -1f)
         {
             var s = new CampScene(CampUse.TreeSit, t0, TreeGeo.Visit(tree, stage, dir));
-            Sitter(s, key, at, tree, stage, dir, Mathf.Max(6f, sitFor), 0f);
-            if (second >= 0) Sitter(s, second, secondAt, tree, stage, Rot(dir, 55f), Mathf.Max(6f, sitFor) - 1f, 1f);
+            Sitter(s, key, at, tree, stage, dir, Mathf.Max(6f, sitFor), 0f, doze, trunkR);
+            if (second >= 0) Sitter(s, second, secondAt, tree, stage, Rot(dir, 55f), Mathf.Max(6f, sitFor) - 1f, 1f, doze, trunkR);
             return s;
         }
 
-        static void Sitter(CampScene s, int key, Vector2 at, Vector2 tree, int stage, Vector2 dir, float sitFor, float delay)
+        static void Sitter(CampScene s, int key, Vector2 at, Vector2 tree, int stage, Vector2 dir, float sitFor, float delay, System.Func<float, CampPoseFn> doze = null, float trunkR = -1f)
         {
             int m = s.Add(key);
-            var spot = TreeGeo.Lean(tree, stage, dir);
+            var spot = trunkR > 0f ? tree + dir * (trunkR + TreeGeo.SitOff) : TreeGeo.Lean(tree, stage, dir);
             var outward = spot + dir;
             float t = 0f, w = WalkTime(at, spot, Walk) + delay;
             s.Part(m, t, t + w, spot, outward, DollStyle.Stand, null, PropKind.None, Walk); t += w;
             s.Part(m, t, t + 0.4f, spot, outward, DollStyle.Stand); t += 0.4f;
             s.Part(m, t, t + 0.6f, spot, outward, DollStyle.Sit, SlideSitPose); t += 0.6f;
             float leafAt = Mathf.Min(4.6f, sitFor - 1.4f);
-            s.Part(m, t, t + sitFor, spot, outward, DollStyle.Sit, DozeBrush(leafAt + 0.8f));
+            s.Part(m, t, t + sitFor, spot, outward, DollStyle.Sit, doze != null ? doze(leafAt + 0.8f) : DozeBrush(leafAt + 0.8f));
             s.Fx(t + leafAt, CampFxKind.Leaves, new Vector3(0f, 0.1f, 0f), 0.6f, 1, CampAnchor.Head, m);
             t += sitFor;
             s.Part(m, t, t + 0.4f, spot, outward, DollStyle.Stand, StandUpPose); t += 0.4f;

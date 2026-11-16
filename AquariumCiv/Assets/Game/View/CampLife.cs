@@ -44,6 +44,10 @@ namespace AquariumCiv.View
         public static bool OnlyCheats;
 
         /// <summary>Where the newest scene's people are drawn now, on average (AnimLab's "camp" follow); the scene's focus if none is.</summary>
+        /// <summary>#692 p5 retakes (AnimLab's lead): seconds until the latest use's hit (<see cref="CampScene.a"/>; negative after it), null when
+        /// none plays.</summary>
+        public float? UntilA { get { var s = forced != null && scenes.Contains(forced) ? forced : null; return s == null ? (float?)null : s.t0 + s.a - clock; } } // the cheat's scene only (a natural one's past hit met the lead at once)
+
         public Vector2? FocusNow()
         {
             var s = Latest;

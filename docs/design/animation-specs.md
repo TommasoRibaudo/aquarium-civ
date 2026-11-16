@@ -2004,6 +2004,30 @@ The read on a phone is in the beats' last words. None has a sound unless it says
 | Tests | the swing only on a grown wild tree within reach (never the Keeper's tree, never over water or a path); one per box; the hanging plays once; over 10 view days the swinging uses only `Play` time and no kid swings without a grown-up within 1 u |
 | AnimLab | `Tools/animlab/clips/692-b53d-hang-swing.json`, `692-b53d-swing.json` |
 
+##### #692 part 5 retakes (2026-11-16): what changed so the clips read at phone scale (all [est], for the user's sign-off)
+- **B40, B52, the tents' side:** a tent's uses (the peek, the toy, the doorway sit) and its lantern pole play on the side the home camera
+  sees (yaw 28°): the door when it faces the camera within 60°, else the hem on the tent's wall turned just far enough toward the camera
+  (`CampGeo5.ShownSide`). A doorway sit there watches the fire when it is in front, else out over the camp. Toys and beads hang on the
+  pole's sides under the lantern (they hung inside it), 1.4 x.
+- **B44.a:** the seat is 0.1 u under the crown (0.08–0.16 u, `ClimbSeatFor`), in box units after the kid's scale (+0.09 doll units read as
+  barely off the ground); a short bark bough (0.14 u, out past the climber's side, a leafy tip) shows under the climber while the climb plays; the friend waves from beside
+  the tree, not in front of it.
+- **B44.b:** asleep against this tree's bark (the wild trunk's radius): leaning back −18, slumping forward and to the side (roll 14) every
+  7 s, a slow breath, the arms folded in the lap (`NapPose`).
+- **B44.c:** the leaner stands beside the trunk as the camera sees it and the other out to the side; the shoulder lean is 16°.
+- **B45:** people stand at the drawn water's edge (0.035 u short of it), not at the bank cell's middle (up to 0.2 u up the slope).
+- **B46.b:** each kid keeps a lane 0.065 u apart, side by side across the run.
+- **B47.a:** the armful is seven green and straw stalks with brown cattail heads; one reed is green.
+- **B53.a:** the weed in the hand is drawn 2 x. **B53.c:** the worn crown sits round the head (1.2 x the head's width, on its upper half).
+- **B53.d:** dark rope (not straw on sand), 0.006 u wide (cap 0.01 u), up into the crown's underside; the plank 0.08 x 0.03 x 0.01 u,
+  darker wood, lying across the swing; the rider sits on it (the sit no longer sinks through it).
+  The swing hangs 0.14–0.2 u out from the trunk under the crown's edge (0.07–0.12 hid it on the bark).
+- **B52:** the lamplighter and the moth kid stand beside the pole across the camera's view, not in front of the lantern; the dusk clips
+  are shot with the first run's day hold off (real dusk).
+- **B40.b, B40.c:** the tier stands beside the pole (not in front of it); the kid sits beside the grown-up across the camera's view.
+- **B47.a:** the camera keeps with the weaver's armful to the tent.
+- **B42:** the fish rack stays once it has stood (it popped out of view while the last fish went to the pile).
+
 ---
 
 ### #693: the choice props, a work use and a life use each
