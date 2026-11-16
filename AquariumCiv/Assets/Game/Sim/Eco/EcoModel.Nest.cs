@@ -188,5 +188,8 @@ namespace AquariumCiv.Sim.Eco
         public bool DebugNestLay() { var n = N; if (!n.built || n.Phase == NestPhase.None || n.Phase == NestPhase.Empty) return false; n.parent = true; NestLay(); return true; }
 
         public bool DebugNestHatch() { var n = N; if (!n.built || n.eggs <= 0) return false; NestHatchOrEmpty(); return true; }
+
+        /// <summary>Debug (#709 view): the end of spring now: the parent leaves (with the chicks), the nest stays empty. False without a nest or a parent.</summary>
+        public bool DebugNestFlyOff() { var n = N; if (!n.built || (!n.parent && n.chicks == 0)) return false; NestParentLeaves(); return true; }
     }
 }

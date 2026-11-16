@@ -153,6 +153,31 @@ namespace AquariumCiv.Sim
             return NestChicks;
         }
 
+        /// <summary>Debug "Chicks fly off" (#709 view): the end of spring now: the parent leaves with the chicks (hatching them first if the nest has
+        /// eggs), the empty nest stays. True when someone flew off.</summary>
+        public bool DebugNestFlyOff()
+        {
+            if (!NestStands) return false;
+            if (NestChicks == 0 && NestEggs > 0) DebugNestHatch();
+            if (!EcoM.DebugNestFlyOff()) return false;
+            NestTell();
+            return true;
+        }
+
+        /// <summary>Debug "Nest: next stage" (#709 view): none → built (the parent building) → eggs → chicks → flown off → a new spring. The stage now.</summary>
+        public NestPhase DebugNestNextStage()
+        {
+            switch (NestPhaseNow)
+            {
+                case NestPhase.None: DebugNestPlace(); break;
+                case NestPhase.Building: DebugNestLay(); break;
+                case NestPhase.Eggs: DebugNestHatch(); break;
+                case NestPhase.Chicks: DebugNestFlyOff(); break;
+                default: DebugNestSpring(); break;
+            }
+            return NestPhaseNow;
+        }
+
         /// <summary>Debug "Take an egg": the sim half of a gather, through the same rules (never the last). Lays eggs first if the nest has none.</summary>
         public bool DebugNestTakeEgg()
         {

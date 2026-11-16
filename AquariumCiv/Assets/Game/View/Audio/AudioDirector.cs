@@ -519,6 +519,14 @@ namespace AquariumCiv.View
             BirdCallsPlayed++;
         }
 
+        /// <summary>#709 (B71): the nest's bird chirps (it lands, it scolds): one of the bird calls, pitched up a little, not too loud.</summary>
+        public static void NestChirp(int n, float pitch = 1.15f)
+        {
+            var a = Instance;
+            if (a == null || a.birdClips == null || a.birdClips.Length == 0 || a.birdClips[0] == null) return;
+            a.PlayBird(new BirdCall { clip = ((n % a.birdClips.Length) + a.birdClips.Length) % a.birdClips.Length, volume = 0.7f, pitch = pitch, pan = 0f }, 1f);
+        }
+
         /// <summary>Debug (#195): one of the five calls now, at full day level.</summary>
         public static string DebugBirdCall(int clip = -1)
         {

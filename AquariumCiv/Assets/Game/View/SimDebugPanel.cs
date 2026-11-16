@@ -535,6 +535,12 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Gatherer takes an egg")) { sim.DebugNestLay(); var pv = PeopleView.Find(); last = Done(pv != null && pv.Planner != null && pv.Planner.DebugStartNestVisit(pv.Now, true, out var np) ? "a gatherer walks to the nest, the egg is taken in " + (np.resolveHour - pv.Now.hour).ToString("0.0") + " h" : "nobody free, or no nest"); }
                 if (GUILayout.Button("Kids look at the nest")) { sim.DebugNestLay(); var pv = PeopleView.Find(); last = Done(pv != null && pv.Planner != null && pv.Planner.DebugStartNestVisit(pv.Now, false, out var np) ? $"{np.lookerKeys.Count} kids creep up to the nest" : "no kids, or no nest"); }
                 GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal(); // the view's (B71): every drawn stage
+                if (GUILayout.Button("Chicks fly off")) last = Done(sim.DebugNestFlyOff() ? "the parent leaves, the chicks after it; the nest stays empty" : "no parent or chicks at the nest");
+                if (GUILayout.Button("Nest: next stage")) last = Done("nest: " + sim.DebugNestNextStage());
+                if (GUILayout.Button("Nest: show me")) last = Done(NestView.DebugLook());
+                if (GUILayout.Button("Nest: skip the building")) last = Done(NestView.DebugSkipBuild());
+                GUILayout.EndHorizontal();
             }
             // ---- end #709 ----
             // ---- #420-#422: deer, ducks, fish; floors, shy, restraint (placed-life spec §10) ----
