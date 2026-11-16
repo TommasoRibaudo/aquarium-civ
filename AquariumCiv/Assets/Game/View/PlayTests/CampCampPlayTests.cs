@@ -56,16 +56,23 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log("[692p5 uses] " + CampCheats.LandReady());
             yield return new WaitForSeconds(3f);
             Debug.Log("[692p5 uses] " + CampCheats.LandReady());
-            Debug.Log("[692p5 uses] " + FishRackView.DebugRack());
+            Debug.Log("[692p5 uses] " + CampCheats.FishStay()); // the fish stay ("Fish on the rack" sends someone to take them down: SneakFish then found it empty)
             Debug.Log("[692p5 uses] " + EcoDebug.ShowRack(3));
             yield return new WaitForSeconds(2f);
             var pv = PeopleView.Find();
             var camp = pv.Camp;
             yield return Play(pv, CampUse.TentToy, CampCheats.TentToy, () => camp.TentThingsNow > 0, "a toy on a tent's pole");
             yield return Play(pv, CampUse.TentPeek, CampCheats.TentPeek, null, "");
-            yield return Play(pv, CampUse.LightLanterns, CampCheats.LightLanterns, () => camp.LitNow > 0, "a lantern lit");
-            yield return Play(pv, CampUse.ChaseMoths, CampCheats.ChaseMoths, null, "");
-            yield return Play(pv, CampUse.TentDoorSit, CampCheats.TentDoorSit, null, "");
+            // #692 p5 notes: the lantern round and the doorway sit are houses-only: never in the tent phase, not even by the cheat
+            foreach (var (use, cheat) in new (CampUse, Func<string>)[] { (CampUse.LightLanterns, CampCheats.LightLanterns), (CampUse.TentDoorSit, CampCheats.TentDoorSit) })
+            {
+                int n0 = camp.Started.TryGetValue(use, out int a0) ? a0 : 0;
+                string why = cheat();
+                Debug.Log($"[692p5 uses] {use} (houses only): {why}");
+                if ((camp.Started.TryGetValue(use, out int a1) ? a1 : 0) != n0) failed.Add($"{use} played in the tent phase");
+            }
+            if (camp.LitNow > 0) failed.Add("a lantern lit in the camp");
+            yield return Play(pv, CampUse.ChaseMoths, CampCheats.ChaseMoths, null, ""); // at the fire now
             yield return Play(pv, CampUse.CountStash, CampCheats.CountStash, null, "");
             yield return Play(pv, CampUse.SnackSneak, CampCheats.SnackSneak, null, "");
             yield return Play(pv, CampUse.BerryWipe, CampCheats.BerryKid, null, "");
@@ -160,14 +167,13 @@ namespace AquariumCiv.View.PlayTests
         static string Rack() => CampCheats.FishStay() + "; " + EcoDebug.ShowRack(3);
         /// <summary>Dusk for real: the first run's day hold off (it held the light at 11 h), the hour set again, the clock paused.</summary>
         static string DuskAt(float h) { var s = FirstRunView.DebugSkipAll(); PeopleView.DebugSetHour(h); DayLightDriver.DebugPauseClock(true); return s + " | " + DayLightDriver.Status(); }
-        static string Moths() { var s = DuskAt(19.6f); return s + " | " + CampCheats.LightLanterns(); }
+        static string Moths() => DuskAt(19.6f);
         static string NameStone() => CampCheats.PondReady() + " | " + DilemmaCheats.Toggle(true) + " | " + DilemmaCheats.Raise("camp_remember") + " | " + DilemmaCheats.AnswerOnCard(0);
         static string Pond() => CampCheats.PondReady();
         static string Reeds() => CampCheats.PondReady() + " | " + CampCheats.ReedsReady();
 
         [UnityTest, Timeout(300000)] public IEnumerator B40a() => Use("b40a-tent-peek", 7f, CampCheats.TentPeek, 2, null, -0.8f);
         [UnityTest, Timeout(300000)] public IEnumerator B40b() => Use("b40b-tent-toy", 11f, CampCheats.TentToy, 2, null, 0.3f);
-        [UnityTest, Timeout(300000)] public IEnumerator B40c() => Use("b40c-door-sit", 18f, CampCheats.TentDoorSit, 2, () => DuskAt(18f), -0.5f);
         [UnityTest, Timeout(300000)] public IEnumerator B41a() => Use("b41a-count-stash", 15f, CampCheats.CountStash, 2, null, 1f);
         [UnityTest, Timeout(300000)] public IEnumerator B41b() => Use("b41b-snack-sneak", 11f, CampCheats.SnackSneak, 2, null);
         [UnityTest, Timeout(300000)] public IEnumerator B42a() => Use("b42a-tend-racks", 10f, CampCheats.TendRacks, 2, () => Rack() + "; " + CampCheats.HangMeat(), 2f);
@@ -193,7 +199,7 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(300000)] public IEnumerator B50a() => Use("b50a-path-race", 11f, CampCheats.PathRace, 3, null);
         [UnityTest, Timeout(300000)] public IEnumerator B50b() => Use("b50b-path-chat", 11f, CampCheats.PathChat, 2, null, -1f);
         [UnityTest, Timeout(300000)] public IEnumerator B51() => Use("b51-stone-gift", 8f, CampCheats.StoneGift, 2, NameStone);
-        [UnityTest, Timeout(300000)] public IEnumerator B52a() => Use("b52a-lanterns", 18f, CampCheats.LightLanterns, 2, () => DuskAt(18f), -0.3f);
+        // B40c (the doorway sit) and B52a (the lantern round) are houses-only since the #692 p5 notes: no shots in the camp
         [UnityTest, Timeout(300000)] public IEnumerator B52b() => Use("b52b-moths", 19.6f, CampCheats.ChaseMoths, 2, Moths, -0.3f);
         [UnityTest, Timeout(300000)] public IEnumerator B53a() => Use("b53a-pull-weed", 10f, CampCheats.PullWeed, 2, null, -0.3f);
         [UnityTest, Timeout(300000)] public IEnumerator B53c() => Use("b53c-crown", 11f, CampCheats.Crown, 2, null, -0.5f);

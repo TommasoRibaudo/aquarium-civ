@@ -340,12 +340,16 @@ namespace AquariumCiv.View
         /// <summary>B51: a family member walks with a gift (<paramref name="gift"/>: 0 a flower, 1 a small bowl of berries, 2 a pebble), kneels at the
         /// stone (B4's kneel), sets it at the foot (arm x 40, lean 35 → a <see cref="CampMark.Gift"/>), touches the stone (arm x 90, 1 s), bows and
         /// walks back. A second (−1: none) walks beside and bows too. <see cref="CampScene.a"/>: the gift set down.</summary>
-        public static CampScene StoneGift(int who, Vector2 at, int second, Vector2 secondAt, Vector2 stone, Vector2 toCam, int gift, float t0)
+        /// <summary>B51: the kneeler's middle this far out from the stone's footprint (a doll's 0.055 foot plus a little) [est].</summary>
+        public const float GiftGap = 0.07f;
+
+        public static CampScene StoneGift(int who, Vector2 at, int second, Vector2 secondAt, Vector2 stone, Vector2 toCam, int gift, float t0, float stoneR = 0.03f)
         {
             toCam = Unit(toCam, Vector2.down);
             var s = new CampScene(CampUse.StoneGift, t0, stone) { holdFocus = true, kind = gift };
             int m = s.Add(who);
-            var kneel = stone + toCam * 0.08f;
+            // #692 p5 notes (the user: "he is clipped in the stone"): outside the stone's own footprint (stoneR: its drawn half-width)
+            var kneel = stone + toCam * (stoneR + GiftGap);
             float t = WalkTime(at, kneel, Walk);
             var tip = gift == 0 ? CampTipKind.Flower : gift == 1 ? CampTipKind.GiftBowl : CampTipKind.Pebble;
             s.Part(m, 0f, t, kneel, stone, DollStyle.Stand, null, PropKind.None, Walk);
@@ -353,7 +357,7 @@ namespace AquariumCiv.View
             s.Part(m, t, t + 0.6f, kneel, stone, DollStyle.Stand, KneelPose); t += 0.6f;
             s.Part(m, t, t + 0.7f, kneel, stone, DollStyle.Stand, (ref DollPose p, float u, float l) => { KneelPose(ref p, 1f, l); float k = Bump(u, 0f, l); p.lean += 5f * k; p.armR = Lerp(p.armR, new Vector3(40f, 0f, 6f), k); });
             s.a = t + 0.5f;
-            Leave(s, t + 0.5f, CampMark.Gift, stone + toCam * 0.035f, 0f, gift);
+            Leave(s, t + 0.5f, CampMark.Gift, stone + toCam * (stoneR + 0.012f), 0f, gift);
             t += 0.7f;
             s.Part(m, t, t + 1.2f, kneel, stone, DollStyle.Stand, (ref DollPose p, float u, float l) => { KneelPose(ref p, 1f, l); float k = In(u, 0f, 0.2f) * (1f - In(u, 1f, 0.2f)); p.armR = Lerp(p.armR, new Vector3(90f, 0f, 6f), k); });
             t += 1.2f;
