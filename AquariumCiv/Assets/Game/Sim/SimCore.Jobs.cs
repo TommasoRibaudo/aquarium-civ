@@ -131,6 +131,9 @@ namespace AquariumCiv.Sim
         /// <summary>The bucket's water (P8 #267): with no open water the dawn trip scoops muddy water from the wet low
         /// ground; once the pond has water it is the pond's, clean. Off the ecology it is always clean. Hook: the mist's
         /// puddles (#266) can be a muddy source while there is no pond, once they exist.</summary>
+
+        /// <summary>The living people under 16 (the kids a line may call "the children": two or more).</summary>
+        public int KidCount => State.notables.Count(n => n.alive && n.age < 16f);
         public bool OpenWater => !EcologyOn || EcoPondCells > 0;
 
         /// <summary>Debug panel (#285): every job on the era's list, open or closed, and for a closed one what is missing.</summary>
@@ -359,9 +362,9 @@ namespace AquariumCiv.Sim
         /// <summary>{0} = the person, {1} = "a fisher", {2} = their age.</summary>
         static readonly string[] RetireLines =
         {
-            "{0} put down their work as {1} at {2} and sat down by the fire, to tell stories and mind the children.",
+            "{0} put down their work as {1} at {2} and sat down by the fire, to tell stories to anyone who would sit still.",
             "At {2}, {0} stopped being {1} and became an elder. They still tell everyone how it should be done.",
-            "{0} retired at {2} after a lifetime as {1}. The children now get their stories every evening.",
+            "{0} retired at {2} after a lifetime as {1}. Everyone now gets their stories every evening.",
         };
 
         static string A(string job) => job.Length > 0 && "aeiou".IndexOf(job[0]) >= 0 ? "an " + job : "a " + job;

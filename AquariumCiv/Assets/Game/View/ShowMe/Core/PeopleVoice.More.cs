@@ -95,7 +95,7 @@ namespace AquariumCiv.View.ShowMe
             T(3, "the brave", "brave3", "I took the night watch. The lanterns make it easy. Mostly."), // #719 [est]
             T(3, "the gossip", "gossip3", "Word at the market is the Keeper reads. I'm only repeating it."),
             T(3, "the gardener", "gardener3", "A pot of flowers on every sill. The Keeper might like flowers. Everyone does."),
-            T(3, "the grump", "grump3", "Too many scholars and not enough benches."),
+            T(3, "the grump", "grump3", "Too many scholars and not enough room by the fire."),
             T(3, "the singer", "singer3", "The new song's about the glass. It rhymes with nothing. That's the charm."), // #719 [est]
             T(3, "the tinkerer", "tinkerer3", "I'm building a better ladder. For nothing in particular. Just taller."),
             T(3, "the worrier", "worrier3", "I check the wall every night. Still a wall. Good."),
@@ -158,7 +158,7 @@ namespace AquariumCiv.View.ShowMe
                         case BuildingType.Windmill: return new[] { "The windmill's all drawn out. It only needs every plank we don't have.", "If only we had more wood to start on the windmill." };
                         case BuildingType.Market: return new[] { "The market's chalked out on the ground. The stalls just need planks.", "A market needs stalls and stalls need wood. We have a lot of chalk." };
                         case BuildingType.Tavern: return new[] { "The tavern's name is decided. The roof isn't.", "I've chosen my stool already. The tavern can follow when the wood does." };
-                        case BuildingType.Church: return new[] { "The church is planned down to the last bench. We're missing the planks.", "Give the woodcutters a good week and the church goes up." };
+                        case BuildingType.Church: return new[] { "The church is planned down to the last beam. We're missing the planks.", "Give the woodcutters a good week and the church goes up." };
                         case BuildingType.Well: return new[] { "I can already taste the water from the new well. It needs wood for the cover first." };
                         case BuildingType.Bakery: return new[] { "The oven's all drawn out. We need wood to build it, and then wood to burn in it." };
                     }

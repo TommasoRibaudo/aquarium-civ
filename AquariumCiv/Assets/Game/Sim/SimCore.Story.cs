@@ -113,13 +113,13 @@ namespace AquariumCiv.Sim
         {
             "{0} called everyone to the fire for a feast. There was dancing until dawn.",
             "{0} stoked the fire high for a feast. The food ran out long before the singing did.",
-            "{0} gathered the tribe round the fire. Someone danced with a broom, and the broom led.", // #715 [est]
+            "{0} gathered the tribe round the fire. Someone danced with a ladle, and the ladle led.", // #715 [est]
         };
         public static readonly string[] FestivalLines =
         {
             "{0} threw a harvest festival. There was dancing until dawn.",
             "{0} threw a harvest festival. The bread ran out long before the music did.", // #715 [est]: no pies
-            "{0} threw a harvest festival. Someone danced with a broom, and the broom led.", // #715 [est]
+            "{0} threw a harvest festival. Someone danced with a ladle, and the ladle led.", // #715 [est]
         };
 
         /// <summary>The building a story happens in or on: one with a roof (#61: nobody huddles in a well or climbs a field's
@@ -147,6 +147,15 @@ namespace AquariumCiv.Sim
         }
 
         // #715 [est]: no goat and no fence post in a box that has neither (research 21): the stew, and where the path goes.
+        /// <summary>The snow line's second sentence, by who is there to catch it: two kids, one kid, or only grown-ups (no dice).</summary>
+        string SnowKidClause()
+        {
+            int kids = KidCount;
+            if (kids >= 2) return "The children tried to catch it.";
+            if (kids == 1) return State.notables.Any(n => n.alive && n.age < 3f) ? "The baby stared at it." : "The little one tried to catch it.";
+            return "Everyone stood with their hands out to catch it.";
+        }
+
         static readonly string[] Quarrels = { "the last of the stew", "whose turn it was at the well", "the best way to bake bread", "where the new path should go", "a song lyric" };
         static readonly string[] FriendReasons = { "a long night of storytelling", "sharing the last apple", "fixing a roof together", "a snowball fight" };
         /// <summary>#720: the living land's camp (tents, no apple trees): the same reasons, in its own words (same count: the same dice).</summary>
@@ -174,7 +183,7 @@ namespace AquariumCiv.Sim
             if (winter && !s.storyFlags.Contains(FlagSnow) && year >= 2 && r.Chance(0.25f))
             {
                 s.storyFlags.Add(FlagSnow);
-                Chronicle("snow", "Snow fell inside the glass for the first time. The children tried to catch it.", 0.6f);
+                Chronicle("snow", "Snow fell inside the glass for the first time. " + SnowKidClause(), 0.6f);
             }
 
             if (!r.Chance(Config.storyChancePerMonth)) return;
@@ -201,7 +210,7 @@ namespace AquariumCiv.Sim
                 foes.a.rivalId = foes.b.id; foes.b.rivalId = foes.a.id;
                 string over = QuarrelIn(QuarrelAgain(Pick(r, Quarrels), foes.a.id, foes.b.id));
                 RememberQuarrel(foes.a.id, foes.b.id, over);
-                Chronicle("rivalry", $"{foes.a.FullName} and {foes.b.FullName} fell out over {over}. They no longer share a bench.", 0.58f, foes.a.id, foes.b.id);
+                Chronicle("rivalry", $"{foes.a.FullName} and {foes.b.FullName} fell out over {over}. They no longer share a fire.", 0.58f, foes.a.id, foes.b.id);
             });
             var feuding = adults.FirstOrDefault(n => n.rivalId >= 0 && Alive(n.rivalId) != null);
             if (feuding != null) Add(0.5f, () =>

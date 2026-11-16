@@ -36,6 +36,24 @@ namespace AquariumCiv.Tests
             CollectionAssert.Contains(ContentRules.MissingThings("Mira walked to the market.", camp), "the market");
         }
 
+        /// <summary>Batch 3 findings: "the children" needs two kids, "mud" needs water, "bench" is never true, "broom" needs sweepers.</summary>
+        [Test]
+        public void KidsMudBenchAndBroomAreGated()
+        {
+            var cfg = new SimConfig { ecology = true };
+            var camp = new SimCore(cfg, SimCore.NewWorld(3, cfg));
+            Assert.AreEqual(0, camp.KidCount);
+            CollectionAssert.Contains(ContentRules.MissingThings("The children tried to catch it.", camp), "two or more kids");
+            CollectionAssert.Contains(ContentRules.MissingThings("Mira lost a sandal in the mud of the hollow.", camp), "water for mud");
+            CollectionAssert.Contains(ContentRules.MissingThings("They no longer share a bench.", camp), "a bench");
+            CollectionAssert.Contains(ContentRules.MissingThings("Someone danced with a broom.", camp), "a broom");
+            camp.DebugAddKids(1);
+            CollectionAssert.Contains(ContentRules.MissingThings("The children tried to catch it.", camp), "two or more kids", "one kid is not children");
+            camp.DebugAddKids(1);
+            Assert.IsEmpty(ContentRules.MissingThings("The children tried to catch it.", camp));
+            Assert.IsEmpty(ContentRules.MissingThings("They no longer share a fire. Someone danced with a ladle.", camp));
+        }
+
         /// <summary>#652: a box with no water never says "stream"; the slice (always a pond) and a land with water may.</summary>
         [Test]
         public void ADryBoxNeverSaysStreamAndAWetOneMay()
