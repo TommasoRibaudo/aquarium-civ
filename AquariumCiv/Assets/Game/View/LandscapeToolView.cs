@@ -28,7 +28,8 @@ namespace AquariumCiv.View
 
         [Tooltip("How far from the finger (box units) a thing still counts as touched.")] public float reach = CareView.SaplingReach;
         [Tooltip("A held finger lifts at most one thing this often (seconds).")] public float dragEvery = 0.12f;
-        [Tooltip("The target ring's colour (the life glow's warm honey).")] public Color ringColor = new(1f, 0.6f, 0.26f, 0.85f);
+        [Tooltip("The target ring's colour (the life glow's warm honey).")] public Color ringColor = new(1f, 0.66f, 0.3f, 1f);
+        [Tooltip("#668: the dark rim either side of the ring, so it reads on grass and sand.")] public Color ringEdge = new(0.18f, 0.11f, 0.06f, 0.9f);
 
         BoxView box;
         GameHud hud;
@@ -176,8 +177,20 @@ namespace AquariumCiv.View
                 mr.receiveShadows = false;
             }
             ringGo.SetActive(true);
-            Ring(new Vector3(SiteMap.CXc(cell), 0f, SiteMap.CZc(cell)), r, 0.014f);
+            // #668 (the landscaping polish: the ring was hard to see on grass): a wider honey ring over a dark rim on each side, and a
+            // little larger, so it reads on sand, grass and under a crown alike
+            verts.Clear(); cols.Clear(); tris.Clear();
+            var mid = new Vector3(SiteMap.CXc(cell), 0f, SiteMap.CZc(cell));
+            r = Mathf.Max(r * 1.15f, 0.08f);
+            Ring(mid, r, RingWidth + 0.02f, ringEdge, 0f);
+            Ring(mid, r, RingWidth, ringColor, 0.002f);
+            ringMesh.Clear();
+            ringMesh.SetVertices(verts); ringMesh.SetColors(cols); ringMesh.SetTriangles(tris, 0);
+            ringMesh.RecalculateBounds();
         }
+
+        /// <summary>#668: the honey ring's width (box units); the dark rim shows 0.01 past it on each side.</summary>
+        public const float RingWidth = 0.026f;
 
         void HideRing() { if (ringGo != null && ringGo.activeSelf) ringGo.SetActive(false); }
 
@@ -185,26 +198,24 @@ namespace AquariumCiv.View
         readonly List<Color32> cols = new();
         readonly List<int> tris = new();
 
-        void Ring(Vector3 c, float r, float width)
+        /// <summary>Adds one ring band to the lists (the caller fills the mesh); <paramref name="up"/> lifts it over the band under it.</summary>
+        void Ring(Vector3 c, float r, float width, Color col, float up)
         {
-            verts.Clear(); cols.Clear(); tris.Clear();
-            Color32 c32 = ringColor.linear;
-            const int seg = 28;
+            Color32 c32 = col.linear;
+            const int seg = 32;
+            int b = verts.Count;
             for (int i = 0; i <= seg; i++)
             {
                 float a = i * Mathf.PI * 2f / seg, cs = Mathf.Cos(a), sn = Mathf.Sin(a);
                 float xo = c.x + cs * (r + width * 0.5f), zo = c.z + sn * (r + width * 0.5f);
                 float xi = c.x + cs * (r - width * 0.5f), zi = c.z + sn * (r - width * 0.5f);
-                verts.Add(new Vector3(xo, Y(xo, zo), zo));
-                verts.Add(new Vector3(xi, Y(xi, zi), zi));
+                verts.Add(new Vector3(xo, Y(xo, zo) + up, zo));
+                verts.Add(new Vector3(xi, Y(xi, zi) + up, zi));
                 cols.Add(c32); cols.Add(c32);
                 if (i == seg) continue;
-                int o = i * 2;
+                int o = b + i * 2;
                 tris.Add(o); tris.Add(o + 1); tris.Add(o + 3); tris.Add(o); tris.Add(o + 3); tris.Add(o + 2);
             }
-            ringMesh.Clear();
-            ringMesh.SetVertices(verts); ringMesh.SetColors(cols); ringMesh.SetTriangles(tris, 0);
-            ringMesh.RecalculateBounds();
         }
 
         float Y(float x, float z) => box.land.Height(Mathf.Clamp(x, -Land.HX, Land.HX), Land.ClampZ(z)) + 0.016f;

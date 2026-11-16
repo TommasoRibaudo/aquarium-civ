@@ -256,7 +256,7 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(0.5f);
             Check("d", hud.OpenSheet == GameHud.Kit && hud.LifeSlotShown, $"{s}: Kit opens with the life slot");
             yield return Shot($"f4/d_{tag}_0_kit");
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life")); taps++;
+            // #668: no jar to open first: the groups are tiles on the kit's shelves
             yield return new WaitForSecondsRealtime(0.4f);
             if (hud.LifeRowOpen)
             {

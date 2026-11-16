@@ -198,6 +198,14 @@ namespace AquariumCiv.Sim
             return n;
         }
 
+        /// <summary>Debug (#668 kit states): one shut jar opens now (one group ready). False when it isn't shut.</summary>
+        public bool DebugJarReady(LifeSpecies s)
+        {
+            if (!EcologyOn || !EcoM.DebugReadyOne(s, State.month)) return false;
+            EcoTell();
+            return true;
+        }
+
         /// <summary>Debug ("ready every species"): every shut jar opens now, whatever the land says. How many opened.</summary>
         public int DebugJarsReady()
         {

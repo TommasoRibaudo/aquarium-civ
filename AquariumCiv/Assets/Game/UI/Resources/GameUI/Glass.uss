@@ -599,23 +599,85 @@
 .hud-icon.hud-icon--shot:active { background-color: rgba(0, 0, 0, 0); scale: 1 1; }
 
 .hud-bottom { position: absolute; left: var(--space-16); right: var(--space-16); bottom: 82.5px; flex-direction: row; justify-content: space-between; align-items: flex-end; padding: 0; }
+/* #668 (feedback#70: "the bottom part of the UI looks flat"): the tools have depth, matched to kit-mockups.html. UI Toolkit has no
+   box-shadow or gradient, so each tool draws layers (GameHud.Tool): a soft shadow, a darker lip 3 pt under the face, the face
+   (ToolFace.png: #FBF5EA to paper to #E8D9BC, a light top inset, a darker bottom inset), then its word. The button itself is clear. */
 .kg-tool {
     width: 31.85%; height: 154px; min-width: 0; padding: 0; border-radius: var(--radius-tool);
+    border-width: 0; background-color: rgba(0, 0, 0, 0);
+    color: rgba(0, 0, 0, 0); -unity-text-outline-color: rgba(0, 0, 0, 0);
+    flex-direction: row; justify-content: center; align-items: center;
     -unity-font-definition: var(--font-lora-bold); font-size: 46.75px;
 }
+.kg-tool:active, .kg-tool.kg-btn--pressed { background-color: rgba(0, 0, 0, 0); }
+.kg-tool > .kg-btn-measure { position: absolute; }
+.kg-tool-shade {
+    position: absolute; left: -30px; right: -30px; top: -6px; bottom: -52px;
+    background-image: url("GlassShadow.png"); -unity-background-image-tint-color: rgba(46, 42, 39, 0.42);
+    -unity-slice-left: 200; -unity-slice-right: 200; -unity-slice-top: 200; -unity-slice-bottom: 200; -unity-slice-scale: 0.4px;
+}
+.kg-tool-lip { position: absolute; left: 0; right: 0; top: 8.25px; bottom: -8.25px; border-radius: var(--radius-tool); background-color: rgba(106, 75, 54, 0.22); }
+.kg-tool-face {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0; border-radius: var(--radius-tool);
+    background-image: url("ToolFace.png"); -unity-background-scale-mode: stretch-to-fill;
+    border-width: 2.75px; border-color: var(--edge);
+    transition: border-color 600ms ease-in-out;
+}
+.kg-tool:active > .kg-tool-face, .kg-tool.kg-btn--pressed > .kg-tool-face { -unity-background-image-tint-color: var(--pressed-fill); }
+.kg-tool-word {
+    margin: 0; padding: 0; white-space: nowrap; -unity-text-align: middle-center;
+    color: var(--ink-soft); -unity-text-outline-width: 0.3px; -unity-text-outline-color: var(--ink-soft);
+    -unity-font-definition: var(--font-lora-bold); font-size: 46.75px;
+}
+.kg-tool-icon { display: none; width: 60.5px; height: 60.5px; -unity-background-image-tint-color: var(--ink-soft); }
 .kg-tool--arrive { transition: scale 80ms ease-out, background-color 80ms ease-out, translate 280ms ease-out-cubic, opacity 280ms ease-out; }
 /* the first run has one primary and no other tools; they arrive one at a time at the end of it */
 .kg-tool--waiting { translate: 0 60px; opacity: 0; }
 .kg-tool-mark { position: absolute; left: 50%; top: 52px; margin-left: -96px; display: none; }
-.kg-tool--on { padding-left: 49.5px; border-width: 5.5px; border-color: var(--primary); }
+.kg-tool--on { padding-left: 49.5px; }
+.kg-tool--on > .kg-tool-face { border-width: 5.5px; border-color: var(--primary); }
 .kg-tool--on > .kg-tool-mark { display: flex; }
 /* #516: with a kit tool in hand the button reads "Put away" under a cross (a wider word: the mark steps left) */
 .kg-tool--on.kg-tool--away { padding-left: 66px; }
 .kg-tool--away > .kg-tool-mark { margin-left: -142px; }
-.kg-tool--new { border-width: 5.5px; border-color: var(--brass); transition: border-color 600ms ease-in-out, scale 80ms ease-out; }
-.kg-tool--glow { border-color: var(--brass-light); }
+.kg-tool--new > .kg-tool-face { border-width: 5.5px; border-color: var(--brass); }
+.kg-tool--glow > .kg-tool-face { border-color: var(--brass-light); }
 .kg-tool > .kg-new-tag { position: absolute; left: 50%; top: -30px; margin-left: -60.5px; display: none; }
 .kg-tool--new > .kg-new-tag { display: flex; }
+/* #661: a tool in hand turns the Kit into the hand chip: an icon disc, the tool's name, a Put away pill (66 % of the bar) */
+.kg-hand-disc, .kg-hand-name, .kg-hand-away { display: none; }
+.kg-tool.kg-tool--hand { width: 70%; padding: 0 13.75px; justify-content: flex-start; }
+.kg-tool--hand > .kg-tool-word, .kg-tool--hand > .kg-tool-mark, .kg-tool--hand > .kg-new-tag, .kg-tool--hand > .kg-tool-dot { display: none; }
+.kg-tool--hand > .kg-tool-face { border-width: 5.5px; border-color: var(--primary); }
+.kg-tool--hand > .kg-hand-disc {
+    display: flex; width: 115.5px; height: 115.5px; flex-shrink: 0; border-radius: 50%; justify-content: center; align-items: center;
+    background-color: var(--paper); border-width: 2.75px; border-color: var(--edge);
+}
+.kg-hand-icon { width: 71.5px; height: 71.5px; }
+.kg-tool--hand > .kg-hand-name {
+    display: flex; flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0 8.25px 0 16.5px; padding: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    -unity-text-align: middle-left; color: var(--ink); -unity-text-outline-width: 0.3px; -unity-text-outline-color: var(--ink);
+    -unity-font-definition: var(--font-lora-bold); font-size: 42.6px;
+}
+.kg-tool--hand > .kg-hand-away {
+    display: flex; flex-direction: row; align-items: center; flex-shrink: 0; height: 110px; padding: 0 24.75px 0 22px; border-radius: 55px;
+    background-color: var(--primary);
+}
+.kg-hand-away-mark { width: 38.5px; height: 38.5px; margin-right: 8.25px; }
+.kg-hand-away-word {
+    margin: 0; padding: 0; white-space: nowrap; color: var(--on-primary); -unity-text-outline-width: 0.3px; -unity-text-outline-color: var(--on-primary);
+    -unity-font-definition: var(--font-serif-bold); font-size: 35.75px;
+}
+/* History steps down to its book while the chip takes the room */
+.kg-tool.kg-tool--slim { width: 24%; }
+.kg-tool--slim > .kg-tool-word { display: none; }
+.kg-tool--slim > .kg-tool-icon { display: flex; }
+/* the ledge the tools stand on (A and C): flat tint 38 %, a brass-light top edge, a soft shadow; behind every tool */
+.hud-ledge {
+    position: absolute; left: -22px; right: -22px; top: -27.5px; bottom: -27.5px; border-radius: 99px;
+    background-color: rgba(243, 233, 214, 0.38); border-top-width: 4.125px; border-color: rgba(217, 184, 115, 0.85);
+}
+.hud-ledge--away { display: none; }
 
 .hud-pins { position: absolute; left: var(--space-16); right: var(--space-16); bottom: 264px; height: var(--drawn); flex-direction: row; align-items: center; }
 
@@ -768,7 +830,7 @@
     border-width: var(--hairline); border-color: var(--edge); border-radius: var(--radius-toast);
     background-color: var(--flat-tint);
 }
-/* ---------------- #423 the life slot in the kit (placed-life spec section 6) ---------------- */
+/* ---------------- the life jars' icons (#423) and the kit's tools (#668, drawn for the project) ---------------- */
 .kg-i-life-jar { background-image: url("Icons/life-jar.svg"); }
 .kg-i-life-thicket { background-image: url("Icons/life-thicket.svg"); }
 .kg-i-life-rabbits { background-image: url("Icons/life-rabbits.svg"); }
@@ -777,29 +839,82 @@
 .kg-i-life-fish { background-image: url("Icons/life-fish.svg"); }
 .kg-i-life-wolf { background-image: url("Icons/life-wolf.svg"); }
 .kg-i-life-seed { background-image: url("Icons/life-seed.svg"); }
-.kit-acts { flex-wrap: wrap; }
-.kit-acts > .kg-btn { margin-bottom: var(--space-8); }
-.kit-life { padding-left: 88px; }
-.kit-life > .kit-life-icon { position: absolute; left: 27.5px; top: 35px; width: 52px; height: 52px; }
-.kit-life-dot { position: absolute; right: -6px; top: -6px; display: none; }
-.kit-life--ready > .kit-life-dot { display: flex; }
-/* tester 2026-11-08: on a wide screen (1640x2360) 30 % was too short for the title, the chooser and the slot, so the row shrank and its
-   140 px icons spilled onto the title and the slot. The kit keeps 30 % at least and grows to what it holds; nothing in it shrinks. */
+.kg-i-cloth { background-image: url("Icons/cloth.svg"); }
+.kg-i-mister { background-image: url("Icons/mister.svg"); }
+.kg-i-tweezers { background-image: url("Icons/tweezers.svg"); }
+.kg-i-spade { background-image: url("Icons/spade.svg"); }
+
+/* ---------------- #668 the kit, mock-up A "the tile shelf": labels, rows of four square tiles, one note ---------------- */
+/* tester 2026-11-08: the kit keeps 30 % at least and grows to what it holds; nothing in it shrinks */
 .kg-sheet.kit-sheet { height: auto; min-height: 30%; max-height: 80%; }
-.kit-acts { flex-shrink: 0; }
-.kit-life-row { flex-direction: row; flex-wrap: wrap; align-items: center; margin-bottom: var(--space-8); display: none; flex-shrink: 0; }
-.kit-life-row--open { display: flex; }
-.kit-life-choice { width: 140px; height: 140px; min-width: 0; padding: 0; margin: 0 16.5px var(--space-8) 0; flex-direction: column; justify-content: center; align-items: center; }
-.kit-life-choice > .kg-icon { width: 66px; height: 66px; }
-/* #675: a short word under each jar choice ("Seed", "Rabbits") */
-.kit-life-choice > .kit-life-name { margin: 5.5px 0 0 0; padding: 0; font-size: 27.5px; white-space: nowrap; -unity-text-align: middle-center; }
-/* #570: a shut jar stands greyed with its need in the note. 2026-11-14: a tap never makes it look chosen or open (no darker press, no
-   stronger grey); the note names the jar it speaks of, and that jar only gets a thin ink underline under its word */
-.kit-life-choice--locked, .kit-life-choice--locked:hover, .kit-life-choice--locked:active, .kit-life-choice--locked.kg-btn--pressed {
-    opacity: 0.4; scale: 1 1; background-color: var(--flat-tint);
+.kit-shelf { flex-shrink: 0; }
+.kit-life-row { flex-shrink: 0; }
+.kit-sec {
+    margin: 11px 0 13.75px 0; padding: 0; flex-shrink: 0;
+    color: var(--timber); -unity-text-outline-width: 0.3px; -unity-text-outline-color: var(--timber);
+    -unity-font-definition: var(--font-lora-bold); font-size: 33px; letter-spacing: 1.5px;
 }
-.kit-life-choice--locked > .kit-life-name { border-bottom-width: 0; border-color: var(--ink-soft); }
-.kit-life-choice--locked.kit-life-choice--picked > .kit-life-name { border-bottom-width: 3px; }
-.kg-tool > .kg-tool-dot { position: absolute; right: 22px; top: 18px; display: none; }
+.kit-grid { flex-direction: row; flex-wrap: wrap; flex-shrink: 0; }
+/* the tile: four to a row (23.5 % + 2 % gaps), the icon top left, the name and its line at the bottom */
+.kit-tile {
+    width: 23.5%; height: 214.5px; min-width: 0; margin: 0 2% 19.25px 0; padding: 16.5px 16.5px 13.75px 16.5px; flex-shrink: 0;
+    flex-direction: column; justify-content: flex-end; align-items: flex-start;
+    border-width: 2.75px; border-color: var(--edge); border-radius: 44px;
+    background-color: var(--flat-tint);
+}
+.kit-tile--end { margin-right: 0; }
+.kit-tile-glyph { position: absolute; left: 19.25px; top: 19.25px; width: 71.5px; height: 71.5px; }
+.kit-tile-name {
+    margin: 0; padding: 0; white-space: nowrap;
+    color: var(--ink); -unity-text-outline-width: 0.3px; -unity-text-outline-color: var(--ink);
+    -unity-font-definition: var(--font-lora-bold); font-size: 38.5px;
+}
+.kit-tile-line {
+    margin: 0; padding: 0; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    color: var(--ink-soft); -unity-text-outline-width: 0.3px; -unity-text-outline-color: var(--ink-soft);
+    -unity-font-definition: var(--font-serif-italic); font-size: 27.5px;
+}
+.kit-tile-count {
+    position: absolute; top: 22px; right: 19.25px; margin: 0; padding: 0 13.75px; border-radius: 24.75px;
+    background-color: var(--moss); color: var(--paper); -unity-text-outline-width: 0.3px; -unity-text-outline-color: var(--paper);
+    -unity-font-definition: var(--font-serif-bold); font-size: 31.625px;
+}
+.kit-tile-lock {
+    display: none; position: absolute; top: 19.25px; right: 19.25px; width: 46.75px; height: 46.75px; border-radius: 50%;
+    background-color: var(--timber); justify-content: center; align-items: center;
+}
+.kit-tile-lock-icon { width: 27.5px; height: 27.5px; -unity-background-image-tint-color: var(--paper); }
+.kit-tile-check {
+    display: none; position: absolute; top: 13.75px; right: 13.75px; width: 44px; height: 44px; border-radius: 50%;
+    background-color: var(--primary); justify-content: center; align-items: center;
+}
+.kit-tile-check-icon { width: 30.25px; height: 30.25px; -unity-background-image-tint-color: var(--on-primary); }
+.kit-tile-tag { display: none; position: absolute; left: 50%; top: -24.75px; width: 99px; height: 44px; margin-left: -49.5px; font-size: 30.25px; border-radius: 22px; }
+.kit-tile-dot { display: none; position: absolute; top: -11px; right: -11px; }
+.kit-tile--new { border-width: 5.5px; border-color: var(--brass); }
+.kit-tile--new > .kit-tile-tag { display: flex; }
+.kit-tile--hand { border-width: 5.5px; border-color: var(--primary); }
+.kit-tile--hand > .kit-tile-check { display: flex; }
+.kit-tile--dot > .kit-tile-dot { display: flex; }
+/* #662: shut is never a fade (spec.md §4): a thin timber edge, a paler fill, a lock, full-strength words; a press doesn't darken it */
+.kit-tile--shut, .kit-tile--shut:hover, .kit-tile--shut:active, .kit-tile--shut.kg-btn--pressed {
+    height: 192.5px; scale: 1 1; background-color: var(--off-fill); border-width: 2.75px; border-color: var(--timber);
+}
+.kit-tile--shut > .kit-tile-glyph { opacity: 0.55; }
+.kit-tile--shut > .kit-tile-lock { display: flex; }
+.kit-tile--shut > .kit-tile-line { -unity-font-definition: var(--font-serif); color: var(--ink); -unity-text-outline-color: var(--ink); }
+/* the shut jar the note speaks of: a timber line along its foot */
+.kit-tile--shut.kit-tile--picked { border-bottom-width: 8.25px; }
+.kit-note {
+    margin: 11px 0 0 0; padding: 22px 33px; flex-shrink: 0; white-space: normal;
+    border-radius: 38.5px; border-left-width: 8.25px; border-color: var(--brass); background-color: rgba(217, 184, 115, 0.22);
+}
+.kg-tool > .kg-tool-dot { position: absolute; right: 38.5px; top: 22px; display: none; }
 .kg-tool--life > .kg-tool-dot { display: flex; }
+/* #660: the dot that reads ("Kit ·") breathes: a halo grows and fades, about once a second (GameHud.SetKitPulse toggles the class) */
+.kg-dot-halo {
+    position: absolute; left: -2.75px; top: -2.75px; right: -2.75px; bottom: -2.75px; border-radius: 50%;
+    background-color: rgba(158, 80, 51, 0.55); transition: scale 800ms ease-out, opacity 800ms ease-out;
+}
+.kg-dot-halo--out { scale: 2.6 2.6; opacity: 0; }
 .office-holder.kg-btn { -unity-font-style: bold; }

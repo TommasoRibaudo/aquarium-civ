@@ -32,6 +32,9 @@ Every third-party pack in the project: where it came from and its license.
 | Keeper's Glass icons, 35 SVG (#108) | Drawn for this project on the Design System board (#107), no third-party source | Ours | `Assets/Game/UI/Resources/GameUI/Icons/` | 2026-10-31 |
 | Bird calls, five short clips (#195) | Made in code (#195), ours: `CareSound.MakeBird` (`proc:bird0..4`), no recording | Ours | no asset file |
 | Sheet shadow, `GlassShadow.png` | Made in code (#107): rounded rect, sigma 33, white with alpha | Ours | `Assets/Game/UI/Resources/GameUI/` | 2026-10-31 |
+| Kenney Watercraft Kit 2.1 | https://kenney.nl/assets/watercraft-kit | CC0 1.0 (License.txt in the pack) | `AquariumCiv/Assets/ThirdParty/Kenney/Watercraft/Resources/KenneyWatercraft/`: `boat-row-small.fbx` and the pack's shared `Textures/colormap.png` only (#714, the pond family's boat; recoloured to the box's timber browns in vertex colours by `ConsequenceMeshes.KenneyBoat`, the texture is not edited) | 2026-11-15 |
+| Kit tool icons, 4 SVG (#668): cloth, mister, tweezers, spade | Drawn for this project in the style of `Icons/life-*.svg` (24 grid, white 2 px stroke), from the kit mock-ups (`docs/design/kit-mockups.html`); no third-party source | Ours | `Assets/Game/UI/Resources/GameUI/Icons/` | 2026-11-15 |
+| Tool face, `ToolFace.png` (#668) | Made for this project (2026-11-15): 16x308 px, a vertical gradient #FBF5EA → paper → #E8D9BC with a light top inset and a darker bottom inset, drawn by a short System.Drawing script from the kit mock-up's CSS | Ours | `Assets/Game/UI/Resources/GameUI/ToolFace.png` | 2026-11-15 |
 
 Credits for the published game: see `CREDITS.md` at the repo root.
 Sound effects (#96): sources downloaded 2026-10-30, licenses checked on each page / in each pack's License.txt; only the

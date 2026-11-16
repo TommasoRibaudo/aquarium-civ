@@ -190,15 +190,15 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean")); // Kit
             yield return Settle(0.6f);
             Check("b", hud.OpenSheet == GameHud.Kit, "Kit opens the kit");
-            Check("b", Shown(hud.Root.Q("kit-life")), "the Life slot is there with every jar shut");
+            Check("b", Shown(hud.Root.Q("kit-shut")), "the Still to come shelf is there with every jar shut");
             yield return Snap("b_1_kit");
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+            // #668: no jar to open first: the tiles are on the kit's shelves
             yield return Settle(0.5f);
             Check("b", hud.LifeRowOpen, "the chooser opens on the shut jars");
             foreach (var s in shut)
             {
                 var icon = hud.Root.Q("kit-life-locked-" + s.ToString().ToLowerInvariant());
-                Check("b", icon != null && icon.ClassListContains("kit-life-choice--locked"), $"a greyed icon for {s}");
+                Check("b", icon != null && icon.ClassListContains(KitTile.ShutClass), $"a greyed icon for {s}");
             }
             Log("b note: " + hud.LifeNoteText);
             yield return Snap("b_2_chooser");

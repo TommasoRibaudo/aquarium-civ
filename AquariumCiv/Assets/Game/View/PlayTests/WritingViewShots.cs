@@ -106,12 +106,16 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsNotNull(boat, "the boat is placed");
             Assert.IsTrue(ConsequencePropsView.Instance.Standing.TryGetValue(boat.id, out var t) && t != null, "and drawn");
             foreach (var kv in ConsequencePropsView.Instance.Standing) if (kv.Key != boat.id && kv.Value != null) kv.Value.gameObject.SetActive(false); // the boat alone: the cheat stacks every prop at the fire
-            Cam.FlyTo(t.position, 0.05f, 0.3f);
+            Cam.FlyTo(t.position, 0.03f, 0.3f); // #714: close (0 is read as no zoom given: the home view)
             yield return new WaitForSecondsRealtime(1f);
             yield return Shot("718/boat-close");
             Cam.FlyTo(t.position, 0.3f, 0.3f);
             yield return new WaitForSecondsRealtime(1f);
             yield return Shot("718/boat-mid");
+            // #714: the boat in the scene, with people about at their size (the other props stay hidden: the cheat stacks them at the fire)
+            Cam.FlyTo(t.position, 0.6f, 0.3f);
+            yield return new WaitForSecondsRealtime(1.2f);
+            yield return Shot("718/boat-scene");
             Assert.IsEmpty(errors, string.Join(" | ", errors));
         }
 

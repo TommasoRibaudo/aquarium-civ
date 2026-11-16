@@ -36,7 +36,7 @@ namespace AquariumCiv.GameUI
         public event Action<bool> CameraModeChanged;
 
         UIDocument doc;
-        VisualElement root, safe, topRow, bottomRow, pinRow, outsideSheet;
+        VisualElement root, safe, topRow, bottomRow, pinRow, outsideSheet, ledge;
         bool outsideKeepsTop, peekUp;
         GlassScrim openSheet;
         readonly System.Collections.Generic.Dictionary<string, GlassScrim> sheets = new();
@@ -152,7 +152,8 @@ namespace AquariumCiv.GameUI
         public enum KitTool { None, Mister, Seed, Tweezers, Life, Bush, Landscape } // #731 Bush: an earned bush in hand; #730 Landscape: the plucking tool
         KitTool hand;
         bool kitBox, kitSeedShown, kitBushShown;
-        GlassButton kitCloth, kitMister, kitTweezers, kitLandscape;
+        KitTile kitCloth, kitMister, kitTweezers, kitLandscape;
+        /// <summary>#668: the kit's one note (named <c>kit-life-note</c>, the name the tests know).</summary>
         Label kitNote;
         /// <summary>The tool in hand (the mister or the seed), or None. The cloth is <see cref="CleanMode"/>.</summary>
         public KitTool Hand => hand;
@@ -164,7 +165,9 @@ namespace AquariumCiv.GameUI
         /// button says what it does, puts the tool away, under a cross. Clean mode (the cloth, the first run's wipe) keeps Done and its check.</summary>
         public const string PutAway = "Put away";
 
-        /// <summary>The Kit/Clean button's word and mark for the state now.</summary>
+        /// <summary>The Kit/Clean button's word and mark for the state now. #661: in a kit box a tool in hand (the cloth too) turns the
+        /// button into the hand chip: an icon disc, the tool's name, and a Put away pill (the cloth: Done, with its check). The button's
+        /// own text keeps the old word (Put away / Done / Kit / Clean); what shows is <see cref="KitWord"/>.</summary>
         void ShowToolWord()
         {
             if (cleanButton == null) return;
@@ -172,7 +175,72 @@ namespace AquariumCiv.GameUI
             cleanButton.text = away ? PutAway : cleanMode ? "Done" : kitBox ? "Kit" : "Clean";
             if (toolMark != null) toolMark.Shape = away ? "close" : "check";
             cleanButton.EnableInClassList("kg-tool--away", away);
+            bool chip = kitBox && (away || cleanMode);
+            cleanButton.EnableInClassList("kg-tool--hand", chip);
+            historyButton?.EnableInClassList("kg-tool--slim", chip);
+            if (chip)
+            {
+                handIcon.Shape = HandIcon;
+                handName.text = HandName;
+                handAwayMark.Shape = away ? "close" : "check";
+                handAwayWord.text = away ? PutAway : "Done";
+            }
+            bool dotWord = kitBox && !chip && cleanButton.ClassListContains("kg-tool--life");
+            SetWord(cleanButton, cleanButton.text + (dotWord ? " ·" : ""));
         }
+
+        /// <summary>#661: what the Kit button says now, as the player reads it ("Mister · Put away", "Cloth · Done", "Kit ·", "Kit").</summary>
+        public string KitWord
+        {
+            get
+            {
+                if (cleanButton == null) return "";
+                if (cleanButton.ClassListContains("kg-tool--hand")) return handName.text + " · " + handAwayWord.text;
+                return ToolWordOf(cleanButton);
+            }
+        }
+
+        /// <summary>Debug (kit states, #668): the kit shows its tools only, as a box before its first seed or jar would (staged: today every
+        /// tool is there from the start and the seed comes as the first run ends).</summary>
+        public static bool DebugToolsOnly { get; set; }
+
+        /// <summary>Debug (kit states, #668): a tool tile wears the New state (no tool arrives in the game yet); null clears it.</summary>
+        public void DebugNewTool(string tileName)
+        {
+            foreach (var t in new[] { kitCloth, kitMister, kitTweezers, kitLandscape }) if (t != null) t.New = t.name == tileName;
+        }
+
+        /// <summary>Debug and shots: a shut jar picked, as a tap on its tile does (its need goes in the note).</summary>
+        public void DebugPickShut(AquariumCiv.Sim.Eco.LifeSpecies s) { lockedPick = s; pickTapped = true; lifeRowKey = ""; if (OpenSheet == Kit) FillJars(); }
+
+        /// <summary>Debug and shots: every toast, waiting or up, goes.</summary>
+        public void DebugDropToasts() => DropToasts();
+
+        /// <summary>The kit's tiles by name (tests): a tool, a ready thing or a shut jar; null when it is not in the kit now.</summary>
+        public KitTile KitTileNamed(string name) => root?.Q<KitTile>(name);
+
+        /// <summary>The name in the hand chip: the tool, or the group ("The rabbits").</summary>
+        string HandName => hand switch
+        {
+            KitTool.Mister => "Mister",
+            KitTool.Tweezers => "Tweezers",
+            KitTool.Landscape => LandscapeLabel,
+            KitTool.Seed => "Seed",
+            KitTool.Bush => "Bushes",
+            KitTool.Life => "The " + AquariumCiv.Sim.Eco.EcoModel.PlainName(heldLife).ToLowerInvariant(),
+            _ => "Cloth",
+        };
+
+        string HandIcon => hand switch
+        {
+            KitTool.Mister => "mister",
+            KitTool.Tweezers => "tweezers",
+            KitTool.Landscape => "spade",
+            KitTool.Seed => SeedIcon,
+            KitTool.Bush => LifeIcon(AquariumCiv.Sim.Eco.LifeSpecies.Thicket),
+            KitTool.Life => LifeIcon(heldLife),
+            _ => "cloth",
+        };
 
         /// <summary>Put a kit tool in hand (None puts it down). Clean mode ends; the Kit button reads Put away and stays lit while it's held.</summary>
         public void SetHand(KitTool t)
@@ -195,27 +263,27 @@ namespace AquariumCiv.GameUI
             if (t == KitTool.Bush) Toast(BushHint, 4f);
             else if (was == KitTool.Bush) WithdrawToast(BushHint);
             if (t == KitTool.Landscape) Toast(LandscapeHint, 4f);
-            if (kitLife != null) kitLife.EnableInClassList("kg-tool--on", t == KitTool.Life || t == KitTool.Seed || t == KitTool.Bush);
-            if (kitLandscape != null) kitLandscape.EnableInClassList("kg-tool--on", t == KitTool.Landscape);
             HandChanged?.Invoke(t);
         }
 
         // Tester run 2: the Mister's hint is for the first meeting. It shows the first time the mister is picked up, once more if the
         // player put it down without misting, then never again (PlayerPrefs: it is about the player, not the box).
-        public const string MisterHint = "Hold a finger over the land to mist it. Two fingers move, turn and zoom the view.";
-        /// <summary>#311: the tweezers pluck what overgrows; the cloth keeps the glass.</summary>
-        public const string TweezersHint = "Tap or drag over weeds, vines and saplings to pluck them. Two fingers move, turn and zoom the view.";
+        // #668 (kit-words.md §3, K4 built as proposed; K3: the tree's own words stay as the game has them): one instruction, then the one tail.
+        public const string ViewTail = "Two fingers move the view.";
+        public const string MisterHint = "Hold a finger on the land to mist it. " + ViewTail;
+        /// <summary>#311: the tweezers pull what overgrows; the cloth keeps the glass (#730: saplings are the spade's).</summary>
+        public const string TweezersHint = "Tap or drag over weeds and vines to pull them. " + ViewTail;
         /// <summary>#518: the seed places like the life slot: a tap shows where it would go, a second tap on that plants it.</summary>
-        public const string SeedHint = "One seed: it grows into the box's tree, anywhere, even on bare sand. Tap the land to choose where it goes. Two fingers move, turn and zoom the view."; // #675
+        public const string SeedHint = "One seed: it grows into the box's tree, anywhere, even on bare sand. Tap where it should go. " + ViewTail; // #675
         /// <summary>#727: once the Keeper's tree stands, the seed in hand is an earned one (#726): it grows into a young wild tree.</summary>
-        public const string EarnedSeedHint = "A seed the box gave you: it grows into a young tree. Tap the land to choose where it goes. Two fingers move, turn and zoom the view.";
+        public const string EarnedSeedHint = "This seed grows a young tree. Tap where it should go. " + ViewTail;
         string seedHintShown = SeedHint;
         /// <summary>The seed's hint now: the Keeper's one tree, or an earned seed.</summary>
         public string SeedHintNow { get { var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null; return sim != null && sim.CanPlantSeed && !sim.CanPlantTree ? EarnedSeedHint : SeedHint; } }
         /// <summary>The seed hint up now (SeedPlaceView takes it down when its ghost shows).</summary>
         public string SeedHintShown => seedHintShown;
         /// <summary>#731: an earned bush in hand.</summary>
-        public const string BushHint = "A bush: it starts a small thicket. Tap the glowing ground to choose a spot. Two fingers move, turn and zoom the view.";
+        public const string BushHint = "Bushes: tap the glowing ground to pick a spot. " + ViewTail;
         /// <summary>#730: the plucking tool's word on its button (the name is still the user's to pick: SimCore.LandscapeToolName as is).</summary>
         public static string LandscapeLabel
         {
@@ -227,7 +295,7 @@ namespace AquariumCiv.GameUI
             }
         }
         /// <summary>#730: what the plucking tool does, as it is picked up.</summary>
-        public const string LandscapeHint = "Tap or drag over seedlings, trees and bushes to lift them out. Your tree stays. Two fingers move, turn and zoom the view.";
+        public const string LandscapeHint = "Tap or drag over seedlings, trees and bushes to lift them out. Your tree stays. " + ViewTail;
         const string MisterShownKey = "p8.misterHint.shown", MisterUsedKey = "p8.misterHint.used";
         public static bool MisterHintDue
         {
@@ -258,59 +326,73 @@ namespace AquariumCiv.GameUI
             Open(Kit);
         }
 
+        // ---------------- #668: the kit, mock-up A "the tile shelf" (kit-redesign.md §4) ----------------
+        // Three small labels over rows of square tiles (four to a row): Tools; Ready (the seed, earned bushes, each open jar); Still to
+        // come (#662: each shut jar with its short need, a lock, never faded). One note under them. Nothing hides behind a jar any more:
+        // the Kit, then the tile, then the land.
+        VisualElement toolsGrid, readyGrid, shutGrid;
+        Label readySec, shutSec;
+        /// <summary>The ready things the player has seen in an open kit: a tile is New until then (tests read it too).</summary>
+        readonly HashSet<string> seenTiles = new();
+        readonly List<KitTile> shownReady = new();
+
         void BuildKit()
         {
             var sheet = Sheet(Kit, "The Keeper's kit");
-            sheet.AddToClassList("kit-sheet"); // tester 2026-11-08: grows past 30 % when its tools need it (the chooser on a tablet)
-            kitNote = Text("", "type-note", "kg-sheet-note");
-            var acts = new VisualElement();
-            acts.AddToClassList("kg-card-acts");
-            acts.Add(kitCloth = new GlassButton("Cloth", () => { CloseSheet(); SetCleanMode(true); }, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-cloth" });
-            acts.Add(kitMister = new GlassButton("Mister", () => SetHand(KitTool.Mister), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-mister" });
-            acts.Add(kitTweezers = new GlassButton("Tweezers", () => SetHand(KitTool.Tweezers), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-tweezers" });
-            // #730 phase 2: the plucking tool, in today's rail as one more button (the kit's redesign is #668)
-            acts.Add(kitLandscape = new GlassButton(LandscapeLabel, () => SetHand(KitTool.Landscape), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-landscape" });
-            acts.AddToClassList("kit-acts");
-            // #423: the life slot; shown only while a jar is ready or the seed has come (#558: the seed is one of its choices)
-            kitLife = new GlassButton("Life", OnLifeSlot, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-life" };
-            kitLife.AddToClassList("kit-life");
-            kitLife.Insert(0, new GlassIcon("life-jar", "kit-life-icon"));
-            var slotDot = new VisualElement { name = "kit-life-dot", pickingMode = PickingMode.Ignore };
-            slotDot.AddToClassList("kg-dot");
-            slotDot.AddToClassList("kit-life-dot");
-            kitLife.Add(slotDot);
-            kitLife.style.display = DisplayStyle.None;
-            acts.Add(kitLife);
+            sheet.AddToClassList("kit-sheet"); // tester 2026-11-08: grows past 30 % when its tiles need it (a full kit, a tablet)
+            var shelf = new VisualElement { name = "kit-shelf", pickingMode = PickingMode.Ignore };
+            shelf.AddToClassList("kit-shelf");
+            shelf.Add(Section("Tools", "kit-sec-tools"));
+            toolsGrid = Grid("kit-tools");
+            toolsGrid.Add(kitCloth = new KitTile("Cloth", "cloth", "wipes the glass", () => { CloseSheet(); SetCleanMode(true); }) { name = "kit-cloth" });
+            toolsGrid.Add(kitMister = new KitTile("Mister", "mister", "wets the land", () => SetHand(KitTool.Mister)) { name = "kit-mister" });
+            toolsGrid.Add(kitTweezers = new KitTile("Tweezers", "tweezers", "pull weeds", () => SetHand(KitTool.Tweezers)) { name = "kit-tweezers" });
+            // #730 / K2: the plucking tool is the Spade (it pulls grown trees too, K6)
+            toolsGrid.Add(kitLandscape = new KitTile(LandscapeLabel, "spade", "lifts plants", () => SetHand(KitTool.Landscape)) { name = "kit-landscape" });
+            kitLandscape.End = true;
+            shelf.Add(toolsGrid);
+            // the jars: Ready, then Still to come (kit-life-row keeps the name the tests know; it shows while either has a tile)
             kitLifeRow = new VisualElement { name = "kit-life-row", pickingMode = PickingMode.Ignore };
             kitLifeRow.AddToClassList("kit-life-row");
-            kitNote.style.whiteSpace = WhiteSpace.Normal; // the phone's width: the note wraps, never runs off the sheet
-            kitNote.style.marginBottom = 12;
-            sheet.Add(kitNote);
-            sheet.Add(kitLifeRow); // the chooser opens above the slot (spec section 6)
-            // #570: under the chooser's icons, what the picked shut jar waits for, and what the village waits for (one label, the note's place)
-            kitLifeNote = Text("", "type-note", "kg-sheet-note");
-            kitLifeNote.name = "kit-life-note";
-            kitLifeNote.style.whiteSpace = WhiteSpace.Normal;
-            kitLifeNote.style.marginBottom = 12;
-            kitLifeNote.style.display = DisplayStyle.None;
-            sheet.Add(kitLifeNote);
-            sheet.Add(acts);
+            kitLifeRow.Add(readySec = Section("Ready", "kit-sec-ready"));
+            kitLifeRow.Add(readyGrid = Grid("kit-ready"));
+            kitLifeRow.Add(shutSec = Section("Still to come", "kit-sec-shut"));
+            kitLifeRow.Add(shutGrid = Grid("kit-shut"));
+            shelf.Add(kitLifeRow);
+            kitNote = Text("", "type-note", "kit-note");
+            kitNote.name = "kit-life-note";
+            kitNote.pickingMode = PickingMode.Ignore;
+            shelf.Add(kitNote);
+            sheet.Add(shelf);
         }
 
-        // ---------------- #423: the life slot (placed-life spec section 6) ----------------
-        GlassButton kitLife;
-        VisualElement kitLifeRow, kitDot;
+        static Label Section(string word, string name)
+        {
+            var l = new Label(word.ToUpperInvariant()) { name = name, pickingMode = PickingMode.Ignore };
+            l.AddToClassList("kit-sec");
+            return l;
+        }
+
+        static VisualElement Grid(string name)
+        {
+            var g = new VisualElement { name = name, pickingMode = PickingMode.Ignore };
+            g.AddToClassList("kit-grid");
+            return g;
+        }
+
+        // ---------------- #423: the life jars (placed-life spec section 6), as tiles since #668 ----------------
+        VisualElement kitLifeRow, kitDot, kitDotHalo;
         AquariumCiv.Sim.Eco.LifeSpecies heldLife;
         readonly System.Collections.Generic.List<AquariumCiv.Sim.Eco.LifeSpecies> readyJars = new();
-        // #570: the shut jars stand in the chooser greyed, each with what it waits for; a tap on one says it (kitLifeNote), never nothing
+        // #570: the shut jars stand in the kit, each with what it waits for; a tap on one says it all in the note, never nothing
         readonly System.Collections.Generic.List<AquariumCiv.Sim.Eco.LifeSpecies> lockedJars = new();
-        Label kitLifeNote;
         AquariumCiv.Sim.Eco.LifeSpecies? lockedPick;
+        bool pickTapped;
         string lifeRowKey = "";
         bool lifeShown;
-        public const string LifeWaterHint = "Tap the water to choose a spot. Two fingers move, turn and zoom the view."; // fb4 #542
-        public const string LifeHint = "Tap the glowing ground to choose a spot. Two fingers move, turn and zoom the view.";
-        /// <summary>#643 (playtest): the hint as a group is taken names it first, so the player knows what is in hand (the chooser's pick).</summary>
+        public const string LifeWaterHint = "Tap the water to pick a spot. " + ViewTail; // fb4 #542
+        public const string LifeHint = "Tap the glowing ground to pick a spot. " + ViewTail;
+        /// <summary>#643 (playtest): the hint as a group is taken names it first, so the player knows what is in hand.</summary>
         public static string LifeHintFor(AquariumCiv.Sim.Eco.LifeSpecies s) => s switch
         {
             AquariumCiv.Sim.Eco.LifeSpecies.Ducks => "The ducks: " + Lower(LifeWaterHint),
@@ -318,118 +400,182 @@ namespace AquariumCiv.GameUI
             AquariumCiv.Sim.Eco.LifeSpecies.Thicket => "The bushes: " + Lower(LifeHint),
             AquariumCiv.Sim.Eco.LifeSpecies.Rabbits => "The rabbits: " + Lower(LifeHint),
             AquariumCiv.Sim.Eco.LifeSpecies.Deer => "The deer: " + Lower(LifeHint),
-            _ => "The wolves: tap a glowing den spot in the wood. Two fingers move, turn and zoom the view.",
+            _ => "The wolves: tap a glowing den spot in the wood. " + ViewTail,
         };
         static string Lower(string h) => char.ToLowerInvariant(h[0]) + h.Substring(1);
         /// <summary>The species in hand while <see cref="Hand"/> is <see cref="KitTool.Life"/>.</summary>
         public AquariumCiv.Sim.Eco.LifeSpecies HeldLife => heldLife;
         /// <summary>How many times the ready wiggle played (tests).</summary>
         public int LifeWiggles { get; private set; }
-        /// <summary>The chooser row is open (two or more ready jars; tests).</summary>
-        public bool LifeRowOpen => kitLifeRow != null && kitLifeRow.ClassListContains("kit-life-row--open");
-        /// <summary>The chooser opens in the note's place (the kit sheet keeps its height).</summary>
-        void SetLifeRow(bool open)
-        {
-            kitLifeRow.EnableInClassList("kit-life-row--open", open);
-            if (kitNote != null) kitNote.style.display = open ? DisplayStyle.None : DisplayStyle.Flex;
-            if (kitLifeNote != null) kitLifeNote.style.display = open ? DisplayStyle.Flex : DisplayStyle.None;
-            // the other tools step aside too: the sheet keeps its height, so on a short phone the icons would run into the title
-            var others = open ? DisplayStyle.None : DisplayStyle.Flex;
-            foreach (var b in new[] { kitCloth, kitMister, kitTweezers, kitLandscape }) if (b != null) b.style.display = others;
-        }
-        /// <summary>#570 the chooser's note: what the picked shut jar waits for, then what the village waits for (tests).</summary>
-        public string LifeNoteText => kitLifeNote != null ? kitLifeNote.text : "";
+        /// <summary>How many #660 "ready in your kit" toasts were posted (tests).</summary>
+        public int ReadyToasts { get; private set; }
+        /// <summary>The jar shelves (Ready, Still to come) show in the open kit (tests; #668: no jar to tap open any more).</summary>
+        public bool LifeRowOpen => kitLifeRow != null && OpenSheet == Kit && kitLifeRow.resolvedStyle.display == DisplayStyle.Flex && kitLifeRow.style.display != DisplayStyle.None;
+        /// <summary>#570 / #668 the kit's one note: what the picked shut jar waits for and what the village waits for, or what to do now (tests).</summary>
+        public string LifeNoteText => kitNote != null ? kitNote.text : "";
         /// <summary>#570 the shut jar the note speaks of (tests); null when none is shut.</summary>
         public AquariumCiv.Sim.Eco.LifeSpecies? LockedPick => lockedPick;
-        /// <summary>The slot shows in the kit (a jar is ready).</summary>
+        /// <summary>A jar is ready (its tile is in the kit's Ready shelf).</summary>
         public bool LifeSlotShown => lifeShown;
         /// <summary>The Kit button carries the small dot (a jar is ready and nothing is in hand).</summary>
         public bool LifeDotShown => cleanButton != null && cleanButton.ClassListContains("kg-tool--life");
+        /// <summary>#660: the Kit button's dot is pulsing (a toggled class on a schedule; tests).</summary>
+        public bool KitDotPulsing => kitPulseOn;
 
         /// <summary>Takes the species in hand (the life tool): its ground glows (LifePlaceView), the next taps place it.</summary>
         public void TakeLife(AquariumCiv.Sim.Eco.LifeSpecies s)
         {
             heldLife = s;
-            if (hand == KitTool.Life) { HandChanged?.Invoke(hand); return; }
+            if (hand == KitTool.Life) { ShowToolWord(); HandChanged?.Invoke(hand); return; }
             SetHand(KitTool.Life);
         }
 
-        void OnLifeSlot()
+        /// <summary>#668: fills the Ready and Still to come shelves (rebuilt when what they hold changes) and the note (every call).</summary>
+        void FillJars()
         {
             var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
-            if (hand == KitTool.Life || hand == KitTool.Seed || hand == KitTool.Bush) { SetHand(KitTool.None); return; } // tapping the slot puts it back
-            if (sim == null) return;
-            sim.ReadyJars(readyJars);
-            sim.LockedJars(lockedJars);
-            int choices = readyJars.Count + (kitSeedShown ? 1 : 0) + (kitBushShown ? 1 : 0);
-            if (choices + lockedJars.Count == 0) return;
-            // #570: with shut jars to show the chooser opens even for one choice (or none: the list of what is missing).
-            // #643 (playtest, the user 2026-11-13): always the chooser, a single ready jar too: the player picks the group, never finds it in hand.
-            bool open = !LifeRowOpen;
-            if (open) FillLifeRow();
-            SetLifeRow(open);
-        }
-
-        void FillLifeRow()
-        {
-            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
-            if (sim != null) sim.LockedJars(lockedJars); else lockedJars.Clear();
-            if (lockedPick.HasValue && !lockedJars.Contains(lockedPick.Value)) lockedPick = null;
-            if (!lockedPick.HasValue && lockedJars.Count > 0) lockedPick = lockedJars[0];
-            string key = string.Join(",", readyJars) + (kitSeedShown ? ",seed" + SeedWord : "") + (kitBushShown ? ",bush" + BushWord : "") + "|" + string.Join(",", lockedJars) + "|" + lockedPick;
+            if (sim != null) { sim.ReadyJars(readyJars); sim.LockedJars(lockedJars); } else { readyJars.Clear(); lockedJars.Clear(); }
+            bool firstRun = sim != null && sim.State.firstRun.active;
+            if (firstRun) lockedJars.Clear(); // #570: the shut list waits for the first run to end
+            if (DebugToolsOnly) { readyJars.Clear(); lockedJars.Clear(); }
+            if (lockedPick.HasValue && !lockedJars.Contains(lockedPick.Value)) { lockedPick = null; pickTapped = false; }
+            bool readyAny = kitSeedShown || kitBushShown || readyJars.Count > 0;
+            // the note speaks of a shut jar when one was tapped, or when nothing is ready (the first shut one, as before)
+            if (!lockedPick.HasValue && !readyAny && lockedJars.Count > 0) lockedPick = lockedJars[0];
+            if (lockedPick.HasValue && readyAny && !pickTapped) lockedPick = null;
+            int seeds = sim != null && !sim.CanPlantTree ? sim.SeedsInPouch : 0;
+            int bushes = sim != null ? sim.BushesInPouch : 0;
+            string key = string.Join(",", readyJars) + (kitSeedShown ? ",seed" + seeds : "") + (kitBushShown ? ",bush" + bushes : "") + "|" + string.Join(",", lockedJars) + "|" + lockedPick;
             if (key != lifeRowKey)
             {
                 lifeRowKey = key;
-                kitLifeRow.Clear();
+                readyGrid.Clear(); shutGrid.Clear(); shownReady.Clear();
                 if (kitSeedShown)
                 {
-                    // 2026-11-14: the seed is the first rung, so it comes first in the row. #558: the seed is a choice in the jar beside the species. #675 (playtest: a tree icon among the groups read as
-                    // "plant a forest"): a sprout in a mound, named "Seed", unlike the thicket's bushes
-                    var b = new GlassButton("", () => { SetLifeRow(false); SetHand(KitTool.Seed); }, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-life-seed" };
-                    b.AddToClassList("kit-life-choice");
-                    b.Add(new GlassIcon(SeedIcon));
-                    b.Add(ChoiceName(SeedWord));
-                    kitLifeRow.Add(b);
+                    // 2026-11-14: the seed is the first rung, so it comes first. #675: a sprout in a mound, named "Seed". #726: earned ones count.
+                    bool keepers = sim == null || sim.CanPlantTree;
+                    var t = new KitTile("Seed", SeedIcon, keepers ? "the box's tree" : "a young tree", () => SetHand(KitTool.Seed)) { name = "kit-life-seed" };
+                    t.Count = keepers ? 0 : seeds;
+                    Ready(t, keepers ? "seed" : "seed+");
                 }
                 if (kitBushShown)
                 {
-                    // #731: an earned bush, one at a time; the word carries the count ("2 bushes")
-                    var b = new GlassButton("", () => { SetLifeRow(false); SetHand(KitTool.Bush); }, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-life-bush" };
-                    b.AddToClassList("kit-life-choice");
-                    b.Add(new GlassIcon(LifeIcon(AquariumCiv.Sim.Eco.LifeSpecies.Thicket)));
-                    b.Add(ChoiceName(BushWord));
-                    kitLifeRow.Add(b);
+                    // #731: earned bushes, one at a time; the badge carries the count
+                    var t = new KitTile("Bushes", LifeIcon(AquariumCiv.Sim.Eco.LifeSpecies.Thicket), "grow berries", () => SetHand(KitTool.Bush)) { name = "kit-life-bush" };
+                    t.Count = bushes;
+                    Ready(t, "bush+");
                 }
                 foreach (var sp in readyJars)
                 {
                     var s = sp;
-                    var b = new GlassButton("", () => { SetLifeRow(false); TakeLife(s); }, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-life-" + s.ToString().ToLowerInvariant() };
-                    b.AddToClassList("kit-life-choice");
-                    b.Add(new GlassIcon(LifeIcon(s)));
-                    b.Add(ChoiceName(AquariumCiv.Sim.Eco.EcoModel.PlainName(s)));
-                    kitLifeRow.Add(b);
+                    var t = new KitTile(AquariumCiv.Sim.Eco.EcoModel.PlainName(s), LifeIcon(s), WhereLine(s), () => TakeLife(s)) { name = "kit-life-" + s.ToString().ToLowerInvariant() };
+                    Ready(t, "jar-" + s);
                 }
-                // #570: the shut jars, greyed, after the ready ones; a tap picks one and its need shows in the note
+                // #570 / #662: the shut jars, after the ready ones, under their own label: the short need shows without a tap
+                int i = 0;
                 foreach (var sp in lockedJars)
                 {
                     var s = sp;
-                    var b = new GlassButton("", () => { lockedPick = s; }, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-life-locked-" + s.ToString().ToLowerInvariant() };
-                    b.AddToClassList("kit-life-choice");
-                    b.AddToClassList("kit-life-choice--locked");
-                    b.EnableInClassList("kit-life-choice--picked", lockedPick == s);
-                    b.Add(new GlassIcon(LifeIcon(s)));
-                    b.Add(ChoiceName(AquariumCiv.Sim.Eco.EcoModel.PlainName(s)));
-                    kitLifeRow.Add(b);
+                    var t = new KitTile(AquariumCiv.Sim.Eco.EcoModel.PlainName(s), LifeIcon(s), ShortNeed(s, sim), () => { lockedPick = s; pickTapped = true; FillJars(); }) { name = "kit-life-locked-" + s.ToString().ToLowerInvariant() };
+                    t.Shut = true;
+                    t.Picked = lockedPick == s;
+                    t.End = ++i % 4 == 0;
+                    shutGrid.Add(t);
                 }
+                for (int k = 0; k < shownReady.Count; k++) shownReady[k].End = (k + 1) % 4 == 0;
+                bool anyReady = readyGrid.childCount > 0, anyShut = shutGrid.childCount > 0;
+                readySec.style.display = readyGrid.style.display = anyReady ? DisplayStyle.Flex : DisplayStyle.None;
+                shutSec.style.display = shutGrid.style.display = anyShut ? DisplayStyle.Flex : DisplayStyle.None;
+                kitLifeRow.style.display = anyReady || anyShut ? DisplayStyle.Flex : DisplayStyle.None;
             }
-            // the note follows the sim every time (a count moves: "more trees (2/5)")
-            string need = lockedPick.HasValue && sim != null ? sim.JarNeed(lockedPick.Value) ?? PlainReady(lockedPick.Value) : "";
-            string waits = sim != null ? sim.VillageWaitsLine : "";
-            string note = need.Length > 0 && waits.Length > 0 ? need + "\n" + waits : need + waits;
-            if (kitLifeNote != null && kitLifeNote.text != note) kitLifeNote.text = note;
+            else foreach (var t in shutGrid.Children()) if (t is KitTile kt) kt.Line = ShortNeed(LockedOf(kt), sim);
+            string note = KitNoteNow(sim);
+            if (kitNote != null && kitNote.text != note) kitNote.text = note;
         }
 
-        /// <summary>#726: the seed's word under its icon: "Seed" for the Keeper's tree, then the count of earned seeds ("2 seeds").</summary>
+        static AquariumCiv.Sim.Eco.LifeSpecies LockedOf(KitTile t)
+        {
+            foreach (var s in AquariumCiv.Sim.Eco.LifeJar.All) if (t.name == "kit-life-locked-" + s.ToString().ToLowerInvariant()) return s;
+            return AquariumCiv.Sim.Eco.LifeSpecies.Thicket;
+        }
+
+        void Ready(KitTile t, string seenKey)
+        {
+            t.New = !seenTiles.Contains(seenKey);
+            t.userData = seenKey;
+            shownReady.Add(t);
+            readyGrid.Add(t);
+        }
+
+        /// <summary>The kit closed: every ready tile it showed has been seen, so its New tag goes.</summary>
+        void SeeReadyTiles()
+        {
+            foreach (var t in shownReady) if (t.userData is string k && seenTiles.Add(k)) t.New = false;
+        }
+
+        /// <summary>The kit's one note (kit-words.md §2): a tapped shut jar's need first, else what to do with what is ready, else the
+        /// tree's line; the village's waits line under it (#570, signed off row 59).</summary>
+        string KitNoteNow(AquariumCiv.Sim.SimCore sim)
+        {
+            if (sim == null) return "";
+            string line;
+            if (lockedPick.HasValue) line = sim.JarNeed(lockedPick.Value) ?? PlainReady(lockedPick.Value);
+            else if (readyJars.Count > 0) line = ReadyLine(readyJars[0]);
+            else if (kitSeedShown && sim.CanPlantTree) line = "The seed grows the box's one tree. Tap it, then the land.";
+            else if (kitSeedShown) line = "A seed waits. Tap it, then the land.";
+            else if (kitBushShown) line = "A bush waits. Tap it, then the land.";
+            else if (sim.EcoTree.cell >= 0) line = "Mist the tree when the land looks dry.";
+            else line = "A seed comes when the land can hold a tree.";
+            string waits = sim.VillageWaitsLine ?? "";
+            return line.Length > 0 && waits.Length > 0 ? line + "\n" + waits : line + waits;
+        }
+
+        /// <summary>"The rabbits are ready. Tap them, then the meadow."</summary>
+        public static string ReadyLine(AquariumCiv.Sim.Eco.LifeSpecies s) =>
+            "The " + AquariumCiv.Sim.Eco.EcoModel.PlainName(s).ToLowerInvariant() + " are ready. Tap them, then " + PlaceWord(s) + ".";
+
+        static string PlaceWord(AquariumCiv.Sim.Eco.LifeSpecies s) => s switch
+        {
+            AquariumCiv.Sim.Eco.LifeSpecies.Rabbits => "the meadow",
+            AquariumCiv.Sim.Eco.LifeSpecies.Deer => "the wood",
+            AquariumCiv.Sim.Eco.LifeSpecies.Wolves => "the wood",
+            AquariumCiv.Sim.Eco.LifeSpecies.Ducks => "the pond",
+            AquariumCiv.Sim.Eco.LifeSpecies.Fish => "the pond",
+            _ => "the land",
+        };
+
+        /// <summary>The line under a ready group's tile: where it goes.</summary>
+        public static string WhereLine(AquariumCiv.Sim.Eco.LifeSpecies s) => s == AquariumCiv.Sim.Eco.LifeSpecies.Thicket ? "grow berries" : "for " + PlaceWord(s);
+
+        /// <summary>#662: the line under a shut jar's tile, about 15 letters: its need in short (the full line goes in the note on a tap).</summary>
+        public static string ShortNeed(AquariumCiv.Sim.Eco.LifeSpecies s, AquariumCiv.Sim.SimCore sim)
+        {
+            string need = sim?.JarNeed(s);
+            if (need == null) return "comes soon";
+            // read from EcoModel.JarNeed's lines, in its order: the rung below first, then the land
+            string n = need.ToLowerInvariant();
+            if (n.Contains(" ice")) return "pond is ice";
+            if (n.Contains(" first"))
+            {
+                if (n.Contains("seed in the ground")) return "needs the tree";
+                int a = n.IndexOf(" need the ", StringComparison.Ordinal);
+                if (a >= 0) return "needs " + n.Substring(a + 10).Replace(" first", "");
+            }
+            if (n.Contains("bigger meadow")) return "more meadow";
+            if (n.Contains("meadow")) return "needs a meadow";
+            if (n.Contains("thicker wood")) return "thicker wood";
+            if (n.Contains("bigger pond")) return "a bigger pond";
+            if (n.Contains("pond") && s == AquariumCiv.Sim.Eco.LifeSpecies.Ducks) return "needs a pond";
+            if (n.Contains("reeds")) return "needs reeds";
+            if (n.Contains("ducks to settle")) return "ducks settling";
+            if (n.Contains("herd of")) return "needs deer";
+            if (n.Contains("deeper wood")) return "deeper wood";
+            if (n.Contains("den")) return "a den spot";
+            if (n.Contains("hold its numbers")) return "a steady herd";
+            return "still to come";
+        }
+
+        /// <summary>#726: the seed's word for tests and the debug panel: "Seed", then the count of earned seeds ("2 seeds").</summary>
         public string SeedWord
         {
             get
@@ -440,7 +586,7 @@ namespace AquariumCiv.GameUI
                 return n == 1 ? "1 seed" : n + " seeds";
             }
         }
-        /// <summary>#726: the earned bushes' word under their icon ("1 bush", "3 bushes").</summary>
+        /// <summary>#726: the earned bushes' word ("1 bush", "3 bushes").</summary>
         public string BushWord
         {
             get
@@ -450,24 +596,16 @@ namespace AquariumCiv.GameUI
                 return n == 1 ? "1 bush" : n + " bushes";
             }
         }
-        /// <summary>#726: the chooser shows an earned bush (tests).</summary>
+        /// <summary>#726: the kit shows an earned bush (tests).</summary>
         public bool BushChoiceShown => kitBushShown;
 
-        /// <summary>#675: the seed's icon in the jar (Icons/life-seed.svg): a sprout in a small mound, not a grown tree.</summary>
+        /// <summary>#675: the seed's icon (Icons/life-seed.svg): a sprout in a small mound, not a grown tree.</summary>
         public const string SeedIcon = "life-seed";
 
-        /// <summary>#675: every jar choice carries a short word under its icon ("Seed", "Rabbits").</summary>
-        static Label ChoiceName(string word)
-        {
-            var l = new Label(word) { pickingMode = PickingMode.Ignore };
-            l.AddToClassList("kit-life-name");
-            return l;
-        }
-
         /// <summary>A shut jar whose land is ready already opens at the season's end.</summary>
-        static string PlainReady(AquariumCiv.Sim.Eco.LifeSpecies s) => AquariumCiv.Sim.Eco.EcoModel.PlainName(s) + " are nearly here";
+        static string PlainReady(AquariumCiv.Sim.Eco.LifeSpecies s) => AquariumCiv.Sim.Eco.EcoModel.PlainName(s) + " come at the season's end";
 
-        /// <summary>The icon of each species in the chooser (Icons/life-*.svg, drawn for this project).</summary>
+        /// <summary>The icon of each species (Icons/life-*.svg, drawn for this project).</summary>
         public static string LifeIcon(AquariumCiv.Sim.Eco.LifeSpecies s) => s switch
         {
             AquariumCiv.Sim.Eco.LifeSpecies.Thicket => "life-thicket",
@@ -479,8 +617,6 @@ namespace AquariumCiv.GameUI
             _ => "life-jar",
         };
 
-        /// <summary>Each frame: the slot shows while a jar is ready, the Kit button keeps a small dot until it is placed, and a jar
-        /// that opened (here or while away) wiggles the Kit button once, the next time the HUD is up to see it.</summary>
         VisualElement photoButton, settingsButton;
 
         /// <summary>#647 (playtest: a first run played with no UI at all): photo mode hides every prompt, and only a short tap brings them
@@ -493,31 +629,69 @@ namespace AquariumCiv.GameUI
             if (first && cameraMode) SetCameraMode(false);
         }
 
+        /// <summary>The visit the wiggle last played in (#660: once per visit while a jar waits, not once ever).</summary>
+        int visitNo = 1, wiggledVisit;
+        bool kitPulseOn;
+        IVisualElementScheduledItem kitPulse;
+        readonly HashSet<AquariumCiv.Sim.Eco.LifeSpecies> toastedJars = new();
+        float awaySince = -1f;
+        /// <summary>#660: how long the app must be away before coming back counts as a new visit (s).</summary>
+        public const float NewVisitAwaySeconds = 60f;
+
+        void OnApplicationPause(bool paused)
+        {
+            if (paused) awaySince = Time.realtimeSinceStartup;
+            else if (awaySince >= 0f) { if (Time.realtimeSinceStartup - awaySince >= NewVisitAwaySeconds) visitNo++; awaySince = -1f; }
+        }
+
+        /// <summary>Debug and tests: the next frame counts as a new visit (the wiggle may play again while a jar waits).</summary>
+        public void DebugNewVisit() => visitNo++;
+
+        /// <summary>Each frame: the Ready shelf follows the jars; the Kit button keeps a pulsing dot ("Kit ·") while one waits; a jar that
+        /// opened (here or while away) says so once in a toast (#660) and wiggles the Kit button once each visit, the next time the HUD is
+        /// up to see it.</summary>
         void FollowLife(AquariumCiv.Sim.SimCore sim)
         {
             bool any = sim.AnyJarReady;
-            sim.LockedJars(lockedJars);
-            bool shut = lockedJars.Count > 0 && !sim.State.firstRun.active; // #570: the slot also lists what is still to come
-            if (any != lifeShown)
-            {
-                lifeShown = any;
-                if (!any && !kitSeedShown && !kitBushShown && !shut) SetLifeRow(false);
-            }
-            var show = any || kitSeedShown || kitBushShown || shut || hand == KitTool.Life || hand == KitTool.Seed || hand == KitTool.Bush ? DisplayStyle.Flex : DisplayStyle.None;
-            if (kitLife.style.display != show) kitLife.style.display = show;
-            kitLife.EnableInClassList("kit-life--ready", any);
-            cleanButton?.EnableInClassList("kg-tool--life", any && hand != KitTool.Life);
+            lifeShown = any;
+            bool dot = any && hand != KitTool.Life;
+            if (cleanButton != null && cleanButton.ClassListContains("kg-tool--life") != dot) { cleanButton.EnableInClassList("kg-tool--life", dot); ShowToolWord(); }
+            SetKitPulse(dot && !hidden && !cameraMode);
             if (hand == KitTool.Life && !sim.JarReady(heldLife)) SetHand(KitTool.None); // placed (or gone): the tool is put down
-            if (LifeRowOpen) { sim.ReadyJars(readyJars); FillLifeRow(); if (readyJars.Count == 0 && !kitSeedShown && !kitBushShown && !shut) SetLifeRow(false); }
+            if (OpenSheet == Kit) FillJars();
             if (!any || hidden || cameraMode || toolsWaiting || toolBlocks.Count > 0 || sim.State.firstRun.active) return;
-            bool due = false;
-            foreach (var s in AquariumCiv.Sim.Eco.LifeJar.All) if (sim.AckJarReady(s)) due = true;
-            if (!due) return;
+            bool fresh = false;
+            foreach (var s in AquariumCiv.Sim.Eco.LifeJar.All)
+                if (sim.AckJarReady(s))
+                {
+                    fresh = true;
+                    // #660: a toast once per opened jar, on a calm moment (no sheet up; the queue waits for any prompt)
+                    if (openSheet == null && outsideSheet == null && toastedJars.Add(s)) { Toast(ReadyToast(s), 4f); ReadyToasts++; }
+                }
+            if (!fresh && wiggledVisit == visitNo) return;
+            wiggledVisit = visitNo;
             LifeWiggles++;
             UiSound.Play(UiRole.NewTool);
             Wiggle(cleanButton);
-            if (OpenSheet == Kit) Wiggle(kitLife);
         }
+
+        /// <summary>#660: "The rabbits are ready in your kit."</summary>
+        public static string ReadyToast(AquariumCiv.Sim.Eco.LifeSpecies s) => "The " + AquariumCiv.Sim.Eco.EcoModel.PlainName(s).ToLowerInvariant() + " are ready in your kit.";
+
+        /// <summary>#660: the Kit's dot breathes (a halo grows and fades, about once a second) while something waits; still in tests.</summary>
+        void SetKitPulse(bool on)
+        {
+            if (kitPulseOn == on || kitDotHalo == null) return;
+            kitPulseOn = on;
+            kitPulse?.Pause();
+            kitDotHalo.RemoveFromClassList("kg-dot-halo--out");
+            if (!on || GlassMotion.Instant) return;
+            bool outNow = false;
+            kitPulse = kitDotHalo.schedule.Execute(() => { outNow = !outNow; kitDotHalo.EnableInClassList("kg-dot-halo--out", outNow); }).Every(PulseMs);
+        }
+
+        /// <summary>#660: one half of the dot's breath (ms).</summary>
+        public const int PulseMs = 800;
 
         static readonly float[] WiggleDeg = { -9f, 9f, -7f, 7f, -4f, 3f, 0f };
         /// <summary>One wiggle: a few quick turns either way, then still.</summary>
@@ -545,31 +719,35 @@ namespace AquariumCiv.GameUI
                 if (shapeButton != null) shapeButton.style.display = eco || toolBlocks.Count > 0 ? DisplayStyle.None : DisplayStyle.Flex;
             }
             if (sim != null) GuardFirstRun(sim); // #647: every box, the living land or not
-            if (!eco || kitLife == null) return;
-            // 2026-11-14: the seed is the first rung, in the jar as the first run ends; #726/#727: then each earned seed
-            bool seed = sim.CanPlantAnySeed && !sim.State.firstRun.active;
+            if (!eco || kitLifeRow == null) { SetKitPulse(false); return; }
+            // 2026-11-14: the seed is the first rung, in the kit as the first run ends; #726/#727: then each earned seed
+            bool seed = sim.CanPlantAnySeed && !sim.State.firstRun.active && !DebugToolsOnly;
             bool seedChanged = seed != kitSeedShown;
             kitSeedShown = seed;
             // #731: an earned bush, once the first thicket is down
-            bool bush = sim.BushesInPouch > 0 && sim.LifeIsPlaced(AquariumCiv.Sim.Eco.LifeSpecies.Thicket) && !sim.State.firstRun.active;
+            bool bush = sim.BushesInPouch > 0 && sim.LifeIsPlaced(AquariumCiv.Sim.Eco.LifeSpecies.Thicket) && !sim.State.firstRun.active && !DebugToolsOnly;
             bool bushChanged = bush != kitBushShown;
             kitBushShown = bush;
+            if (seedChanged && seed) seenTiles.Remove(sim.CanPlantTree ? "seed" : "seed+");
+            if (bushChanged && bush) seenTiles.Remove("bush+");
             FollowLife(sim);
             if (seedChanged)
             {
-                if (seed) { SetShapeNew(true); Toast(sim.CanPlantTree ? "A seed waits in the life jar, in your kit: the box's one tree. Plant it anywhere, even on bare sand." : "The box gave you a seed: it waits in the life jar, in your kit.", 5f); }
+                if (seed)
+                {
+                    SetShapeNew(true);
+                    bool both = bush && bushChanged;
+                    Toast(sim.CanPlantTree ? "A seed is in your kit. It grows the box's one tree, even on bare sand."
+                        : both ? "The village grew. A seed and a bush wait in your kit." : "The village grew. A seed waits in your kit.", 5f);
+                }
                 if (!seed && hand == KitTool.Seed) SetHand(KitTool.None);
             }
             if (bushChanged)
             {
-                if (bush) { SetShapeNew(true); Toast("The box gave you a bush: it waits in the life jar, in your kit.", 5f); }
+                if (bush && !(seed && seedChanged)) { SetShapeNew(true); Toast("The village grew. A bush waits in your kit.", 5f); }
                 if (!bush && hand == KitTool.Bush) SetHand(KitTool.None);
             }
-            if (kitNote != null)
-                kitNote.text = (seed && sim.CanPlantTree ? "Cloth wipes the glass. Mister wets the land. Tweezers pluck what overgrows. The life jar holds the seed: plant the one tree."
-                    : sim.EcoTree.cell >= 0 ? "Cloth wipes the glass. Mister wets the land and the tree. Tweezers pluck what overgrows. " + LandscapeLabel + " lifts seedlings, trees and bushes out."
-                    : "Cloth wipes the glass. Mister wets the land. Tweezers pluck what overgrows. A seed comes when the land can hold a tree.")
-                    + (sim.VillageWaitsLine is { Length: > 0 } waits ? "\n" + waits : ""); // #570
+            foreach (var s in AquariumCiv.Sim.Eco.LifeJar.All) if (!sim.JarReady(s)) { toastedJars.Remove(s); seenTiles.Remove("jar-" + s); }
         }
 
         /// <summary>The first run's wipe and flick: the hint says to drag, so nothing turns clean mode off under it, not Done (the tool isn't
@@ -952,13 +1130,21 @@ namespace AquariumCiv.GameUI
             safe.Add(pinRow);
 
             bottomRow = Row("hud-bottom");
+            // #668 (feedback#70): the glass ledge the tools stand on: a pale band with a brass-light top line, behind them
+            ledge = new VisualElement { name = "hud-ledge", pickingMode = PickingMode.Ignore };
+            ledge.AddToClassList("hud-ledge");
+            bottomRow.Add(ledge);
             bottomRow.Add(historyButton = Tool("hud-history", "History", OnHistory, UiRole.Open));
             bottomRow.Add(cleanButton = Tool("hud-clean", "Clean", () => { if (kitBox) OnKitButton(); else SetCleanMode(!cleanMode); }, UiRole.Toggle));
             cleanButton.Add(toolMark = new GlassIcon("check", "kg-icon--small", "kg-tool-mark"));
             cleanButton.Add(new GlassNewTag());
+            BuildHandChip();
             kitDot = new VisualElement { name = "hud-kit-dot", pickingMode = PickingMode.Ignore }; // #423: a jar is ready
             kitDot.AddToClassList("kg-dot");
             kitDot.AddToClassList("kg-tool-dot");
+            kitDotHalo = new VisualElement { name = "hud-kit-dot-halo", pickingMode = PickingMode.Ignore }; // #660: its soft pulse
+            kitDotHalo.AddToClassList("kg-dot-halo");
+            kitDot.Add(kitDotHalo);
             cleanButton.Add(kitDot);
             bottomRow.Add(shapeButton = Tool("hud-shape", "Shape", () => { SetShapeNew(false); Open(Shaping); }, UiRole.Open));
             shapeButton.Add(new GlassNewTag());
@@ -1113,10 +1299,11 @@ namespace AquariumCiv.GameUI
             if (!sheets.TryGetValue(id, out var scrim) || openSheet == scrim) return;
             if (id == Shaping && kitBox) id = Kit; // a living-land box has no Shape tray: the kit is the Keeper's hands
             if (id == Shaping || id == Kit) SetCleanMode(false); // one mode at a time, and Done would sit hidden behind the tray
-            if (id == Kit) { SetHand(KitTool.None); if (kitLifeRow != null) SetLifeRow(false); } // the kit opens on its tools, the chooser shut
+            if (id == Kit) { SetHand(KitTool.None); pickTapped = false; lockedPick = null; lifeRowKey = ""; } // #668: the kit opens with every shelf filled, no shut jar picked
             if (!sheets.TryGetValue(id, out scrim) || openSheet == scrim) return;
             if (openSheet != null) { openSheet.style.display = DisplayStyle.None; openSheet.Sheet.Close(); }
             openSheet = scrim;
+            if (id == Kit && kitLifeRow != null) FillJars();
             settings.Opening(id);
             if (id == History) RefreshText();
             if (id == Offices) RefreshOffices();
@@ -1130,6 +1317,7 @@ namespace AquariumCiv.GameUI
         {
             if (openSheet == null) return;
             var closing = openSheet;
+            if (sheets.TryGetValue(Kit, out var kitScrim) && closing == kitScrim) SeeReadyTiles();
             openSheet = null;
             settings.Closing(SafeNow, BottomPadNow);
             closing.Close();
@@ -1267,6 +1455,7 @@ namespace AquariumCiv.GameUI
         void SetToolsWaiting(bool waiting)
         {
             toolsWaiting = waiting;
+            ledge?.EnableInClassList("hud-ledge--away", waiting); // #668: the ledge comes with the tools
             var tools = new[] { cleanButton, shapeButton, historyButton };
             for (int i = 0; i < tools.Length; i++)
             {
@@ -1323,11 +1512,56 @@ namespace AquariumCiv.GameUI
             return l;
         }
 
+        /// <summary>A bottom-bar tool. #668 (feedback#70, "the bottom looks flat"): it has depth, drawn in layers because UI Toolkit has no
+        /// box-shadow or gradient: a soft shadow (GlassShadow.png, 9-sliced), a darker lip under it, the face (ToolFace.png: light-to-dark
+        /// paper with a light top inset and a darker bottom inset), then the word. The button's own text stays (tests and the twin read
+        /// it) but is drawn clear; <see cref="SetWord"/> sets both.</summary>
         static GlassButton Tool(string name, string label, Action onClick, UiRole role)
         {
             var b = new GlassButton(label, onClick, ButtonKind.Secondary, role) { name = name };
             b.AddToClassList("kg-tool");
+            foreach (var layer in new[] { "kg-tool-shade", "kg-tool-lip", "kg-tool-face" })
+            {
+                var e = new VisualElement { pickingMode = PickingMode.Ignore };
+                e.AddToClassList(layer);
+                b.Add(e);
+            }
+            var word = new Label(label) { name = name + "-word", pickingMode = PickingMode.Ignore };
+            word.AddToClassList("kg-tool-word");
+            b.Add(word);
             return b;
+        }
+
+        /// <summary>A tool's word, as drawn (the button's text too, minus the "·" the word may carry).</summary>
+        static void SetWord(GlassButton tool, string s)
+        {
+            var w = tool.Q<Label>(tool.name + "-word");
+            if (w != null && w.text != s) w.text = s;
+        }
+
+        static string ToolWordOf(GlassButton tool) => tool.Q<Label>(tool.name + "-word")?.text ?? tool.text;
+
+        // #661: the hand chip's pieces, in the Kit button
+        GlassIcon handIcon, handAwayMark;
+        Label handName, handAwayWord;
+
+        void BuildHandChip()
+        {
+            var disc = new VisualElement { name = "hud-hand-disc", pickingMode = PickingMode.Ignore };
+            disc.AddToClassList("kg-hand-disc");
+            disc.Add(handIcon = new GlassIcon("cloth", "kg-hand-icon"));
+            cleanButton.Add(disc);
+            handName = new Label("") { name = "hud-hand-name", pickingMode = PickingMode.Ignore };
+            handName.AddToClassList("kg-hand-name");
+            cleanButton.Add(handName);
+            var away = new VisualElement { name = "hud-hand-away", pickingMode = PickingMode.Ignore };
+            away.AddToClassList("kg-hand-away");
+            away.Add(handAwayMark = new GlassIcon("close", "kg-icon--small", "kg-icon--light", "kg-hand-away-mark"));
+            away.Add(handAwayWord = new Label(PutAway) { pickingMode = PickingMode.Ignore });
+            handAwayWord.AddToClassList("kg-hand-away-word");
+            cleanButton.Add(away);
+            // History slims to its book while a tool is in hand (the chip takes the room)
+            historyButton.Add(new GlassIcon("book", "kg-tool-icon"));
         }
 
         /// <summary>The 22 pt icon in its 44 pt disc, which is what the quiet backing fills.</summary>

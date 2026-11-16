@@ -42,6 +42,7 @@ namespace AquariumCiv.GameUI
         {
             "alert", "back", "bell", "book", "channel", "check", "clock", "close", "drop", "eye", "feedback", "gift", "hand", "haptic", "herd", "hill", "lock", "next",
             "now", "pause", "pencil", "person", "photo", "pin", "play", "reset", "ribbon", "scroll", "settings", "share", "shelf", "sound", "star", "tree", "undo",
+            "cloth", "mister", "tweezers", "spade", // #668: the kit's tools
         };
 
         string shape;
