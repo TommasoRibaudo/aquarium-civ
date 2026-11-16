@@ -439,6 +439,43 @@ namespace AquariumCiv.View
             if (Btn("Hang the swing")) last = CampCheats.HangSwing(); // #692 B53.d
             if (Btn("Kids on the swing")) last = CampCheats.Swing(); // #692 B53.d (hangs it first if none)
             EndRow();
+            // #693 the choice props, a work use and a life use each ("#693: every choice's thing" first: one of each stands in the box)
+            Row(); // #693
+            if (Btn("#693: every choice's thing")) last = CampCheats.EveryThing(); // #693
+            if (Btn("Baskets: take and bring back")) last = CampCheats.BasketTake(); // #693 B54.a
+            if (Btn("Kids stack the baskets")) last = CampCheats.BasketTower(); // #693 B54.b
+            if (Btn("Woodpile: stack / fetch")) last = CampCheats.WoodStack(); // #693 B54.c (alternates)
+            if (Btn("Rain at the woodpile")) last = CampCheats.WoodShelter(); // #693 B54.d (alternates: rain / kids sit on the logs)
+            EndRow();
+            Row(); // #693
+            if (Btn("Name stone: cut a name")) last = CampCheats.NameCut(); // #693 B54.e
+            if (Btn("Kids trace the names")) last = CampCheats.NameTrace(); // #693 B54.f
+            if (Btn("Kids flick the charms")) last = CampCheats.CharmFlick(); // #693 B54.g
+            if (Btn("Big pot: the together supper")) last = CampCheats.BigPot(); // #693 B54.h (then "Bowl round: ladle")
+            if (Btn("Kids drum on the pot")) last = CampCheats.PotDrum(); // #693 B54.i
+            EndRow();
+            Row(); // #693
+            if (Btn("Split wood at the stump")) last = CampCheats.StumpSplit(); // #693 B54.j
+            if (Btn("Kid sits on the stump")) last = CampCheats.StumpSit(); // #693 B54.k
+            if (Btn("Headman takes the staff")) last = CampCheats.StaffWalk(); // #693 B54.l
+            if (Btn("Kids play headman")) last = CampCheats.StaffPlay(); // #693 B54.m
+            if (Btn("Carry flour")) last = CampCheats.FlourCarry(); // #693 B54.n
+            if (Btn("Flour fight")) last = CampCheats.FlourFight(); // #693 B54.o
+            EndRow();
+            Row(); // #693
+            if (Btn("Storm: straighten the roof bird")) last = CampCheats.BirdStraighten(); // #693 B54.p
+            if (Btn("Kids fly under the bird")) last = CampCheats.BirdFly(); // #693 B54.q
+            if (Btn("Long table meal now")) last = CampCheats.TableMeal(); // #693 B54.r
+            if (Btn("Kids under the long table")) last = CampCheats.TableUnder(); // #693 B54.s
+            if (Btn("Fill the offering basket")) last = CampCheats.OfferingFill(); // #693 B54.t
+            if (Btn("Kids wait by the offering")) last = CampCheats.OfferingWait(); // #693 B54.u
+            EndRow();
+            Row(); // #693
+            if (Btn("Fish crate to the rack")) last = CampCheats.CrateFish(); // #693 B54.x
+            if (Btn("Kids wave across the pond")) last = CampCheats.CrateWave(); // #693 B54.y
+            if (Btn("Re-tie the name tag")) last = CampCheats.PegRetie(); // #693 B54.z
+            if (Btn("Kid taps the name peg")) last = CampCheats.PegTap(); // #693 B54.zz
+            EndRow();
         }
 
         void OnGUI()

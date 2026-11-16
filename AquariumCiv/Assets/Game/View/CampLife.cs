@@ -68,7 +68,7 @@ namespace AquariumCiv.View
 
         public void Reset()
         {
-            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree(); ResetLand(); ResetAnimals(); ResetCamp();
+            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree(); ResetLand(); ResetAnimals(); ResetCamp(); ResetProps();
             fxDone = float.NaN; potState = PotState.Cold; potDay = long.MinValue; spitDay = long.MinValue;
         }
 
@@ -91,6 +91,7 @@ namespace AquariumCiv.View
             if (now.day != today) { today = now.day; doneToday.Clear(); }
             for (int i = scenes.Count - 1; i >= 0; i--) if (time > scenes[i].End + 0.2f) scenes.RemoveAt(i);
             Index();
+            if (sim != null && planner != null) StepProps(acts, time); // #693: the choices' things (every era)
             if (sim == null || planner == null || sim.State.era != Era.Camp) { StepPot(acts, time, false); return; }
             StepTree(acts, time); // #692 part 2: the Keeper's tree visits (no fire needed)
             StepLand(acts, time); // #692 part 3: grass, saplings, rocks, fallen branches
@@ -459,6 +460,7 @@ namespace AquariumCiv.View
             if (now.day != potDay) { potDay = now.day; if (potState == PotState.Hot && meals.Eaters == 0 && !Playing(CampUse.PotOff)) potState = PotState.Cold; meals.BowlStack = false; }
             meals.PotAt = null; meals.PotLift = 0f;
             if (!fire) { meals.PotHot = true; meals.PotContent = 2; return; }
+            if (meals.BigPotAt != null) { potState = PotState.Hot; meals.PotHot = true; meals.PotContent = 2; return; } // #693 (B54.h): the big pot cooks tonight
             bool potDayToday = sim == null || (sim.SupperOn(now.day) != SupperPick.Baskets && !SpitTonight());
             CampScene fill = null, off = null;
             foreach (var s in scenes) { if (s.use == CampUse.PotFill) fill = s; else if (s.use == CampUse.PotOff) off = s; }
@@ -649,6 +651,7 @@ namespace AquariumCiv.View
             DrawLand(root, material, time, groundAt); // #692 part 3: the boulders and what the land's uses leave
             DrawAnimals(root, material, time, groundAt); // #692 part 4: the frog in the hands, the kit, the crumbs
             DrawCamp(root, material, time, groundAt); // #692 part 5: lanterns, toys, strips, gifts, boats, the swing, crowns
+            DrawProps(root, material, time, groundAt); // #693: the basket tower, the split log, the ladder, the flour
         }
 
         void FireFx(Transform root, float time, Func<float, float, float> groundAt)
@@ -703,6 +706,7 @@ namespace AquariumCiv.View
                     break;
                 case CampFxKind.Chime: break; // [est] a soft chime: no CC0 chime in the project yet (none played)
                 case CampFxKind.WaterRing: case CampFxKind.WaterDrops: case CampFxKind.Leave: case CampFxKind.Creak: case CampFxKind.BushSway: FireCamp(root, s, f, world); break; // #692 part 5
+                case CampFxKind.Prop: FireProp(s, f); break; // #693
             }
             if (s.use == CampUse.FeatherTie && f.kind == CampFxKind.Jolt && sim != null && s.kind >= 0) { sim.MarkPoleFeatherTied(s.kind); s.kind = -1; }
         }
@@ -864,6 +868,7 @@ namespace AquariumCiv.View
             DestroyLand();
             DestroyAnimals();
             DestroyCamp();
+            DestroyProps();
         }
 
         // ================================================================== cheats (SliceDebugPanel "#692")
@@ -871,7 +876,7 @@ namespace AquariumCiv.View
         public string Force(CampUse use)
         {
             int before = scenes.Count;
-            string r = IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : IsCampUse(use) ? ForceCamp(use) : ForceUse(use);
+            string r = IsPropUse(use) ? ForceProp(use) : IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : IsCampUse(use) ? ForceCamp(use) : ForceUse(use);
             if (scenes.Count > before) forced = scenes[^1];
             return r;
         }

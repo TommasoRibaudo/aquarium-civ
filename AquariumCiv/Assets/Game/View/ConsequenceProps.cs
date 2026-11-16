@@ -18,8 +18,11 @@ namespace AquariumCiv.View
         /// <summary>How much bigger than life the things stand, so they read at default zoom (as the relics do).</summary>
         public const float Scale = 1.5f;
 
-        /// <summary>The mesh of a <see cref="ConsequenceKind"/> (an unknown kind: a small cairn, so nothing is ever missing).</summary>
-        public static Mesh Build(string kind)
+        /// <summary>The mesh of a <see cref="ConsequenceKind"/> (an unknown kind: a small cairn, so nothing is ever missing). #693: a
+        /// <paramref name="variant"/> is how a use has it now: baskets taken off the stack (1-3), the axe out of the stump or the staff off its
+        /// stone (1), new rows cut in the name stone (1-3), the offering's cloth fuller (1) or lifted (2: the food shows; 3: more of it), fish
+        /// taken out of the crate (1-3). 0 is the thing as it stands.</summary>
+        public static Mesh Build(string kind, int variant = 0)
         {
             var mb = new MeshBuilder(3710 + System.Array.IndexOf(ConsequenceKind.All, kind)) { jitter = 0.025f };
             switch (kind)
@@ -45,7 +48,8 @@ namespace AquariumCiv.View
                     // a woven basket (body, two darker bands, a rim, a bent handle) heaped with separate small berries, the berry-pick's red
                     for (int i = 0; i < 3; i++)
                     {
-                        var at = new Vector3((i - 1) * 0.1f, 0f, i == 1 ? 0.05f : 0f);
+                        if (BasketGone(i, variant)) continue; // #693 (B54.a/b): taken off the stack
+                        var at = BasketAt(i);
                         mb.Prism(at, 0.042f, 0.05f, 0.055f, 8, Palette.Thatch, topCol: Palette.Timber); // the dark inside shows at the top
                         mb.Prism(at + new Vector3(0f, 0.016f, 0f), 0.046f, 0.047f, 0.008f, 8, Palette.WoodLight);
                         mb.Prism(at + new Vector3(0f, 0.034f, 0f), 0.049f, 0.05f, 0.008f, 8, Palette.WoodLight);
@@ -75,7 +79,10 @@ namespace AquariumCiv.View
                     mb.Prism(Vector3.zero, 0.11f, 0.08f, 0.1f, 7, Palette.RockDark, topCol: Palette.Rock);
                     mb.Box(new Vector3(0f, 0.2f, 0f), new Vector3(0.13f, 0.22f, 0.07f), Palette.Rock);
                     mb.Box(new Vector3(0f, 0.325f, 0f), new Vector3(0.1f, 0.03f, 0.055f), Palette.RockLight);
-                    for (int i = 0; i < 4; i++) mb.Box(new Vector3(0f, 0.13f + i * 0.045f, -0.036f), new Vector3(0.08f - (i % 2) * 0.02f, 0.01f, 0.004f), Palette.RockDark);
+                    { // #693 (B54.e): a new row for each name cut since the stone stood (at most 3 more, closer together)
+                        int rows = 4 + Mathf.Clamp(variant, 0, 3); float gap = rows <= 4 ? 0.045f : 0.17f / (rows - 1);
+                        for (int i = 0; i < rows; i++) mb.Box(new Vector3(0f, 0.13f + i * gap, -0.036f), new Vector3(0.08f - (i % 2) * 0.02f, 0.01f, 0.004f), Palette.RockDark);
+                    }
                     break;
                 case ConsequenceKind.CharmPole: // a bough on a post hung with charms
                     mb.Prism(Vector3.zero, 0.02f, 0.014f, 0.36f, 6, Palette.Bark, topCol: Palette.WoodLight);
@@ -102,11 +109,13 @@ namespace AquariumCiv.View
                     break;
                 case ConsequenceKind.AxeStump: // a stump with an axe stuck in it, a notch in the handle
                     mb.Prism(Vector3.zero, 0.075f, 0.065f, 0.1f, 8, Palette.Bark, topCol: Palette.WoodLight);
+                    if (variant == 1) { mb.Box(new Vector3(-0.012f, 0.101f, 0f), new Vector3(0.05f, 0.003f, 0.006f), Palette.Bark); break; } // #693 (B54.j): pulled out, the cut shows
                     mb.Box(new Vector3(0.0f, 0.2f, 0f), new Vector3(0.016f, 0.22f, 0.016f), Palette.WoodLight, Quaternion.Euler(0f, 0f, -12f));
                     mb.Box(new Vector3(-0.03f, 0.13f, 0f), new Vector3(0.05f, 0.03f, 0.01f), Palette.Iron, Quaternion.Euler(0f, 0f, -12f));
                     break;
                 case ConsequenceKind.Staff: // a headman's staff with a ribbon, on a flat stone
                     mb.Prism(Vector3.zero, 0.06f, 0.05f, 0.02f, 7, Palette.Rock, topCol: Palette.RockLight);
+                    if (variant == 1) break; // #693 (B54.l/m): taken up, the stone is bare
                     mb.Prism(new Vector3(0f, 0.02f, 0f), 0.012f, 0.01f, 0.42f, 6, Palette.WoodLight);
                     mb.Ico(new Vector3(0f, 0.45f, 0f), 0.028f, Vector3.one, Palette.Accents[1], 0.05f);
                     mb.sway = 0.4f;
@@ -152,7 +161,19 @@ namespace AquariumCiv.View
                 case ConsequenceKind.OfferingBasket: // the best basket on a flat stone, a cloth over it
                     mb.Prism(Vector3.zero, 0.09f, 0.075f, 0.04f, 7, Palette.Rock, topCol: Palette.RockLight);
                     mb.Prism(new Vector3(0f, 0.04f, 0f), 0.055f, 0.07f, 0.07f, 8, Palette.Thatch, topCol: Palette.Straw);
-                    mb.Ico(new Vector3(0f, 0.12f, 0f), 0.05f, new Vector3(1f, 0.5f, 1f), Palette.Accents[3], 0.08f);
+                    if (variant >= 2) // #693 (B54.t/u): the cloth lifted: the food shows (a heap of berries, roots and bread), the cloth folded at the side
+                    {
+                        var food = new[] { new Color(0.78f, 0.12f, 0.16f), new Color(0.55f, 0.36f, 0.2f), new Color(0.86f, 0.7f, 0.42f), new Color(0.36f, 0.16f, 0.42f) };
+                        int nf = variant >= 3 ? 11 : 6;
+                        for (int k = 0; k < nf; k++)
+                        {
+                            float a = k * 2.3f, r = k == 0 ? 0f : 0.015f + 0.025f * ((k % 3) / 2f);
+                            mb.Ico(new Vector3(Mathf.Cos(a) * r, 0.115f + (variant >= 3 ? 0.012f : 0f) + (0.03f - r) * 0.5f, Mathf.Sin(a) * r), 0.013f, Vector3.one, food[k % food.Length], 0.1f);
+                        }
+                        mb.Box(new Vector3(0.075f, 0.075f, 0f), new Vector3(0.025f, 0.05f, 0.06f), Palette.Accents[3], Quaternion.Euler(0f, 0f, -20f));
+                        break;
+                    }
+                    mb.Ico(new Vector3(0f, variant == 1 ? 0.13f : 0.12f, 0f), 0.05f, new Vector3(1f, variant == 1 ? 0.75f : 0.5f, 1f), Palette.Accents[3], 0.08f); // #693: fuller under the cloth once filled
                     break;
                 case ConsequenceKind.ShoreBoat: // #714: the pond family's boat, upside down by the fire (the children's house)
                 {
@@ -187,7 +208,7 @@ namespace AquariumCiv.View
                 }
                 case ConsequenceKind.FishCrate: // a crate with fish on the near shore
                     mb.Box(new Vector3(0f, 0.035f, 0f), new Vector3(0.16f, 0.07f, 0.1f), Palette.WoodLight);
-                    for (int i = 0; i < 3; i++)
+                    for (int i = 0; i < 3 - Mathf.Clamp(variant, 0, 3); i++) // #693 (B54.x): the fish lifted out one by one
                         mb.Ico(new Vector3(-0.04f + i * 0.04f, 0.08f, 0f), 0.025f, new Vector3(1.6f, 0.5f, 0.6f), i % 2 == 0 ? Palette.Water : Palette.WaterDeep, 0.05f);
                     break;
                 case ConsequenceKind.NamePeg: // a peg with a small wooden tag
@@ -326,6 +347,23 @@ namespace AquariumCiv.View
         }
 
         /// <summary>#635: the stand-in pole with <paramref name="count"/> charms on its bough (the sim's count, not always four).</summary>
+        /// <summary>#693 (B54.a/b): where basket <paramref name="i"/> of the three stands (local, before <see cref="Scale"/>), and which are gone when
+        /// <paramref name="taken"/> have been taken: the right one first, then the left, then the middle (the back one).</summary>
+        public static Vector3 BasketAt(int i) => new Vector3((i - 1) * 0.1f, 0f, i == 1 ? 0.05f : 0f);
+        public static bool BasketGone(int i, int taken) => taken >= 1 && i == 2 || taken >= 2 && i == 0 || taken >= 3 && i == 1;
+
+        /// <summary>#693 (B54.b): one basket of the stack on its own (local origin at its foot, before <see cref="Scale"/>): the tower's pieces.</summary>
+        public static Mesh OneBasket(int i)
+        {
+            var mb = new MeshBuilder(3790 + i) { jitter = 0.02f };
+            mb.Prism(Vector3.zero, 0.042f, 0.05f, 0.055f, 8, Palette.Thatch, topCol: Palette.Timber);
+            mb.Prism(new Vector3(0f, 0.016f, 0f), 0.046f, 0.047f, 0.008f, 8, Palette.WoodLight);
+            mb.Prism(new Vector3(0f, 0.034f, 0f), 0.049f, 0.05f, 0.008f, 8, Palette.WoodLight);
+            mb.Prism(new Vector3(0f, 0.052f, 0f), 0.053f, 0.053f, 0.008f, 8, Palette.Straw);
+            var m = mb.ToMesh("Consequence_OneBasket_" + i); m.hideFlags = HideFlags.DontSave;
+            return m;
+        }
+
         /// <summary>#692 (B31.a): the feather pole with its tied feathers: <paramref name="slots"/> are their kinds (PoleFeatherKind) oldest first;
         /// they spiral down from the top, 0.03 u apart (at the props' 1.5 scale: 0.02 here), tilted out 30 deg; white, red or ochre.</summary>
         public static Mesh FeatherPole(int[] slots)
@@ -467,6 +505,39 @@ namespace AquariumCiv.View
         readonly Dictionary<int, float> pulses = new();
         float flutterAt = -99f, flutterAmp = 1f;
 
+        // ---- #693 (B54): how a use has a thing now (view-only, not saved [est]): its look, a jolt, a tilt (the roof bird after a storm)
+        static readonly Dictionary<int, int> looks = new();
+        static readonly Dictionary<int, float> jolts = new();
+        static readonly Dictionary<int, (float from, float to, float at)> tilts = new();
+        /// <summary>#693: thing <paramref name="propId"/> is drawn as <see cref="ConsequenceMeshes.Build"/>'s variant <paramref name="variant"/>.</summary>
+        public static void SetLook(int propId, int variant) { if (variant == 0) looks.Remove(propId); else looks[propId] = variant; }
+        public static int LookOf(int propId) => looks.TryGetValue(propId, out int v) ? v : 0;
+        /// <summary>#693: a small wobble and squash (a basket set down, a tag tapped, a drum beat).</summary>
+        public static void Jolt(int propId) => jolts[propId] = Time.time;
+        /// <summary>#693 (B54.p): tipped over by <paramref name="deg"/> now (the roof bird after a storm).</summary>
+        public static void Tip(int propId, float deg) => tilts[propId] = (deg, deg, Time.time);
+        /// <summary>#693 (B54.p): eased back upright over <see cref="UprightSeconds"/>.</summary>
+        public static void Upright(int propId) { float now = TiltOf(propId); tilts[propId] = (now, 0f, Time.time); }
+        public static float TiltOf(int propId)
+        {
+            if (!tilts.TryGetValue(propId, out var t)) return 0f;
+            float k = Mathf.Clamp01((Time.time - t.at) / UprightSeconds);
+            return Mathf.Lerp(t.from, t.to, k * k * (3f - 2f * k));
+        }
+        public const float UprightSeconds = 0.3f;
+        static Quaternion JoltOf(int propId, out float squash)
+        {
+            squash = 1f;
+            if (!jolts.TryGetValue(propId, out float jt)) return Quaternion.identity;
+            float ja = Time.time - jt;
+            if (ja < 0f || ja > 0.35f) { jolts.Remove(propId); return Quaternion.identity; }
+            float e = Mathf.Exp(-ja / 0.12f);
+            squash = 1f - 0.05f * e;
+            return Quaternion.Euler(Mathf.Sin(ja * 40f) * 4f * e, 0f, Mathf.Sin(ja * 31f) * 3f * e);
+        }
+        /// <summary>#693 tests: forget every use's look (a new box).</summary>
+        public static void ResetLooks() { looks.Clear(); jolts.Clear(); tilts.Clear(); }
+
         /// <summary>#692 (B31.a/b): a new feather tied on, a kid's touch: the pole jolts and its feathers flutter.</summary>
         public static void FlutterPole(float amp = 1f)
         {
@@ -511,6 +582,7 @@ namespace AquariumCiv.View
             foreach (var m in made.Values) { Kill(m.mesh); if (m.t != null) Kill(m.t.gameObject); }
             made.Clear(); settledSpot.Clear();
             pulses.Clear();
+            ResetLooks(); // #693
             if (root != null) Kill(root.gameObject);
             root = null;
             drawn = null;
@@ -598,6 +670,7 @@ namespace AquariumCiv.View
                 string key = KeyOf(p, charms, treeR);
                 int[] featherSlots = p == pole ? SimCore.PoleSlots(sim.PoleFeathers) : null; // #692 (B31.a): the pole fills up over the years
                 if (featherSlots != null && featherSlots.Length > 0) key += ":f" + string.Join("", featherSlots);
+                int look = LookOf(p.id); if (look != 0) key += ":v" + look; // #693
                 if (!made.TryGetValue(p.id, out var m) || m.t == null || m.kind != key)
                 {
                     if (m != null) { Kill(m.mesh); if (m.t != null) Kill(m.t.gameObject); }
@@ -609,7 +682,7 @@ namespace AquariumCiv.View
                     }
                     else if (p.anchor == PropAnchor.Tree) mesh = ConsequenceMeshes.PoleWithCharms(charms); // tester: the pole always drew four
                     else if (featherSlots != null && featherSlots.Length > 0) mesh = ConsequenceMeshes.FeatherPole(featherSlots);
-                    else mesh = ConsequenceMeshes.Build(p.kind);
+                    else mesh = ConsequenceMeshes.Build(p.kind, look);
                     m = new Made { kind = key, mesh = mesh };
                     var go = new GameObject("Consequence_" + p.kind + "_" + p.id) { hideFlags = HideFlags.DontSave };
                     go.transform.SetParent(root, false);
@@ -629,10 +702,11 @@ namespace AquariumCiv.View
                     else { float w = Mathf.Sin(k * Mathf.PI); s *= 1f + 0.25f * w; lift = 0.04f * w; }
                 }
                 if (!m.t.gameObject.activeSelf) m.t.gameObject.SetActive(true);
+                var jq = JoltOf(p.id, out float jSquash); // #693 (B54): a jolt (4 deg, 0.35 s) and a little squash
                 if (onTree)
                 {
                     m.t.localScale = Vector3.one * (s / ConsequenceMeshes.Scale);
-                    m.t.SetLocalPositionAndRotation(treeAt + Vector3.up * lift, Quaternion.Euler(0f, p.yaw, 0f));
+                    m.t.SetLocalPositionAndRotation(treeAt + Vector3.up * lift, Quaternion.Euler(0f, p.yaw, 0f) * (jq == Quaternion.identity ? jq : Quaternion.Euler(0f, (1f - jSquash) * 600f, 0f) * jq)); // the charms sway and turn
                     continue;
                 }
                 m.t.localScale = Vector3.one * s;
@@ -643,6 +717,8 @@ namespace AquariumCiv.View
                     float ft = Time.unscaledTime - flutterAt;
                     tilt = Quaternion.Euler(Mathf.Sin(ft * 6f * Mathf.PI * 2f) * 8f * Mathf.Min(flutterAmp, 1.3f) * Mathf.Exp(-ft / flutterTau), 0f, Mathf.Sin(ft * 4.3f * Mathf.PI * 2f) * 4f * Mathf.Exp(-ft / flutterTau) * (flutterAmp > 1.2f ? 1f : 0f));
                 }
+                tilt *= jq; if (jSquash < 1f) m.t.localScale = new Vector3(s, s * jSquash, s); // #693: a use's jolt
+                if (tilts.ContainsKey(p.id)) tilt *= Quaternion.AngleAxis(TiltOf(p.id), new Vector3(1f, 0f, 1f).normalized); // leaning half across, half along: it shows from any side
                 float yaw = p.kind != ConsequenceKind.ShoreBoat ? p.yaw : haveFire && p.anchor == PropAnchor.Fire ? BoatYaw(px, pz) : Mathf.Round(p.yaw / 90f) * 90f; // #714 round 2: square to the glass (old saves too)
                 m.t.SetLocalPositionAndRotation(box.land.OnGround(px, pz) + Vector3.up * lift, Quaternion.Euler(0f, yaw, 0f) * tilt);
             }
