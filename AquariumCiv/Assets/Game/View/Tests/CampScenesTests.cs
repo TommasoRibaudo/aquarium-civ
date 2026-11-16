@@ -11,7 +11,7 @@ namespace AquariumCiv.View.Tests
         static readonly Vector2 Fire = new Vector2(0.2f, -0.3f);
 
         /// <summary>Every member's parts follow one another without overlapping, and every effect falls inside the scene.</summary>
-        static void Sane(CampScene s)
+        internal static void Sane(CampScene s)
         {
             Assert.Greater(s.Count, 0);
             for (int m = 0; m < s.Count; m++)
@@ -26,7 +26,7 @@ namespace AquariumCiv.View.Tests
             foreach (var f in s.fx) Assert.That(f.time, Is.InRange(0f, s.Length + 1e-3f), $"{s.use}: an effect outside the scene");
         }
 
-        static void PoseRuns(CampScene s)
+        internal static void PoseRuns(CampScene s)
         {
             foreach (var l in s.parts)
                 foreach (var p in l)

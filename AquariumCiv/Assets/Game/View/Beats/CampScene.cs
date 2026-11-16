@@ -33,6 +33,23 @@ namespace AquariumCiv.View
         FeatherTie,
         /// <summary>B31.b: kids dare each other to touch the pole.</summary>
         PoleDare,
+        // #692 part 2: the Keeper's tree visits (View/Beats/CampScenes2.cs, View/CampLife.Tree.cs)
+        /// <summary>B32.a: sit under it, back to the trunk, dozing.</summary>
+        TreeSit,
+        /// <summary>B32.b: a hand on the bark in passing (a kid slaps it).</summary>
+        TreeTouch,
+        /// <summary>B32.c: kids circle it, hands joined.</summary>
+        TreeCircle,
+        /// <summary>B32.d: the quiet visit after a death.</summary>
+        TreeQuiet,
+        /// <summary>B32.e: the newlyweds walk to the tree.</summary>
+        TreeWed,
+        /// <summary>B32.f: a parent brings the newborn.</summary>
+        TreeNewborn,
+        /// <summary>B32.g: the old one's afternoons there.</summary>
+        TreeOld,
+        /// <summary>B32.h: the eldest tells the kids who planted it.</summary>
+        TreeTell,
     }
 
     /// <summary>A pose laid over the doll's pose for one part: <paramref name="into"/> seconds into the part, <paramref name="len"/> its length.</summary>
@@ -65,7 +82,13 @@ namespace AquariumCiv.View
     /// <summary>What an effect is.</summary>
     public enum CampFxKind { Sparks, Flare, Steam, Dust, Droplets, Ring, Grass, Chime, Jolt,
         /// <summary>The user's review of part 1: the pot's own soft steam swells for a moment (several white wisps rising and fading), not a puff disc.</summary>
-        PotSteam }
+        PotSteam,
+        /// <summary>#692 part 2: a leaf or two falling (HitFx leaves).</summary>
+        Leaves,
+        /// <summary>#692 part 2: the Keeper's tree's crown shakes (a pat, a slap, a touch; HitFx's baked-tree shake).</summary>
+        TreeShake,
+        /// <summary>#692 part 2 (B32.d): the tree's dusk glow comes up a little for 4 s.</summary>
+        Glow }
 
     /// <summary>Where an effect is: on the ground at a box point (<see cref="CampFx.at"/> x, z; y above the ground), or at a member's hand,
     /// head or held twig's tip (plus <see cref="CampFx.at"/> as a world-up offset in box units).</summary>
@@ -83,7 +106,9 @@ namespace AquariumCiv.View
     }
 
     /// <summary>A small thing the scene draws at a member's hand or twig tip for a while (B29.b the ember, B29.c the berry, B31.a the feather).</summary>
-    public enum CampTipKind { Ember, Berry, MeatPiece }
+    public enum CampTipKind { Ember, Berry, MeatPiece,
+        /// <summary>#692 part 2: a leaf drifting down onto a shoulder (B32.d), a flower in the hand (B32.g), a charm to tie (B32.d).</summary>
+        Leaf, Flower, Charm }
 
     public struct CampTip
     {
@@ -110,11 +135,15 @@ namespace AquariumCiv.View
         public readonly List<List<CampPart>> parts = new();
         public readonly List<CampFx> fx = new();
         public readonly List<CampTip> tips = new();
+        /// <summary>#692 part 2: pair beats inside the scene (B32.d's hug), handed to PairStage when the scene is added (absolute times).</summary>
+        public readonly List<PairEvent> pairs = new();
         /// <summary>Extra state a use carries (the spit's meat, the pot's lift), read by the director.</summary>
         public float a, b;
         public int kind;
         /// <summary>The camera keeps to <see cref="focus"/> (the thing), not pulled toward the lead actor (the feather pole: the user's review).</summary>
         public bool holdFocus;
+        /// <summary>How far the camera may be pulled from <see cref="focus"/> toward the lead actor (B32.d follows the mourner back to the fire).</summary>
+        public float followReach = 0.6f;
 
         public CampScene(CampUse use, float t0, Vector2 focus, int thing = 0) { this.use = use; this.t0 = t0; this.focus = focus; this.thing = thing; }
 

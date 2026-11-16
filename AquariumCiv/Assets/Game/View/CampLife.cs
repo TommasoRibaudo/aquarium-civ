@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace AquariumCiv.View
 {
-    public sealed class CampLife
+    public sealed partial class CampLife
     {
         /// <summary>How often a use plays (D rules): <b>sometimes</b> about one view day in three; <b>often</b> most days.</summary>
         public const float Sometimes = 0.35f, Often = 0.85f, RabbitSpit = 0.5f;
@@ -52,11 +52,11 @@ namespace AquariumCiv.View
             var sum = Vector2.zero; int n = 0;
             for (int i = 0; i < s.Count; i++)
                 if (s.TryPart(s.keys[i], clock, out _, out _) && pv.DrawnAt(s.keys[i]) is Vector2 p) { sum += p; n++; }
-            var lead = s.TryPart(s.keys[0], clock, out _, out _) ? pv.DrawnAt(s.keys[0]) : null;
+            var lead = s.TryPart(s.keys[0], clock, out _, out _) || s.followReach > 0.6f ? pv.DrawnAt(s.keys[0]) : null; // #692 part 2: a far-following scene keeps on its lead in a pair beat (B32.d's hug)
             var c = lead ?? (n == 0 ? s.focus : sum / n);
             var d = c - s.focus;
-            if (d.magnitude > 0.6f) c = s.focus + d.normalized * 0.6f;
-            return lastFocus = Vector2.Lerp(s.focus, c, 0.5f); // the thing, pulled toward the lead actor
+            if (d.magnitude > s.followReach) c = s.focus + d.normalized * s.followReach;
+            return lastFocus = Vector2.Lerp(s.focus, c, s.followReach > 0.6f ? 0.85f : 0.5f); // the thing, pulled toward the lead actor (a far-following scene: mostly the lead)
         }
         public bool Playing(CampUse use) { foreach (var s in scenes) if (s.use == use) return true; return false; }
         /// <summary>Tests and the readout: how many times each use started this session.</summary>
@@ -64,7 +64,7 @@ namespace AquariumCiv.View
 
         public void Reset()
         {
-            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear();
+            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree();
             fxDone = float.NaN; potState = PotState.Cold; potDay = long.MinValue; spitDay = long.MinValue;
         }
 
@@ -76,6 +76,8 @@ namespace AquariumCiv.View
         }
 
         public bool Busy(int key) => byKey.ContainsKey(key);
+        /// <summary>A camp use draws this person now (its part covers this moment; tests: the work share).</summary>
+        public bool Cued(int key) => byKey.TryGetValue(key, out var s) && s.TryPart(key, clock, out _, out _);
 
         // ================================================================== once a frame, before the dolls
         public void Step(SimCore sim, LifePlanner planner, IReadOnlyList<PersonActivity> acts, ViewTime now, float time, MealDirector meals)
@@ -86,6 +88,7 @@ namespace AquariumCiv.View
             for (int i = scenes.Count - 1; i >= 0; i--) if (time > scenes[i].End + 0.2f) scenes.RemoveAt(i);
             Index();
             if (sim == null || planner == null || sim.State.era != Era.Camp) { StepPot(acts, time, false); return; }
+            StepTree(acts, time); // #692 part 2: the Keeper's tree visits (no fire needed)
             bool fire = meals.HasFire && planner.FireNow != CampFireStage.None;
             StepPot(acts, time, fire);
             if (fire && !OnlyCheats) Trigger(acts, time);
@@ -106,6 +109,7 @@ namespace AquariumCiv.View
             foreach (int k in s.keys)
                 if (byKey.TryGetValue(k, out var old) && old != s) { int m = old.IndexOf(k); if (m >= 0) old.parts[m].Clear(); }
             scenes.Add(s);
+            foreach (var e in s.pairs) PairStage.Add(e); // #692 part 2: the hug at the end of a quiet visit
             Started[s.use] = Started.TryGetValue(s.use, out int n) ? n + 1 : 1;
             lastAt[s.use] = clock;
             Index();
@@ -634,6 +638,7 @@ namespace AquariumCiv.View
             DrawTips(root, material, time);
             DrawSpit(root, material, time, groundAt);
             DrawLadle(root, time);
+            DrawTree(root, time); // #692 part 2: the newborn lifted, the glow, the charm held back until it is tied, the hush
         }
 
         void FireFx(Transform root, float time, Func<float, float, float> groundAt)
@@ -675,6 +680,9 @@ namespace AquariumCiv.View
                     else if (s.use is CampUse.PotFill or CampUse.PotOff) HitFx.Puff(PuffKind.Dust, world, Vector3.up, 0.4f, o);
                     break;
                 case CampFxKind.PotSteam: meals?.SteamBurst(f.scale > 0f ? f.scale : 1f); break;
+                case CampFxKind.Leaves: o.count = Mathf.Max(1, f.count); HitFx.Puff(PuffKind.Leaves, world, Vector3.down, f.scale, o); break;
+                case CampFxKind.TreeShake: HitFx.Shake(ShakeTarget.Tree, world, CameraAcross3(root), 0f); break;
+                case CampFxKind.Glow: TreeGlow(world, time: clock); break;
                 case CampFxKind.Chime: break; // [est] a soft chime: no CC0 chime in the project yet (none played)
             }
             if (s.use == CampUse.FeatherTie && f.kind == CampFxKind.Jolt && sim != null && s.kind >= 0) { sim.MarkPoleFeatherTied(s.kind); s.kind = -1; }
@@ -707,9 +715,17 @@ namespace AquariumCiv.View
                     var t = Tip(root, material, used++);
                     int tint = Mathf.RoundToInt(dark * 4f);
                     t.GetComponent<MeshFilter>().sharedMesh = TipMesh(tip.kind, tint);
+                    float sc0 = pv.ScaleOf(s.keys[tip.member], out float sc) ? sc : 1f;
+                    if (tip.kind is CampTipKind.Leaf or CampTipKind.Flower or CampTipKind.Charm) // #692 part 2
+                    {
+                        PlaceTreeTip(t, v, tip, u, root, sc0);
+                        t.gameObject.SetActive(true);
+                        continue;
+                    }
+                    t.localRotation = Quaternion.identity;
                     var at = Anchor(v, CampAnchor.TwigTip);
                     t.position = at;
-                    float size = (tip.kind == CampTipKind.Ember ? 0.018f : 0.022f) * grow * (pv.ScaleOf(s.keys[tip.member], out float sc) ? sc : 1f);
+                    float size = (tip.kind == CampTipKind.Ember ? 0.018f : 0.022f) * grow * sc0;
                     if (tip.kind == CampTipKind.Ember) size *= 0.8f + 0.25f * Mathf.Sin(time * 11f);
                     t.localScale = Vector3.one * size;
                     t.gameObject.SetActive(true);
@@ -738,6 +754,7 @@ namespace AquariumCiv.View
             Color c = kind == CampTipKind.Ember ? new Color(1f, 0.55f, 0.12f)
                 : Color.Lerp(new Color(0.78f, 0.12f, 0.22f), new Color(0.28f, 0.08f, 0.10f), tint / 4f);
             var mb = new MeshBuilder(6926 + key);
+            if (TreeTipMesh(kind, mb)) { m = mb.ToMesh("Camp_Tip_" + key); m.hideFlags = HideFlags.DontSave; return tipMeshes[key] = m; }
             mb.Ico(Vector3.zero, 1f, Vector3.one, c, 0.05f);
             m = mb.ToMesh("Camp_Tip_" + key); m.hideFlags = HideFlags.DontSave;
             return tipMeshes[key] = m;
@@ -824,7 +841,7 @@ namespace AquariumCiv.View
         public string Force(CampUse use)
         {
             int before = scenes.Count;
-            string r = ForceUse(use);
+            string r = IsTreeUse(use) ? ForceTree(use) : ForceUse(use);
             if (scenes.Count > before) forced = scenes[^1];
             return r;
         }
@@ -1031,7 +1048,7 @@ namespace AquariumCiv.View
 namespace AquariumCiv.View
 {
     /// <summary>#692 cheats (SliceDebugPanel's "#692" block): each starts a use now with the people nearest its thing.</summary>
-    public static class CampCheats
+    public static partial class CampCheats
     {
         static CampLife Camp => PeopleView.Find()?.Camp;
 

@@ -402,6 +402,8 @@ namespace AquariumCiv.View
     {
         public static bool AutoCreate = true;
         public static ConsequencePropsView Instance { get; private set; }
+        /// <summary>#692 (B32.d): charms on a tree not drawn yet: the mourner ties this death's charm during the quiet visit (CampLife sets it).</summary>
+        public static int HeldCharms;
         /// <summary>Real seconds a pulse lasts.</summary>
         public const float PulseSeconds = 1.6f;
 
@@ -592,7 +594,7 @@ namespace AquariumCiv.View
                     if (made.TryGetValue(p.id, out var hide) && hide.t != null) hide.t.gameObject.SetActive(false);
                     continue;
                 }
-                int charms = p.anchor == PropAnchor.Tree ? sim.CharmsOn(p) : 0;
+                int charms = p.anchor == PropAnchor.Tree ? Mathf.Max(0, sim.CharmsOn(p) - (onTree ? HeldCharms : 0)) : 0; // #692 B32.d: this death's charm waits to be tied
                 string key = KeyOf(p, charms, treeR);
                 int[] featherSlots = p == pole ? SimCore.PoleSlots(sim.PoleFeathers) : null; // #692 (B31.a): the pole fills up over the years
                 if (featherSlots != null && featherSlots.Length > 0) key += ":f" + string.Join("", featherSlots);

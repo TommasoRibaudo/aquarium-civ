@@ -1,0 +1,24 @@
+{
+ "name": "692-b32b-touch",
+ "notes": "B32.b: a grown-up walking past slows and trails a hand on the bark, a small nod; then a kid passing the other way slaps it (the leaves shiver) and runs on.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(10.0f, 2);",
+   "return AquariumCiv.View.CampCheats.GrowTree();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TreeTouch());"
+  ],
+  "warm": 0.5,
+  "seconds": 16,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.8,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

@@ -184,6 +184,10 @@ namespace AquariumCiv.View
         }
 
         /// <summary>The lamps nearest the view go to the shaders with how lit each is now. The pools need nothing per lamp: their mesh knows its lamps' thresholds.</summary>
+        /// <summary>#692 (B32.d): one more soft lamp for a moment (world x, y, z, brightness 0..1; w 0 = none): the Keeper's tree's glow coming
+        /// up during a quiet visit. It takes the last lamp slot.</summary>
+        public static Vector4 ExtraLamp;
+
         void PushLamps(float level)
         {
             var tune = LookTuning.For(Logic.Look);
@@ -192,6 +196,7 @@ namespace AquariumCiv.View
             if (box == null || level <= 0f || box.LampCount == 0)
             {
                 System.Array.Clear(lampData, 0, lampData.Length);
+                if (level > 0f && ExtraLamp.w > 0f) lampData[Lamps.MaxLamps - 1] = ExtraLamp; // #692 B32.d
                 Shader.SetGlobalVectorArray(LampPosId, lampData);
                 return;
             }
@@ -206,6 +211,7 @@ namespace AquariumCiv.View
                 float w = Lamps.BrightnessAt(level, box.LampThreshold[k], box.LampSeed, k, t, steady);
                 lampData[i] = new Vector4(box.LampX[k], box.LampY[k], box.LampZ[k], w);
             }
+            if (ExtraLamp.w > 0f) lampData[Lamps.MaxLamps - 1] = ExtraLamp; // #692 B32.d: the Keeper's tree's glow comes up for a moment
             Shader.SetGlobalVectorArray(LampPosId, lampData);
         }
 

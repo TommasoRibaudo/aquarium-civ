@@ -344,6 +344,21 @@ namespace AquariumCiv.View
             if (Btn("Feather: village")) last = CampCheats.TieFeather(AquariumCiv.Sim.PoleFeatherKind.Village); // #692 B31.a
             if (Btn("Kids dare at the feather pole")) last = CampCheats.PoleDare(); // #692 B31.b
             EndRow();
+            // #692 part 2: the Keeper's tree visits (each grows the tree first if it must)
+            Row(); // #692
+            if (Btn("Keeper's tree: sit under it")) last = CampCheats.TreeSit(); // #692 B32.a
+            if (Btn("Keeper's tree: touch the bark")) last = CampCheats.TreeTouch(); // #692 B32.b
+            if (Btn("Kids circle the Keeper's tree")) last = CampCheats.TreeCircle(); // #692 B32.c
+            EndRow();
+            Row(); // #692
+            if (Btn("Keeper's tree: quiet visit (after a death)")) last = CampCheats.TreeQuiet(); // #692 B32.d
+            if (Btn("Keeper's tree: newlyweds' visit")) last = CampCheats.TreeWed(); // #692 B32.e
+            EndRow();
+            Row(); // #692
+            if (Btn("Keeper's tree: newborn visit")) last = CampCheats.TreeNewborn(); // #692 B32.f
+            if (Btn("Keeper's tree: the old one sits there")) last = CampCheats.TreeOld(); // #692 B32.g
+            if (Btn("Keeper's tree: the eldest tells the kids")) last = CampCheats.TreeTell(); // #692 B32.h
+            EndRow();
         }
 
         void OnGUI()
