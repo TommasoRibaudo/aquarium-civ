@@ -50,5 +50,9 @@ sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Wo
 - [ ] Batched pass, smoke, tester, walkthrough stops, PR to dev
 
 ## Log
+- 2026-11-15 late: the session dropped mid-run and the parts 2–3 worker with it (part 1 fixes 142073a committed, part 2 B32 clips
+  recorded, splash fix uncommitted). A new worker resumes on vs/692-parts-2-3. User on splash: "too big, the drops too big".
+  User going to bed: after this, polish issues that need no approval. Started #652 (lane A, vs/652-stream-words). Editor
+  polish queue after #692 p2–3: #657 grass tufts, #665 rabbit tracks, #680 hunter retry (#644 needs the winter look call).
 - 2026-11-15: p9/batch3 created and pushed; four lane A workers started. Implement says its Editor (pt1b) frees in
   ~20–30 min, left on p9/playtest1-b-signoff; #737 auto-merges into dev, then #736.
