@@ -12,7 +12,7 @@
    "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.KidPoke());"
   ],
   "warm": 0.5,
-  "seconds": 19,
+  "seconds": 12,
   "fps": 30,
   "follow": "camp",
   "span": 1.4,

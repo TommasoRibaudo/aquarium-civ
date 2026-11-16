@@ -12,12 +12,12 @@
    "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TieFeather(AquariumCiv.Sim.PoleFeatherKind.Newborn));"
   ],
   "warm": 0.5,
-  "seconds": 20,
+  "seconds": 15,
   "fps": 30,
   "follow": "camp",
-  "span": 1.4,
-  "closeSpan": 0.6,
+  "span": 2.0,
+  "closeSpan": 0.95,
   "yaw": 28,
-  "pitch": 42
+  "pitch": 32
  }
 }

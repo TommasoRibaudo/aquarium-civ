@@ -247,7 +247,7 @@ namespace AquariumCiv.View
             if (adult < 0) return "no grown-up sitting at the fire";
             int kid = Nearest(acts, fire, force ? 9f : BorrowReach, a => IsKid(a), new[] { adult }, !force);
             if (kid < 0) return "no kid near the fire ('Two kids join the camp' first)";
-            var adultAt = seat ? fire + Rotate(TowardCamera(fire) - fire, 35f) * 0.33f : At(adult) ?? fire + Vector2.down * 0.32f;
+            var adultAt = seat ? fire + Rotate(TowardCamera(fire) - fire, -40f) * 0.33f /* front-left: the kid squats in front of the fire, clear of the pot */ : At(adult) ?? fire + Vector2.down * 0.32f;
             int pokes = BeatHash.Pick(2, kid, (int)today, 6923) == 0 ? 2 : 3;
             var sc = CampScenes1.KidPoke(kid, adult, At(kid).Value, adultAt, fire, pokes, time);
             if (seat)
@@ -505,7 +505,8 @@ namespace AquariumCiv.View
             if (cook < 0 || byKey.ContainsKey(cook)) cook = Nearest(acts, meals.Fire, 6f, a => IsGrown(a), null, false);
             if (cook < 0) return "no cook";
             int helper = Nearest(acts, meals.Fire, force ? 6f : 4f, a => IsGrown(a), new[] { cook }, !force);
-            if (helper < 0) helper = Nearest(acts, meals.Fire, 6f, a => IsGrown(a), new[] { cook }, false);
+            if (helper < 0) helper = Nearest(acts, meals.Fire, 9f, a => IsGrown(a), new[] { cook }, false);
+            if (helper < 0 && force) helper = Nearest(acts, meals.Fire, 9f, a => IsKid(a), new[] { cook }, false); // the cheat: a big kid carries the water
             if (helper < 0) return "no helper";
             if (!(Stash is Vector2 stash)) return "no stash";
             bool fish = sim != null && sim.StewOn(now.day) == StewKind.Fish;
@@ -712,10 +713,13 @@ namespace AquariumCiv.View
             bool turning = u >= turnFrom && u < turnFrom + CampScenes1.TurnSeconds;
             float spin = turning ? (u - turnFrom) / CampScenes1.MeatTurn * 360f : 0f;
             spitMeat.localRotation = Quaternion.Euler(0f, 0f, spin);
+            spitMeat.localScale = Vector3.one * MeatScale; // at the props' scale: the 0.05 u rabbit read as a speck over the flames
             spitMeat.gameObject.SetActive(true);
         }
 
         static Mesh Piece(Mesh m) => m;
+        /// <summary>The meat on the spit is drawn this much bigger than life, as every prop (1.5, life-in-the-box §5).</summary>
+        public const float MeatScale = 1.5f;
 
         Transform Mk(string name, Mesh mesh, Material material)
         {

@@ -9,7 +9,6 @@
   "ecology": 1,
   "setup": [
    "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(17.7f, 2);",
-   "return AquariumCiv.View.CampCheats.PotToggle();",
    "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.PotFill());"
   ],
   "warm": 0.5,
