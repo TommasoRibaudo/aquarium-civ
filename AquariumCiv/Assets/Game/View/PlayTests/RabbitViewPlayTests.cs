@@ -117,7 +117,7 @@ namespace AquariumCiv.View.PlayTests
                 EcoDebug.AddRabbits(30);
                 yield return Frames(30);
                 Assert.AreEqual(AquariumCiv.Sim.Eco.RabbitHerd.DefaultCap, Sim.EcoRabbitsShown(), "capped (the visible-animal budget, #710: 8 on the 6 x 6 land)");
-                Assert.AreEqual(12, rv.Shown, "dolls capped");
+                Assert.AreEqual(AquariumCiv.Sim.Eco.RabbitHerd.DefaultCap, rv.Shown, "dolls capped");
                 Assert.AreEqual(1, rv.SignsPlayed, "the sign still once");
                 pv.timeScale = 6f;
                 int off = 0, checks = 0;
