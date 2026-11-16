@@ -370,7 +370,9 @@ namespace AquariumCiv.View
             if (kind is PuffKind.Ring or PuffKind.Droplets) WaterPuff?.Invoke(kind, at);
             if (!force && !InView(at)) return false;
             if (kind == PuffKind.Sparks && o.fire) at += Vector3.up * 0.07f * ZoomScale; // look-fix: the fire's sparks start over the flames, not inside them
-            var puff = pool.Spawn(kind, at, dir, scale * Mathf.Max(ZoomScale, ViewBoost(at)), Now, unchecked(++seedCounter * 7919 + (int)kind * 104729), o);
+            float boost = Mathf.Max(ZoomScale, ViewBoost(at));
+            if (kind == PuffKind.Droplets) boost = Mathf.Min(boost, 1.5f); // the user 2026-11-15: a splash stays small, also from far off
+            var puff = pool.Spawn(kind, at, dir, scale * boost, Now, unchecked(++seedCounter * 7919 + (int)kind * 104729), o);
             puff.ground = GroundUnder(at);
             LastKind = kind;
             return true;
