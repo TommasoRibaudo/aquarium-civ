@@ -256,12 +256,15 @@ namespace AquariumCiv.Life
             Reindex(list);
         }
 
+        /// <summary>#680: off only in tests that compare the day's catches with and without the second try.</summary>
+        public bool HuntRetryOn = true;
+
         /// <summary>#680: the second try after a missed throw: planned from the pulled spear, kept when it ends by <paramref name="limit"/>.
         /// Then the first throw is rebuilt to end at the pulled spear (no walk home) and the try is linked to it. Null when no rabbit is
         /// left or the day has no room.</summary>
         HuntPlan TryAgain(HuntPlan first, Person hunter, bool wantCatch, HashSet<int> taken, int slot, float limit)
         {
-            if (first.catches || first.IsRetry || first.retry != null) return null;
+            if (!HuntRetryOn || first.catches || first.IsRetry || first.retry != null) return null;
             var r = MakeRetry(first, hunter, wantCatch, taken, slot);
             if (r == null || r.end > limit) return null;
             first.retry = r;
