@@ -12,11 +12,11 @@
    "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.PotSniff());"
   ],
   "warm": 0.5,
-  "seconds": 9,
+  "seconds": 13,
   "fps": 30,
   "follow": "camp",
   "span": 1.4,
-  "closeSpan": 0.6,
+  "closeSpan": 0.45,
   "yaw": 28,
   "pitch": 42
  }

@@ -17,6 +17,7 @@ namespace AquariumCiv.View
         static Vector2 Dir(Vector2 from, Vector2 to, Vector2 fallback) { var d = to - from; return d.sqrMagnitude > 1e-6f ? d.normalized : fallback; }
         static Vector2 Rot(Vector2 v, float deg) { float r = deg * Mathf.Deg2Rad, c = Mathf.Cos(r), s = Mathf.Sin(r); return new Vector2(v.x * c - v.y * s, v.x * s + v.y * c); }
         static Vector3 G(Vector2 p, float h = 0f) => new Vector3(p.x, h, p.y);
+        static Vector2 TowardsGlass(Vector2 at, Vector2 out1) => at + out1;
 
         // ================================================================== B29.a warm hands in winter
         public const float WarmSeconds = 3.6f;
@@ -61,6 +62,7 @@ namespace AquariumCiv.View
         /// back 0.04 u with both arms up (x 70), delighted. Over a squat (squash 0.8).</summary>
         static void KidPokePose(ref DollPose p, float t, float len)
         {
+            p.extend = true; // the user's review: the twig points out along the arm, its tip into the fire
             p.squash = 0.8f; p.offset.y = -0.01f; p.lean = 8f;
             p.armL = new Vector3(20f, 0f, -16f);
             if (t < 0.3f) { float u = In(t, 0f, 0.3f); p.armR = new Vector3(Mathf.Lerp(40f, 120f, u), 0f, 8f); p.lean = Mathf.Lerp(8f, -4f, u); }
@@ -81,6 +83,7 @@ namespace AquariumCiv.View
         static void CirclePose(ref DollPose p, float t, float len)
         {
             float w = t * 1.5f * Mathf.PI * 2f, k = In(t, 0f, 0.25f);
+            p.extend = true;
             p.squash = 0.86f; p.offset.y = -0.005f; p.lean = 2f;
             p.armR = Lerp(new Vector3(60f, 0f, 6f), new Vector3(100f + Mathf.Sin(w) * 14f, 0f, 12f + Mathf.Cos(w) * 14f), k);
             p.armL = new Vector3(15f, 0f, -18f);
@@ -154,12 +157,14 @@ namespace AquariumCiv.View
         static void PushBerryPose(ref DollPose p, float t, float len)
         {
             float u = In(t, 0f, 0.25f);
+            p.extend = true; // the user's review: the berry goes on the twig's far tip
             p.armL = Lerp(p.armL, new Vector3(70f, 0f, 14f), u); p.armR = Lerp(p.armR, new Vector3(70f, 0f, -6f), u); p.lean += 6f * u;
         }
 
         static void HoldOverPose(ref DollPose p, float t, float len)
         {
             float u = In(t, 0f, 0.4f);
+            p.extend = true; // the user's review: the berry on the far tip, out over the flames
             p.armR = Lerp(p.armR, new Vector3(95f, 0f, 6f), u); p.lean += 10f * u; p.armL = new Vector3(10f, 0f, -16f);
             p.armR.x += Mathf.Sin(t * 2.3f) * 2f; // a small unsteady hand
         }
@@ -168,6 +173,7 @@ namespace AquariumCiv.View
         static void EatHotPose(ref DollPose p, float t, float len)
         {
             p.armL = new Vector3(10f, 0f, -16f);
+            p.extend = t < 1.2f; // the berry still on the tip while it is blown on and bitten
             if (t < 0.9f)
             {
                 p.armR = Lerp(new Vector3(95f, 0f, 6f), new Vector3(105f, 0f, 2f), In(t, 0f, 0.3f));
@@ -468,8 +474,8 @@ namespace AquariumCiv.View
                 var stack = cold + move * 0.1f + side * 0.06f;
                 float wk = WalkTime(kidAt, stack + move * 0.06f, KidWalk);
                 float ks = Mathf.Max(0f, t - wk);
-                s.Part(k, ks, t, stack + move * 0.06f, stack, DollStyle.Stand, null, PropKind.Bowl, KidWalk);
-                s.Part(k, t, t + 0.9f, stack + move * 0.06f, stack, DollStyle.Stand, StackBowlsPose, PropKind.Bowl);
+                s.Part(k, ks, t, stack + move * 0.06f, stack, DollStyle.Stand, null, PropKind.BowlEmpty, KidWalk);
+                s.Part(k, t, t + 0.9f, stack + move * 0.06f, stack, DollStyle.Stand, StackBowlsPose, PropKind.BowlEmpty);
                 s.Fx(t + 0.45f, CampFxKind.Dust, G(stack), 0.3f, 1);
                 s.b = t + 0.45f;
                 s.Part(k, t + 0.9f, t + 1.4f, stack + move * 0.06f, stack, DollStyle.Hop);
@@ -479,22 +485,34 @@ namespace AquariumCiv.View
             return s;
         }
 
-        /// <summary>B30.b: the dip at the pot before a hand-over (arm x 60 → 30, lean 25, 0.3 s; the contact puts stew in the bowl).</summary>
+        /// <summary>B30.b (the user's review: "the bowls are not getting filled?"): a big dip at the pot before a hand-over. Reach over the pot
+        /// (lean 28, the ladle down into it, 0.45 s), a scoop (0.2 s), the lift (x 80, 0.35 s), the pour across into the bowl held up in the left
+        /// hand (<see cref="PourAt"/>: the bowl is full from here), the ladle back into the pot. The ladle is in the right hand from
+        /// <see cref="LadleFrom"/> to <see cref="LadleTo"/> (CampLife draws it there); <paramref name="t"/> is seconds into the dip.</summary>
         public static void DipPose(ref DollPose p, float t, float len)
         {
-            float d = Bump(t, 0.05f, 0.55f);
-            p.lean += 25f * d; p.armR = Lerp(p.armR, new Vector3(Mathf.Lerp(60f, 30f, In(t, 0.1f, 0.3f)), 0f, 8f), d);
-            p.armL = new Vector3(55f, 0f, -10f); // the bowl held up, waiting
+            var bowl = new Vector3(62f, 0f, 14f);  // the bowl held up in front, a little across
+            p.armL = Lerp(p.armL, bowl, In(t, 0f, 0.25f));
+            if (t < 0.45f) { float u = In(t, 0f, 0.45f); p.lean += 28f * u; p.armR = Lerp(p.armR, new Vector3(38f, 0f, 10f), u); }
+            else if (t < 0.65f) { float w = (t - 0.45f) / 0.2f; p.lean += 28f; p.armR = new Vector3(30f + 6f * Mathf.Sin(w * Mathf.PI * 2f), 0f, 10f + 8f * Mathf.Cos(w * Mathf.PI * 2f)); }
+            else if (t < 1.0f) { float u = In(t, 0.65f, 0.35f); p.lean += Mathf.Lerp(28f, 8f, u); p.armR = Lerp(new Vector3(30f, 0f, 10f), new Vector3(78f, 0f, 2f), u); }
+            else if (t < 1.45f) { float u = In(t, 1.0f, 0.2f); p.lean += 8f; p.armR = Lerp(new Vector3(78f, 0f, 2f), new Vector3(70f, 0f, -22f), u); p.armL = bowl; }
+            else { float u = In(t, 1.45f, 0.35f); p.lean += Mathf.Lerp(8f, 22f, Bump(t, 1.45f, 0.35f)); p.armR = Lerp(new Vector3(70f, 0f, -22f), new Vector3(40f, 0f, 10f), u); p.armL = bowl; }
         }
 
-        public const float DipSeconds = 0.7f;
+        /// <summary>The ladle's tilt over the bowl (degrees, 0 upright) at <paramref name="t"/> seconds into the dip.</summary>
+        public static float LadleTilt(float t) => 75f * Bump(t, 1.05f, 0.45f);
+
+        /// <summary>When the stew lands in the bowl (seconds into the dip), and the ladle's time in the hand.</summary>
+        public const float PourAt = 1.25f, LadleFrom = 0.05f, LadleTo = 1.72f;
+        public const float DipSeconds = 1.8f;
 
         static void TiptoePeekPose(ref DollPose p, float t, float len)
         {
-            float up = In(t, 0f, 0.3f);
+            float up = In(t, 0f, 0.3f), over = In(t, 0.3f, 0.35f);
             p.offset.y += 0.03f * up; p.squash = Mathf.Lerp(1f, 1.08f, up);
-            p.lean += 20f * In(t, 0.3f, 0.3f);
-            p.armL = new Vector3(30f, 0f, -20f); p.armR = new Vector3(30f, 0f, 20f);
+            p.lean += 30f * over; p.offset.z -= 0.025f * over; // over the rim (forward is -z)
+            p.armL = Lerp(new Vector3(30f, 0f, -20f), new Vector3(55f, 0f, -24f), over); p.armR = Lerp(new Vector3(30f, 0f, 20f), new Vector3(55f, 0f, 24f), over); // hands on the rim
         }
 
         static void SteamFacePose(ref DollPose p, float t, float len)
@@ -519,17 +537,20 @@ namespace AquariumCiv.View
         /// <summary>B30.c: the kid comes up beside the cook at the pot, on tiptoe, leans over the rim (0.8 s); a puff of steam in the face: the
         /// flinch, the wipe, the sniff, a grin; the cook shoos with the stick (two flaps) and the kid runs off laughing, looks back from 0.4 u
         /// and hops. <paramref name="cook"/> −1: nobody shoos; the kid just runs off.</summary>
+        /// <summary>B30.c: the kid stands this far from the pot's middle (its rim is ~0.045 out; a kid ~0.025 wide).</summary>
+        public const float PeekRim = 0.08f;
+
         public static CampScene PotPeek(int kid, int cook, Vector2 kidAt, Vector2 cookAt, Vector2 pot, float t0)
         {
             var fromCook = Dir(pot, cookAt, Vector2.down);
-            var spot = pot + Rot(fromCook, 55f) * 0.12f;
+            var spot = pot + Rot(fromCook, 55f) * PeekRim; // the user's review: right at the rim
             var away = spot + Dir(pot, spot, Vector2.down) * 0.4f;
-            var s = new CampScene(CampUse.PotPeek, t0, pot);
+            var s = new CampScene(CampUse.PotPeek, t0, pot) { holdFocus = true }; // the camera stays on the pot
             int k = s.Add(kid);
             float t = 0f, w = WalkTime(kidAt, spot, KidWalk);
             s.Part(k, t, t + w, spot, pot, DollStyle.Stand, null, PropKind.None, KidWalk); t += w;
             s.Part(k, t, t + 1.1f, spot, pot, DollStyle.Stand, TiptoePeekPose); t += 1.1f;
-            s.Fx(t - 0.05f, CampFxKind.Steam, G(Vector2.Lerp(pot, spot, 0.5f), PotTop + 0.03f), 0.35f, 1);
+            s.Fx(t - 0.35f, CampFxKind.PotSteam, G(pot), 1.2f); // the user's review: rising wisps, not a grey disc
             s.Part(k, t, t + 1.5f, spot, pot, DollStyle.Stand, SteamFacePose); t += 1.5f;
             if (cook >= 0) s.Part(s.Add(cook), t - 0.4f, t + 0.3f, cookAt, pot, DollStyle.Stir, ShooPose, PropKind.Stick).keepSpot = true;
             s.Part(k, t, t + 0.55f, spot, pot, DollStyle.Laugh); t += 0.55f;
@@ -540,34 +561,71 @@ namespace AquariumCiv.View
             return s;
         }
 
-        /// <summary>B30.d's beat: slow, turn to the pot, lean 15, sniff (two short head-ups with a bob), a slow nod (lean 4 → 14 → 4), two pats on the belly.</summary>
-        static void SniffNodPose(ref DollPose p, float t, float len)
+        /// <summary>B30.d (the user's review): at the rim, leaning over (lean 22); the right hand wafts the steam toward the nose three times
+        /// (out over the pot x 70 z 25, in to the face x 125 z -12, 0.55 s each); then the head tilts slowly back (lean 22 → -14 over 1 s),
+        /// held, eyes closed and content (a slow sway); a nod and two pats on the belly.</summary>
+        public static void SniffNodPose(ref DollPose p, float t, float len)
         {
-            float lean = 15f * In(t, 0.4f, 0.25f) * (1f - In(t, 1.0f, 0.2f));
-            float sniff = Bump(t, 0.6f, 0.15f) + Bump(t, 0.8f, 0.15f);
-            p.lean += lean - 10f * sniff; p.offset.y += 0.01f * sniff;
-            if (t > 1.1f && t < 1.5f) p.lean += Mathf.Lerp(4f, 14f, Bump(t, 1.1f, 0.4f));
-            if (t > 1.5f && t < 1.95f) { float pat = Mathf.Abs(Mathf.Sin((t - 1.5f) / 0.45f * Mathf.PI * 2f)); p.armR = new Vector3(40f, 0f, 8f - 20f * pat); p.armL = new Vector3(40f, 0f, -8f + 20f * pat); }
+            float over = In(t, 0f, 0.35f);
+            if (t < WaftEnd)
+            {
+                p.lean += 22f * over; p.offset.z -= 0.015f * over;
+                float w = Mathf.Repeat(t - 0.35f, 0.55f) / 0.55f, k = t < 0.35f ? 0f : 1f;
+                float toFace = w < 0.45f ? Smooth(w / 0.45f) : 1f - Smooth((w - 0.45f) / 0.55f);
+                p.armR = Lerp(Lerp(p.armR, new Vector3(60f, 0f, 6f), over), Lerp(new Vector3(60f, 0f, 6f), new Vector3(125f, 0f, -12f), toFace), k); // out over the pot, then in to the nose
+                p.armL = new Vector3(20f, 0f, -16f);
+                if (k > 0f) p.lean -= 4f * toFace; // the face follows the hand a little
+            }
+            else if (t < WaftEnd + 2.2f)
+            {
+                float u = Smooth((t - WaftEnd) / 1.0f);
+                p.lean += Mathf.Lerp(22f, -14f, u);
+                p.roll += Mathf.Sin((t - WaftEnd) * 2.2f) * 3f * u;       // the content sway
+                p.armR = Lerp(new Vector3(110f, 0f, -8f), new Vector3(20f, 0f, 12f), Smooth((t - WaftEnd) / 0.6f));
+                p.armL = new Vector3(20f, 0f, -16f);
+            }
+            else
+            {
+                float r = t - WaftEnd - 2.2f;
+                p.lean += Mathf.Lerp(-14f, 0f, Smooth(r / 0.3f)) + 10f * Bump(r, 0.3f, 0.4f);
+                if (r > 0.7f && r < 1.15f) { float pat = Mathf.Abs(Mathf.Sin((r - 0.7f) / 0.45f * Mathf.PI * 2f)); p.armR = new Vector3(40f, 0f, 8f - 20f * pat); p.armL = new Vector3(40f, 0f, -8f + 20f * pat); }
+            }
         }
 
-        public const float SniffSeconds = 2.1f;
+        /// <summary>The three wafts end here (scene s into the beat).</summary>
+        public const float WaftEnd = 0.35f + 3f * 0.55f;
+        public const float SniffSeconds = WaftEnd + 2.2f + 1.2f;
+        /// <summary>The sniffer stands this far from the pot's middle (a grown-up ~0.035 wide).</summary>
+        public const float SniffRim = 0.095f;
 
         /// <summary>B30.d: a grown-up passing the pot stops where they are, turns to it, sniffs, nods, pats the belly and walks on; the cook
         /// nods back (<paramref name="cook"/> −1: none).</summary>
-        public static CampScene PotSniff(int walker, int cook, Vector2 at, Vector2 pot, Vector2 cookAt, float t0)
+        public static CampScene PotSniff(int walker, int cook, Vector2 at, Vector2 pot, Vector2 cookAt, float t0, Vector2 rimDir = default)
         {
-            var s = new CampScene(CampUse.PotSniff, t0, pot);
+            var s = new CampScene(CampUse.PotSniff, t0, pot) { holdFocus = true };
             int m = s.Add(walker);
-            s.Part(m, 0f, SniffSeconds, at, pot, DollStyle.Stand, SniffNodPose, PropKind.None, 0.05f);
-            if (cook >= 0) s.Part(s.Add(cook), 1.1f, 1.6f, cookAt, pot, DollStyle.Stir, (ref DollPose p, float u, float l) => { p.lean += 10f * Bump(u, 0f, l); }, PropKind.Stick).keepSpot = true;
+            // the user's review: right up at the rim; side on to the camera when the director says so (rimDir), else from the side they came
+            var rim = pot + (rimDir.sqrMagnitude > 1e-6f ? rimDir.normalized : Dir(pot, at, Vector2.down)) * SniffRim;
+            float t = 0f, w = WalkTime(at, rim, Walk);
+            s.Part(m, t, t + w, rim, pot, DollStyle.Stand, null, PropKind.None, Walk); t += w;
+            s.Part(m, t, t + SniffSeconds, rim, pot, DollStyle.Stand, SniffNodPose);
+            s.Fx(t + 0.3f, CampFxKind.PotSteam, G(pot), 1f);
+            s.Fx(t + 1.4f, CampFxKind.PotSteam, G(pot), 0.8f);
+            if (cook >= 0) s.Part(s.Add(cook), t + WaftEnd + 1.2f, t + WaftEnd + 1.8f, cookAt, pot, DollStyle.Stir, (ref DollPose p, float u, float l) => { p.lean += 10f * Bump(u, 0f, l); }, PropKind.Stick).keepSpot = true;
+            t += SniffSeconds;
+            var on = rim + Dir(pot, rim, Vector2.down) * 0.4f;
+            s.Part(m, t, t + WalkTime(rim, on, Walk), on, on + Dir(pot, rim, Vector2.down), DollStyle.Stand, null, PropKind.None, Walk);
             return s;
         }
 
         // ================================================================== B31 the feather pole
+        /// <summary>The user's review of B31.a ("I do not see anything happen"): the tie is a reach up on tiptoe (both arms x 160, +0.025 u, stretch
+        /// 1.06) with the fiddle (±10° at 4 Hz), high on the pole where the new feather goes.</summary>
         static void FiddlePose(ref DollPose p, float t, float len)
         {
-            float k = In(t, 0f, 0.25f), f = Mathf.Sin(t * 4f * Mathf.PI * 2f) * 10f;
-            p.armL = Lerp(p.armL, new Vector3(95f + f, 0f, 6f), k); p.armR = Lerp(p.armR, new Vector3(95f - f, 0f, -6f), k); p.lean += 6f * k;
+            float k = In(t, 0f, 0.3f), f = Mathf.Sin(t * 4f * Mathf.PI * 2f) * 10f * In(t, 0.3f, 0.1f);
+            p.armL = Lerp(p.armL, new Vector3(160f + f, 0f, 10f), k); p.armR = Lerp(p.armR, new Vector3(160f - f, 0f, -10f), k);
+            p.offset.y += 0.025f * k; p.squash = Mathf.Lerp(1f, 1.06f, k); p.lean -= 4f * k;
         }
 
         static void TouchPose(ref DollPose p, float t, float len) { float u = Bump(t, 0f, len); p.armR = Lerp(p.armR, new Vector3(110f, 0f, 6f), u); p.lean += 8f * u; }
@@ -579,14 +637,14 @@ namespace AquariumCiv.View
         public static CampScene FeatherTie(int chief, IList<int> forKeys, int kid, Vector2 chiefAt, IList<Vector2> forAt, Vector2 kidAt, Vector2 pole, Vector2 towardCamp, float t0)
         {
             var out1 = Dir(pole, towardCamp, Vector2.down);
-            var s = new CampScene(CampUse.FeatherTie, t0, pole);
+            var s = new CampScene(CampUse.FeatherTie, t0, pole) { holdFocus = true }; // the camera stays on the pole
             int c = s.Add(chief);
-            var cs = pole + out1 * 0.1f;
+            var cs = pole + Rot(out1, 75f) * 0.085f; // the user's review: beside the pole, not in front of it, so the new feather shows
             float w = WalkTime(chiefAt, cs, Walk);
-            for (int i = 0; i < forKeys.Count; i++) w = Mathf.Max(w, WalkTime(forAt[i], pole + Rot(out1, i == 0 ? 45f : -45f) * 0.16f, Walk));
+            for (int i = 0; i < forKeys.Count; i++) w = Mathf.Max(w, WalkTime(forAt[i], pole + Rot(out1, i == 0 ? 140f : -150f) * 0.17f, Walk));
             float t = w;
             s.Part(c, 0f, t, cs, pole, DollStyle.Stand, null, PropKind.Feather, Walk);
-            s.Part(c, t, t + 1.2f, cs, pole, DollStyle.HoldUp, (ref DollPose p, float u, float l) => { float k = In(u, 0f, 0.3f); p.armR = Lerp(p.armR, new Vector3(160f, 0f, 6f), k); }, PropKind.Feather);
+            s.Part(c, t, t + 1.2f, cs, TowardsGlass(cs, out1), DollStyle.HoldUp, (ref DollPose p, float u, float l) => { float k = In(u, 0f, 0.3f); p.armR = Lerp(p.armR, new Vector3(160f, 0f, 6f), k); }, PropKind.Feather); // held up toward the camera
             s.Fx(t + 0.5f, CampFxKind.Sparks, new Vector3(0f, 0.04f, 0f), 0.45f, 0, CampAnchor.Hand, c);
             t += 1.2f;
             s.Part(c, t, t + 1.5f, cs, pole, DollStyle.Stand, FiddlePose, PropKind.Feather);
@@ -597,7 +655,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < forKeys.Count; i++)
             {
                 int m = s.Add(forKeys[i]);
-                var sp = pole + Rot(out1, i == 0 ? 45f : -45f) * 0.16f;
+                var sp = pole + Rot(out1, i == 0 ? 140f : -150f) * 0.17f; // behind the pole as the camera sees it (one stood between the camera and the pole)
                 s.Part(m, 0f, s.a, sp, pole, DollStyle.Stand, null, PropKind.None, Walk);
                 who.Add(m); spots.Add(sp);
             }
@@ -642,6 +700,10 @@ namespace AquariumCiv.View
                 p.armL = new Vector3(160f, 0f, -16f); p.armR = new Vector3(160f, 0f, 16f);
             }
         }
+
+        /// <summary>Tests (EditMode): the private poses.</summary>
+        public static void TiptoePeekForTests(ref DollPose p, float t, float len) => TiptoePeekPose(ref p, t, len);
+        public static void FiddleForTests(ref DollPose p, float t, float len) => FiddlePose(ref p, t, len);
 
         public static float DareCreepSeconds => 4f * 0.9f + 1.5f;
 

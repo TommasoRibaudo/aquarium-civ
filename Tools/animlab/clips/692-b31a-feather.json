@@ -8,16 +8,16 @@
   "seed": 4242,
   "ecology": 1,
   "setup": [
-   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(17.4f, 2);",
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(16.8f, 2);",
    "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TieFeather(AquariumCiv.Sim.PoleFeatherKind.Newborn));"
   ],
   "warm": 0.5,
   "seconds": 15,
   "fps": 30,
   "follow": "camp",
-  "span": 2.0,
-  "closeSpan": 0.95,
+  "span": 1.6,
+  "closeSpan": 0.85,
   "yaw": 28,
-  "pitch": 32
+  "pitch": 36
  }
 }

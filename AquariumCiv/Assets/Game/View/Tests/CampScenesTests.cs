@@ -113,7 +113,7 @@ namespace AquariumCiv.View.Tests
             var o = CampScenes1.PotOff(1, 2, 3, hot + Vector2.down * 0.2f, hot + Vector2.up * 0.2f, Fire + Vector2.left, hot, cold, 0f, out float d0, out float d1);
             Sane(o); PoseRuns(o);
             Assert.Greater(o.b, d1, "the bowls are stacked after the pot is down");
-            Assert.IsTrue(o.parts[2].Any(p => p.prop == PropKind.Bowl), "a kid carries the bowls");
+            Assert.IsTrue(o.parts[2].Any(p => p.prop == PropKind.BowlEmpty), "a kid carries the empty bowls");
         }
 
         [Test]
@@ -122,11 +122,30 @@ namespace AquariumCiv.View.Tests
             var pot = Fire + new Vector2(0.1f, -0.09f);
             var peek = CampScenes1.PotPeek(4, 1, Fire + Vector2.left, pot + Vector2.down * 0.16f, pot, 0f);
             Sane(peek); PoseRuns(peek);
-            Assert.AreEqual(1, peek.fx.Count(x => x.kind == CampFxKind.Steam), "a puff of steam in the face");
+            Assert.AreEqual(1, peek.fx.Count(x => x.kind == CampFxKind.PotSteam), "the pot's steam swells up in the face (wisps, not a puff disc)");
+            Assert.AreEqual(0, peek.fx.Count(x => x.kind == CampFxKind.Steam), "no grey puff disc");
             Assert.IsTrue(peek.parts[0].Any(p => p.run), "runs off laughing");
+            var peekAt = peek.parts[0].First(p => p.pose != null).pos;
+            Assert.LessOrEqual((peekAt - pot).magnitude, 0.09f, "the user's review: right at the rim");
+            var tip = DollPose.Rest; CampScenes1.TiptoePeekForTests(ref tip, 0.9f, 1.1f);
+            Assert.Greater(tip.offset.y, 0.02f, "on tiptoe"); Assert.GreaterOrEqual(tip.lean, 25f, "leaning over");
             var sniff = CampScenes1.PotSniff(5, 1, pot + Vector2.left * 0.25f, pot, pot + Vector2.down * 0.16f, 0f);
             Sane(sniff); PoseRuns(sniff);
-            Assert.AreEqual(CampScenes1.SniffSeconds, sniff.parts[0][0].Len, 1e-4f);
+            var beat = sniff.parts[0].First(p => p.pose != null);
+            Assert.AreEqual(CampScenes1.SniffSeconds, beat.Len, 1e-4f);
+            Assert.LessOrEqual((beat.pos - pot).magnitude, 0.1f, "the user's review: at the rim");
+            float lo = 999f, hi = -999f; int toFace = 0; bool near = false;
+            for (float t = 0.35f; t < CampScenes1.WaftEnd; t += 0.02f)
+            {
+                var q = DollPose.Rest; CampScenes1.SniffNodPose(ref q, t, beat.Len);
+                lo = Mathf.Min(lo, q.armR.x); hi = Mathf.Max(hi, q.armR.x);
+                bool n = q.armR.x > 115f; if (n && !near) toFace++; near = n;
+            }
+            Assert.Greater(hi - lo, 45f, "the hand wafts from over the pot to the face");
+            Assert.That(toFace, Is.InRange(2, 3), "two or three wafts");
+            var back = DollPose.Rest; CampScenes1.SniffNodPose(ref back, CampScenes1.WaftEnd + 1.5f, beat.Len);
+            Assert.Less(back.lean, -10f, "the head tilts back, content");
+            Assert.GreaterOrEqual(sniff.fx.Count(x => x.kind == CampFxKind.PotSteam), 1, "steam wisps rise from the pot");
         }
 
         [Test]
@@ -145,6 +164,13 @@ namespace AquariumCiv.View.Tests
                 Assert.GreaterOrEqual(dips[i].y - dips[i].x, CampScenes1.DipSeconds - 1e-3f);
                 if (i > 0) Assert.GreaterOrEqual(dips[i].x, events[i - 1].End - 1e-3f, "after the last bowl was handed");
             }
+            // the user's review: a big dip (ladle down into the pot, then up and across to the bowl), the bowl full from the pour on
+            float lo = 999f, hi = -999f, lean = 0f;
+            for (float t = 0f; t < CampScenes1.DipSeconds; t += 0.02f) { var q = DollPose.Rest; CampScenes1.DipPose(ref q, t, CampScenes1.DipSeconds); lo = Mathf.Min(lo, q.armR.x); hi = Mathf.Max(hi, q.armR.x); lean = Mathf.Max(lean, q.lean); }
+            Assert.Greater(hi - lo, 40f, "the dip and the lift");
+            Assert.GreaterOrEqual(lean, 25f, "leaning over the pot");
+            Assert.Greater(CampScenes1.LadleTilt(CampScenes1.PourAt), 40f, "the ladle tips over the bowl at the pour");
+            Assert.That(CampScenes1.PourAt, Is.InRange(CampScenes1.LadleFrom, CampScenes1.LadleTo));
         }
 
         [Test]
@@ -156,6 +182,10 @@ namespace AquariumCiv.View.Tests
             Assert.IsTrue(tie.parts[0].Any(p => p.style == DollStyle.HoldUp && p.prop == PropKind.Feather), "the chief holds the feather up");
             Assert.AreEqual(3, tie.parts.Take(3).Count(l => l.Any(p => p.style == DollStyle.Pray)), "all pray");
             Assert.IsTrue(tie.parts[3].Any(p => p.style == DollStyle.Point), "a kid points at the new one");
+            Assert.IsTrue(tie.holdFocus, "the user's review: the camera stays on the pole");
+            Assert.Greater(Vector2.Angle(tie.parts[0].Last(p => p.pose != null && p.style == DollStyle.Stand).pos - pole, Vector2.down), 50f, "the tier stands beside the pole, not in front of it");
+            var reach = DollPose.Rest; CampScenes1.FiddleForTests(ref reach, 0.8f, 1.5f);
+            Assert.Greater(reach.armR.x, 140f, "reaches up to tie it"); Assert.Greater(reach.offset.y, 0.015f, "on tiptoe");
             var kids = new List<int> { 5, 6, 7 };
             var at = new List<Vector2> { pole + new Vector2(0.5f, -0.5f), pole + new Vector2(0.7f, -0.4f), pole + new Vector2(0.4f, -0.8f) };
             var dare = CampScenes1.PoleDare(kids, at, 8, pole + Vector2.left * 0.8f, pole, pole + Vector2.down, 0f);

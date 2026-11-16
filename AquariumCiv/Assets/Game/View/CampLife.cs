@@ -36,8 +36,10 @@ namespace AquariumCiv.View
 
         public IReadOnlyList<CampScene> Scenes => scenes;
         /// <summary>The newest scene playing (AnimLab's "camp" follow).</summary>
-        public CampScene Latest => forced != null && scenes.Contains(forced) ? forced : scenes.Count > 0 ? scenes[^1] : null;
+        // the user's review of part 1: once the cheat's scene is over the camera holds (it jumped to whatever else played)
+        public CampScene Latest => forced != null ? (scenes.Contains(forced) ? forced : null) : scenes.Count > 0 ? scenes[^1] : null;
         CampScene forced;
+        Vector2? lastFocus;
         /// <summary>AnimLab: no use starts by itself (only the cheats), so a clip shows one use alone.</summary>
         public static bool OnlyCheats;
 
@@ -45,7 +47,8 @@ namespace AquariumCiv.View
         public Vector2? FocusNow()
         {
             var s = Latest;
-            if (s == null) return null;
+            if (s == null) return forced != null ? lastFocus : null; // the user's review: after a cheat's scene the camera stays where it was
+            if (s.holdFocus) return lastFocus = s.focus;
             var sum = Vector2.zero; int n = 0;
             for (int i = 0; i < s.Count; i++)
                 if (s.TryPart(s.keys[i], clock, out _, out _) && pv.DrawnAt(s.keys[i]) is Vector2 p) { sum += p; n++; }
@@ -53,7 +56,7 @@ namespace AquariumCiv.View
             var c = lead ?? (n == 0 ? s.focus : sum / n);
             var d = c - s.focus;
             if (d.magnitude > 0.6f) c = s.focus + d.normalized * 0.6f;
-            return Vector2.Lerp(s.focus, c, 0.5f); // the thing, pulled toward the lead actor
+            return lastFocus = Vector2.Lerp(s.focus, c, 0.5f); // the thing, pulled toward the lead actor
         }
         public bool Playing(CampUse use) { foreach (var s in scenes) if (s.use == use) return true; return false; }
         /// <summary>Tests and the readout: how many times each use started this session.</summary>
@@ -202,7 +205,7 @@ namespace AquariumCiv.View
                     if (!a.moving || byKey.ContainsKey(a.who.Key) || !IsGrown(a) || a.hunt != HuntPhase.None || a.who.Key == meals.CookAtFire) continue;
                     if (!(At(a.who.Key) is Vector2 p) || (p - pot).sqrMagnitude > 0.3f * 0.3f) continue;
                     if (Roll(CampUse.PotSniff) > Often) break;
-                    Add(CampScenes1.PotSniff(a.who.Key, meals.CookAtFire, p, pot, At(meals.CookAtFire) ?? pot, time));
+                    Add(CampScenes1.PotSniff(a.who.Key, meals.CookAtFire, p, pot, At(meals.CookAtFire) ?? pot, time, SideOn(pot, p)));
                     break;
                 }
             }
@@ -376,7 +379,7 @@ namespace AquariumCiv.View
             int chief = -1;
             string leaderRole = SimCore.LeaderOf(sim.State.era);
             foreach (var r in sim.State.roles) if (r.role == leaderRole && r.holderId >= 0) { chief = r.holderId; break; }
-            bool Shown(int k) => k > 0 && At(k).HasValue && !byKey.ContainsKey(k);
+            bool Shown(int k) => k > 0 && At(k).HasValue && !byKey.ContainsKey(k) && !Tied(acts, k); // the user's review: the chief left mid-tie to pitch a tent
             if (!Shown(chief))
             {
                 chief = -1; float age = -1f;
@@ -401,6 +404,13 @@ namespace AquariumCiv.View
             Add(s);
             tieIndex = index;
             return $"feather ({KindWord(f.kind)}): chief {chief}, for {string.Join(",", forKeys)}";
+        }
+
+        /// <summary>Held by work the camp scenes can't take them from (a tent being pitched or struck, a hunt).</summary>
+        static bool Tied(IReadOnlyList<PersonActivity> acts, int key)
+        {
+            for (int i = 0; i < acts.Count; i++) if (acts[i].who.Key == key) return acts[i].tent != TentPhase.None || acts[i].hunt != HuntPhase.None;
+            return false;
         }
 
         public static string KindWord(int k) => k == PoleFeatherKind.Newborn ? "newborn, white" : k == PoleFeatherKind.Marriage ? "marriage, red" : "village, ochre";
@@ -536,18 +546,80 @@ namespace AquariumCiv.View
             if (meals.DipVersion == dipVersionSeen) return;
             dipVersionSeen = meals.DipVersion;
             if (meals.Dips.Count == 0 || meals.DipGiver == 0) return;
-            var s = new CampScene(CampUse.Ladle, 0f, meals.Pot, 0);
+            var s = new CampScene(CampUse.Ladle, 0f, meals.PotHotSpot, 0);
             int m = s.Add(meals.DipGiver);
-            var stand = meals.DipStand; var pot = meals.Pot;
-            foreach (var w in meals.Dips)
-            {
-                float len = w.y - w.x;
-                if (len <= 0.05f) continue;
-                s.Part(m, w.x, w.y, stand, pot, DollStyle.Stand, (ref DollPose p, float u, float l) => { float d = u - (l - CampScenes1.DipSeconds); if (d >= 0f) CampScenes1.DipPose(ref p, d, CampScenes1.DipSeconds); }, PropKind.Bowl, 0.5f);
-                s.Fx(w.y - CampScenes1.DipSeconds + 0.35f, CampFxKind.Steam, new Vector3(pot.x, MealDirector.PotTop + 0.01f, pot.y), 0.4f, 1);
-            }
+            var stand = meals.DipStand; var pot = meals.PotHotSpot;
+            foreach (var w in meals.Dips) DipParts(s, m, w.x, w.y, stand, pot);
             if (s.parts[m].Count > 0) Add(s);
         }
+
+        /// <summary>B30.b (the user's review: "the bowls are not getting filled?"): one dip window [from, to] (scene s): walk back to the pot with
+        /// the empty bowl, then the dip (CampScenes1.DipPose): the ladle in, the scoop, the lift, the pour into the bowl, which is full (a bowl
+        /// of stew) from the pour on; a swell of steam at the scoop.</summary>
+        static void DipParts(CampScene s, int m, float from, float to, Vector2 stand, Vector2 pot)
+        {
+            if (to - from <= 0.05f) return;
+            float dip = CampScenes1.DipSeconds, d0 = to - dip;
+            if (d0 > from + 0.05f) s.Part(m, from, d0, stand, pot, DollStyle.Stand, null, PropKind.BowlEmpty, 0.5f);
+            float a0 = Mathf.Max(from, d0), pour = d0 + CampScenes1.PourAt;
+            if (pour > a0)
+            {
+                float off = a0 - d0;
+                s.Part(m, a0, pour, stand, pot, DollStyle.Stand, (ref DollPose p, float u, float l) => CampScenes1.DipPose(ref p, u + off, dip), PropKind.BowlEmpty, 0.5f).dipFrom = off;
+            }
+            float b0 = Mathf.Max(a0, pour), boff = b0 - d0;
+            s.Part(m, b0, to, stand, pot, DollStyle.Stand, (ref DollPose p, float u, float l) => CampScenes1.DipPose(ref p, u + boff, dip), PropKind.Bowl, 0.5f).dipFrom = boff;
+            s.Fx(d0 + 0.5f, CampFxKind.PotSteam, new Vector3(pot.x, MealDirector.PotTop, pot.y), 0.6f);
+        }
+
+        /// <summary>The user's review of B30.d: across the camera's view from <paramref name="pot"/> (side on, so the body never hides the pot), the side
+        /// nearer <paramref name="from"/>.</summary>
+        Vector2 SideOn(Vector2 pot, Vector2 from)
+        {
+            var toCam = (TowardCamera(pot) - pot).normalized;
+            var across = new Vector2(-toCam.y, toCam.x);
+            if (Vector2.Dot(across, from - pot) < 0f) across = -across;
+            return (across + toCam * 0.25f).normalized;
+        }
+
+        /// <summary>B30.b: where the bowl-giver stands to dip: <see cref="DipStandOff"/> from the pot, beside it as the camera sees it (side on, so
+        /// the body never hides the dip), on the side away from the fire, a little toward the camera.</summary>
+        Vector2 DipStandAt(Vector2 pot, Vector2 fire)
+        {
+            var toCam = (TowardCamera(pot) - pot).normalized;
+            var across = new Vector2(-toCam.y, toCam.x);
+            if (Vector2.Dot(across, pot - fire) < 0f) across = -across;
+            return pot + (across + toCam * 0.25f).normalized * DipStandOff;
+        }
+        /// <summary>The bowl-giver stands this far from the pot's middle to dip (the rim ~0.045, a grown-up ~0.035, an arm 0.075 and a lean).</summary>
+        public const float DipStandOff = 0.11f;
+        /// <summary>Tests and the probe: frames the ladle has been in a hand.</summary>
+        public int LadleFrames { get; private set; }
+
+        /// <summary>B30.b: the pot's ladle in the bowl-giver's right hand during a dip: hanging from the fist into the pot, tipped over the
+        /// bowl at the pour.</summary>
+        void DrawLadle(Transform root, float time)
+        {
+            if (meals == null) return;
+            foreach (var s in scenes)
+            {
+                if (s.use != CampUse.Ladle || s.Count == 0) continue;
+                int key = s.keys[0];
+                if (!s.TryPart(key, time, out var part, out float into) || part.dipFrom < 0f) continue;
+                float dt = into + part.dipFrom;
+                if (dt < CampScenes1.LadleFrom || dt > CampScenes1.LadleTo) continue;
+                var v = pv.ViewOf(key);
+                if (v == null || !v.gameObject.activeInHierarchy) continue;
+                var hand = v.armR.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f));
+                var q = v.transform.rotation * Quaternion.Euler(0f, 0f, -CampScenes1.LadleTilt(dt));
+                meals.HoldLadle(hand - q * Vector3.up * (LadleGrip * root.lossyScale.y), q);
+                LadleFrames++;
+                return;
+            }
+        }
+
+        /// <summary>The fist holds the ladle this far up its handle from the scoop (box units; the ladle is 0.09 long).</summary>
+        public const float LadleGrip = 0.075f;
 
         // ================================================================== after the dolls: effects and the drawn things
         readonly List<Transform> tipPool = new();
@@ -561,6 +633,7 @@ namespace AquariumCiv.View
             FireFx(root, time, groundAt);
             DrawTips(root, material, time);
             DrawSpit(root, material, time, groundAt);
+            DrawLadle(root, time);
         }
 
         void FireFx(Transform root, float time, Func<float, float, float> groundAt)
@@ -598,9 +671,10 @@ namespace AquariumCiv.View
                 case CampFxKind.Ring: HitFx.Puff(PuffKind.Ring, world, Vector3.up, f.scale, o); break;
                 case CampFxKind.Grass: HitFx.Puff(PuffKind.Grass, world, Vector3.up, f.scale, o); break;
                 case CampFxKind.Jolt:
-                    if (s.use is CampUse.FeatherTie or CampUse.PoleDare) ConsequencePropsView.FlutterPole(s.use == CampUse.FeatherTie ? 1f : 0.8f);
+                    if (s.use is CampUse.FeatherTie or CampUse.PoleDare) ConsequencePropsView.FlutterPole(s.use == CampUse.FeatherTie ? 1.6f : 0.8f);
                     else if (s.use is CampUse.PotFill or CampUse.PotOff) HitFx.Puff(PuffKind.Dust, world, Vector3.up, 0.4f, o);
                     break;
+                case CampFxKind.PotSteam: meals?.SteamBurst(f.scale > 0f ? f.scale : 1f); break;
                 case CampFxKind.Chime: break; // [est] a soft chime: no CC0 chime in the project yet (none played)
             }
             if (s.use == CampUse.FeatherTie && f.kind == CampFxKind.Jolt && sim != null && s.kind >= 0) { sim.MarkPoleFeatherTied(s.kind); s.kind = -1; }
@@ -771,31 +845,23 @@ namespace AquariumCiv.View
                 case CampUse.PotPeek:
                 {
                     potState = PotState.Hot; potForcedCold = false;
-                    int kid = Nearest(acts, meals.Pot, 8f, a => IsKid(a), null, false);
+                    var hotPot = meals.PotHotSpot; meals.PotAt = null; // the user's review: the cheat aimed at the cold spot, 0.15 u out
+                    int kid = Nearest(acts, hotPot, 8f, a => IsKid(a), null, false);
                     if (kid < 0) return "no kid on view ('Two kids join the camp' first)";
                     int cook = meals.CookAtFire;
-                    if (cook < 0) cook = Nearest(acts, meals.Pot, 6f, a => IsGrown(a), new[] { kid }, false);
-                    var cookAt = cook >= 0 ? At(cook) ?? meals.CookSpot(meals.Pot + Vector2.down) : meals.CookSpot(meals.Pot + Vector2.down);
-                    if (cook >= 0 && meals.CookAtFire != cook) { var c = Stand(cook, cookAt, meals.CookSpot(meals.Pot + Vector2.down), meals.Pot, time, 6f, DollStyle.Stir, PropKind.Stick); cookAt = c; }
-                    Add(Thing(CampScenes1.PotPeek(kid, cook, At(kid).Value, cookAt, meals.Pot, time + (cook >= 0 && meals.CookAtFire != cook ? 1.5f : 0f)), ThingPot));
+                    if (cook < 0) cook = Nearest(acts, hotPot, 6f, a => IsGrown(a), new[] { kid }, false);
+                    var cookAt = cook >= 0 ? At(cook) ?? meals.CookSpot(hotPot + Vector2.down) : meals.CookSpot(hotPot + Vector2.down);
+                    if (cook >= 0 && meals.CookAtFire != cook) { var c = Stand(cook, cookAt, meals.CookSpot(hotPot + Vector2.down), hotPot, time, 9f, DollStyle.Stir, PropKind.Stick); cookAt = c; }
+                    Add(Thing(CampScenes1.PotPeek(kid, cook, At(kid).Value, cookAt, hotPot, time + (cook >= 0 && meals.CookAtFire != cook ? 1.5f : 0f)), ThingPot));
                     return "kids peek in the pot";
                 }
                 case CampUse.PotSniff:
                 {
                     potState = PotState.Hot; potForcedCold = false;
-                    int g = Nearest(acts, meals.Pot, 8f, a => IsGrown(a) && a.who.Key != meals.CookAtFire, null, false);
+                    var hotPot = meals.PotHotSpot; meals.PotAt = null; // the user's review: at the pot's cooking spot, right at its rim
+                    int g = Nearest(acts, hotPot, 8f, a => IsGrown(a) && a.who.Key != meals.CookAtFire, null, false);
                     if (g < 0) return "no grown-up on view";
-                    var by = meals.Pot + (At(g).Value - meals.Pot).normalized * 0.22f;
-                    var s = CampScenes1.PotSniff(g, meals.CookAtFire, by, meals.Pot, At(meals.CookAtFire) ?? meals.Pot, time + 0f);
-                    // walk past first: a short walk to beside the pot, then the beat
-                    var walk = new CampScene(CampUse.PotSniff, time, meals.Pot);
-                    int m = walk.Add(g);
-                    float w = Mathf.Clamp(((At(g).Value) - by).magnitude / CampScenes1.Walk, 0.5f, 6f);
-                    walk.Part(m, 0f, w, by, meals.Pot, DollStyle.Stand, null, PropKind.None, CampScenes1.Walk);
-                    foreach (var p in s.parts[0]) { p.from += w; p.to += w; walk.parts[m].Add(p); }
-                    if (s.Count > 1) { int c = walk.Add(s.keys[1]); foreach (var p in s.parts[1]) { p.from += w; p.to += w; walk.parts[c].Add(p); } }
-                    walk.Part(m, w + CampScenes1.SniffSeconds, w + CampScenes1.SniffSeconds + 2f, by + (by - At(g).Value).normalized * 0.4f, by + (by - At(g).Value).normalized, DollStyle.Stand, null, PropKind.None, CampScenes1.Walk);
-                    Add(walk);
+                    Add(Thing(CampScenes1.PotSniff(g, meals.CookAtFire, At(g).Value, hotPot, At(meals.CookAtFire) ?? hotPot, time, SideOn(hotPot, At(g).Value)), ThingPot));
                     return "someone sniffs the pot";
                 }
                 case CampUse.FeatherTie:
@@ -865,11 +931,13 @@ namespace AquariumCiv.View
         string ForceLadle(IReadOnlyList<PersonActivity> acts, float time)
         {
             var fire = meals.Fire;
-            potState = PotState.Hot; potForcedCold = false;
+            potState = PotState.Hot; potForcedCold = false; meals.PotAt = null; // the user's review: the pot was still at its cold spot on the cheat's frame
             var who = new List<int>();
+            int giver = Nearest(acts, meals.PotHotSpot, 9f, a => IsGrown(a), null, false); // the bowl-giver is a grown-up (a kid was picked)
+            if (giver < 0) return "no grown-up on view";
+            who.Add(giver);
             while (who.Count < 5) { int k = Nearest(acts, fire, 9f, a => IsGrown(a) || IsKid(a), who, false); if (k < 0) break; who.Add(k); }
             if (who.Count < 3) return $"only {who.Count} on view";
-            int giver = who[0];
             var seats = new List<Vector2>(); var takers = new List<int>();
             var cam = TowardCamera(fire) - fire;
             float lead = 0f;
@@ -879,18 +947,17 @@ namespace AquariumCiv.View
                 seats.Add(seat); takers.Add(who[i]);
                 lead = Mathf.Max(lead, ((At(who[i]) ?? seat) - seat).magnitude / LeadPace + 0.5f);
             }
-            var stand = meals.CookSpot(fire + (meals.PotHotSpot - fire) * 2.2f);
+            var stand = DipStandAt(meals.PotHotSpot, fire); // the user's review: right at the pot, on the camera's side
             lead = Mathf.Max(lead, ((At(giver) ?? stand) - stand).magnitude / LeadPace + 0.3f);
             var served = new Dictionary<int, float>(); var dips = new List<Vector2>();
             var events = MealStage.Pass(77, time + lead, giver, stand, fire, meals.PotHotSpot, takers, seats, served, dips, PropKind.Bowl, CampScenes1.DipSeconds);
-            var s = new CampScene(CampUse.Ladle, time, meals.PotHotSpot, ThingPot);
+            var s = new CampScene(CampUse.Ladle, time, meals.PotHotSpot, ThingPot) { holdFocus = true };
             int g = s.Add(giver);
             s.Part(g, 0f, lead, stand, meals.PotHotSpot, DollStyle.Stand, null, PropKind.None, LeadPace);
             float end = lead;
             foreach (var w in dips)
             {
-                s.Part(g, w.x - time, w.y - time, stand, meals.PotHotSpot, DollStyle.Stand, (ref DollPose p, float u, float l) => { float d = u - (l - CampScenes1.DipSeconds); if (d >= 0f) CampScenes1.DipPose(ref p, d, CampScenes1.DipSeconds); }, PropKind.Bowl, 0.5f);
-                s.Fx(w.y - time - CampScenes1.DipSeconds + 0.35f, CampFxKind.Steam, new Vector3(meals.PotHotSpot.x, CampScenes1.PotTop + 0.01f, meals.PotHotSpot.y), 0.25f, 1);
+                DipParts(s, g, w.x - time, w.y - time, stand, meals.PotHotSpot);
             }
             foreach (var e in events) end = Mathf.Max(end, e.End - time);
             for (int i = 0; i < takers.Count; i++)

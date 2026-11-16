@@ -56,11 +56,16 @@ namespace AquariumCiv.View
         public CampPoseFn pose;
         /// <summary>Lay the pose even while walking (a heavy carry, a slow bent walk).</summary>
         public bool poseWalking;
+        /// <summary>B30.b (the user's review): this part is a dip at the pot; seconds into the dip at the part's start (−1: not a dip).
+        /// CampLife puts the pot's ladle in the right hand while the dip says so.</summary>
+        public float dipFrom = -1f;
         public float Len => to - from;
     }
 
     /// <summary>What an effect is.</summary>
-    public enum CampFxKind { Sparks, Flare, Steam, Dust, Droplets, Ring, Grass, Chime, Jolt }
+    public enum CampFxKind { Sparks, Flare, Steam, Dust, Droplets, Ring, Grass, Chime, Jolt,
+        /// <summary>The user's review of part 1: the pot's own soft steam swells for a moment (several white wisps rising and fading), not a puff disc.</summary>
+        PotSteam }
 
     /// <summary>Where an effect is: on the ground at a box point (<see cref="CampFx.at"/> x, z; y above the ground), or at a member's hand,
     /// head or held twig's tip (plus <see cref="CampFx.at"/> as a world-up offset in box units).</summary>
@@ -108,6 +113,8 @@ namespace AquariumCiv.View
         /// <summary>Extra state a use carries (the spit's meat, the pot's lift), read by the director.</summary>
         public float a, b;
         public int kind;
+        /// <summary>The camera keeps to <see cref="focus"/> (the thing), not pulled toward the lead actor (the feather pole: the user's review).</summary>
+        public bool holdFocus;
 
         public CampScene(CampUse use, float t0, Vector2 focus, int thing = 0) { this.use = use; this.t0 = t0; this.focus = focus; this.thing = thing; }
 

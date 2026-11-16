@@ -12,11 +12,11 @@
    "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.Ladle());"
   ],
   "warm": 0.5,
-  "seconds": 18,
+  "seconds": 16,
   "fps": 30,
   "follow": "camp",
   "span": 1.4,
-  "closeSpan": 0.6,
+  "closeSpan": 0.5,
   "yaw": 28,
   "pitch": 42
  }
