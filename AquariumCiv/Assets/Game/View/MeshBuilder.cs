@@ -84,6 +84,23 @@ namespace AquariumCiv.View
             else lamps.Add(lamp < 0f ? Vector2.zero : new Vector2(1f, lamp));
         }
 
+        /// <summary>#657: a triangle with a colour and a sway weight per corner (a grass blade: a dark, still base, a swaying tip). The same
+        /// jitter as <see cref="Tri"/>, once for the face.</summary>
+        public void TriCorners(Vector3 a, Vector3 b, Vector3 c, Color ca, Color cb, Color cc, float sa, float sb, float sc)
+        {
+            a = M.MultiplyPoint3x4(a); b = M.MultiplyPoint3x4(b); c = M.MultiplyPoint3x4(c);
+            var n = Vector3.Cross(b - a, c - a);
+            if (n.sqrMagnitude < 1e-12f) return;
+            n /= n.magnitude;
+            float j = 1f + ((float)rng.NextDouble() * 2f - 1f) * jitter;
+            Color L(Color x) { var l = Linear(new Color(x.r * j, x.g * j, x.b * j)); l.a = 1f; return l; }
+            float keep = sway;
+            int i = verts.Count;
+            sway = sa; Add(a, n, L(ca)); sway = sb; Add(b, n, L(cb)); sway = sc; Add(c, n, L(cc));
+            sway = keep;
+            tris.Add(i); tris.Add(i + 1); tris.Add(i + 2);
+        }
+
         /// <summary>A triangle wound so it faces away from <paramref name="inside"/> (a point inside the convex part),
         /// for hand-built wedges where the winding is easy to get wrong.</summary>
         public void TriOut(Vector3 a, Vector3 b, Vector3 c, Vector3 inside, Color col)
