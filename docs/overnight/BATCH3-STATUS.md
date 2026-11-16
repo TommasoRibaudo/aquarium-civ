@@ -35,10 +35,13 @@ sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Wo
   Unity: Nest 19, NestPlan 6, ThicketList 11, PluckTool 14, LandscapingPlay 1, Smoke 2, Eco 51, LifeJar 19, PlacedLife 23,
   BoxGrow 6, all pass. Shots in scratchpad shots-731. Open [est]: tool name, earned-seed ghost is still the Keeper's mound,
   small pluck ring, the rail wraps to two rows (both for #668). pt1b worktree left on vs/731-landscaping-view, Editor ready, lock released.
-- [ ] Editor: AnimLab clips for approved specs; #708 fish; #709 nest view
+- [x] Editor: #668 kit design A + #714 Kenney boat (vs/668-kit-build) — merged ba397df; sim 2068/2068.
+- [x] Editor: #708 fish, #709 nest view, boat flat and apart from the pot (vs/708-709-view) — merged 4bd7aaf; sim 2069/2069.
+  **All 10 clips signed off by the user 2026-11-15** (https://claude.ai/artifact/NEbta4ca1WZotqvACcyX4k). Known: AnimBench
+  build broken (`Principles.cs(46)` `DollStyle.Peer`), fix in the next Editor pass.
 - [ ] Base failures listed above (present on p9/batch3 before the writing merge): triage before the PR
-- [ ] Editor: #668 build of the chosen mock-up
-- [ ] People and things #692–#695 builds (after clip sign-off)
+- [ ] People and things #692–#695 builds, with Q3 rope swing and Q7 goat; clips signed off per issue
+- [ ] Lane A: ritual and teller staging specs (S-ritual) into animation-specs.md for the user's OK
 - [ ] Batched pass, smoke, tester, walkthrough stops, PR to dev
 
 ## Log
