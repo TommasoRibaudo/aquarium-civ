@@ -1481,6 +1481,8 @@ approve the animations and assets"). The checklist to answer is [batch3-approval
 - Animal counts: `Sim/AnimalBudget.cs` (on the 6 × 6 land: rabbits 8, deer 6, ducks 6, fish 5, frogs 4, wolves 4). Nothing
   below adds a drawn animal except the nest's bird (B71, an open question).
 - Stew pot look: signed off in the 2026-11-15 walkthrough (#676 comment). Feather pole and feedback#79: #566 comments.
+- **S-ritual** (B72–B77, added after the 2026-11-15 approvals, row 217): the four yearly rituals (#721), the teller's manner
+  (#717) and the pond family's boat (#714). Approvals rows 218–229.
 
 Every number is [est] until AnimBench and AnimLab. Calls of mine that are more than a number are marked **[est]**.
 
@@ -2239,6 +2241,253 @@ chose) said the nest "costs no animal slots". **Ask:** keep the bird outside the
 
 ---
 
+### Rituals and the teller (S-ritual, B72–)
+
+**Status: specs only.** The user asked for these on 2026-11-15 (approvals row 217: "Rituals and the teller's manner need
+staging specs"). Each waits for its OK on the approvals page (rows 218–229), then its AnimLab clip is signed off before it
+merges. **Every number in this section is [est]** until AnimBench and AnimLab.
+
+**What is built today:**
+- **The rituals' sim** (`Sim/SimCore.Rituals.cs`, #721). `RitualKind` has four: the berrying walk (autumn, calendar month 8),
+  the harvest feast (9), the offering (9) and stacking the woodpile (10). A box keeps at most one of berrying and woodpile
+  (`camp_winter`) and one of feast and offering (`village_harvest`). The lead is `RitualLead`: the town's priest for the
+  offering, else the era's leader, else the eldest adult. `RitualKid` names one kid a year. The lines grow by era: in a
+  village that keeps the feast, the berrying walk ends at the long table; in the town the tavern sets the feast table and
+  the priest carries the offering. The offering goes to `OfferingPlace`: the Keeper's tree, else "the tallest tree" (W721.c).
+  In spring the line `ritual_offering_empty` says the basket was found empty.
+- **The rituals' view.** Each plays as a held moment (`MomentKind.Ritual`, `Life/LifePlanner.HeldMoments.cs`, 50 s budget).
+  Today `MomentStagePlan.Build` stages all four as the festival (`plan.Festival(cast)`, `Life/MomentStagePlan.cs:207`), led by
+  the ritual's lead. The caption is `RitualKind.Caption` (`View/Moments/StagedMoments.cs`). The people's lines are
+  `PeopleVoice.MomentLines` (`View/ShowMe/Core/PeopleVoice.Moments.cs`); two lines there wait for these beats: "Not that
+  bush, that bush." and "Don't look back, it's rude."
+- **The teller** (#717, W717). `Life/LifePlanner.Day.cs` makes the Keeper's pick tonight's teller (`SimCore.StoryTellerOn`),
+  and the fire keeper is never the teller. The telling runs from `TellFrom` 18.3 to `TellSlowUntil` 19.7 (slow) or
+  `TellShortUntil` 18.85 plus `LaughHours` 0.15 (short). The teller plays `StoryTell` (`DollStyle.Speech`); everyone else
+  plays `ListenStory` with the kids at the front (`ListenToTheTeller`), then `LaughPoint` after a short one. The four lines
+  are `PeopleVoice.TellerLines`. The comment at `TellFrom` says the manners' gestures wait for this spec.
+- **Cheats that exist:** SimDebugPanel "Rituals (#721)": "Play berrying / woodpile / feast / offering now"
+  (`StagedMoments.DebugPlayRitualNow`). SliceDebugPanel: "Story tonight: slow" and "Story tonight: short".
+
+**How each ritual is built (B72–B75).** Each ritual gets its own plan in `MomentStagePlan` (`Berrying`, `Woodpile`, `Feast`,
+`Offering`) in place of `Festival` (R+ `Build`'s switch). The plan keeps the pure plan's rules (R): everyone starts from
+where they stand; the gathering takes at most `MaxGather` 16 s; `GoAt` spreads the set-off; no sim dice (`Hash01`); every
+member is released by `Duration`; the planner, the view and AnimBench run the same plan. **N:** `MomentGeometry` gets each
+ritual's targets (the bushes, the woodpile and the chopping spot, the long table's pose, the tree's visit spot), filled by
+`StageHeldMoment`. New `StageBeat`s are named per spec; each gets its pose in `View/Beats/MomentBeats.cs` and its symbol in
+`RitualBubbles.ForHeldMoment` (R+). `HeldMomentSeconds(MomentKind.Ritual)` becomes one value per ritual (R+): berrying 55 s,
+woodpile 45 s, feast 50 s, offering 45 s.
+
+**Shared rules.** D holds (kids safe, cheats, AnimLab, reuse marks). On top of D: `RitualLead` leads every beat that has a
+leader; the year's `RitualKid` gets the kid's beat when there is one; B11's director never starts anything in a ritual's cast.
+Where a ritual has no target (no bushes in reach, no woodpile, no tree), today's festival stand-in plays.
+
+#### B72. The berrying walk (`camp_winter` "the baskets"; every autumn)
+
+*Everyone walks out to the bushes together, picks and eats, walks home in a line with full baskets and holds up purple fingers.*
+
+| | |
+|---|---|
+| Who · where · when | the lead, then every free grown-up and kid up to `MaxFestival` 16; the year's berrying moment (month 8). The target: berry bushes with berries (the thicket's bushes or `BushCell`s), up to 6, nearest the camp first. A bush more than 2.5 u from the fire is skipped [est] |
+
+| Beat | What | Time |
+|---|---|---|
+| 1 Baskets | in the gathering the lead goes to the basket stack (`ConsequenceKind.Baskets`, B54.a's take), lifts baskets off and hands out up to 4 (B7.b, 0.8 s each); the others bring their own `Basket`. The lead holds one up (x 140, 0.6 s): a Sun over the lead | 6–10 s |
+| 2 Walk out | a loose line behind the lead, 0.14 u apart, ±0.04 u sideways by hash; empty baskets swing (arm z ±10 in step with the stride); 1–2 kids run 0.3 u ahead and back once | by distance, ≤ 8 s |
+| 3 Pick | at the bushes they spread out, 2–3 to a bush, starting 0.8 s apart by slot; B5.a's pick every 2.5 s (reach, bush `Sway` 11°, a berry arcs into the basket), 4 picks each. Kids eat every other berry (B5.c's `TasteBerry`), so their baskets fill slower. Once, the lead points a picker on to the next bush (`Point`, arm x 90, 0.5 s): "Not that bush, that bush." | 12 s |
+| 4 Purple fingers | from each picker's second pick their hand dots turn purple (a 0.012 u dot at each arm's end); a kid who ate 3 berries gets B17.a's purple mouth | (with 3) |
+| 5 Walk home | the line forms again with the lead at the back; full baskets held in front in both hands (arms x 70), B4's heavy walk at × 0.85; Notes over 2–3 walkers | by distance, ≤ 8 s |
+| 6 Tip | at the stash they tip one after another down the line, 0.4 s apart (`TipBasket` as built: 3–5 berries arc onto the pile, pile `Squash`). **Village that keeps the feast:** they set the full baskets on the long table instead (`Squash`, berry dots on top), and each eats one (B9.a's hand to the mouth, once) | 6 s |
+| 7 End beat | everyone holds both hands up to the glass, palms out (arms x 160, z ∓30) for 1 s; two kids put their hands side by side (0.04 u apart), look, and laugh (`Laugh` 0.6 s) | 2 s |
+
+| | |
+|---|---|
+| A child's first walk | a kid in their first autumn walking with the rest (age 3–4) holds a parent's hand all the way (B7.c) and carries a small basket (`Basket` × 0.7). At the bush it eats every berry it picks; at the stash the parent drops two berries from their basket into the kid's, and the kid tips those (research 21 §7.1's later hook) |
+| Props | `Basket` (R), the basket stack (R, B54.a), the small basket (R+ × 0.7), purple hand dots (N; the same dot as B59.h's blue hands, with a colour), B17.a's purple mouth (R). The purple fades at supper (B43.c's wipe, R) |
+| How it reads on a phone | a line of 6–12 dolls going out to the bushes; several bushes shaking at once reads as "everyone picking"; the hands-up is a row of raised arms (an arm ≈ 19 px). The purple dots are about 3 px: the pose carries the end beat, the colour is a bonus |
+| Kids safe | the walk crosses no water and passes no fire; kids stay within 0.6 u of a grown-up |
+| Sound · cheat | none · R "Play berrying now"; N **"Berrying: end at the long table"** (keeps the feast too and sets the village), **"Berrying: a kid's first walk"** |
+| Reuse | R the plan's gather and `Travel`, B5.a `PickBerry`, B5.c `TasteBerry`, `TipBasket` (`View/Beats/BerryBeats.cs`), B7.b (`View/Beats/PairStage.cs` `HandOver`), B7.c, B4's heavy walk, B17.a, B43.c, `Point`, `Laugh`, `RitualBubbles` (Sun, Notes). N `MomentStagePlan.Berrying`, beats `HandOut`, `WalkLine`, `ShowHands`; the purple dots |
+| AnimLab | `Tools/AnimBench/clips/721-berrying.json` (8 grown-ups, 4 kids, 3 bushes, the stash) |
+
+#### B73. The log line (`camp_winter` "the woodpile"; every autumn, before the snow)
+
+*A line passes logs hand to hand onto the woodpile while someone mends its roof; the lead sets the last log on top.*
+
+| | |
+|---|---|
+| Who · where · when | the lead, up to 8 free grown-ups and up to 4 kids; the year's woodpile moment (month 10). From the woodcutter's chopping spot (where `Chop` and `StackWood` work) to the woodpile under its roof (`ConsequenceKind.WoodpileRoof`). Month 10 comes before the first snow, so it never plays in snow |
+
+| Beat | What | Time |
+|---|---|---|
+| 1 The heap | in the gathering each grown-up brings one `Log` from the chopping spot (C3.d's bring, R: `Travel` carrying `Prop.Log`) and drops it on a heap 0.5 u from the woodpile (lean 30, `Squash`, `Dust`): 6–8 logs | 8–14 s |
+| 2 The line | the grown-ups stand in a line from the heap to the pile, 0.15 u apart, facing across it, every other one 0.03 u to the side (a zigzag reads better than a straight row); the lead stands last, at the pile | 1 s |
+| 3 Pass it along | the first lifts a log (lean 30 → 0, `Back` 0.3 s). Each passer turns to the giver (yaw −70°, arms x 80, 0.25 s), takes it (`Pop`), swings to the next (yaw +70°, 0.3 s `Snap`) → `hit`: the log moves on (`Pop`). 0.65 s a hop; a new log starts every 1.2 s, so 2–3 logs are in the line at once and the arms go in a wave. "Pass it along!" | 8 logs ≈ 14 s |
+| 4 Onto the pile | the lead takes each log and slides it onto the pile under the roof (B54.c: arm x 60, push 0.04 u, `Jolt`); the pile `Pop`s 1.03 with each | (with 3) |
+| 5 The roof | at the same time one grown-up outside the line leans the short ladder (B54.p's) on the roof, climbs 2 rungs (+0.06 u), lays a thatch bundle on it (`Bundle`, arm x 150 → `Pop`) and taps it down (`Hammer`, 3 taps → `Chips` in straw colour); the roof's sag goes (tilt 4° → 0°, `Back` 0.3 s) | 6 s |
+| 6 The kids' line | the kids pass `Twig`s in a short line of their own beside the big one (0.1 u apart) into a basket at the pile's foot. One kid hugs the biggest twig and won't pass it (arms x 60 round it, turns away yaw 90°, 1 s): "That one's mine. I'm keeping it."; the next kid laughs and they go on | (with 3) |
+| 7 A dropped log | in 1 ritual in 2, by hash: a passer fumbles (arms x 80 → 40, 0.15 s), the log drops (`Bounce`, `Dust`), the next one hops back 0.04 u with arms up (x 70): "Mind your toes."; both laugh (`Laugh` 0.6 s) and it goes on | 2 s |
+| 8 End beat | the lead sets the last log on top (both arms x 120, slides it on, the pile `Squash`es) and pats it twice (arm x 90); everyone claps (B2.e's end clap, `Clap` 1 s); the kids sit on the low logs (B54.d's dry-day sit) | 3 s |
+
+| | |
+|---|---|
+| Props | `Log` (R), the woodpile under its roof (R, `Pieces.Woodpile` in the prop), the short ladder (N in B54.p, shared), a thatch bundle (R `PropKind.Bundle`), `Twig` (R `PropKind.Twig`), a basket (R) |
+| How it reads on a phone | a zigzag row of 6–8 dolls with a log moving down it and the arms swinging in a wave: "passing logs along". The doll on the ladder is a second, slower read. A log is 0.1 u (25 px) |
+| Kids safe | kids pass twigs only, never logs, 0.15 u off the big line; nobody stands under the ladder |
+| Not staged here | the village hook "every new roof gets its first log from it" belongs to a building's raising, later |
+| Sound · cheat | none · R "Play woodpile now"; N **"Log line: drop a log"** |
+| Reuse | R C3.d's bring, B7.b's hand-off shortened to a swing, B54.c, B54.p, B54.d, B2.e's clap, `Hammer`, `Chips`, `Bounce`, `Dust`, `Laugh`. N `MomentStagePlan.Woodpile`, beats `PassLog`, `Fumble`, `MendRoof`; the zigzag line |
+| AnimLab | `721-log-line.json` (7 grown-ups, 3 kids, the heap, the woodpile) |
+
+#### B74. The long table: the harvest feast (`village_harvest` "a feast"; every autumn; extends B54.r)
+
+*Everyone brings something to the long table, it gets one board longer, the first bowl is served, bowls go down both sides,
+they eat, raise their bowls together and sing.*
+
+B54.r (the shared meal) and B54.s (under it, and the nap) are signed off. This spec stages them as the feast's held moment;
+beats 5, 7 and 10 below **are** B54.r and B54.s, built once. No second long-table meal.
+
+| | |
+|---|---|
+| Who · where · when | everyone up to `MaxFestival` 16; the year's feast moment (month 9). At the long table by the fire (`ConsequenceKind.LongTable`, `PropAnchor.Fire`), its long side across the screen so the far bench faces the camera [est]. Town with a tavern, on the line's tavern years: the table stands in front of the tavern's door and the tavern keeper carries the bowls (`Serve`, R) |
+
+| Beat | What | Time |
+|---|---|---|
+| 1 Gather | everyone walks to the table with a `Bowl` or a `Basket` (C3.d's bring); baskets go on the table (`Squash`, berry dots on top) | 8–14 s |
+| 2 One more board | every year after the first: two grown-ups carry a new board (B27's pair carry, `Lead` / `Side`) to the table's foot, lay it on (arms x 80 → 60, `Squash`) and one taps it on (`Hammer`, 3 taps, `Chips`); the table is one board longer: "One more seat this year." | 4 s |
+| 3 Sit | everyone sits on the benches from the head down, 0.07 u apart, both sides; the lead at the head; kids beside their parents. More people than seats: the last kids sit on the ground at the foot | 2 s |
+| 4 The first bowl | the lead ladles at the pot (B30.b's dip) and gives the first bowl to the eldest (B7.b); the eldest lifts it (x 120, 0.5 s) | 3 s |
+| 5 Down the sides | bowls pass hand to hand down both benches (B9.b along a line: turn, hand over, 0.5 s a hop, both sides at once) | 4–5 s |
+| 6 Budge up | the last one in (the latest `GoAt`) comes to the bench; its sitters shuffle along 0.04 u in a wave from the head, 0.1 s apart (a sideways hop 0.015 u each), and the late one sits: "Budge up, there's room." | 2 s |
+| 7 Eat | B9.a, out of step; 2 kids crawl under the table end to end (B54.s); "Who made this? It's good." | 10 s |
+| 8 Bowls up | everyone raises their bowl at once (x 140, `Back` 0.4 s, held 0.6 s), in step on purpose (P6 exempt, as C3.d's jump); a Sun over the lead | 1.5 s |
+| 9 The song | `Sing` along the benches: a sway (roll ±6° at 0.5 Hz) that runs down each bench, each 0.15 s after the one before; Notes over 3–5 | 6 s |
+| 10 End beat | they stand from the foot end; the bowls are stacked at the head (B30.e's stack); the oldest stays and lies down on the bench (B54.s's nap, `Lie`) | 3 s |
+
+| | |
+|---|---|
+| The table grows | the long table (R+ its mesh) is 0.44 u plus 0.04 u a board, one board a year since the first feast (the count the `harvest_feast_seats` callback already reads), at most 12 boards (0.92 u). After 12 the year's board replaces the oldest: a pale new board among grey ones |
+| Props | the long table (R+), a board 0.04 × 0.1 u in the table's wood (N), `Bowl`, `Basket` (R), the pot's ladle (B30.b) |
+| How it reads on a phone | a long table seen across with two rows of dolls; the bowls going up together; the sway running down a bench. One board is 10 px: a single year doesn't show, a few years do |
+| Kids safe | the crawl stays under the table; a kid seated on the ground at the foot keeps D's fire rule (a grown-up within 0.6 u, never at the flames) |
+| Sound · cheat | none (the song is `Sing`'s own, R) · R "Play feast now", R "Long table meal now" (B54.r); N **"Feast: add a year's board"** |
+| Reuse | R B54.r, B54.s, C3.d's bring, B27's pair carry, B30.b, B30.e, B7.b, B9.a, B9.b (`View/Beats/MealBeats.cs`), `Hammer`, `Sing`, `Lie`, `Serve`; `CarryTables` (R) for an extra table when a town's cast outgrows it. R+ the table by boards. N `MomentStagePlan.Feast`, beats `AddBoard`, `Budge`, `BowlsUp`, `SongSway` |
+| AnimLab | `721-feast.json` (12 people with 4 kids, the table at 6 boards) |
+
+#### B75. Carrying the offering to the tree (`village_harvest` "an offering")
+
+##### B75.a The carry (every autumn)
+
+*The lead carries the best basket in both arms to the Keeper's tree, the kids carry a small one behind, and everyone bows to
+the glass.*
+
+| | |
+|---|---|
+| Who · where · when | the lead carries (`RitualLead`: the priest in the town); the year's `RitualKid` and one more kid carry the small basket; the people behind as in the Ask below. The year's offering moment (month 9). From the offering basket's stone (`ConsequenceKind.OfferingBasket`, `PropAnchor.Edge`) to the Keeper's tree's visit spot (B32: the stone ring's edge plus 0.08 u, on the camera's side) |
+| Before the tree stands | (`KeeperTreeGrown` false, W721.c) the tallest wild tree: the grown tree of the highest stage, the nearest the camp on a tie, its trunk plus 0.12 u on the camera's side. No grown tree at all: they set it down at its own stone and look up (beats 1, 5 and 6 only) |
+
+| Beat | What | Time |
+|---|---|---|
+| 1 Fill | the lead lifts the cloth (arm x 80), tips the best basket in (B54.t, `TipBasket`), lays the cloth back (`Pop`); each kid drops one berry into the small basket (arm x 60, `Pop`) | 4 s |
+| 2 Lift | the lead squats (squash 0.8, 0.3 s) and lifts it in both arms against the chest (arms x 90, lean −5, `Back` 0.5 s): "Gently. It's for the Keeper." | 1 s |
+| 3 The walk | the careful walk: speed × 0.75, stride × 0.7, almost no bounce (0.002 u), the basket never swings. The two kids follow 0.2 u behind, the small basket between them, one hand each on it (arms x 70, B7.c's pair). The rest walk behind in pairs (B7.c), 0.2 u apart. The Doll symbol (R) over the lead | by distance, ≤ 14 s |
+| 4 Set down | the lead kneels at the spot (B4's kneel) and sets it down (arm x 40, lean 35 → `Pop`, `Squash` on the ground); the kids set theirs 0.06 u beside it the same way | 2 s |
+| 5 To the Keeper | everyone looks up at the glass (`LookUp`, 1 s), then bows in a wave, nearest the basket first, 0.12 s apart (C3.c's bow wave); the lead bows last; a Sun over the lead | 3 s |
+| 6 Still | they stand quiet for 2 s; one leaf falls from the crown (`Leaves` 1) | 2 s |
+| 7 Walk back | they turn and walk back. One kid turns to look back (yaw 150°, 0.3 s); a grown-up puts a hand on its head (arm x 110) and turns it forward again (0.5 s): "Don't look back, it's rude." Released to their day 2 s into the walk | 3 s |
+
+| | |
+|---|---|
+| A far tree | a walk longer than 14 s starts part way: the cast is placed along the route, already walking (the plan's `Travel` from a point on the route) |
+| The basket's stay | the offering basket stays at the tree until spring: a second spot at the visit spot (R+, as the pot's second spot in B30.e), the cloth on, food showing at its rim; the kids' small basket beside it (× 0.6). B54.u's kids wait by it there. It goes back to its stone in spring (B75.b) |
+| Props | the offering basket as a carried prop (R+ `ConsequenceMeshes` "offering_basket"), the small basket (R+ `Basket` × 0.6), the cloth (R, the prop's top) |
+| How it reads on a phone | one doll walking slowly with a basket held in both arms, two small dolls and a small basket behind, then the bow wave at the tree |
+| Kids safe | no water or fire on the way; the kids walk behind the lead, never ahead |
+| Sound · cheat | none · R "Play offering now"; N **"Offering: before the tree (tallest tree)"** |
+| Reuse | R B54.t, `TipBasket`, B4's kneel, B7.c, C3.c's bow wave, `LookUp`, `Leaves`, B32's visit spot (`View/KeeperTreeKit.cs`), `OfferingPlace`, the `PeopleVoice` lines. R+ the basket's second spot. N `MomentStagePlan.Offering`, beats `CarryCareful`, `LookBack`; the careful walk |
+| AnimLab | `721-offering.json` (the lead, 2 kids, 4 behind, the Keeper's tree) |
+
+**Ask:** who walks to the tree: everyone behind the lead every year, or only the lead and the kids while the rest watch from
+the fire? My pick: the lead, the kids and up to 4 grown-ups in the camp and the village; the whole town behind the priest (the
+town's line says so).
+
+##### B75.b The empty basket in spring (once a year)
+
+| | |
+|---|---|
+| Who · where · when | the morning after the `ritual_offering_empty` line (month 3): the first kid who passes the tree (B32.b's passers), else the lead at midday. Over the winter, a kid passing now and then lifts the cloth to check (B54.u): "Is it empty yet?" |
+| Look | it empties in the dark with nobody within 1 u and the camera elsewhere, never in view: the line says nobody saw who emptied it. Empty: the cloth lies flat in the basket (0.02 u lower), no food at the rim. The kids' small basket empties too |
+| Beats | the kid lifts the cloth (arm x 80, lean 20), freezes (`Freeze` 0.5 s), lifts the empty basket high (`HoldUp`, x 150, 1 s) and runs to the fire with it held up; 2–3 grown-ups there look up at the glass (`LookUp`, 1 s) and one nods slowly (B7.a's nod). End beat: later that day the lead carries it back to its stone (B75.a's careful walk, no fill) |
+| How it reads on a phone | a kid running with an empty basket held high, the grown-ups at the fire looking up |
+| Sound · cheat | none · N **"Offering: empty it now (spring)"** |
+| Reuse | R B54.u, `Freeze`, `HoldUp`, `Run`, `LookUp`, B7.a's nod, B75.a's walk. N the empty look |
+| AnimLab | `721-offering-empty.json` |
+
+#### B76. The teller's manner at the fire (W717)
+
+*The Keeper's pick tells tonight's story: slow, with all the voices, or short, for a laugh.*
+
+| | |
+|---|---|
+| Who · where · when | the Keeper's pick (`tellerPicked`), the evening the story choice is answered; everyone at the fire listens (`ListenToTheTeller`). The fire keeper (`dayFireKeeper`) is never the teller and keeps poking the fire through it (B9.c) |
+| Where | the teller stands behind the fire as the camera sees it, 0.22 u from its centre (the festival lead's spot, `TossReach`), facing the camera and lit by the fire. The listeners sit in a half ring on the camera's side: kids in front at 0.4 u from the fire, grown-ups behind at 0.55 u. The standing teller shows over the seated heads |
+| Kids safe | no kid comes closer than 0.33 u to the fire, even on "come closer"; grown-ups sit within 0.6 u (D) |
+| Today | `StoryTell` plays `DollStyle.Speech`. A new `DollStyle.Tell` (N) replaces it for the picked teller, by manner |
+| Lines | each of `PeopleVoice.TellerLines` shows once, as a bubble at the beat named below; the listeners keep the Eye symbol (R, `ListenStory`) |
+
+##### B76.a Slow, with all the voices (18.3 → 19.7 view h ≈ 23 s at 16.7 s a view hour)
+
+| Beat | What | Time |
+|---|---|---|
+| 1 Hush | the teller lifts both hands, palms out (arms x 120, z ∓30, 0.6 s), and waits; the kids shuffle in 0.03 u | 2 s |
+| 2 The voices | two voices in turn, 3 s each. **The big one:** tall (squash 1.08), chin up +10°, arms wide (z ∓70), a slow heavy bob 0.015 u at 1 Hz, turned yaw +25°. **The small one:** low (squash 0.85), lean 15, hands together at the chest (x 90), head tilted (roll 12°), a quick bob 0.008 u at 3 Hz, turned yaw −25°. Each switch is a 0.3 s `Snap` turn | 6 s |
+| 3 The wind | "And then the wind said... no, wait. Let me do the wind." The teller stops (`Freeze` 0.4 s), wags a finger (arm x 110, z ±15 at 4 Hz, 0.6 s), then sweeps both arms over the head (z ∓150 ↔ ∓110 at 0.8 Hz) with a body sway (roll ±8°) for 2.5 s. The kids copy with their arms up, swaying (roll ±5°) a beat late | 4 s |
+| 4 The voices again | one more round of the two voices | 3 s |
+| 5 The scary part | "This next part is the scary part. Come closer." The teller crouches (squash 0.8, lean 25) and beckons (arm x 80 → 110, twice, 0.5 s each); the kids scoot in 0.04 u and press together (0.04 u apart); a grown-up puts an arm round the nearest kid (B55.b's arm). Still for 1.5 s. Then the jump: arms flung up (z ∓160), hop 0.04 u, 0.12 s `Snap` → `hit`: the kids `Flinch` back 0.03 u, then laugh (`Laugh` 0.6 s) | 5 s |
+| 6 End beat | the hands come down slowly, palms down (arms x 60 → 30, 1 s), then a `Bow` (0.6 s); the grown-ups nod (B7.a's nod, twice); one kid throws an arm up (x 170) and hops: again! | 3 s |
+
+| | |
+|---|---|
+| How it reads on a phone | one standing doll over a row of seated heads: tall, then small, arms over the head for the wind, the crouch and the jump. The kids' flinch runs through the front row. The voices' height change is 0.023 u (6 px) plus the arms: check it at the default zoom, and make it squash 1.12 / 0.8 if it doesn't read |
+| Cheat | R "Story tonight: slow" |
+| Reuse | R `TellFrom`, `TellSlowUntil`, `ListenToTheTeller`, `PeopleVoice.TellerLines`, `Freeze`, `Flinch`, `Laugh`, `Bow`, B7.a's nod, B55.b's arm, B9.c. N `View/Beats/TellerBeats.cs` (the two voices, the wind, the crouch and jump, the kids' copy and scoot), `DollStyle.Tell` |
+| AnimLab | `717-teller-slow.json` (the teller, the fire keeper, 3 kids, 3 grown-ups) |
+
+##### B76.b Short, and gets a laugh (18.3 → 18.85 view h ≈ 9 s, then the laugh, 0.15 h ≈ 2.5 s)
+
+| Beat | What | Time |
+|---|---|---|
+| 1 Listen | one arm up, a finger raised (x 140, 0.4 s); a quick look round (yaw ±30°, 0.6 s) | 1 s |
+| 2 Quick telling | B7.a's talker beat at speed: a beat every 0.8 s, an open hand to the left, then the right, bob 0.015 u | 4 s |
+| 3 The woodpile | only where the woodpile stands: the teller mimes sitting down (squash 0.75, 0.3 s) and jumping up (hop 0.06 u, arms up x 160, 0.12 s `Snap`), then points at the woodpile (`Point`, arm x 90); every listener's head turns to it (0.3 s, 0.05 s apart). "So nobody sat on the woodpile again. The end." No woodpile: two more talker beats | 2 s |
+| 4 The end | both arms out wide, palms up (z ∓80, x 60), a quick bow (0.4 s) → `hit`: the listeners laugh (`LaughPoint` → `Laugh`, as built); the kids rock back (lean −20, 0.4 s) | 2 s |
+| 5 End beat | a hand on the chest (arm x 100, z 20) and two slow nods, mock-serious: "That's the whole story. It's true, too."; a second, bigger laugh (bob 0.02 u); the teller laughs too | 2.5 s |
+
+| | |
+|---|---|
+| How it reads on a phone | a short burst of big gestures, then the whole fire laughing at once; the heads turning to the woodpile point the eye at it |
+| Cheat | R "Story tonight: short" |
+| Reuse | R `TellShortUntil`, `LaughHours`, `LaughPoint`, B7.a's talker, `Point`, `Bow`, `PeopleVoice.TellerLines` (the woodpile line gated as built). N the mime and the head-turn wave (`TellerBeats`) |
+| AnimLab | `717-teller-short.json` (the same cast, the woodpile in view) |
+
+**Ask:** on evenings nobody was picked, the eldest still tells the winter story (`StoryTell`, `DollStyle.Speech`). Give that
+teller the slow manner's gestures too, or keep `Speech` so only the Keeper's pick tells it this way? My pick: keep `Speech`.
+
+#### B77. The pond family's boat (W714.i; approvals row 216)
+
+The boat lies upside down by the fire, flat, apart from the stew pot (decisions.md 2026-11-15, the boat row; the model is
+Kenney's rowing boat, `ConsequenceMeshes.KenneyBoat`). The callback says the children use it as a house. Nobody uses it today,
+so it needs a work use and a life use (people use everything).
+
+| # | Who · when · how often | Beats | Props · reuse | Cheat |
+|---|---|---|---|---|
+| B77.a W Sort the catch on it | a fisher back from fishing (B8), the pond family's first; **often** on fishing days | lays the `Rod` along the hull (arm x 120 → 90, `Pop`; the rod rests on the keel), sits on the hull's end (+0.04 u), sorts the catch from the `FishBasket` (`SortBasket`, 4 s), takes the rod and goes on to the rack. Reads: a doll sitting on the boat with a basket, a rod across it | R `Rod`, `FishBasket`, `SortBasket` (`View/Beats/ChoreBeats.cs`), `Sit` | **"Boat: sort the catch on it"** |
+| B77.b L The kids' house | 2–3 kids, by day; **sometimes** | one kid crouches behind the far side (squash 0.7); another walks up and knocks on the hull (`Knock`, arm x 90, two taps → `hit`, the boat `Jolt`s 1°); the hidden one pops up over the keel (`Peek`, +0.04 u) and waves them round; they sit on it side by side (+0.04 u), swinging (roll ±5° at 1 Hz), 6–10 s. In rain they crouch in its lee (as B54.d's shelter). Reads: a kid knocking on the boat, a head popping up behind it | R `Knock`, `Peek`, `Sit`, `Wave`, B54.d | **"Boat: kids play house"** |
+
+AnimLab: `714-boat-sort.json`, `714-boat-house.json`. Kids safe: the boat lies on clear ground off the mud
+(`SimCore.ConsequenceProps`' boat spot); the kids stay on land beside it, and D's water and fire rules hold.
+
+---
+
 ### Batch 3: assets needed
 
 Every new thing is **built in code** in the house style (`MeshBuilder`, the box's `Palette`, low-poly, no textures), like the
@@ -2286,6 +2535,11 @@ any import).
 | Sound: a grass/reed squeak | B33.d, B47.b | — | none found on Kenney yet; fall-back: the `Flute` cue pitched up | CC0 if found |
 | Sound: a wood knock on the sticks | B36.a | — | Kenney Impact Sounds (`impactWood_light`, already in the project) | CC0 |
 | Sound: bird chirps | B71 | — | `BirdSong` (R, in code) | — |
+| Purple hand dots (a coloured hand dot, shared with B59.h's blue) | B72 | 0.012 | built in code | — |
+| A small basket (the kids') | B72, B75.a | × 0.6–0.7 of `Basket` | R+ `Basket` scaled | — |
+| A thatch bundle on the woodpile's roof | B73 | 0.06 | R `PropKind.Bundle` in straw colour | — |
+| The long table by boards; a new board | B74 | 0.44 + 0.04 a board (max 0.92); board 0.04 × 0.1 | R+ the long table mesh; board built in code | — |
+| The offering basket as a carried prop; its spot at the tree; the empty look (cloth flat) | B75 | the prop's size | R+ `ConsequenceMeshes` "offering_basket" | — |
 
 ---
 
@@ -2305,3 +2559,10 @@ any import).
 11. **Feather colours** (B31.a): white newborn, red marriage, ochre village. OK?
 12. **A kid on a dog's back** (B56.d): fine, or too silly?
 13. **How often** (D): "often / sometimes / rare" as defined. Any thing you want seen more?
+
+Answered 2026-11-15 (decisions.md "Batch 3 approvals"). Added with S-ritual (approvals rows 228–229):
+
+14. **Who walks the offering to the tree** (B75.a): everyone, or the lead and the kids? My pick: the lead, the kids and up to
+    4 grown-ups in the camp and village; the whole town behind the priest.
+15. **The unpicked evening teller** (B76): give the eldest's winter story the slow manner's gestures too, or keep `Speech`?
+    My pick: keep `Speech`.

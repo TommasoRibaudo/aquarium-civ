@@ -260,7 +260,7 @@ Shared rules for all of them (how often, the work still gets done, kids stay saf
 214. **W718.c** The story voice now only uses history lines, so there are fewer story bubbles. My pick: keep it (fits "fewer stories"). · ☐ OK ☐ change: ___
 215. **W715.d** The sandal's book label says "Lost to the stream" but the story now loses it in the mud. My pick: "Lost in the mud". · ☐ OK ☐ change: ___
 216. **A-boat** The pond family's boat is still a placeholder that doesn't read as a boat. My pick: a CC0 Kenney/KayKit boat model, picked and shown to you first. · ☐ OK ☐ change: ___
-217. **S-ritual** Rituals and the teller's manner need staging specs (berrying walk, log line, long table, carrying to the tree, the teller's gestures). My pick: write them into animation-specs.md for your OK, then AnimLab clips. · ☐ OK ☐ change: ___
+217. **S-ritual** Rituals and the teller's manner need staging specs (berrying walk, log line, long table, carrying to the tree, the teller's gestures). My pick: write them into animation-specs.md for your OK, then AnimLab clips. · ☐ OK ☐ change: ___ (covered: specs B72–B77, rows 218–229 at the end of this page)
 
 ## Questions (pick one; my pick first)
 
@@ -277,3 +277,18 @@ Q10. The quiet visit after a death waits up to two dusks for you to be watching 
 Q11. Feather colours (B31.a): white newborn, red marriage, ochre village · ☐ OK ☐ change: ___
 Q12. A kid riding a big dog (B56.d) · ☐ keep ☐ drop
 Q13. Anything you want seen more often than its spec says? · ___
+
+## Rituals and the teller (S-ritual, added after row 217; specs B72–B77 in animation-specs.md)
+
+218. **B72** Ritual: The berrying walk (baskets handed out, the walk out, picking and eating, home in a line, the tip, purple fingers up; a kid's first walk) · ☐ OK ☐ change: ___
+219. **B73** Ritual: The log line (logs passed hand to hand onto the woodpile, the roof mended, the kids' twig line, a dropped log) · ☐ OK ☐ change: ___
+220. **B74** Ritual: The long table at the harvest feast (one board longer each year, the first bowl, bowls down both sides, budge up, bowls up, the song; B54.r and B54.s built inside it) · ☐ OK ☐ change: ___
+221. **B75.a** Ritual: Carrying the offering to the Keeper's tree (or the tallest tree before it stands), the kids' small basket behind, the bow, "don't look back" · ☐ OK ☐ change: ___
+222. **B75.b** Ritual: The empty offering basket in spring (a kid finds it, runs to the fire with it) · ☐ OK ☐ change: ___
+223. **B76.a** Teller: slow, with all the voices (the big and small voice, the wind, the scary part and the jump) · ☐ OK ☐ change: ___
+224. **B76.b** Teller: short, and gets a laugh (quick telling, the woodpile mime, "The end.", the mock-serious nod) · ☐ OK ☐ change: ___
+225. **B77.a** Boat (work): a fisher sorts the catch sitting on the upside-down boat · ☐ OK ☐ change: ___
+226. **B77.b** Boat (life): the kids' house (knock, a head pops up, sitting on it) · ☐ OK ☐ change: ___
+227. Assets for S-ritual: purple hand dots, the kids' small basket, thatch bundle, the long table by boards and a new board, the offering basket carried and at the tree, its empty look (all built in code or R+) · ☐ OK ☐ change: ___
+228. **Ask B75.a** Who walks the offering to the tree. My pick: the lead, the kids and up to 4 grown-ups in the camp and village; the whole town behind the priest · ☐ OK ☐ change: ___
+229. **Ask B76** The unpicked evening teller (the eldest's winter story). My pick: keep `Speech`; only the Keeper's pick gets the manners · ☐ OK ☐ change: ___
