@@ -103,7 +103,7 @@ namespace AquariumCiv.View.PlayTests
             {
                 yield return null;
                 float dt = Time.deltaTime * pv.timeScale;
-                if (pv.Now.hour < hourWas - 12f) days++;
+                if (pv.Now.hour < hourWas - 12f) { days++; AquariumCiv.Game.GameClock.DebugSkipHours(1.0 / 12.0 + 0.001); /* a view day is a sim month: at x16 the view would loop one month five times */ Debug.Log($"[695 work] day {pv.Now.day}: {string.Join(", ", pv.Camp.Started.Where(kv => kv.Key >= CampUse.FieldTag).Select(kv => $"{kv.Key} x{kv.Value}"))}"); }
                 hourWas = pv.Now.hour;
                 foreach (var a in pv.Activities)
                 {
@@ -116,6 +116,7 @@ namespace AquariumCiv.View.PlayTests
             pv.timeScale = 1f;
             var uses = string.Join(", ", pv.Camp.Started.Where(kv => kv.Key >= CampUse.FieldTag).Select(kv => $"{kv.Key} x{kv.Value}"));
             Debug.Log($"[695 work] {days} view days; village uses started: {uses}; work {work:0} s, in a village use {taken:0.0} s; meals {eat:0} ({eatTaken:0.0}); sleep {sleep:0} ({sleepTaken:0.0}, {100f * sleepTaken / Mathf.Max(1f, sleep):0.0} %), bedtime cuts {pv.Camp.SleepCut}; work {100f * taken / Mathf.Max(1f, work):0.0} %; {pv.Camp.VillageStatus()}");
+            Debug.Log("[695 work] why not: " + string.Join(" | ", pv.Camp.WhyNot.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} x{kv.Value}")));
             Assert.GreaterOrEqual(days, 5, "ran 5 view days");
             Assert.Greater(work, 0f);
             Assert.Less(taken / work, 0.05f, "under 5 % of work minutes in a village use");

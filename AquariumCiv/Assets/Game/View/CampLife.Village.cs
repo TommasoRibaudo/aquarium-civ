@@ -383,9 +383,9 @@ namespace AquariumCiv.View
                 var season0 = LifeClock.SeasonOf(now.day);
                 if (season0 is Season.Autumn or Season.Winter) scarecrows.Clear(); // [est] it stays the growing season
             }
-            // bedtime ends a use: whoever's plan has gone to sleep leaves the scene (the work share's sleep: under 2 %)
+            // bedtime and mealtime end a use: whoever's plan has gone to sleep or to eat leaves the scene (the work share: under 2 %)
             foreach (var a in acts)
-                if (a.kind == ActivityKind.Sleep && byKey.TryGetValue(a.who.Key, out var sc) && IsVillageUse(sc.use)) { int m = sc.IndexOf(a.who.Key); if (m >= 0) { sc.parts[m].Clear(); SleepCut++; } }
+                if (a.kind is ActivityKind.Sleep or ActivityKind.Eat && byKey.TryGetValue(a.who.Key, out var sc) && IsVillageUse(sc.use)) { int m = sc.IndexOf(a.who.Key); if (m >= 0) { sc.parts[m].Clear(); SleepCut++; } }
             Index();
             PeopleView.KeepClear.Clear();
             foreach (var sc2 in scenes)
@@ -401,41 +401,47 @@ namespace AquariumCiv.View
             bool town = sim.State.era == Era.Town;
             bool Go(CampUse u, float chance, int thing)
             {
-                if (doneToday.Contains(u) || Roll(u) >= chance || !LifeOk(u) || ThingBusy(thing)) return false;
+                if (doneToday.Contains(u) || !LifeOk(u) || ThingBusy(thing)) return false;
+                if (Roll(u) >= chance) { Why(u, "not today's roll"); return false; }
                 if (triedAt.TryGetValue(u, out float tr) && clock - tr < 3f && clock >= tr) return false;
                 triedAt[u] = clock; return true;
             }
             // B57.c: the harvest dance, the last harvest day (calendar month 10 [est]), late afternoon
-            if (cal == 10 && h >= 15f && h < 17f && Go(CampUse.HarvestDance, 1f, 0) && TryHarvestDance(acts, time, false) == null) return;
+            if (cal == 10 && h >= 15f && h < 17f && Go(CampUse.HarvestDance, 1f, 0) && Tried(CampUse.HarvestDance, TryHarvestDance(acts, time, false))) return;
             // B58.c: kids at the bakery door in the morning (often)
-            if (town && h >= 7f && h < 9.5f && Go(CampUse.CrustWait, Often, ThingBakery) && TryCrust(acts, time, false) == null) return;
+            if (town && h >= 7f && h < 9.5f && Go(CampUse.CrustWait, Often, ThingBakery) && Tried(CampUse.CrustWait, TryCrust(acts, time, false))) return;
             // B57.e: gossip at the well in the morning (often)
-            if (h >= 7.5f && h < 10.5f && Go(CampUse.WellGossip, Often, ThingWell) && TryGossip(acts, time, false) == null) return;
+            if (h >= 7.5f && h < 10.5f && Go(CampUse.WellGossip, Often, ThingWell) && Tried(CampUse.WellGossip, TryGossip(acts, time, false))) return;
             // B57.d (work): a home mended and dressed, about once a season [est: one view day in three]
-            if (h >= 9f && h < 12f && !wet && Go(CampUse.HomeMend, 0.34f, 0) && TryHomeMend(acts, time, false) == null) return;
+            if (h >= 9f && h < 12f && !wet && Go(CampUse.HomeMend, 0.34f, 0) && Tried(CampUse.HomeMend, TryHomeMend(acts, time, false))) return;
             // B58.j (work): a leaning fence post fixed (sometimes), mornings
-            if (h >= 8f && h < 11.5f && !wet && Go(CampUse.FenceFix, Sometimes, 0) && TryFenceFix(acts, time, false) == null) return;
+            if (h >= 8f && h < 11.5f && !wet && Go(CampUse.FenceFix, Sometimes, 0) && Tried(CampUse.FenceFix, TryFenceFix(acts, time, false))) return;
             // B58.g: two who meet in a street stop to talk (often, as B50.b)
-            if (h >= 8f && h < 18f && Go(CampUse.StreetChat, Often, ThingStreet) && TryStreetChat(acts, time, false) == null) return;
+            if (h >= 8f && h < 18f && Go(CampUse.StreetChat, Often, ThingStreet) && Tried(CampUse.StreetChat, TryStreetChat(acts, time, false))) return;
             // B57.i: a break on the log pile, midday (often)
-            if (h >= 11.5f && h < 14f && Go(CampUse.LogPileSit, Often, ThingPile) && TryLogPile(acts, time, false) == null) return;
+            if (h >= 11.5f && h < 14f && Go(CampUse.LogPileSit, Often, ThingPile) && Tried(CampUse.LogPileSit, TryLogPile(acts, time, false))) return;
             if (!day || wet) return;
             // B57.b: a scarecrow, spring after sowing (rare: once a year per field)
-            if (season == Season.Spring && cal >= 3 && Go(CampUse.Scarecrow, Rare, 0) && TryScarecrow(acts, time, false) == null) return;
+            if (season == Season.Spring && cal >= 3 && Go(CampUse.Scarecrow, Rare, 0) && Tried(CampUse.Scarecrow, TryScarecrow(acts, time, false))) return;
             // B57.a: kids run between the rows, summer, crops up (sometimes)
-            if (season == Season.Summer && Go(CampUse.FieldTag, Sometimes, 0) && TryFieldTag(acts, time, false) == null) return;
+            if (season == Season.Summer && Go(CampUse.FieldTag, Sometimes, 0) && Tried(CampUse.FieldTag, TryFieldTag(acts, time, false))) return;
             // B58.k: on the fences (often)
-            if (Go(CampUse.FenceLean, Often, 0) && TryFenceLean(acts, time, false) == null) return;
+            if (Go(CampUse.FenceLean, Often, 0) && Tried(CampUse.FenceLean, TryFenceLean(acts, time, false))) return;
             // B57.f: a pebble down the village well (sometimes)
-            if (!town && Go(CampUse.WellPebble, Sometimes, ThingWell) && TryPebble(acts, time, false) == null) return;
+            if (!town && Go(CampUse.WellPebble, Sometimes, ThingWell) && Tried(CampUse.WellPebble, TryPebble(acts, time, false))) return;
             // B57.g, B57.h: the windmill (sometimes; the shadow race on clear days)
-            if (Go(CampUse.SailWatch, Sometimes, ThingMill) && TrySailWatch(acts, time, false) == null) return;
-            if (weather == Weather.Clear && Go(CampUse.SailShadow, Sometimes, ThingMill) && TrySailShadow(acts, time, false) == null) return;
+            if (Go(CampUse.SailWatch, Sometimes, ThingMill) && Tried(CampUse.SailWatch, TrySailWatch(acts, time, false))) return;
+            if (weather == Weather.Clear && Go(CampUse.SailShadow, Sometimes, ThingMill) && Tried(CampUse.SailShadow, TrySailShadow(acts, time, false))) return;
             // B57.j: a kid balances on a log (sometimes)
-            if (Go(CampUse.LogBalance, Sometimes, ThingLog) && TryLogBalance(acts, time, false) == null) return;
+            if (Go(CampUse.LogBalance, Sometimes, ThingLog) && Tried(CampUse.LogBalance, TryLogBalance(acts, time, false))) return;
             // B58.f: hopscotch in a street (sometimes)
-            if (Go(CampUse.Hopscotch, Sometimes, ThingStreet) && TryHopscotch(acts, time, false) == null) return;
+            if (Go(CampUse.Hopscotch, Sometimes, ThingStreet) && Tried(CampUse.Hopscotch, TryHopscotch(acts, time, false))) return;
         }
+
+        /// <summary>Tests and tuning: why each natural village use last failed to start (counts per reason).</summary>
+        public readonly Dictionary<string, int> WhyNot = new();
+        void Why(CampUse u, string r) { string k = u + ": " + r; WhyNot[k] = WhyNot.TryGetValue(k, out int n) ? n + 1 : 1; }
+        bool Tried(CampUse u, string r) { if (r == null) return true; Why(u, r); return false; }
 
         string StartV(CampScene s, int thing, CampUse use)
         {

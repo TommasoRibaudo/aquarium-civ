@@ -19,10 +19,10 @@
   "seconds": 9,
   "fps": 30,
   "follow": "camp",
-  "span": 2.0,
-  "closeSpan": 1.0,
+  "span": 1.6,
+  "closeSpan": 0.75,
   "yaw": 28,
-  "pitch": 22,
+  "pitch": 28,
   "lead": 0.5
  }
 }
