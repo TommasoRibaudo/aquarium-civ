@@ -30,6 +30,8 @@ namespace AquariumCiv.View
         public Color coat, belly, saddle, patchCol; public float patch; public bool rump, paleFace;
         /// <summary>Antlers (size 0 none .. 1.4 the white stag's great ones), a hide collar, the eye's glint (the white stag's gold).</summary>
         public float antlers; public bool collar; public Color eye;
+        /// <summary>#694 (B25.c): the old dog's grey round the muzzle and the brow.</summary>
+        public bool greyMuzzle;
         /// <summary>#504: 0 = the lean build (wolves, dogs, pups); the deer carry 0.4: a wider and deeper barrel (chest and belly) and a thicker neck.</summary>
         public float fullness;
         /// <summary>Litter-mates and herd-mates differ a little (a hash of the animal).</summary>
@@ -122,7 +124,7 @@ namespace AquariumCiv.View
         };
 
         /// <summary>A key for the mesh cache: looks that build the same meshes share them.</summary>
-        public string Key() => $"{kind}:{shoulder:0.000}:{bodyLen:0.000}:{fullness:0.00}:{legShare:0.00}:{neckLen:0.000}:{earDroop:0.00}:{patch:0.00}:{tailCurl:0.00}:{muzzle:0.00}:{antlers:0.00}:{collar}:{variant % 4}:{headRound:0.00}:{headLen:0.000}:{earSize:0.000}:{ColorUtility.ToHtmlStringRGB(coat)}:{ColorUtility.ToHtmlStringRGB(saddle)}:{ColorUtility.ToHtmlStringRGB(belly)}";
+        public string Key() => $"{kind}:{shoulder:0.000}:{bodyLen:0.000}:{fullness:0.00}:{legShare:0.00}:{neckLen:0.000}:{earDroop:0.00}:{patch:0.00}:{tailCurl:0.00}:{muzzle:0.00}:{antlers:0.00}:{collar}:{variant % 4}:{headRound:0.00}:{headLen:0.000}:{earSize:0.000}:{ColorUtility.ToHtmlStringRGB(coat)}:{ColorUtility.ToHtmlStringRGB(saddle)}:{ColorUtility.ToHtmlStringRGB(belly)}:{greyMuzzle}";
     }
 
     /// <summary>
@@ -466,6 +468,7 @@ namespace AquariumCiv.View
                         float hl = l.headLen, r = hl * 0.42f * l.headRound;
                         var face = l.paleFace ? Color.Lerp(l.coat, l.belly, 0.55f) : l.coat;
                         if (l.kind == QuadKind.Dog && l.patch > 0.5f) face = Color.Lerp(face, l.patchCol, 0.85f); // the blaze
+                        if (l.greyMuzzle) face = Color.Lerp(face, new Color(0.8f, 0.8f, 0.78f), 0.8f); // #694 B25.c: grey round the muzzle
                         mb.Ico(new Vector3(0f, r * 0.25f, hl * 0.18f), r, new Vector3(0.9f, 0.9f, 1.05f), l.coat, 0.05f, l.belly);
                         float ml = hl * 0.38f * l.muzzle;
                         mb.Ico(new Vector3(0f, r * 0.02f, hl * 0.2f + r * 0.6f + ml * 0.5f), Mathf.Max(ml, 0.006f), new Vector3(r * 0.55f / Mathf.Max(ml, 0.006f), r * 0.5f / Mathf.Max(ml, 0.006f), 1f), face, 0.04f);

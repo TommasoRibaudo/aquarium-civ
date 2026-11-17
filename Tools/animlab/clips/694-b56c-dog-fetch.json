@@ -1,0 +1,31 @@
+{
+ "name": "694-b56c-dog-fetch",
+ "notes": "B56.c: a kid throws a stick, the dog runs after it, brings it back in its mouth, drops it at the kid's feet and play-bows; the kid cheers; three throws.",
+ "animlab": {
+  "issue": 694
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 4);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return AquariumCiv.View.CampCheats.BigDogNow();",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11.1f) + \" | \" + AquariumCiv.View.CampCheats.DogStatus();",
+   "return AquariumCiv.View.CampCheats.Later(3.0f, () => AquariumCiv.View.CampCheats.DogFetch());"
+  ],
+  "warm": 0.5,
+  "seconds": 12,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.8,
+  "closeSpan": 0.55,
+  "yaw": 28,
+  "pitch": 35,
+  "lead": 1.0
+ }
+}

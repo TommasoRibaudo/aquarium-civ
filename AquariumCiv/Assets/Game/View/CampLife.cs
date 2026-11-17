@@ -68,7 +68,7 @@ namespace AquariumCiv.View
 
         public void Reset()
         {
-            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree(); ResetLand(); ResetAnimals(); ResetCamp(); ResetProps();
+            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree(); ResetLand(); ResetAnimals(); ResetCamp(); ResetProps(); ResetDogs();
             fxDone = float.NaN; potState = PotState.Cold; potDay = long.MinValue; spitDay = long.MinValue;
         }
 
@@ -97,6 +97,7 @@ namespace AquariumCiv.View
             StepLand(acts, time); // #692 part 3: grass, saplings, rocks, fallen branches
             StepAnimals(acts, time); // #692 part 4: frogs, deer, a rabbit kit, the ducks
             StepCamp(acts, time); // #692 part 5: the rest of the camp
+            StepDogs(acts, time); // #694: the dogs and the wolves in the people's day
             bool fire = meals.HasFire && planner.FireNow != CampFireStage.None;
             StepPot(acts, time, fire);
             if (fire && !OnlyCheats) Trigger(acts, time);
@@ -652,6 +653,7 @@ namespace AquariumCiv.View
             DrawAnimals(root, material, time, groundAt); // #692 part 4: the frog in the hands, the kit, the crumbs
             DrawCamp(root, material, time, groundAt); // #692 part 5: lanterns, toys, strips, gifts, boats, the swing, crowns
             DrawProps(root, material, time, groundAt); // #693: the basket tower, the split log, the ladder, the flour
+            DrawDogs(root, material, time, groundAt); // #694: the dogs, the visiting wolf, the fetch stick
         }
 
         void FireFx(Transform root, float time, Func<float, float, float> groundAt)
@@ -869,6 +871,7 @@ namespace AquariumCiv.View
             DestroyAnimals();
             DestroyCamp();
             DestroyProps();
+            DestroyDogs();
         }
 
         // ================================================================== cheats (SliceDebugPanel "#692")
@@ -876,7 +879,7 @@ namespace AquariumCiv.View
         public string Force(CampUse use)
         {
             int before = scenes.Count;
-            string r = IsPropUse(use) ? ForceProp(use) : IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : IsCampUse(use) ? ForceCamp(use) : ForceUse(use);
+            string r = IsDogUse(use) ? ForceDog(use) : IsPropUse(use) ? ForceProp(use) : IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : IsCampUse(use) ? ForceCamp(use) : ForceUse(use);
             if (scenes.Count > before) forced = scenes[^1];
             return r;
         }

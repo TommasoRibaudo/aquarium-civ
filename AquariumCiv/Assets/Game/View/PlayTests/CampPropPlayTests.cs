@@ -111,7 +111,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return Play(pv, CampUse.PenRails, CampCheats.PenRails, null, null, "");
                 yield return Play(pv, CampUse.PenPet, CampCheats.PenPet, null, null, "");
             }
-            if (pv.Camp.Scenes.Count(s => s.use >= CampUse.BasketTake) > 0) yield return new WaitForSeconds(2f);
+            if (pv.Camp.Scenes.Count(s => s.use >= CampUse.BasketTake && s.use <= CampUse.PenPet) > 0) yield return new WaitForSeconds(2f);
             // the work still gets done: after the uses, a meal still seats people at the fire
             CampLife.OnlyCheats = false;
             PeopleView.DebugSetHour(17.6f);
@@ -166,7 +166,7 @@ namespace AquariumCiv.View.PlayTests
                 }
             }
             pv.timeScale = 1f;
-            var props = string.Join(", ", pv.Camp.Started.Where(kv => kv.Key >= CampUse.BasketTake).Select(kv => $"{kv.Key} x{kv.Value}"));
+            var props = string.Join(", ", pv.Camp.Started.Where(kv => kv.Key >= CampUse.BasketTake && kv.Key <= CampUse.PenPet).Select(kv => $"{kv.Key} x{kv.Value}"));
             Debug.Log($"[693 work] {days} view days; #693 uses started: {props}; {propReal:0} person-seconds in them");
             float allWork = work.Values.Sum(), allTaken = taken.Values.Sum();
             foreach (var kv in work.OrderByDescending(k => k.Value))
