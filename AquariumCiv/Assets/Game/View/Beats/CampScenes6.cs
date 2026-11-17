@@ -46,7 +46,7 @@ namespace AquariumCiv.View
         /// <summary>Sitting on something <paramref name="top"/> high, swinging (roll ±<paramref name="roll"/> deg at 1 Hz).</summary>
         static CampPoseFn SitOn(float top, float roll = 5f, float phase = 0f) => (ref DollPose p, float u, float l) =>
         {
-            Seated(ref p); p.offset.y += PropGeo.SeatLift(top) + 0.03f; p.roll += roll * Mathf.Sin((u + phase) * Mathf.PI * 2f);
+            Seated(ref p); p.lift += PropGeo.SeatLift(top) + 0.03f; p.roll += roll * Mathf.Sin((u + phase) * Mathf.PI * 2f);
         };
 
         // ================================================================== B54.a the baskets: take one, bring it back full (work)
@@ -321,7 +321,7 @@ namespace AquariumCiv.View
             toCam = Unit(toCam, Vector2.down); var acr = Across(toCam);
             var s = new CampScene(CampUse.StumpSplit, t0, stump) { holdFocus = true };
             int m = s.Add(who);
-            var st = stump + acr * 0.16f + toCam * 0.12f; // side on and in front, so the stump and the falling halves show
+            var st = stump + acr * 0.18f + toCam * 0.13f; // side on and in front, so the stump and the falling halves show (B3 tester fixes: 0.22 u out, the chop's lean kept the head over the stump)
             float t = WalkTime(at, st, Walk);
             s.Part(m, 0f, t, st, stump, DollStyle.Stand, null, PropKind.Log, Walk).slot = PropSlot.Arms;
             s.Part(m, t, t + 0.7f, st, stump, DollStyle.Stand, Reach(60f, 20f), PropKind.None); s.b = t + 0.4f; t += 0.7f;
@@ -355,7 +355,7 @@ namespace AquariumCiv.View
             var seat = stump + toCam * 0.06f + acr * 0.035f;
             float t = WalkTime(at, seat + toCam * 0.06f, KidWalk);
             s.Part(m, 0f, t, seat + toCam * 0.06f, stump, DollStyle.Stand, null, PropKind.None, KidWalk);
-            s.Part(m, t, t + 0.4f, seat, seat + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += PropGeo.SeatLift(PropGeo.StumpTop) * In(u, 0f, 0.4f); }, PropKind.None, 0.2f).poseWalking = true;
+            s.Part(m, t, t + 0.4f, seat, seat + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lift += PropGeo.SeatLift(PropGeo.StumpTop) * In(u, 0f, 0.4f); }, PropKind.None, 0.2f).poseWalking = true;
             t += 0.4f; s.a = t;
             s.Part(m, t, t + sitFor, seat, seat + toCam, DollStyle.Sit, SitOn(PropGeo.StumpTop));
             if (friend != Nobody)
@@ -365,7 +365,7 @@ namespace AquariumCiv.View
                 float w = WalkTime(friendAt, fs + toCam * 0.06f, KidWalk);
                 s.Part(f, 0f, w, fs + toCam * 0.06f, stump, DollStyle.Stand, null, PropKind.None, KidWalk);
                 float up = Mathf.Max(w + 0.4f, t + 0.8f);
-                s.Part(f, w, up, fs, fs + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += PropGeo.SeatLift(PropGeo.StumpTop) * In(u, l - 0.4f, 0.4f); }, PropKind.None, 0.2f).poseWalking = true;
+                s.Part(f, w, up, fs, fs + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lift += PropGeo.SeatLift(PropGeo.StumpTop) * In(u, l - 0.4f, 0.4f); }, PropKind.None, 0.2f).poseWalking = true;
                 s.Part(f, up, Mathf.Max(up + 1f, t + sitFor), fs, fs + toCam, DollStyle.Sit, SitOn(PropGeo.StumpTop, 5f, 0.5f));
                 Go(s, f, Mathf.Max(up + 1f, t + sitFor), 1f, fs + toCam * 0.3f - acr * 0.1f, fs + toCam, KidWalk);
             }
@@ -659,7 +659,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < n; i++)
             {
                 s.Part(ms[i], WalkTime(at[i], seats[i], Walk), served[i], seats[i], faces[i], DollStyle.Sit, SitOn(PropGeo.BenchTop, 0f));
-                s.Part(ms[i], served[i], t + EatFor, seats[i], faces[i], DollStyle.EatMeal, (ref DollPose p, float u, float l) => { p.offset.y += PropGeo.SeatLift(PropGeo.BenchTop); }, PropKind.Bowl);
+                s.Part(ms[i], served[i], t + EatFor, seats[i], faces[i], DollStyle.EatMeal, (ref DollPose p, float u, float l) => { p.lift += PropGeo.SeatLift(PropGeo.BenchTop); }, PropKind.Bowl);
             }
             var gs = from + toCam * 0.1f;
             s.Part(g, t, t + EatFor, gs, mid, DollStyle.EatMeal, null, PropKind.Bowl);
@@ -1027,7 +1027,7 @@ namespace AquariumCiv.View
             s.Part(a, 0f, wa, seatA + toCam * 0.06f, seatA, DollStyle.Stand, null, PropKind.None, KidWalk);
             s.Part(b, 0f, wb, seatB + toCam * 0.06f, seatB, DollStyle.Stand, null, PropKind.None, KidWalk);
             float t = Mathf.Max(wa, wb);
-            CampPoseFn climb = (ref DollPose p, float u, float l) => { float k = In(u, 0f, l); p.offset.y += PropGeo.SeatLift(PenTop) * k; p.armL = new Vector3(110f * (1f - k), 0f, -12f); p.armR = new Vector3(110f * (1f - k), 0f, 12f); };
+            CampPoseFn climb = (ref DollPose p, float u, float l) => { float k = In(u, 0f, l); p.lift += PropGeo.SeatLift(PenTop) * k; p.armL = new Vector3(110f * (1f - k), 0f, -12f); p.armR = new Vector3(110f * (1f - k), 0f, 12f); };
             if (wa < t) s.Part(a, wa, t, seatA + toCam * 0.06f, seatA, DollStyle.Stand);
             if (wb < t) s.Part(b, wb, t, seatB + toCam * 0.06f, seatB, DollStyle.Stand);
             s.Part(a, t, t + 0.6f, seatA, seatA + toCam, DollStyle.Stand, climb, PropKind.None, 0.2f).poseWalking = true;
@@ -1062,7 +1062,7 @@ namespace AquariumCiv.View
             foreach (int m in new[] { a, b })
             {
                 var seat = m == a ? seatA : seatB;
-                s.Part(m, end, end + 0.5f, seat + toCam * 0.06f, seat + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += PropGeo.SeatLift(PenTop) * (1f - In(u, 0f, l)); }, PropKind.None, 0.2f).poseWalking = true;
+                s.Part(m, end, end + 0.5f, seat + toCam * 0.06f, seat + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lift += PropGeo.SeatLift(PenTop) * (1f - In(u, 0f, l)); }, PropKind.None, 0.2f).poseWalking = true;
                 Go(s, m, end + 0.5f, 1f, seat + toCam * 0.3f + along * (m == a ? -0.1f : 0.1f), seat + toCam, KidWalk);
             }
             return s;

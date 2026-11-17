@@ -69,8 +69,20 @@ namespace AquariumCiv.View
             if (logMesh != null) Destroy(logMesh);
         }
 
+        /// <summary>B3 tester fixes ("Jump: a town box" threw MissingReferenceException here): the logs lie under box.Root, and a box rebuild
+        /// destroys them while they are still in the pool. A new root (or any destroyed log) drops them from the pool and the lying list.</summary>
+        void Prune()
+        {
+            var r = box != null ? box.Root : null;
+            if (r != laidUnder) { laidUnder = r; foreach (var t in pool) if (t != null) Destroy(t.gameObject); pool.Clear(); lying.Clear(); lastHit.Clear(); tally.Clear(); return; }
+            pool.RemoveAll(t => t == null);
+            lying.RemoveAll(l => l.t == null);
+        }
+        Transform laidUnder;
+
         void Update()
         {
+            Prune();
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             clock += dt;
             findT -= dt;
@@ -96,7 +108,7 @@ namespace AquariumCiv.View
             {
                 lastHit.Remove(who); tally.Leave(who);
                 for (int i = lying.Count - 1; i >= 0; i--)
-                    if (lying[i].who == who) { lying[i].t.gameObject.SetActive(false); lying.RemoveAt(i); }
+                    if (lying[i].who == who) { if (lying[i].t != null) lying[i].t.gameObject.SetActive(false); lying.RemoveAt(i); }
             }
         }
 
@@ -128,6 +140,7 @@ namespace AquariumCiv.View
 
         Transform Take()
         {
+            Prune();
             foreach (var p in pool) if (!p.gameObject.activeSelf) return p;
             if (pool.Count >= PoolSize)
             {   // the oldest log goes

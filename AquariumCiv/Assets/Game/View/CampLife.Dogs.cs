@@ -574,6 +574,13 @@ namespace AquariumCiv.View
             var holder = DogHolder(root);
             float dt = dLast < 0f ? 0f : Mathf.Clamp(time - dLast, 0f, 0.1f); dLast = time;
             var keep = new HashSet<int>();
+            // B3 tester fixes (two dogs lay inside each other): a dog a scene lays down holds its spot; the others' rest spots keep DogApart from it
+            restAt.Clear();
+            foreach (var sd in alive)
+            {
+                var ss = SceneOfDog(sd.id); var sp = ss?.QuadAt(0, time - ss.t0);
+                if (sp != null && sp.act is QuadAct.Lie or QuadAct.Sleep) restAt[sd.id] = sp.pos;
+            }
             for (int i = 0; i < alive.Count; i++)
             {
                 var d = alive[i]; keep.Add(d.id);
@@ -598,6 +605,40 @@ namespace AquariumCiv.View
         }
 
         CampScene SceneOfDog(int id) { CampScene r = null; foreach (var s in scenes) if (s.dog == id) r = s; return r; }
+
+        /// <summary>B3 tester fixes: two dogs' rest spots (lying in the sun by the keeper's tent, asleep by the fire) keep at least this far apart
+        /// (the tester: Burr and Smoke lay 0.06 u apart, one inside the other: they shared a keeper's tent and its 0.06 u step).</summary>
+        public const float DogApart = 0.16f;
+        readonly Dictionary<int, Vector2> restAt = new();
+
+        /// <summary>The rest spot <paramref name="want"/>, moved out to <see cref="DogApart"/> from every other dog's rest spot this frame
+        /// (round the other dog, along the camera's across when they would sit on one point), and kept for the dogs after it.</summary>
+        Vector2 ApartFromDogs(int id, Vector2 want)
+        {
+            var t = want;
+            for (int pass = 0; pass < 4; pass++)
+            {
+                bool moved = false;
+                foreach (var kv in restAt)
+                {
+                    if (kv.Key == id) continue;
+                    var dv = t - kv.Value; float m = dv.magnitude;
+                    if (m >= DogApart - 1e-4f) continue;
+                    var dir = m > 1e-4f ? dv / m : CameraAcross();
+                    t = kv.Value + dir * DogApart; moved = true;
+                }
+                if (!moved) break;
+            }
+            restAt[id] = t;
+            return t;
+        }
+
+        /// <summary>Tests: the dogs drawn lying or asleep now and where (box x, z).</summary>
+        public void DogsResting(List<(int id, Vector2 at)> into)
+        {
+            into.Clear();
+            foreach (var kv in dogActors) if (kv.Value.placed && !kv.Value.moving && kv.Value.act is QuadAct.Sleep or QuadAct.Lie) into.Add((kv.Key, kv.Value.pos));
+        }
 
         void StepDog(Dog d, DogActor a, int idx, float time, float dt, System.Func<float, float, float> groundAt, Transform holder, Material material)
         {
@@ -664,6 +705,7 @@ namespace AquariumCiv.View
                     else { target = SunSpot(d, idx); act = QuadAct.Lie; speed = DogGeo.DogWalk; face = target + CameraAcross(); }
                 }
             }
+            if (part == null && act is QuadAct.Lie or QuadAct.Sleep) target = ApartFromDogs(d.id, target); // B3 tester fixes: each its own spot
             if (st == DogStage.Old) speed = Mathf.Min(speed, DogGeo.DogWalk * 0.7f); // B25.c: the old dog takes its time
             bool carriedMove = false;
             // B56.d: while the kid is on its back the dog carries them: it walks where the rider is drawn (the two never drift apart)

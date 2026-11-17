@@ -107,7 +107,7 @@ namespace AquariumCiv.View
             // to the hull's end and sit on it (+0.04 u), the basket in the left hand, the right sorts
             var end = boat + along * 0.13f + side * 0.02f;
             s.Part(m, t, t + 0.7f, end, end + side, DollStyle.Stand, null, PropKind.FishBasket, Walk);
-            CampPoseFn sitHull = (ref DollPose p, float u, float l) => { p.offset.y += HullTop; };
+            CampPoseFn sitHull = (ref DollPose p, float u, float l) => { p.lift += HullTop; };
             s.Part(m, t + 0.7f, t + 1.1f, end, end + side, DollStyle.Sit, sitHull, PropKind.FishBasket);
             t += 1.1f;
             s.Part(m, t, t + SortFor, end, end + side, DollStyle.SortBasket, sitHull, PropKind.FishBasket);
@@ -190,7 +190,7 @@ namespace AquariumCiv.View
             var seatA = boat + along * 0.05f; var seatB = boat - along * 0.05f;
             s.Part(hide, t, t + 0.8f, seatA, seatA + near, DollStyle.Stand, null, PropKind.None, KidWalk);
             s.Part(knock, t, t + 0.8f, seatB, seatB + near, DollStyle.Stand, null, PropKind.None, KidWalk);
-            CampPoseFn swing(float ph) => (ref DollPose p, float u, float l) => { p.offset.y += HullTop; p.roll += 5f * Mathf.Sin((u + ph) * Mathf.PI * 2f); };
+            CampPoseFn swing(float ph) => (ref DollPose p, float u, float l) => { p.lift += HullTop; p.roll += 5f * Mathf.Sin((u + ph) * Mathf.PI * 2f); };
             s.Part(hide, t + 0.8f, t + 0.8f + sitFor, seatA, seatA + near, DollStyle.Sit, swing(0f));
             s.Part(knock, t + 0.8f, t + 0.8f + sitFor, seatB, seatB + near, DollStyle.Sit, swing(0.35f));
             if (kids.Count > 2)

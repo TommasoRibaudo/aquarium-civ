@@ -40,6 +40,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaTests.cs" /><!-- P7 #220 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ChoiceFixTests.cs" /><!-- visit loop C1 #368 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ConsequencePropTests.cs" /><!-- visit loop C4 #371 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/ConsequencePropRoomTests.cs" /><!-- B3 tester fixes: things apart, no lot over one -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CharmTreeTests.cs" /><!-- #635 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/KeeperChoicesTests.cs" /><!-- visit loop C6 #373 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/MomentQueueTests.cs" /><!-- visit loop C2 #369 -->

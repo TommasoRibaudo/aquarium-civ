@@ -71,6 +71,15 @@ namespace AquariumCiv.View
         }
 
         static int ThingOf(in PropSpot p) => ThingPropBase + p.id;
+
+        /// <summary>B3 tester fixes: the uses whose people sit or stand on their thing by design (the stump's top, the pen's rails, the long
+        /// table's benches and the space under it, the woodpile's eave and its low logs, the fish crate, the boat's hull): PeopleView lets
+        /// them onto that thing's footprint; everyone else walks round it.</summary>
+        static bool SeatsOnThing(CampUse u) => u is CampUse.StumpSit or CampUse.PenRails or CampUse.TableMeal or CampUse.TableUnder or CampUse.WoodShelter
+            or CampUse.CrateWave or CampUse.BoatSort or CampUse.BoatHouse;
+
+        /// <summary>B3 tester fixes: the choice thing (its prop id) this person's use seats them on now, else −1.</summary>
+        public int EnterThing(int key) => byKey.TryGetValue(key, out var s) && SeatsOnThing(s.use) && s.thing >= ThingPropBase ? s.thing - ThingPropBase : -1;
         /// <summary>A direction in the thing's own frame (its yaw), on the ground.</summary>
         static Vector2 Local(in PropSpot p, float lx, float lz) { var w = Quaternion.Euler(0f, p.yaw, 0f) * new Vector3(lx, 0f, lz); return new Vector2(w.x, w.z); }
         /// <summary>Of the thing's two ends along local <paramref name="alongX"/> x (else z), the one nearer the camera.</summary>

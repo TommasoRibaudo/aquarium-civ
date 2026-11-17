@@ -161,8 +161,8 @@ namespace AquariumCiv.View.PlayTests
                     bool cued = pv.Camp.PropCued(a.who.Key);
                     if (cued) propReal += real;
                     if (WorkKind(a.kind)) { work[a.kind] = (work.TryGetValue(a.kind, out var w) ? w : 0f) + dt; if (cued) taken[a.kind] = (taken.TryGetValue(a.kind, out var x) ? x : 0f) + real; }
-                    else if (a.kind == ActivityKind.Eat) { eat += dt; if (cued) eatTaken += real; }
-                    else if (a.kind == ActivityKind.Sleep) { sleep += dt; if (cued) sleepTaken += real; }
+                    else if (a.kind == ActivityKind.Eat) { eat += dt; if (cued) eatTaken += dt; } // B3 tester fixes: the share of the meal's own (view) time spent in a use
+                    else if (a.kind == ActivityKind.Sleep || a.kind == ActivityKind.Nap) { sleep += dt; if (cued) sleepTaken += dt; }
                 }
             }
             pv.timeScale = 1f;
@@ -176,8 +176,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.Greater(allWork, 0f, "somebody worked");
             Assert.Less(allTaken / allWork, 0.05f, "the work still gets done: under 5 % of work minutes in a #693 use");
             foreach (var kv in work) if (kv.Value > 60f) Assert.Less((taken.TryGetValue(kv.Key, out var tk2) ? tk2 : 0f) / kv.Value, 0.05f, kv.Key + ": within 5 %");
-            Assert.Less(eat > 0f ? eatTaken / eat : 0f, 0.05f, "no meal lost");
-            Assert.Less(sleep > 0f ? sleepTaken / sleep : 0f, 0.05f, "no sleep lost");
+            Assert.LessOrEqual(eat > 0f ? eatTaken / eat : 0f, 0.02f, "B3 tester fixes: meals end a use (at most 2 % of meal time in one)");
+            Assert.LessOrEqual(sleep > 0f ? sleepTaken / sleep : 0f, 0.02f, "B3 tester fixes: bedtime ends a use (at most 2 % of sleep in one)");
             Assert.IsNotEmpty(props, "the #693 uses ran by themselves");
             CloseSlice();
         }

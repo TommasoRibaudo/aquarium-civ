@@ -241,8 +241,27 @@ namespace AquariumCiv.Sim.Settle
         public long MonthsWithoutLot => St.noLotSince < 0 ? 0 : S.month - St.noLotSince;
 
         // ---------------- placement ----------------
+        /// <summary>B3 tester fixes (a village laid its fields and houses over the camp's choice things): the cells under every placed thing
+        /// (its footprint plus <see cref="ConsequenceFootprint.Margin"/>) are reserved before lots are laid, so lots, fields, yards and paths
+        /// keep clear of them. Things on a tree hang overhead and reserve nothing.</summary>
+        public void MarkProps()
+        {
+            var props = S.consequenceProps;
+            if (props == null || props.Count == 0) { Map.propBlock = null; return; }
+            Map.propBlock ??= new bool[SiteMap.N];
+            Array.Clear(Map.propBlock, 0, Map.propBlock.Length);
+            foreach (var p in props)
+            {
+                if (!p.placed || p.anchor == PropAnchor.Tree && p.treeCell >= 0) continue;
+                ConsequenceFootprint.Cells(p.kind, p.x, p.z, ConsequenceFootprint.Margin, propCells);
+                foreach (int c in propCells) Map.propBlock[c] = true;
+            }
+        }
+        readonly List<int> propCells = new();
+
         void ProcessNewBuildings(bool migrating)
         {
+            MarkProps();
             var bs = S.buildings;
             for (; St.processed < bs.Count; St.processed++)
             {
@@ -401,6 +420,7 @@ namespace AquariumCiv.Sim.Settle
         /// <summary>Every family yard with a home gets a barn, byre or shed across it (village era on).</summary>
         void Outbuildings()
         {
+            MarkProps();
             foreach (var k in Yards)
             {
                 // From the second home on (or once the family stops growing), so the barn rarely takes a home's place.

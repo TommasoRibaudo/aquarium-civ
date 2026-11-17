@@ -29,6 +29,97 @@ namespace AquariumCiv.Sim
         };
     }
 
+    /// <summary>B3 tester fixes: the ground each choice's thing covers as drawn (ConsequenceMeshes at its 1.5 scale; measured from the meshes'
+    /// bounds 2026-11-17, only what stands on the ground: a charm pole's bough or the roof bird's wings are overhead). Half-extents in the
+    /// thing's own frame (x along its yaw), box units. Props keep this plus <see cref="Margin"/> apart, no lot, field or path covers it, and
+    /// people walk round it (PeopleView).</summary>
+    public static class ConsequenceFootprint
+    {
+        /// <summary>The gap kept between two things' footprints, and between a thing and a lot.</summary>
+        public const float Margin = 0.06f;
+
+        public static void Half(string kind, out float hx, out float hz)
+        {
+            switch (kind)
+            {
+                case ConsequenceKind.Feather: hx = hz = 0.11f; return;
+                case ConsequenceKind.Baskets: hx = 0.24f; hz = 0.12f; return;
+                case ConsequenceKind.WoodpileRoof: hx = 0.27f; hz = 0.2f; return;
+                case ConsequenceKind.NameStone: hx = 0.11f; hz = 0.07f; return;
+                case ConsequenceKind.CharmPole: hx = hz = 0.045f; return;
+                case ConsequenceKind.StewPot: hx = 0.19f; hz = 0.17f; return;
+                case ConsequenceKind.AxeStump: hx = hz = 0.11f; return;
+                case ConsequenceKind.Staff: hx = hz = 0.09f; return;
+                case ConsequenceKind.FlourSacks: hx = 0.22f; hz = 0.12f; return;
+                case ConsequenceKind.RoofBird: hx = hz = 0.05f; return;
+                case ConsequenceKind.LongTable: hx = 0.33f; hz = 0.16f; return;
+                case ConsequenceKind.OfferingBasket: hx = hz = 0.12f; return;
+                case ConsequenceKind.ShoreBoat: hx = 0.2f; hz = 0.18f; return;
+                case ConsequenceKind.FishCrate: hx = hz = 0.09f; return;
+                case ConsequenceKind.NamePeg: hx = hz = 0.04f; return;
+                case ConsequenceKind.GoatPen: hx = 0.18f; hz = 0.16f; return;
+                default: hx = hz = 0.1f; return;
+            }
+        }
+
+        /// <summary>The circle round the footprint at any yaw (its half diagonal is too much for a long thing: the longer half is enough, as
+        /// two things are kept <see cref="Margin"/> apart on top).</summary>
+        public static float Radius(string kind) { Half(kind, out float hx, out float hz); return Math.Max(hx, hz); }
+
+        /// <summary>A thing about as wide as it is long (a stump, a pot, a pen) covers a circle of <see cref="Radius"/>; the long ones (a table,
+        /// the woodpile, the baskets, the sacks, the name stone) a rectangle along their yaw.</summary>
+        public static bool Round(string kind) { Half(kind, out float hx, out float hz); return hx - hz < 0.045f; }
+
+        /// <summary>The point (x, z) lies on the thing's footprint (box units; <paramref name="pad"/> widens it).</summary>
+        public static bool Covers(ConsequenceProp p, float x, float z, float pad = 0f) => Covers(p.kind, p.x, p.z, p.yaw, x, z, pad);
+
+        public static bool Covers(string kind, float px, float pz, float yawDeg, float x, float z, float pad = 0f)
+        {
+            Half(kind, out float hx, out float hz);
+            float dx = x - px, dz = z - pz;
+            if (Round(kind)) { float rr = Math.Max(hx, hz) + pad; return dx * dx + dz * dz <= rr * rr; }
+            double r = yawDeg * Math.PI / 180.0;
+            // Unity's yaw turns local +x toward -z: local x = dx cos + dz sin... inverse of (x cos + z sin, -x sin + z cos)
+            float lx = (float)(dx * Math.Cos(r) - dz * Math.Sin(r)), lz = (float)(dx * Math.Sin(r) + dz * Math.Cos(r));
+            return Math.Abs(lx) <= hx + pad && Math.Abs(lz) <= hz + pad;
+        }
+
+        /// <summary>The circles that cover the footprint, for the people to walk round (PeopleView): one for a round thing, a row along the long
+        /// side for a long one, each wide enough to cover the rectangle's corners; <paramref name="pad"/> is added to each radius (half a doll).</summary>
+        public static void Circles(string kind, float px, float pz, float yawDeg, float pad, List<(float x, float z, float r)> into)
+        {
+            Half(kind, out float hx, out float hz);
+            if (Round(kind)) { into.Add((px, pz, Math.Max(hx, hz) + pad)); return; }
+            int n = (int)Math.Ceiling(hx / hz - 0.01f);
+            float step = 2f * hx / n, r = (float)Math.Sqrt(step * step * 0.25f + hz * hz) + pad;
+            double a = yawDeg * Math.PI / 180.0;
+            float ux = (float)Math.Cos(a), uz = -(float)Math.Sin(a); // local +x in the box (Unity's yaw)
+            for (int i = 0; i < n; i++)
+            {
+                float l = -hx + step * (i + 0.5f);
+                into.Add((px + ux * l, pz + uz * l, r));
+            }
+        }
+
+        /// <summary>The cells (SiteMap) under a thing at (x, z): every cell whose middle lies within its footprint circle plus <paramref name="pad"/>.</summary>
+        public static void Cells(string kind, float x, float z, float pad, List<int> into)
+        {
+            into.Clear();
+            float r = Radius(kind) + pad;
+            int reach = (int)Math.Ceiling(r / SiteMap.Cell) + 1, c0 = SiteMap.CellAt(x, z);
+            if (c0 < 0) return;
+            int i0 = SiteMap.I(c0), j0 = SiteMap.J(c0);
+            for (int j = Math.Max(0, j0 - reach); j <= Math.Min(SiteMap.NZ - 1, j0 + reach); j++)
+                for (int i = Math.Max(0, i0 - reach); i <= Math.Min(SiteMap.NX - 1, i0 + reach); i++)
+                {
+                    int c = SiteMap.Index(i, j);
+                    float dx = SiteMap.CXc(c) - x, dz = SiteMap.CZc(c) - z;
+                    if (dx * dx + dz * dz <= r * r) into.Add(c);
+                }
+            if (into.Count == 0) into.Add(c0);
+        }
+    }
+
     /// <summary>Where a consequence prop goes (#371). Each falls back to the fire if its anchor is not there.</summary>
     public enum PropAnchor
     {
@@ -155,6 +246,8 @@ namespace AquariumCiv.Sim
                 if (!p.placed) TryPlaceProp(p, State.month >= p.dueMonth + PropWithinMonths - 1);
                 else if (p.anchor == PropAnchor.Tree) KeepOnTree(p);
             }
+            MoveCoveredProps(); // B3 tester fixes: a lot, a field or a path laid over a thing moves it (lots now keep clear: old saves, the camp's last lots)
+            Settlement?.MarkProps();
         }
 
         // ---------- #635: charms on a tree ----------
@@ -366,8 +459,10 @@ namespace AquariumCiv.Sim
                 return;
             }
             var future = pen ? FutureWaterMask(PenFromWater) : null; // 2026-11-16: where the living land's pond will reach, too
+            bool poleSet = State.featherPoleSet && State.consequenceProps.Any(q => q.placed && q.kind == ConsequenceKind.Feather);
+            float poleX = State.featherPoleX, poleZ = State.featherPoleZ, poleRoom = PropRoom(p.kind, ConsequenceKind.Feather);
             const byte block = SiteMap.FCanal | SiteMap.FGreen | SiteMap.FCommons | SiteMap.FYard | SiteMap.FRock;
-            for (int pass = 0; pass < 3; pass++)
+            for (int pass = 0; pass < 5; pass++) // B3 tester fixes: passes 3 and 4 look further out before giving up (a thing's whole footprint must be clear)
             {
                 float lo = pass == 0 ? minR : 0f, hi = maxR + pass * 0.3f;
                 int best = -1; float bestRoll = float.MaxValue;
@@ -377,14 +472,18 @@ namespace AquariumCiv.Sim
                     if (Math.Abs(cx) > mx || Math.Abs(cz - Terrain.CZ) > mz) continue;
                     float dx = cx - ax, dz = cz - az, d = (float)Math.Sqrt(dx * dx + dz * dz);
                     if (d < lo || d > hi) continue;
-                    if (map.pond[c] || map.lot[c] != 0 || map.ring[c] != 0 || (map.flags[c] & block) != 0 || map.Forest(c) || map.Reserved(c)) continue;
+                    if (map.pond[c] || map.lot[c] != 0 || map.ring[c] != 0 || (map.flags[c] & block) != 0 || map.Forest(c) || map.ThicketReserved(c)) continue;
                     if (pass < 2 && Settlement.WalkCost(c) == 0) continue;
-                    bool crowded = false;
-                    foreach (var q in State.consequenceProps)
+                    if (!GroundClear(map, p.kind, cx, cz, block)) continue; // B3 tester fixes: the whole footprint, not only its middle cell
+                    bool crowded = poleSet && p.kind != ConsequenceKind.Feather && (poleX - cx) * (poleX - cx) + (poleZ - cz) * (poleZ - cz) < poleRoom * poleRoom; // fb4 #566: the one feather pole
+                    if (!crowded) foreach (var q in State.consequenceProps)
                     {
+                        if (q == p || !q.placed || q.anchor == PropAnchor.Tree && q.treeCell >= 0) continue; // a charm on a tree hangs overhead
+                        if (q.kind == ConsequenceKind.Feather) continue; // every feather stands on the one pole (above)
                         float room = 0.22f + (p.kind == ConsequenceKind.ShoreBoat || q.kind == ConsequenceKind.ShoreBoat ? BoatRoom : 0f); // #714 round 2: nothing hides the boat
                         if (pen || q.kind == ConsequenceKind.GoatPen) room += PenRoom; // 2026-11-16: the pen is wide
-                        if (q != p && q.placed && (q.x - cx) * (q.x - cx) + (q.z - cz) * (q.z - cz) < room * room) { crowded = true; break; }
+                        room = Math.Max(room, PropRoom(p.kind, q.kind)); // B3 tester fixes: two things keep their footprints apart
+                        if ((q.x - cx) * (q.x - cx) + (q.z - cz) * (q.z - cz) < room * room) { crowded = true; break; }
                     }
                     if (crowded) continue;
                     if (pen && (map.waterDist[c] < PenFromWater || future != null && c < future.Length && future[c] || pass < 2 && NearLot(map, c, PenFromLot))) continue; // 2026-11-16: dry ground, clear of the tents (a cramped camp: by a tent before on the fire)
@@ -401,6 +500,60 @@ namespace AquariumCiv.Sim
             x = Math.Max(-mx, Math.Min(mx, ax)); z = Terrain.CZ + Math.Max(-mz, Math.Min(mz, az - Terrain.CZ));
         }
 
+        /// <summary>B3 tester fixes: how far apart two things' middles stand (their footprints' circles and a margin between).</summary>
+        public static float PropRoom(string a, string b) => ConsequenceFootprint.Radius(a) + ConsequenceFootprint.Radius(b) + ConsequenceFootprint.Margin;
+
+        readonly List<int> footCells = new();
+
+        /// <summary>B3 tester fixes: no cell under the thing's footprint (and its margin) is water, a lot, a family ring, a yard or the green.</summary>
+        bool GroundClear(SiteMap map, string kind, float x, float z, byte block)
+        {
+            ConsequenceFootprint.Cells(kind, x, z, ConsequenceFootprint.Margin, footCells);
+            foreach (int c in footCells)
+                if (map.pond[c] || map.lot[c] != 0 && !LotRetired(map.lot[c]) || map.ring[c] != 0 || (map.flags[c] & block) != 0) return false;
+            return true;
+        }
+
+        bool LotRetired(int lotId)
+        {
+            var st = Settlement;
+            if (st == null) return false;
+            foreach (var l in st.Lots) if (l.id == lotId) return l.retired;
+            return false;
+        }
+
+        /// <summary>B3 tester fixes: the thing's ground is now under a lot, a field or a path (laid before the thing stood, or an old save): it is
+        /// moved to a clear spot by its anchor. A thing on a tree hangs overhead and never moves for this.</summary>
+        public bool PropCovered(ConsequenceProp p)
+        {
+            var map = Settlement?.Map;
+            if (map == null || !p.placed || p.anchor == PropAnchor.Tree && p.treeCell >= 0) return false;
+            ConsequenceFootprint.Cells(p.kind, p.x, p.z, 0f, footCells);
+            foreach (int c in footCells)
+                if (map.lot[c] != 0 && !LotRetired(map.lot[c]) || map.Laid(c) || map.tier[c] >= PathNet.PathTier) return true;
+            return false;
+        }
+
+        /// <summary>Moves every covered thing (<see cref="PropCovered"/>) to a clear spot by its anchor. Returns how many moved.</summary>
+        public int MoveCoveredProps()
+        {
+            var list = State.consequenceProps;
+            if (list == null) return 0;
+            int n = 0;
+            foreach (var p in list)
+            {
+                if (!PropCovered(p)) continue;
+                float ax = 0f, az = 0f, minR = 0.12f, maxR = 0.4f;
+                if (!AnchorOf(p, ref ax, ref az, ref minR, ref maxR)) { var keep = p.anchor; p.anchor = PropAnchor.Fire; AnchorOf(p, ref ax, ref az, ref minR, ref maxR); p.anchor = keep; }
+                if (p.kind == ConsequenceKind.ShoreBoat && p.anchor == PropAnchor.Fire) { minR = Math.Max(minR, BoatFromFire); maxR = Math.Max(maxR, BoatFromFire + 1.2f); }
+                if (p.kind == ConsequenceKind.GoatPen && p.anchor == PropAnchor.Fire) { minR = Math.Max(minR, PenFromFire); maxR = Math.Max(maxR, PenFromFire + 0.9f); }
+                PropSpot(p, ax, az, minR, maxR, out p.x, out p.z);
+                n++;
+            }
+            if (n > 0) Settlement?.MarkProps();
+            return n;
+        }
+
         /// <summary>Debug: every option of every choice that has a thing leaves it now (one per option, as if each had been taken),
         /// placed at once. Returns how many stand.</summary>
         public int DebugPlaceEveryProp()
@@ -415,6 +568,7 @@ namespace AquariumCiv.Sim
                     LeaveConsequence(d, def, i);
                 }
             foreach (var p in list) if (!p.placed) TryPlaceProp(p, true);
+            Settlement?.MarkProps();
             return list.Count(p => p.placed);
         }
 

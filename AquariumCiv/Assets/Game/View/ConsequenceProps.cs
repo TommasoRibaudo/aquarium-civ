@@ -739,6 +739,26 @@ namespace AquariumCiv.View
             CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, wide, out px, out pz, fishAngle, onPath);
         }
 
+        /// <summary>B3 tester fixes: the room a thing keeps round its middle at the fire (its footprint and half the margin, never less than the
+        /// old one size for all, so the small things stand as they did).</summary>
+        static float RoomOf(string kind) => Mathf.Max(CampSpots.PropRadius, ConsequenceFootprint.Radius(kind) + ConsequenceFootprint.Margin * 0.5f);
+
+        /// <summary>B3 tester fixes: a thing of this kind at (x, z) would stand on a standing lot (a house, a field, a barn, a yard).</summary>
+        static bool UnderLot(SimCore sim, string kind, float x, float z)
+        {
+            var st = sim.Settlement;
+            if (st == null) return false;
+            ConsequenceFootprint.Cells(kind, x, z, 0f, lotCells);
+            foreach (int c in lotCells)
+            {
+                int id = st.Map.lot[c];
+                if (id == 0) continue;
+                foreach (var l in st.Lots) if (l.id == id) { if (!l.retired) return true; break; }
+            }
+            return false;
+        }
+        static readonly List<int> lotCells = new();
+
         /// <summary>#714 round 2: the boat lines up with the box's lines (the glass), its long side across the way to the fire, never a random yaw.</summary>
         float BoatYaw(float px, float pz) => Mathf.Abs(px - fx) > Mathf.Abs(pz - fz) ? 90f : 0f;
         readonly List<CampSpots.Disc> fixedScratch = new();
@@ -794,6 +814,21 @@ namespace AquariumCiv.View
         {
             if (Instance == null) return;
             Instance.flutterAt = Time.unscaledTime; Instance.flutterAmp = amp;
+        }
+
+        /// <summary>B3 tester fixes: the things standing on the ground now (not the charms hanging on a tree): id, kind, spot (box x, z) and the
+        /// yaw drawn, for PeopleView's solids and the tests. No allocation.</summary>
+        public void Footprints(List<(int id, string kind, Vector2 at, float yaw)> into)
+        {
+            into.Clear();
+            var list = Sim?.State.consequenceProps;
+            if (list == null) return;
+            foreach (var p in list)
+            {
+                if (!p.placed || p.anchor == PropAnchor.Tree && p.treeCell >= 0 || !made.TryGetValue(p.id, out var m) || m.t == null || !m.t.gameObject.activeInHierarchy) continue;
+                var lp = m.t.localPosition;
+                into.Add((p.id, p.kind, new Vector2(lp.x, lp.z), m.t.localEulerAngles.y));
+            }
         }
 
         /// <summary>The things standing now, by prop id (tests).</summary>
@@ -895,23 +930,31 @@ namespace AquariumCiv.View
                 }
                 float px = p.x, pz = p.z;
                 if (p.kind == ConsequenceKind.OfferingBasket && OfferingAtTree(sim, out float ox, out float oz)) { px = ox; pz = oz; } // #693 notes: "The best basket went to the Keeper's tree"
+                float own = RoomOf(p.kind); // B3 tester fixes: its footprint's room, not one size for all
                 if (haveFire && p.anchor == PropAnchor.Fire)
                 {
-                    // #700: never on a path; one that a path grows over (or a moved rack reaches) moves at night, not in front of the player
-                    var onPath = RackSites.PathTest(sim);
+                    // #700: never on a path; one that a path grows over (or a moved rack reaches) moves at night, not in front of the player.
+                    // B3 tester fixes: never on a lot either (a house, a field, a barn), and one a lot was laid over moves at once
+                    var onPath0 = RackSites.PathTest(sim);
+                    System.Func<float, float, bool> onPath = (x, z) => onPath0(x, z) || UnderLot(sim, p.kind, x, z);
                     if (p.kind == ConsequenceKind.ShoreBoat) BoatSpot(planner, onPath, out px, out pz);
                     else if (p.kind == ConsequenceKind.GoatPen) PenSpot(p, onPath, out px, out pz);
-                    else CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, spots, out px, out pz, fishAngle, onPath);
+                    else
+                    {
+                        wide.Clear();
+                        foreach (var d in spots) wide.Add(new CampSpots.Disc(d.x, d.z, d.r + own - CampSpots.PropRadius));
+                        CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, wide, out px, out pz, fishAngle, onPath);
+                    }
                     if (settledSpot.TryGetValue(p.id, out var was) && (was.x != px || was.y != pz))
                     {
                         fixedScratch.Clear(); CampSpots.FireSide(fx, fz, fixedScratch);
                         bool stillOk = CampSpots.Clear(fx, fz, rackAngle, LifePlanner.HideFrameDistance, was.x, was.y, fixedScratch, spots, fishAngle, onPath);
-                        if (stillOk || !RackSites.IsNight(sim)) { px = was.x; pz = was.y; }
+                        if (!UnderLot(sim, p.kind, was.x, was.y) && (stillOk || !RackSites.IsNight(sim))) { px = was.x; pz = was.y; }
                     }
                     settledSpot[p.id] = new Vector2(px, pz);
-                    spots.Add(new CampSpots.Disc(px, pz, p.kind == ConsequenceKind.ShoreBoat ? BoatRadius : p.kind == ConsequenceKind.GoatPen ? PenRadius : CampSpots.PropRadius));
+                    spots.Add(new CampSpots.Disc(px, pz, p.kind == ConsequenceKind.ShoreBoat ? BoatRadius : p.kind == ConsequenceKind.GoatPen ? PenRadius : own));
                 }
-                else if (haveFire) spots.Add(new CampSpots.Disc(p.x, p.z, CampSpots.PropRadius));
+                else if (haveFire) spots.Add(new CampSpots.Disc(px, pz, own));
                 // #635: charms on a tree hang from the drawn crown (no post, not scaled up); a tree not drawn yet: wait a frame
                 bool onTree = p.anchor == PropAnchor.Tree && p.treeCell >= 0;
                 Vector3 treeAt = default; float treeR = 0f;

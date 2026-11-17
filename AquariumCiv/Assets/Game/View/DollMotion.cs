@@ -48,6 +48,9 @@ namespace AquariumCiv.View
     {
         /// <summary>Offset of the feet in the doll's own frame (x right, y up, z back), adult units (scaled by the doll).</summary>
         public Vector3 offset;
+        /// <summary>B3 tester fixes: a lift onto a seat in box units, NOT scaled by the doll (a kid's 0.68 scale sank kids into the stump: a
+        /// seat's height is the thing's, whoever sits on it).</summary>
+        public float lift;
         public float yaw, lean, roll, squash;
         public Vector3 armL, armR;
         public bool extend, hidden, lying;

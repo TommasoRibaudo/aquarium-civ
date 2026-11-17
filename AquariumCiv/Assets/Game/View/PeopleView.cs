@@ -83,6 +83,11 @@ namespace AquariumCiv.View
             /// <summary>#189: the planned point (<see cref="pos"/>) stays the plan's; the doll is drawn at <see cref="drawn"/>, eased aside
             /// by <see cref="offset"/> and kept off the solids. <see cref="heading"/> is the way the plan walks, its index this frame's in the crowd.</summary>
             public Vector2 drawn, offset, heading;
+            /// <summary>B3 tester fixes: the choice thing this person may step onto this frame (a use's seat on it: the stump, the rails, the
+            /// boat, the table's benches), -1 none, -2 every one (a staged moment's own spot, standing).</summary>
+            public int enterProp = -1;
+            /// <summary>B3 tester fixes: the feeder kneels at the fire (signed off 2026-11-14): only the flames' own 0.2 holds her.</summary>
+            public bool atFlames;
             public int crowdIndex = -1;
             /// <summary>0..1: how far the tall grass between a stalking hunter and the camera has flattened (GrassHide); eases in and out.</summary>
             public float grassHide;
@@ -150,6 +155,16 @@ namespace AquariumCiv.View
         readonly CrowdAvoid crowd = new();
         readonly MealDirector meals = new(); // #365 B9: bowls, the poke, the pot
         readonly List<Solid> solids = new();
+        /// <summary>B3 tester fixes: the fires at <see cref="CrowdAvoid.FireKeep"/> (the feet drawn are kept out of them too), and the choice
+        /// things' footprints with the thing each belongs to.</summary>
+        readonly List<Solid> fireSolids = new(), propSolids = new(), oneSolid = new() { default };
+        readonly List<int> propSolidOf = new();
+        readonly List<(int id, string kind, Vector2 at, float yaw)> propFeet = new();
+        readonly List<(float x, float z, float r)> propCircles = new();
+        /// <summary>B3 tester fixes: half a doll's width round a thing's footprint (a person's middle stays this far out of it).</summary>
+        public const float PropPad = 0.035f;
+        /// <summary>B3 tester fixes: every use's, game's and plan's spot keeps this far from a fire's middle (the rituals' MomentStagePlan.FireClear).</summary>
+        public const float FireClear = MomentStagePlan.FireClear;
         /// <summary>#189: how much faster than the plan the drawn doll may catch up with where it should be.</summary>
         const float DrawnSlack = 0.35f;
         /// <summary>#698: a drawn doll this near its tent's spot is in (hidden at once); further off it walks there first.</summary>
@@ -309,9 +324,10 @@ namespace AquariumCiv.View
             foreach (var n in sim.State.notables) if (n.alive) notables[n.id] = n;
             blockers.Clear();
             solids.Clear();
+            fireSolids.Clear();
             foreach (var pc in Box.layout.pieces)
             {
-                if (pc.kind == PieceKind.Fire) solids.Add(new Solid(pc.Pos.x, pc.Pos.y, CrowdAvoid.FireRadius));
+                if (pc.kind == PieceKind.Fire) fireSolids.Add(new Solid(pc.Pos.x, pc.Pos.y, CrowdAvoid.FireKeep)); // B3 tester fixes: FireKeep, not the flames' 0.2
                 if (pc.kind != PieceKind.Fire && pc.kind != PieceKind.LogSeat)
                     blockers.Add((pc.Pos, Mathf.Min(pc.w, pc.d) * 0.5f + 0.05f));
             }
@@ -321,6 +337,19 @@ namespace AquariumCiv.View
                 solids.Add(new Solid(pile.x, pile.z, CampStash.PileExtent));
             }
             solids.AddRange(ExtraSolids); // #694: a sleeping dog
+            // B3 tester fixes: every choice thing standing on the ground is solid (people walked through the woodpile and stood in the pot)
+            propSolids.Clear(); propSolidOf.Clear();
+            var cpv = ConsequencePropsView.Instance;
+            if (cpv != null)
+            {
+                cpv.Footprints(propFeet);
+                foreach (var f in propFeet)
+                {
+                    propCircles.Clear();
+                    ConsequenceFootprint.Circles(f.kind, f.at.x, f.at.y, f.yaw, PropPad, propCircles);
+                    foreach (var c in propCircles) { propSolids.Add(new Solid(c.x, c.z, c.r)); propSolidOf.Add(f.id); }
+                }
+            }
             var st = sim.Settlement;
             int lots = st != null ? st.Lots.Count : 0;
             if (sim.State.month != lotsMonth || lots != lotsCount)
@@ -428,6 +457,8 @@ namespace AquariumCiv.View
                         if (Box != null && Box.land != null && Box.land.IsWater(q.x, q.y)) return false;
                         foreach (var (bp, br) in blockers) if ((q - bp).sqrMagnitude < (br + 0.02f) * (br + 0.02f)) return false;
                         foreach (var sd in solids) if ((q - new Vector2(sd.x, sd.z)).sqrMagnitude < (sd.r + 0.12f) * (sd.r + 0.12f)) return false;
+                        foreach (var sd in fireSolids) if ((q - new Vector2(sd.x, sd.z)).sqrMagnitude < (sd.r + 0.12f) * (sd.r + 0.12f)) return false;
+                        foreach (var sd in propSolids) if ((q - new Vector2(sd.x, sd.z)).sqrMagnitude < (sd.r + 0.06f) * (sd.r + 0.06f)) return false; // B3 tester fixes
                     }
                 return true;
             }
@@ -684,6 +715,14 @@ namespace AquariumCiv.View
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
             target.x = Mathf.Clamp(target.x, -Land.HX + rim, Land.HX - rim);
             target.y = Land.ClampZ(target.y, rim);
+            // B3 tester fixes: no spot is in the fire. A use's, a game's or the plan's spot within FireClear of a fire goes out to that ring (the
+            // rituals' rule); the cook stirs at the pot (FireKeep); the feeder kneels at her signed-off reach (sign-off 2026-11-14).
+            bool feeding = !hidden && !a.moving && !a.enRoute && a.kind == ActivityKind.FeedFire && a.place.kind == PlaceKind.Fire;
+            bool stirring = !hidden && !hunting && !tenting && !a.moving && !a.enRoute && a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && meals.HasFire && meals.PotHot;
+            d.atFlames = feeding;
+            if (!hidden && !feeding) target = OutOfFire(target, stirring ? CrowdAvoid.FireKeep + 0.01f : FireClear);
+            // B3 tester fixes: a use whose seat is on its thing may step onto it; a staged moment's spot is its own (the feast's benches)
+            d.enterProp = hidden ? -1 : camping ? Camp.EnterThing(a.who.Key) : tenting && !started && a.tent == TentPhase.None && !d.walking ? -2 : -1;
 
             // Chase the target: walks are continuous already (the planner's route); taking a slot on arrival glides at a
             // walking pace, never faster than the walk itself. Unseen (indoors) or a clock jump: just be there. A plan that
@@ -919,7 +958,13 @@ namespace AquariumCiv.View
             // t3-hunt: the catch's phases (walk to it, lift, hold up, carry home) flatten a wider patch than the stalk does
             if (d.grassHide > 0f) GrassHide.Add(peopleRoot.TransformPoint(ground), d.grassHide, hunting && a.hunt is HuntPhase.ToCatch or HuntPhase.PickUp or HuntPhase.HoldUp or HuntPhase.CarryBack ? GrassHide.WideRadius : GrassHide.Radius);
             var tilt = pose.lying ? Quaternion.Euler(90f, 0, 0) : Quaternion.Euler(-pose.lean, 0, pose.roll);
-            v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
+            var feet = ground + yawQ * (pose.offset * s) + Vector3.up * pose.lift; // B3 tester fixes: a seat's lift is the thing's height, not scaled
+            {   // B3 tester fixes: a pose's own step (a hop's little circle, a lean) never takes the feet into the fire or onto a thing
+                var fp = new Vector2(feet.x, feet.z); var was = fp;
+                KeepOutAll(d, ref fp);
+                feet.x += fp.x - was.x; feet.z += fp.y - was.y;
+            }
+            v.transform.SetLocalPositionAndRotation(feet, yawQ * tilt);
             float zs = toddling ? dollZoomScale * ToddleFollow.ToddlerScale : dollZoomScale; // 2026-11-06: the little one is littler than a kid
             v.transform.localScale = new Vector3(zs, pose.squash * zs, zs);
             v.ApplyArms(pose);
@@ -1138,11 +1183,51 @@ namespace AquariumCiv.View
             var wanted = d.pos + d.offset;
             if (Box.land.IsWater(wanted.x, wanted.y)) wanted = d.pos; // eased aside, never into the pond
             if (hidden) { d.drawn = wanted; return; }
-            CrowdAvoid.KeepOut(ref wanted.x, ref wanted.y, solids, d.heading.x, d.heading.y);
+            KeepOutAll(d, ref wanted);
             if (jump) { d.drawn = wanted; return; }
             CrowdAvoid.Follow(ref d.drawn.x, ref d.drawn.y, wanted.x, wanted.y, (inst + DrawnSlack) * dt, dt);
-            CrowdAvoid.KeepOut(ref d.drawn.x, ref d.drawn.y, solids, d.heading.x, d.heading.y);
+            KeepOutAll(d, ref d.drawn);
         }
+
+        /// <summary>B3 tester fixes: out of the solids (the stash, a sleeping dog), out of every choice thing but the one this person's use seats
+        /// them on, and last out of the fire (at FireKeep; the feeder at the flames' 0.2), so a thing beside the fire never pushes anyone in.</summary>
+        void KeepOutAll(Doll d, ref Vector2 p)
+        {
+            CrowdAvoid.KeepOut(ref p.x, ref p.y, solids, d.heading.x, d.heading.y);
+            if (d.enterProp != -2)
+                for (int i = 0; i < propSolids.Count; i++)
+                {
+                    if (propSolidOf[i] == d.enterProp) continue;
+                    oneSolid[0] = propSolids[i];
+                    CrowdAvoid.KeepOut(ref p.x, ref p.y, oneSolid, d.heading.x, d.heading.y);
+                }
+            for (int i = 0; i < fireSolids.Count; i++)
+            {
+                var f = fireSolids[i];
+                oneSolid[0] = d.atFlames ? new Solid(f.x, f.z, CrowdAvoid.FireRadius) : f;
+                CrowdAvoid.KeepOut(ref p.x, ref p.y, oneSolid, d.heading.x, d.heading.y);
+            }
+        }
+
+        /// <summary>B3 tester fixes: a spot within <paramref name="r"/> of a fire's middle, moved out to that ring (the way it lay from the fire;
+        /// at the very middle, toward the front glass).</summary>
+        Vector2 OutOfFire(Vector2 p, float r)
+        {
+            foreach (var f in fireSolids)
+            {
+                var c = new Vector2(f.x, f.z); var dv = p - c; float m = dv.magnitude;
+                if (m >= r) continue;
+                p = c + (m > 1e-4f ? dv / m : Vector2.down) * r;
+            }
+            return p;
+        }
+
+        /// <summary>Tests (B3 tester fixes): the fires' middles this frame.</summary>
+        public void FireMiddles(List<Vector2> into) { into.Clear(); foreach (var f in fireSolids) into.Add(new Vector2(f.x, f.z)); }
+        /// <summary>Tests: the choice thing this person may step onto now (-1 none, -2 any: a staged moment's spot).</summary>
+        public int EnterPropOf(int key) => dolls.TryGetValue(key, out var d) ? d.enterProp : -1;
+        /// <summary>Tests: the person feeds the fire now (kneels at the flames, signed off 2026-11-14).</summary>
+        public bool AtFlames(int key) => dolls.TryGetValue(key, out var d) && d.atFlames;
 
         /// <summary>Where in the place this person stands (rule 6: one doll per slot) and what they face there.</summary>
         Vector2 SlotSpot(Doll d, PersonActivity a, Vector2 spot, out Vector2? face)

@@ -382,8 +382,8 @@ namespace AquariumCiv.Tests
             Assert.IsNull(sim.DebugPlayRitual("nope"));
         }
 
-        /// <summary>#721 Editor pass: a ritual played while the Keeper watches is a held moment (no card), named by its line; away, it is
-        /// its line only (a card the first time); a held ritual not staged within its season is History.</summary>
+        /// <summary>#721 Editor pass: a ritual played while the Keeper watches is a held moment (no card), named by its line; away, it is held
+        /// too and waits for the Keeper (B3 tester fixes); a held ritual not staged within its season is History.</summary>
         [Test]
         public void AWatchedRitualIsAHeldMoment_AwayItIsItsLine()
         {
@@ -409,7 +409,12 @@ namespace AquariumCiv.Tests
             away.CatchUp(2.0);
             var line = away.State.chronicle.LastOrDefault(x => SimCore.RitualOfLine(x.kind) == RitualKind.Woodpile);
             Assume.That(line, Is.Not.Null, "autumn came while away");
-            Assert.IsNull(away.MomentOfEntry(line.id), "away: no held moment");
+            // B3 tester fixes: held moments wait for the Keeper (decisions.md 2026-11-06, "hold, stage, ask"): away, the ritual is held too; it
+            // waits while its season lasts and is History after
+            var awayHeld = away.MomentOfEntry(line.id);
+            Assert.IsNotNull(awayHeld, "away: the ritual waits for the Keeper");
+            Assert.AreEqual(away.State.month - line.month <= MomentRules.RitualHoldMonths ? HeldMomentState.Waiting : HeldMomentState.Carded, awayHeld.state,
+                "it waits within its season, History after");
 
             var stale = NewSim(5, new SimConfig { dilemmas = true, moments = true });
             for (int m = 0; m < 12; m++) stale.Advance(1.0 / 12);

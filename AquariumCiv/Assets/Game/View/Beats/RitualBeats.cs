@@ -261,7 +261,7 @@ namespace AquariumCiv.View
                     if (u > 1f) { float pat = Mathf.Abs(Mathf.Sin((u - 1f) * Mathf.PI * 2.5f)) * (u < 1.8f ? 1f : 0f); p.armL = new Vector3(14f, 0f, -14f); p.armR = new Vector3(90f - 15f * pat, 0f, 8f); }
                     break;
                 }
-                case StageBeat.SitLogs: p.offset.y += PropGeo.SeatLift(PropGeo.LogsTop) * In(u, 0f, 0.3f); break;
+                case StageBeat.SitLogs: p.lift += PropGeo.SeatLift(PropGeo.LogsTop) * In(u, 0f, 0.3f); break;
 
                 // ---- B74
                 case StageBeat.CarryBoard: p.armL = new Vector3(80f, 0f, -12f); p.armR = new Vector3(80f, 0f, 12f); if (u < 0.6f && st.Length < 1f) { p.lean += 20f * Bump(u, 0.7f, 0.2f); } break;
@@ -270,7 +270,7 @@ namespace AquariumCiv.View
                     break;
                 case StageBeat.TableSit: case StageBeat.Budge: case StageBeat.PassBowl: case StageBeat.BowlsUp: case StageBeat.SongSway:
                 {
-                    p.offset.y += PropGeo.SeatLift(PropGeo.BenchTop);
+                    p.lift += PropGeo.SeatLift(PropGeo.BenchTop);
                     if (st.beat == StageBeat.Budge && since >= 0f && since < 0.4f) { p.offset.x += 0.015f * Mathf.Sin(Mathf.PI * since / 0.4f); p.offset.y += 0.01f * Mathf.Sin(Mathf.PI * since / 0.4f); }
                     if (st.beat == StageBeat.PassBowl && since >= 0f && since < 0.9f)
                     {
@@ -286,7 +286,7 @@ namespace AquariumCiv.View
                     if (st.beat == StageBeat.SongSway && since >= 0f) p.roll += 6f * Mathf.Sin(2f * Mathf.PI * 0.5f * since) * In(since, 0f, 0.5f);
                     break;
                 }
-                case StageBeat.TableEat: p.offset.y += PropGeo.SeatLift(PropGeo.BenchTop); break;
+                case StageBeat.TableEat: p.lift += PropGeo.SeatLift(PropGeo.BenchTop); break;
                 case StageBeat.Ladle:
                 {
                     float dip = Bump(u, 0.9f, 0.25f);
@@ -294,7 +294,7 @@ namespace AquariumCiv.View
                     break;
                 }
                 case StageBeat.UnderTable: CampScenes6.CrawlPose(ref p, u, len); break;
-                case StageBeat.BenchNap: p.offset.y += PropGeo.SeatLift(PropGeo.BenchTop); break;
+                case StageBeat.BenchNap: p.lift += PropGeo.SeatLift(PropGeo.BenchTop); break;
 
                 // ---- B75.a
                 case StageBeat.LiftOffering:

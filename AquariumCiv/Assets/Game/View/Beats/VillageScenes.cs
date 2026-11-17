@@ -63,7 +63,7 @@ namespace AquariumCiv.View
 
         static CampPoseFn SitOn(float top, float roll = 4f, float phase = 0f) => (ref DollPose p, float u, float l) =>
         {
-            Seated(ref p); p.offset.y += VillageGeo.SeatLift(top) + 0.03f; p.roll += roll * Mathf.Sin((u + phase) * Mathf.PI * 2f);
+            Seated(ref p); p.lift += VillageGeo.SeatLift(top) + 0.03f; p.roll += roll * Mathf.Sin((u + phase) * Mathf.PI * 2f);
         };
 
         /// <summary>A hand to the mouth (B9.a): arm x 140, held 0.6 s, <paramref name="n"/> times from <paramref name="at"/>.</summary>
@@ -500,7 +500,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < n; i++)
             {
                 s.Part(i, 0f, t, fronts[i], seats[i], DollStyle.Stand, null, PropKind.None, Walk);
-                var sitDown = s.Part(i, t, t + 0.5f, seats[i], seats[i] + outDir, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += VillageGeo.SeatLift(VillageGeo.PileLow + 0.006f) * In(u, 0f, l); }, PropKind.None, 0.2f);
+                var sitDown = s.Part(i, t, t + 0.5f, seats[i], seats[i] + outDir, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lift += VillageGeo.SeatLift(VillageGeo.PileLow + 0.006f) * In(u, 0f, l); }, PropKind.None, 0.2f);
                 sitDown.poseWalking = true;
             }
             t += 0.5f; s.a = t;
@@ -521,7 +521,7 @@ namespace AquariumCiv.View
             s.b = t + sitFor;
             for (int i = 0; i < n; i++)
             {
-                var up = s.Part(i, t + sitFor, t + sitFor + 0.5f, fronts[i], fronts[i] + outDir, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += VillageGeo.SeatLift(VillageGeo.PileLow + 0.006f) * (1f - In(u, 0f, l)); }, PropKind.None, 0.2f);
+                var up = s.Part(i, t + sitFor, t + sitFor + 0.5f, fronts[i], fronts[i] + outDir, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lift += VillageGeo.SeatLift(VillageGeo.PileLow + 0.006f) * (1f - In(u, 0f, l)); }, PropKind.None, 0.2f);
                 up.poseWalking = true;
                 Go(s, i, t + sitFor + 0.5f, 1.4f, fronts[i] + outDir * 0.35f + new Vector2(-outDir.y, outDir.x) * (i == 0 ? -0.15f : 0.15f), fronts[i] + outDir, Walk);
             }
@@ -541,13 +541,13 @@ namespace AquariumCiv.View
             var foot = from - along * 0.06f;
             float t = WalkTime(at, foot, KidWalk);
             s.Part(m, 0f, t, foot, to, DollStyle.Stand, null, PropKind.None, KidWalk);
-            var up = s.Part(m, t, t + 0.5f, from, to, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = In(u, 0f, l); p.offset.y += VillageGeo.LogTop * k; p.armL = new Vector3(20f, 0f, -90f * k); p.armR = new Vector3(20f, 0f, 90f * k); }, PropKind.None, 0.15f);
+            var up = s.Part(m, t, t + 0.5f, from, to, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = In(u, 0f, l); p.lift += VillageGeo.LogTop * k; p.armL = new Vector3(20f, 0f, -90f * k); p.armR = new Vector3(20f, 0f, 90f * k); }, PropKind.None, 0.15f);
             up.poseWalking = true; t += 0.5f;
             const float Pace = 0.09f;
             float len = (to - from).magnitude / Pace;
             var walk = s.Part(m, t, t + len, to, to + along, DollStyle.Stand, (ref DollPose p, float u, float l) =>
             {
-                p.offset.y += VillageGeo.LogTop;
+                p.lift += VillageGeo.LogTop;
                 float w = Mathf.Sin(u * 2f * Mathf.PI * 2f);
                 p.roll += 8f * w;
                 p.armL = new Vector3(20f, 0f, -90f + 14f * w); p.armR = new Vector3(20f, 0f, 90f + 14f * w);
@@ -556,7 +556,7 @@ namespace AquariumCiv.View
             var land = to + along * 0.1f;
             var jump = s.Part(m, t, t + 0.45f, land, land + along, DollStyle.Stand, (ref DollPose p, float u, float l) =>
             {
-                float k = u / l; p.offset.y += Mathf.Lerp(VillageGeo.LogTop, 0f, k) + 0.06f * Mathf.Sin(k * Mathf.PI);
+                float k = u / l; p.lift += Mathf.Lerp(VillageGeo.LogTop, 0f, k) + 0.06f * Mathf.Sin(k * Mathf.PI);
                 p.armL = new Vector3(60f, 0f, -60f); p.armR = new Vector3(60f, 0f, 60f);
             }, PropKind.None, 0.25f);
             jump.poseWalking = true; t += 0.45f;
@@ -630,13 +630,13 @@ namespace AquariumCiv.View
                 {
                     int me = i, other = 1 - i;
                     // climb up (0.6 s), stand on top arms up (0.4 s), drop back (0.35 s): squash 0.6, bits fly, the heap dents
-                    var up = s.Part(me, t, t + 0.6f, top[me], top[me] - toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = In(u, 0f, l); p.offset.y += VillageGeo.HayTop * k; p.lean += 25f * Bump(u, 0f, l); p.armL = new Vector3(110f * (1f - k), 0f, -12f); p.armR = new Vector3(110f * (1f - k), 0f, 12f); }, PropKind.None, 0.15f);
+                    var up = s.Part(me, t, t + 0.6f, top[me], top[me] - toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = In(u, 0f, l); p.lift += VillageGeo.HayTop * k; p.lean += 25f * Bump(u, 0f, l); p.armL = new Vector3(110f * (1f - k), 0f, -12f); p.armR = new Vector3(110f * (1f - k), 0f, 12f); }, PropKind.None, 0.15f);
                     up.poseWalking = true;
-                    s.Part(me, t + 0.6f, t + 1f, top[me], top[me] + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += VillageGeo.HayTop; p.armL = new Vector3(165f, 0f, -25f); p.armR = new Vector3(165f, 0f, 25f); });
+                    s.Part(me, t + 0.6f, t + 1f, top[me], top[me] + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lift += VillageGeo.HayTop; p.armL = new Vector3(165f, 0f, -25f); p.armR = new Vector3(165f, 0f, 25f); });
                     s.Part(me, t + 1f, t + 1.6f, top[me], top[me] + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) =>
                     {
                         float k = In(u, 0f, 0.35f);
-                        p.offset.y += Mathf.Lerp(VillageGeo.HayTop, VillageGeo.HayTop * 0.4f, k) + 0.03f * Bump(u, 0f, 0.35f);
+                        p.lift += Mathf.Lerp(VillageGeo.HayTop, VillageGeo.HayTop * 0.4f, k) + 0.03f * Bump(u, 0f, 0.35f);
                         p.lean -= 35f * k; p.squash = 1f - 0.4f * Bump(u, 0.3f, 0.3f);
                         p.armL = new Vector3(150f, 0f, -40f); p.armR = new Vector3(150f, 0f, 40f);
                     });
@@ -646,7 +646,7 @@ namespace AquariumCiv.View
                     // the other laughs at the foot meanwhile
                     if (n > 1) s.Part(other, t, t + 1.6f, foot[other], heap, DollStyle.Laugh);
                     // slide off the front
-                    var down = s.Part(me, t + 1.6f, t + 2.1f, foot[me], heap, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += VillageGeo.HayTop * 0.4f * (1f - In(u, 0f, l)); }, PropKind.None, 0.2f);
+                    var down = s.Part(me, t + 1.6f, t + 2.1f, foot[me], heap, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lift += VillageGeo.HayTop * 0.4f * (1f - In(u, 0f, l)); }, PropKind.None, 0.2f);
                     down.poseWalking = true;
                     if (n > 1) s.Part(other, t + 1.6f, t + 2.1f, foot[other], heap, DollStyle.Stand);
                     t += 2.1f;
@@ -866,7 +866,7 @@ namespace AquariumCiv.View
             foreach (var k in kids) s.Part(k.m, 0f, t, k.seat - inward * 0.06f, k.seat, DollStyle.Stand, null, PropKind.None, KidWalk);
             if (g >= 0) s.Part(g, 0f, WalkTime(grownAt, lean, Walk), lean, lean + inward, DollStyle.Stand, null, PropKind.None, Walk);
             float lift = VillageGeo.SeatLift(VillageGeo.FenceTop);
-            CampPoseFn climb = (ref DollPose p, float u, float l) => { float k = In(u, 0f, l); p.offset.y += lift * k; p.armL = new Vector3(120f * (1f - k), 0f, -12f); p.armR = new Vector3(120f * (1f - k), 0f, 12f); p.lean += 10f * Bump(u, 0f, l); };
+            CampPoseFn climb = (ref DollPose p, float u, float l) => { float k = In(u, 0f, l); p.lift += lift * k; p.armL = new Vector3(120f * (1f - k), 0f, -12f); p.armR = new Vector3(120f * (1f - k), 0f, 12f); p.lean += 10f * Bump(u, 0f, l); };
             foreach (var k in kids) { var c = s.Part(k.m, t, t + 0.8f, k.seat, k.seat - inward, DollStyle.Stand, climb, PropKind.None, 0.12f); c.poseWalking = true; }
             t += 0.8f; s.a = t;
             int i = 0;
@@ -882,7 +882,7 @@ namespace AquariumCiv.View
             }
             foreach (var k in kids)
             {
-                var down = s.Part(k.m, t + sitFor, t + sitFor + 0.5f, k.seat - inward * 0.06f, k.seat - inward, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += lift * (1f - In(u, 0f, l)); }, PropKind.None, 0.2f);
+                var down = s.Part(k.m, t + sitFor, t + sitFor + 0.5f, k.seat - inward * 0.06f, k.seat - inward, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lift += lift * (1f - In(u, 0f, l)); }, PropKind.None, 0.2f);
                 down.poseWalking = true;
                 Go(s, k.m, t + sitFor + 0.5f, 1f, k.seat - inward * 0.35f, k.seat - inward, KidWalk);
             }

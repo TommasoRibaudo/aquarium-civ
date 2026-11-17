@@ -81,6 +81,8 @@ namespace AquariumCiv.View
         }
 
         public bool Busy(int key) => byKey.ContainsKey(key);
+        /// <summary>Tests (B3 tester fixes): the use this person is in now ("-" none).</summary>
+        public string UseOf(int key) => byKey.TryGetValue(key, out var s) ? s.use.ToString() : "-";
         /// <summary>A camp use draws this person now (its part covers this moment; tests: the work share).</summary>
         public bool Cued(int key) => byKey.TryGetValue(key, out var s) && s.TryPart(key, clock, out _, out _);
 
@@ -92,6 +94,7 @@ namespace AquariumCiv.View
             if (now.day != today) { today = now.day; doneToday.Clear(); }
             for (int i = scenes.Count - 1; i >= 0; i--) if (time > scenes[i].End + 0.2f) scenes.RemoveAt(i);
             Index();
+            if (planner != null) CutForMealsAndBed(acts); // B3 tester fixes: every use, as #695's village uses
             if (sim != null && planner != null) StepProps(acts, time); // #693: the choices' things (every era)
             if (sim != null && planner != null) StepRituals(acts, time); // S-ritual: the offering basket's look, the table's boards, purple hands, the boat
             StepTeller(acts); // B76: the Keeper's pick tells tonight's story
@@ -115,9 +118,66 @@ namespace AquariumCiv.View
             foreach (var s in scenes) foreach (int k in s.keys) byKey[k] = s;
         }
 
+        /// <summary>A cheat is starting a use now (its scene is the cheat's: no bedtime or meal check).</summary>
+        bool forcing;
+
+        // ================================================================== B3 tester fixes: meals and bedtime end a use
+        /// <summary>The uses that are the meal's own beats (the pot, the ladle, the long table's meal, the spit's round, warm hands at the
+        /// fire): mealtime does not end them.</summary>
+        static bool MealUse(CampUse u) => u is CampUse.WarmHands or CampUse.Ladle or CampUse.PotFill or CampUse.PotOff or CampUse.PotPeek or CampUse.PotSniff
+            or CampUse.BigPot or CampUse.TableMeal or CampUse.Spit;
+
+        /// <summary>B55.a / B25.b: a wolf at night: the guard and the drive-off are the one use that may keep (or get) a grown-up up past bedtime.
+        /// They go back to bed when it ends (their plan is Sleep, so they walk to the tent).</summary>
+        static bool WakesForWolves(CampUse u) => u is CampUse.DogGuard or CampUse.WolfDriveOff;
+
+        /// <summary>B3 tester fixes (the tester: camp uses held people through meals and bedtime): whoever's plan has gone to sleep (or a nap)
+        /// or to eat leaves the use they are in, as #695's village uses do. Not a cheat's scene; the wolves' guard and drive-off keep their
+        /// grown-ups up; the meal's own beats keep their eaters.</summary>
+        void CutForMealsAndBed(IReadOnlyList<PersonActivity> acts)
+        {
+            bool cut = false;
+            foreach (var a in acts)
+            {
+                bool sleep = a.kind is ActivityKind.Sleep or ActivityKind.Nap, eat = a.kind == ActivityKind.Eat && !OnlyCheats;
+                if (!sleep && !eat || !byKey.TryGetValue(a.who.Key, out var s) || s == forced) continue;
+                if (sleep && WakesForWolves(s.use) || eat && MealUse(s.use)) continue;
+                int m = s.IndexOf(a.who.Key);
+                if (m >= 0 && s.parts[m].Count > 0) { s.parts[m].Clear(); MealBedCut++; cut = true; }
+            }
+            if (cut) Index();
+        }
+
+        /// <summary>Tests: members a meal or bedtime took out of a camp use (B3 tester fixes).</summary>
+        public int MealBedCut { get; private set; }
+        /// <summary>Tests: natural uses not started because one of their people goes to bed or to eat before the use would end.</summary>
+        public int LateStartsRefused { get; private set; }
+
+        /// <summary>B3 tester fixes: no use starts for someone whose plan goes to sleep or to eat before it would end (the cut-off is each
+        /// person's own bedtime and meal: a kid's poke at the fire at 19.5 h held them past bed).</summary>
+        bool EndsInBedOrMeal(CampScene s)
+        {
+            if (WakesForWolves(s.use) || planner == null) return false;
+            bool meal = MealUse(s.use);
+            float scale = Mathf.Max(1f, pv.timeScale);
+            foreach (int k in s.keys)
+            {
+                bool found = false; PersonRef who = default;
+                foreach (var a in pv.Activities) if (a.who.Key == k) { who = a.who; found = true; break; }
+                if (!found) continue;
+                for (int i = 1; i <= 4; i++)
+                {
+                    var p = planner.Plan(who, LifeClock.Advance(now, s.Length * scale * i / 4f));
+                    if (p.kind is ActivityKind.Sleep or ActivityKind.Nap || !meal && p.kind == ActivityKind.Eat) return true;
+                }
+            }
+            return false;
+        }
+
         void Add(CampScene s)
         {
             if (s == null) return;
+            if (!forcing && !OnlyCheats && EndsInBedOrMeal(s)) { LateStartsRefused++; return; } // B3 tester fixes
             // a person in two scenes: the new one wins (a cheat); the old one plays on without them
             foreach (int k in s.keys)
                 if (byKey.TryGetValue(k, out var old) && old != s) { int m = old.IndexOf(k); if (m >= 0) old.parts[m].Clear(); }
@@ -898,7 +958,10 @@ namespace AquariumCiv.View
         public string Force(CampUse use)
         {
             int before = scenes.Count;
-            string r = IsRitualUse(use) ? ForceRitual(use) : IsVillageUse(use) ? ForceVillage(use) : IsDogUse(use) ? ForceDog(use) : IsPropUse(use) ? ForceProp(use) : IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : IsCampUse(use) ? ForceCamp(use) : ForceUse(use);
+            forcing = true;
+            string r;
+            try { r = IsRitualUse(use) ? ForceRitual(use) : IsVillageUse(use) ? ForceVillage(use) : IsDogUse(use) ? ForceDog(use) : IsPropUse(use) ? ForceProp(use) : IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : IsCampUse(use) ? ForceCamp(use) : ForceUse(use); }
+            finally { forcing = false; }
             if (scenes.Count > before) forced = scenes[^1];
             return r;
         }

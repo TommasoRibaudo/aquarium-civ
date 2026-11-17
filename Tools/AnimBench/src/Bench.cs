@@ -143,7 +143,7 @@ namespace AnimBench
             var yawQ = Quaternion.Euler(0, f.BodyYaw + pose.yaw, 0);
             var ground = new Vector3(f.Pos.x, 0f, f.Pos.y);
             var tilt = pose.lying ? Quaternion.Euler(90f, 0, 0) : Quaternion.Euler(-pose.lean, 0, pose.roll);
-            var root = new Frame { O = ground + yawQ * (pose.offset * s), X = Vector3.right, Y = Vector3.up, Z = Vector3.forward };
+            var root = new Frame { O = ground + yawQ * (pose.offset * s) + Vector3.up * pose.lift, X = Vector3.right, Y = Vector3.up, Z = Vector3.forward };
             var body = root.Child(Vector3.zero, yawQ * tilt, new Vector3(1f, pose.squash, 1f));
             f.Body = body;
             float sy = BodyH * 0.92f * s, sx = ShoulderX * s;

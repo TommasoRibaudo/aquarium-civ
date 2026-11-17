@@ -218,9 +218,10 @@ namespace AquariumCiv.Sim
         {
             ConsequencePropStep(); // #371: a choice's thing waiting for its spot is placed (within a game year)
             ApartStep(); // the people who live apart age even if the switch is turned off later (nothing when there are none)
+            RitualStep(); // #721: the kept rituals, each in its season (no dice). B3 tester fixes: a kept custom is the box's, not the choice
+                          // switch's: with the switch off (every Editor run, OnInBuilds) the rituals never played on their own
             if (!Config.dilemmas) return;
             CallbackStep(); // no dice: one due callback per month
-            RitualStep(); // #721: the kept rituals, each in its season (no dice)
             var open = OpenDilemma;
             if (open != null)
             {

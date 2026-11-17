@@ -136,8 +136,8 @@ namespace AquariumCiv.View.PlayTests
                 {
                     bool cued = pv.Camp.Cued(a.who.Key) && pv.Camp.Scenes.Any(s => s.use >= CampUse.PupChew && s.use <= CampUse.KidsClose && s.keys.Contains(a.who.Key));
                     if (WorkKind(a.kind)) { work += dt; if (cued) taken += real; }
-                    else if (a.kind == ActivityKind.Eat) { eat += dt; if (cued) eatTaken += real; }
-                    else if (a.kind == ActivityKind.Sleep) { sleep += dt; if (cued) sleepTaken += real; }
+                    else if (a.kind == ActivityKind.Eat) { eat += dt; if (cued) eatTaken += dt; } // B3 tester fixes: the share of the meal's own (view) time spent in a use
+                    else if (a.kind == ActivityKind.Sleep || a.kind == ActivityKind.Nap) { sleep += dt; if (cued) sleepTaken += dt; }
                 }
             }
             pv.timeScale = 1f;
@@ -146,8 +146,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.GreaterOrEqual(days, 5, "ran 5 view days");
             Assert.Greater(work, 0f);
             Assert.Less(taken / work, 0.05f, "under 5 % of work minutes in a dog use");
-            Assert.Less(eat > 0f ? eatTaken / eat : 0f, 0.05f, "no meal lost");
-            Assert.Less(sleep > 0f ? sleepTaken / sleep : 0f, 0.05f, "no sleep lost");
+            Assert.LessOrEqual(eat > 0f ? eatTaken / eat : 0f, 0.02f, "B3 tester fixes: meals end a use (at most 2 % of meal time in one)");
+            Assert.LessOrEqual(sleep > 0f ? sleepTaken / sleep : 0f, 0.02f, "B3 tester fixes: bedtime ends a use (at most 2 % of sleep in one)");
             Assert.IsNotEmpty(dogs, "the dog uses ran by themselves");
             Assert.AreEqual(0, pv.Camp.VisitorRuleBreaks, "the visiting wolf broke no rule");
             CloseSlice();
