@@ -99,7 +99,17 @@ namespace AquariumCiv.Life
             return (x * c - z * s, x * s + z * c);
         }
 
-        (float x, float z) In(float x, float z, float margin = 0.12f) { ClampIn(ref x, ref z, margin); return (x, z); }
+        /// <summary>Nobody stands in the fire: a ritual's spots keep this far from its middle (u; the fire is drawn ~0.3 across) [est: clip
+        /// 721-berrying-first-walk, a grown-up at the basket stack stood in the flames].</summary>
+        public const float FireClear = 0.3f;
+
+        (float x, float z) In(float x, float z, float margin = 0.12f)
+        {
+            float dx = x - geo.fireX, dz = z - geo.fireZ, d = (float)Math.Sqrt(dx * dx + dz * dz);
+            if (d < FireClear) { if (d < 1e-4f) { dx = Gx; dz = Gz; d = 1f; } x = geo.fireX + dx / d * FireClear; z = geo.fireZ + dz / d * FireClear; }
+            ClampIn(ref x, ref z, margin);
+            return (x, z);
+        }
 
         /// <summary>The crowd for a ritual: the lead first (if any), then the grown and the kids, nearest first, who can get there in
         /// <see cref="MaxGather"/>; at most <paramref name="grown"/> grown-ups (the lead not counted) and <paramref name="kids"/> kids.</summary>

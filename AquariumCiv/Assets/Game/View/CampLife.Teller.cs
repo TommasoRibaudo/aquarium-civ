@@ -43,10 +43,12 @@ namespace AquariumCiv.View
             tellKey = id; tellManner = manner;
             // the beats' clock: real seconds since the telling began, scaled to the spec's 23 s (slow) / 9 s + 2.5 s (short)
             // from when the teller really starts (a chat before it can hold them past TellFrom: the short telling's clip, try 2)
-            float from = Mathf.Clamp(tellerAct.start, LifePlanner.TellFrom, (slow ? LifePlanner.TellSlowUntil : LifePlanner.TellShortUntil) - 0.2f);
+            // (in the camp the supper's sit can hold the teller till ~18.6: the whole telling, the laugh too, is fitted into what is left)
+            float until = slow ? LifePlanner.TellSlowUntil : LifePlanner.TellShortUntil + LifePlanner.LaughHours;
+            float from = Mathf.Clamp(tellerAct.start, LifePlanner.TellFrom, until - 0.2f);
             float real = LifeClock.RealSecondsBetween(from, now.hour);
-            float total = LifeClock.RealSecondsBetween(from, slow ? LifePlanner.TellSlowUntil : LifePlanner.TellShortUntil);
-            tellScale = (slow ? TellerBeats.SlowLength : TellerBeats.ShortLength) / Mathf.Max(1f, total);
+            float total = LifeClock.RealSecondsBetween(from, until);
+            tellScale = (slow ? TellerBeats.SlowLength : TellerBeats.ShortLength + TellerBeats.LaughLength) / Mathf.Max(1f, total);
             tellS = real * tellScale;
             TellerBeats.SpeaksItsOwnLines = true;
             if (tellDay != now.day) { tellDay = now.day; tellSaid.Clear(); tellLastS = -1f; }

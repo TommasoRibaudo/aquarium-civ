@@ -90,6 +90,7 @@ namespace AquariumCiv.Life.Tests
                 foreach (var s in m.steps)
                 {
                     Assert.LessOrEqual(Math.Abs(s.x1), Geo.halfX); Assert.LessOrEqual(Math.Abs(s.z1 - Geo.centreZ), Geo.halfZ, "inside the box");
+                    if (!s.travel) Assert.GreaterOrEqual(D(s.x1, s.z1, Geo.fireX, Geo.fireZ), MomentStagePlan.FireClear - 0.06f, $"{ritual} {m.key} {s.beat}: nobody stands in the fire");
                     // a walk is never faster than a run (the plan's own moves read as walks)
                     if (!s.travel && s.Moves) Assert.Less(Math.Sqrt((s.x1 - s.x0) * (s.x1 - s.x0) + (s.z1 - s.z0) * (s.z1 - s.z0)) / s.Length, 0.75, $"{ritual} {m.role} {m.key} {s.beat} at {s.t0:0.0}-{s.t1:0.0} moves at a walk");
                 }
