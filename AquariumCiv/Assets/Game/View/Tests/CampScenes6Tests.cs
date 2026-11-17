@@ -20,27 +20,13 @@ namespace AquariumCiv.View.Tests
         static DollPose PoseAt(CampPart p, float into) { var d = DollPose.Rest; p.pose?.Invoke(ref d, into, p.Len); return d; }
 
         [Test]
-        public void B54ab_Baskets_TakeAndBringBack_AndTheTower()
+        public void B54a_Baskets_TakeAndBringBack()
         {
             var take = CampScenes6.BasketTake(1, Far, Spot, Spot + new Vector2(0.5f, -0.4f), ToCam, 0f);
             Ok(take);
             CollectionAssert.AreEqual(new[] { 1f, 0f }, Looks(take).ToArray(), "one off the stack, then back");
-            Assert.IsTrue(take.parts[0].Any(p => p.style == DollStyle.PickBerry && p.prop == PropKind.Basket), "picks with the basket");
+            Assert.IsTrue(take.parts[0].Any(p => p.style == DollStyle.PickBerry), "picks"); Assert.Greater(take.b, take.a + CampScenes6.PickFor, "the pile's own basket carried from the lift to the set-down (#693 notes)");
             Assert.GreaterOrEqual(PropFxs(take, PropFx.Jolt), 2, "the stack jolts on the lift and the set-down");
-            var tower = CampScenes6.BasketTower(1, 2, Far, Far2, Spot, ToCam, 0f, out var tw);
-            Ok(tower);
-            CollectionAssert.AreEqual(new[] { 1f, 2f, 3f, 0f }, Looks(tower).ToArray(), "three taken one by one, then all back");
-            for (int i = 1; i < 3; i++) Assert.Greater(tw.set[i], tw.set[i - 1], "stacked one on the other, in turn");
-            Assert.Greater(tw.fall, tw.set[2] + 1f, "it wobbles before it falls");
-            Assert.IsTrue(CampScenes6.TowerBasket(tw, 2, tw.set[2] + 0.2f, Spot, Across, out var top, out _, out bool carried) && !carried);
-            Assert.IsTrue(CampScenes6.TowerBasket(tw, 0, tw.set[2] + 0.2f, Spot, Across, out var bottom, out _, out _));
-            Assert.Greater(top.y, bottom.y + 0.1f, "the third sits two baskets up");
-            CampScenes6.TowerBasket(tw, 2, tw.fall + 1f, Spot, Across, out var fallen, out float roll, out _);
-            Assert.Less(fallen.y, 0.05f, "fallen to the ground"); Assert.Greater(roll, 80f, "on its side");
-            Assert.IsFalse(CampScenes6.TowerBasket(tw, 1, tw.back + 0.1f, Spot, Across, out _, out _, out _), "back on the stack");
-            var arm = PoseAt(tower.parts[0].First(p => p.from >= tw.set[2] - 0.5f && p.from < tw.set[2]), 0.4f);
-            Assert.Greater(arm.armR.x, 130f, "the third on tiptoe, arms up");
-            Assert.IsTrue(tower.parts[0].Any(p => p.style == DollStyle.Laugh) && tower.parts[1].Any(p => p.style == DollStyle.Laugh), "they laugh");
         }
 
         [Test]
@@ -48,8 +34,8 @@ namespace AquariumCiv.View.Tests
         {
             var stack = CampScenes6.WoodStack(1, Far, Spot, ToCam, false, Spot + Vector2.left, 0f);
             Ok(stack);
-            Assert.AreEqual(0, stack.kind, "carries a log in (drawn 1.6x by CampLife, #693 retakes)"); Assert.Greater(PoseAt(stack.parts[0][0], 0.5f).armL.x, 60f, "in both arms");
-            Assert.AreEqual(1, PropFxs(stack, PropFx.Jolt), "the pile jolts when it slides on");
+            Assert.AreEqual(0, stack.kind, "carries a log in (the pile's own log, drawn by CampLife)"); Assert.AreEqual(1, PropFxs(stack, PropFx.Stack), "laid on the pile: part of it (#693 notes)"); Assert.Greater(stack.a, stack.c, "lifted over the front, then laid"); Assert.Greater(PoseAt(stack.parts[0][0], 0.5f).armL.x, 60f, "in both arms");
+            Assert.AreEqual(1, PropFxs(stack, PropFx.Jolt), "the pile jolts when it is laid");
             var fetch = CampScenes6.WoodStack(1, Far, Spot, ToCam, true, Spot + Vector2.left, 0f);
             Ok(fetch);
             Assert.IsTrue(fetch.parts[0].Any(p => p.style == DollStyle.FeedFire), "a wet day: one goes on the fire");
@@ -92,7 +78,7 @@ namespace AquariumCiv.View.Tests
         {
             var stir = CampScenes6.BigPotStir(1, Far, Spot, ToCam, 0f);
             Ok(stir);
-            Assert.IsTrue(stir.parts[0].Any(p => p.style == DollStyle.Stir), "the cook stirs the big pot");
+            Assert.Greater(stir.d, stir.c + 3f, "the ladle in the pot, stirring (#693 notes)"); Assert.Greater(PoseAt(stir.parts[0].First(p => p.from >= stir.c - 0.01f && p.pose != null), 1f).offset.y, CampScenes6.StirBlock * 0.9f, "up on the block");
             var drum = CampScenes6.PotDrum(new[] { 1, 2 }, new[] { Far, Far2 }, 3, Far3, Spot, ToCam, 3.5f, 0f);
             Ok(drum);
             Assert.GreaterOrEqual(PropFxs(drum, PropFx.Jolt), 12, "a beat every 0.25 s");
@@ -137,7 +123,7 @@ namespace AquariumCiv.View.Tests
         {
             var carry = CampScenes6.FlourCarry(1, Far, Spot, Spot + new Vector2(1f, 0.5f), ToCam, 0f);
             Ok(carry);
-            Assert.IsTrue(carry.parts[0].Any(p => p.prop == PropKind.Sack && p.slot == PropSlot.Shoulder), "the sack on the shoulder");
+            Assert.Greater(carry.a, carry.c + 0.5f, "the heap's own sack on the shoulder from the lift to the set-down (#693 notes)");
             Assert.AreEqual(1, carry.fx.Count(f => f.kind == CampFxKind.Dust), "set down: a white puff");
             var fight = CampScenes6.FlourFight(new[] { 1, 2, 3, 4 }, new[] { Far, Far2, Far3, Far + Vector2.up }, Spot, ToCam, 0f);
             Ok(fight);
@@ -177,7 +163,7 @@ namespace AquariumCiv.View.Tests
             var crawl = PoseAt(under.parts[0].First(p => p.poseWalking), 0.5f);
             Assert.Less(crawl.squash, 0.8f, "low"); Assert.Greater(crawl.lean, 40f, "on hands and knees (#693 retakes)");
             Assert.AreEqual(0.15f, under.parts[0].First(p => p.poseWalking).speed, 1e-3f, "0.15 u/s");
-            Assert.IsTrue(under.parts[2].Any(p => p.style == DollStyle.Lie && p.Len >= 6f), "the old one naps on the bench, 6 s");
+            Assert.IsTrue(under.parts[2].Any(p => p.style == DollStyle.Lie && p.Len >= 6f), "the old one naps under the table, 6 s (#693 notes)");
         }
 
         [Test]
@@ -205,22 +191,45 @@ namespace AquariumCiv.View.Tests
             Assert.IsTrue(crate.parts[0].Any(p => p.style == DollStyle.Hang), "hung on the rack");
             var wave = CampScenes6.CrateWave(new[] { 1, 2 }, new[] { Far, Far2 }, Spot, Spot + Vector2.up * 2f, ToCam, 0f);
             Ok(wave);
-            Assert.AreEqual(2, wave.parts[0].Count(p => p.style == DollStyle.Wave), "waves big, twice");
-            var w = PoseAt(wave.parts[0].First(p => p.style == DollStyle.Wave), 0.2f);
-            Assert.Greater(w.armL.x, 150f); Assert.Greater(w.armR.x, 150f); Assert.Greater(w.offset.y, PropGeo.CrateTop * 0.9f, "standing on the crate");
+            Assert.Greater(PoseAt(wave.parts[0].First(p => p.pose != null), 0.6f).lean, 25f, "they peek into the basket (#693 notes)");
+            Assert.Greater(wave.d, wave.c + 2f, "a fish held up and waved");
+            CollectionAssert.AreEqual(new[] { 1f, 0f }, Looks(wave).ToArray(), "the fish out of the basket and back in");
+            var w = PoseAt(wave.parts[1].First(p => p.from >= wave.c && p.pose != null), 0.2f);
+            Assert.Greater(w.armL.x, 150f); Assert.Greater(w.armR.x, 150f, "the other waves both arms");
         }
 
         [Test]
-        public void B54z_zz_NamePeg_ReTieAndTheTap()
+        public void B54z_zz_NamePost_ReCarveAndMeasure()
         {
-            var tie = CampScenes6.PegRetie(1, Far, Spot, ToCam, 0f);
-            Ok(tie);
-            Assert.AreEqual(2, PropFxs(tie, PropFx.Jolt), "untied, tied on again");
-            var tap = CampScenes6.PegTap(1, Spot + Vector2.left * 0.6f, Spot, Spot + Vector2.right * 0.7f, ToCam, 0f);
-            Ok(tap);
-            Assert.IsTrue(tap.parts[0].All(p => p.run), "without stopping");
-            Assert.AreEqual(1, PropFxs(tap, PropFx.Swing), "the peg swings");
-            Assert.Less(tap.Length, 6f, "a tap in passing");
+            var carve = CampScenes6.PostCarve(1, Far, Spot, ToCam, 0f);
+            Ok(carve);
+            Assert.AreEqual(7, carve.fx.Count(f => f.kind == CampFxKind.Chips), "knife scrapes, chips");
+            Assert.AreEqual(1, PropFxs(carve, PropFx.Recut), "the mark freshly cut");
+            var measure = CampScenes6.PostMeasure(1, Far, 2, Far2, Spot, ToCam, 0f);
+            Ok(measure);
+            Assert.AreEqual(1, PropFxs(measure, PropFx.Measure), "a scratch at the kid's height");
+            var back = measure.parts[0].First(p => p.pose != null);
+            Assert.Greater(Vector2.Dot((back.face - back.pos).normalized, ToCam), 0.9f, "the back to the post, facing out");
+            Assert.Greater(PoseAt(measure.parts[1].First(p => p.pose != null), 1f).armR.x, 130f, "a hand on the head, up at the post");
+            Assert.IsTrue(measure.parts[0].Any(p => p.style == DollStyle.Cheer), "the kid looks and cheers");
+            foreach (var l in carve.parts.Concat(measure.parts)) foreach (var p in l) Assert.Greater((p.pos - Spot).magnitude, PropGeo.S * ConsequenceMeshes.PostHalf + 0.028f, "nobody inside the post");
+        }
+
+        /// <summary>#693 notes: "nothing passes through the stone": every spot the cutter, the tracing kid and the grown-up stand at is outside the
+        /// runestone's real footprint, by a doll's half-width and its forward reach (lean included) along the face.</summary>
+        [Test]
+        public void B54ef_NoOneInsideTheRunestone()
+        {
+            float hx = ConsequenceMeshes.StoneHalfX * PropGeo.S, hz = ConsequenceMeshes.StoneHalfZ * PropGeo.S;
+            foreach (var s in new[] { CampScenes6.NameCut(1, Far, Spot, ToCam, 0f), CampScenes6.NameTrace(1, Far, 2, Far2, Spot, ToCam, 0f) })
+                foreach (var l in s.parts)
+                    foreach (var p in l)
+                    {
+                        var d = p.pos - Spot; // the face looks along ToCam (local z), the slab's width along Across
+                        bool inside = Mathf.Abs(Vector2.Dot(d, Across)) < hx + 0.03f && Mathf.Abs(Vector2.Dot(d, ToCam)) < hz + 0.03f + 0.075f;
+                        Assert.IsFalse(inside, $"{s.use}: a spot {d} inside the stone or within an arm of its face");
+                    }
+            Assert.GreaterOrEqual(CampScenes6.NameKneel, hz + 0.03f + 0.075f, "the kneel leaves the stone an arm's length away");
         }
 
         [Test]
@@ -239,7 +248,7 @@ namespace AquariumCiv.View.Tests
             }
             Assert.Less(ConsequenceMeshes.Build(ConsequenceKind.Baskets, 1).vertexCount, ConsequenceMeshes.Build(ConsequenceKind.Baskets).vertexCount, "a basket fewer");
             Assert.Greater(ConsequenceMeshes.Build(ConsequenceKind.NameStone, 1).vertexCount, ConsequenceMeshes.Build(ConsequenceKind.NameStone).vertexCount, "a row more");
-            Assert.AreEqual(CampUse.PegTap, System.Enum.GetValues(typeof(CampUse)).Cast<CampUse>().Max(), "#693's uses are the last");
+            Assert.AreEqual(CampUse.PenPet, System.Enum.GetValues(typeof(CampUse)).Cast<CampUse>().Max(), "#693's uses (and the goat pen's) are the last");
             foreach (CampUse u in System.Enum.GetValues(typeof(CampUse))) if (u >= CampUse.BasketTake) Assert.IsNotEmpty(CampLife.KindFor(u), u + " has its thing");
         }
     }

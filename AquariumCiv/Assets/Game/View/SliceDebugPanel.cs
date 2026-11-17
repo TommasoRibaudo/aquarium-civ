@@ -443,7 +443,6 @@ namespace AquariumCiv.View
             Row(); // #693
             if (Btn("#693: every choice's thing")) last = CampCheats.EveryThing(); // #693
             if (Btn("Baskets: take and bring back")) last = CampCheats.BasketTake(); // #693 B54.a
-            if (Btn("Kids stack the baskets")) last = CampCheats.BasketTower(); // #693 B54.b
             if (Btn("Woodpile: stack / fetch")) last = CampCheats.WoodStack(); // #693 B54.c (alternates)
             if (Btn("Rain at the woodpile")) last = CampCheats.WoodShelter(); // #693 B54.d (alternates: rain / kids sit on the logs)
             EndRow();
@@ -474,8 +473,15 @@ namespace AquariumCiv.View
             Row(); // #693
             if (Btn("Fish crate to the rack")) last = CampCheats.CrateFish(); // #693 B54.x
             if (Btn("Kids wave across the pond")) last = CampCheats.CrateWave(); // #693 B54.y
-            if (Btn("Re-tie the name tag")) last = CampCheats.PegRetie(); // #693 B54.z
-            if (Btn("Kid taps the name peg")) last = CampCheats.PegTap(); // #693 B54.zz
+            if (Btn("Re-carve the name post")) last = CampCheats.PostCarve(); // #693 B54.z (notes: the carved name post)
+            if (Btn("Kids measure their height")) last = CampCheats.PostMeasure(); // #693 B54.zz (notes)
+            EndRow();
+            Row(); // #693 goat pen (2026-11-16 "Bring a pen back")
+            if (Btn("Goat pen with its goat")) last = CampCheats.GoatPen(); // stands every choice's thing, the pen and its goat among them
+            if (Btn("Goat: gnaw the corner")) last = CampCheats.GoatNibble();
+            if (Btn("Mend the goat pen")) last = CampCheats.PenMend(); // #693 B54.v
+            if (Btn("Kids at the goat pen")) last = CampCheats.PenRails(); // #693 B54.w
+            if (Btn("Kid pets the goat")) last = CampCheats.PenPet(); // B58.d at the pen
             EndRow();
         }
 

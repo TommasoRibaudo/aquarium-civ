@@ -9,6 +9,8 @@
   "ecology": 1,
   "setup": [
    "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 4);",
+   "return AquariumCiv.View.CampCheats.GrowTree();",
+   "return \"waiting for the tree\";",
    "return AquariumCiv.View.CampCheats.OnlyThing(\"offering_basket\");",
    "return \"waiting for the things\";",
    "return \"waiting for the things\";",
@@ -22,7 +24,7 @@
   "span": 1.6,
   "closeSpan": 0.9,
   "yaw": 28,
-  "pitch": 35,
+  "pitch": 30,
   "lead": 4.0
  }
 }

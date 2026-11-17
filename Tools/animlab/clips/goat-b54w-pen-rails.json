@@ -1,0 +1,28 @@
+{
+ "name": "goat-b54w-pen-rails",
+ "notes": "B54.w: two kids sit on the pen's near rail swinging their legs; a third crawls in through the gnawed gap, waves inside, and crawls back out.",
+ "animlab": {
+  "issue": "goat-pen"
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 4);",
+   "return AquariumCiv.View.CampCheats.GoatPen(true);",
+   "return \"waiting for the pen\";",
+   "return \"waiting for the pen\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11.0f);",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.PenRails());"
+  ],
+  "warm": 0.5,
+  "seconds": 14,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.8,
+  "yaw": 28,
+  "pitch": 35,
+  "lead": 1.0
+ }
+}
