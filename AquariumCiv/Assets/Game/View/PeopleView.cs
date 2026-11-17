@@ -742,7 +742,7 @@ namespace AquariumCiv.View
             if (hidden) style = DollStyle.Hidden;
             if (!walking && !hidden) style = BerryMotion.Retarget(style, a.kind, a.place.kind); // #361: berries and roots you can see
             if (playing) style = playCue.style; // #358
-            if (camping) style = walking && campMoves ? (campPart.run ? DollStyle.Run : DollStyle.Walk) : campPart.style; // #692
+            if (camping) style = walking && campMoves && !campPart.carried ? (campPart.run ? DollStyle.Run : DollStyle.Walk) : campPart.style; // #692; #694: a kid riding a dog is carried (no steps)
             else if (!walking && a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && meals.HasFire && !meals.PotHot) style = DollStyle.Sit; // #692 (B30.e): no pot on tonight: the cook sits by the fire
             if (d.atTower && !walking) style = d.towerStyle; // #404
             if (toddling) style = DollStyle.Toddle; // 2026-11-06: it toddles, walking or not

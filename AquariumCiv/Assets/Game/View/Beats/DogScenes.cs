@@ -29,7 +29,7 @@ namespace AquariumCiv.View
         /// <summary>B25.b: the bark's hop forward (each of three) and the bark's beat.</summary>
         public const float BarkHop = 0.03f, BarkEvery = 0.6f;
         /// <summary>B24.b: the grown-up chases the fish thief this far and gives up; the thief runs this far.</summary>
-        public const float ChaseFor = 0.5f, ThiefRun = 0.75f;
+        public const float ChaseFor = 0.5f, ThiefRun = 0.65f;
         /// <summary>B55.b: the kid presses in this close to the grown-up.</summary>
         public const float PressIn = 0.04f;
         /// <summary>The visiting wolf comes in from this far beyond its stop (out of the dark).</summary>
@@ -48,8 +48,6 @@ namespace AquariumCiv.View
         /// <summary>The wolf comes within this of the camp's edge; the people walk this far toward it; never nearer than this to them; it
         /// backs off this far; it trots away to this far from the fire (or the land's end).</summary>
         public const float NearEdge = 1.2f, Step = 0.3f, MinGap = 0.6f, BackOff = 0.2f, AwayTo = 2.6f;
-        /// <summary>How far past the camp's edge the wolf stops [est: inside the 1.2 u, far enough to stay in the dark].</summary>
-        public const float StopOut = 0.85f;
         /// <summary>The check's sample step along the wolf's path.</summary>
         public const float Sample = 0.04f;
 
@@ -88,15 +86,19 @@ namespace AquariumCiv.View
             var fire = new Vector2(g.fireX, g.fireZ);
             var d0 = toward - fire; d0 = d0.sqrMagnitude > 1e-6f ? d0.normalized : Vector2.up;
             float edge = CampEdge(g);
-            float stopR = Mathf.Max(WolfRules.FirelightEdge + 0.05f, edge + StopOut);
+            float stopR = Mathf.Max(WolfRules.FirelightEdge + 0.05f, edge + NearEdge - 0.05f);
             for (int k = 0; k < 24; k++)
             {
                 float deg = (k % 2 == 0 ? 1 : -1) * ((k + 1) / 2) * 15f;
                 var dir = Rot(d0, deg);
-                var stop = fire + dir * stopR;
+                // #694 clips: it stops at the first clear point past the firelight's edge on its way in (outside the tent ring), so the fire,
+                // the people and the wolf share one frame; never past the camp's edge + 1.2
+                float r = WolfRules.FirelightEdge + 0.1f;
+                while (r < stopR && WolfRules.InTentRing(fire.x + dir.x * r, fire.y + dir.y * r, g.ring)) r += 0.05f;
+                var stop = fire + dir * Mathf.Min(r, stopR);
                 // the land may end before the stop: pull it in, never nearer than the firelight's edge
                 while (!WolfRules.OnLand(stop.x, stop.y) && (stop - fire).magnitude > WolfRules.FirelightEdge + 0.05f) stop -= dir * 0.05f;
-                if (!WolfRules.OnLand(stop.x, stop.y)) continue;
+                if (!WolfRules.OnLand(stop.x, stop.y) || WolfRules.InTentRing(stop.x, stop.y, g.ring)) continue;
                 var start = stop + dir * DogGeo.WolfFrom;
                 while (!WolfRules.OnLand(start.x, start.y) && (start - stop).magnitude > 0.1f) start -= dir * 0.05f;
                 var back = stop + dir * BackOff;
@@ -206,7 +208,7 @@ namespace AquariumCiv.View
         {
             float off = slideAt >= 0f ? In(t, slideAt, 0.5f) : 0f;
             float up = In(t, 0f, 0.4f) * (1f - off);
-            Seated(ref p); p.offset.y = Mathf.Lerp(0f, DogGeo.RideSeat - 0.02f, up) + 0.006f * Mathf.Abs(Mathf.Sin(t * 5f)) * up;
+            Seated(ref p); p.offset.y = Mathf.Lerp(-0.03f, DogGeo.RideSeat - 0.01f, up) + 0.006f * Mathf.Abs(Mathf.Sin(t * 5f)) * up;
             p.squash = Mathf.Lerp(1f, 0.8f, up);
             p.armL = Lerp(p.armL, new Vector3(60f, 0f, -10f), up); p.armR = Lerp(p.armR, new Vector3(60f, 0f, 10f), up);
             p.roll += 12f * off;
@@ -292,10 +294,10 @@ namespace AquariumCiv.View
 
         /// <summary>B24.b: the pup goes to the embers, sniffs, and sleeps curled there (<c>SleepCurl</c>) by the fire ring.
         /// <see cref="CampScene.a"/>: asleep.</summary>
-        public static CampScene PupSleep(int dog, Vector2 dogAt, Vector2 fire, Vector2 toCam, float sleepFor, float t0)
+        public static CampScene PupSleep(int dog, Vector2 dogAt, Vector2 fire, Vector2 toCam, float sleepFor, float t0, Vector2? at = null)
         {
             toCam = Unit(toCam, Vector2.down);
-            var spot = fire + Rot(toCam, 55f) * DogGeo.EmberSleep;
+            var spot = at ?? fire + Rot(toCam, 55f) * DogGeo.EmberSleep;
             var s = new CampScene(CampUse.PupSleep, t0, (spot + fire) * 0.5f) { holdFocus = true, dog = dog };
             float w = QTime(dogAt, spot, DogGeo.DogWalk);
             s.Quad(Dog, 0f, w, spot, fire, QuadAct.Stand, DogGeo.DogWalk);
@@ -312,7 +314,7 @@ namespace AquariumCiv.View
         public static CampScene PupSteal(int dog, Vector2 dogAt, Vector2 stash, int grown, Vector2 grownAt, Vector2 away, Vector2 toCam, float t0)
         {
             toCam = Unit(toCam, Vector2.down); away = Unit(away, Across(toCam));
-            var s = new CampScene(CampUse.PupSteal, t0, stash) { dog = dog, followReach = 0.5f };
+            var s = new CampScene(CampUse.PupSteal, t0, stash + away * (DogGeo.ThiefRun * 0.45f)) { dog = dog, holdFocus = true }; // the stash and the getaway in one frame
             var at = stash + toCam * 0.07f;
             float w = QTime(dogAt, at, DogGeo.DogWalk);
             s.Quad(Dog, 0f, w, at, stash, QuadAct.HeadDown, DogGeo.DogWalk);
@@ -353,7 +355,7 @@ namespace AquariumCiv.View
             s.Quad(Dog, 0f, w, at, meat, QuadAct.HeadDown, DogGeo.DogWalk);
             s.Quad(Dog, w, w + 1.2f, at, meat, QuadAct.Sniff);
             float t = w + 1.2f;
-            var st = meat + toCam * 0.06f + across * 0.15f;
+            var st = meat - toCam * 0.07f + across * 0.13f; // behind the meat from the camera, so the pup stays in view
             if (grown >= 0)
             {
                 int m = s.Add(grown);
@@ -385,7 +387,7 @@ namespace AquariumCiv.View
         {
             toCam = Unit(toCam, Vector2.down); along = Unit(along, Across(toCam));
             var end = start + along * 0.9f;
-            var s = new CampScene(CampUse.PupRunAlong, t0, (start + end) * 0.5f) { dog = dog, followReach = 0.45f };
+            var s = new CampScene(CampUse.PupRunAlong, t0, (start + end) * 0.5f) { dog = dog, holdFocus = true };
             float t = 0f; var ms = new List<int>();
             for (int i = 0; i < kids.Count && i < 2; i++)
             {
@@ -426,7 +428,7 @@ namespace AquariumCiv.View
             toCam = Unit(toCam, Vector2.down);
             var way = Unit(rabbits - hunterAt, Across(toCam));
             var side = Across(way); if (Vector2.Dot(side, toCam) < 0f) side = -side; // the dog on the camera's side
-            var s = new CampScene(CampUse.DogHunt, t0, hunterAt) { dog = dog, followReach = 0.6f };
+            var s = new CampScene(CampUse.DogHunt, t0, Vector2.Lerp(hunterAt, rabbits, 0.55f)) { dog = dog, holdFocus = true };
             int m = s.Add(hunter);
             s.Part(m, 0f, 1.3f, hunterAt, rabbits, DollStyle.Stand, WhistlePose, PropKind.Spear);
             var heel = hunterAt + side * 0.08f;
@@ -481,7 +483,7 @@ namespace AquariumCiv.View
         public static CampScene DogGuard(int dog, Vector2 dogAt, in WolfDriveOff.Plan plan, Vector2 fire, int grown, Vector2 grownAt, Vector2 toCam, float t0)
         {
             toCam = Unit(toCam, Vector2.down);
-            var s = new CampScene(CampUse.DogGuard, t0, Vector2.Lerp(fire, plan.wolfStop, 0.55f)) { holdFocus = true, dog = dog };
+            var s = new CampScene(CampUse.DogGuard, t0, Vector2.Lerp(fire, plan.wolfStop, 0.4f)) { holdFocus = true, dog = dog };
             float wIn = QTime(plan.wolfStart, plan.wolfStop, DogGeo.WolfTrot);
             s.Quad(Wolf, 0f, wIn, plan.wolfStop, fire, QuadAct.Stand, DogGeo.WolfTrot);
             var guard = fire + plan.dir * Mathf.Max(0.35f, (plan.wolfStop - fire).magnitude * 0.45f);
@@ -506,7 +508,7 @@ namespace AquariumCiv.View
             if (grown >= 0)
             {
                 int m = s.Add(grown);
-                s.Stay(m, 0f, t, DollStyle.Sit);
+                s.Part(m, 0f, t, grownAt, fire, DollStyle.Sit, null, PropKind.None, Walk); // at the fire (walks there first when the cheat brings them)
                 var look = grownAt + Unit(plan.wolfStop - grownAt, plan.dir) * 0.05f;
                 s.Part(m, t, t + 2f, look, plan.wolfStop, DollStyle.Stand, LookRound(14f, 1f));
                 var by = guardHop - plan.dir * 0.09f + Across(plan.dir) * 0.04f;
@@ -533,16 +535,31 @@ namespace AquariumCiv.View
         /// takes a burning stick from the fire (a torch: the ember tip, bigger, sparks every 0.3 s); together (2-3) they walk 0.3 u toward it
         /// (never nearer than 0.6), waving both arms and the torch, shouting; the wolf <c>Alert</c>s (<see cref="CampScene.a"/>), backs off
         /// 0.2 u, turns and trots into the dark. They stand 2 s looking after it; the torch goes back in the fire; they sit again.</summary>
-        public static CampScene DriveOff(IList<int> who, IList<Vector2> at, in WolfDriveOff.Plan plan, Vector2 fire, Vector2 toCam, float t0)
+        /// <param name="startAt">Where they are now when they first walk to their seats <paramref name="at"/> by the fire (the cheat; null: they
+        /// sit there already).</param>
+        public static CampScene DriveOff(IList<int> who, IList<Vector2> at, in WolfDriveOff.Plan plan, Vector2 fire, Vector2 toCam, float t0, IList<Vector2> startAt = null)
         {
             toCam = Unit(toCam, Vector2.down);
-            var s = new CampScene(CampUse.WolfDriveOff, t0, Vector2.Lerp(fire, plan.wolfStop, 0.5f)) { holdFocus = true };
+            var s = new CampScene(CampUse.WolfDriveOff, t0, Vector2.Lerp(fire, plan.wolfStop, 0.45f)) { holdFocus = true };
             float wIn = QTime(plan.wolfStart, plan.wolfStop, DogGeo.WolfTrot);
-            s.Quad(Wolf, 0f, wIn, plan.wolfStop, fire, QuadAct.Stand, DogGeo.WolfTrot);
             var ms = new List<int>(); foreach (int k in who) ms.Add(s.Add(k));
-            float t = wIn;
+            float seatBy = 0f;
+            if (startAt != null) for (int i = 0; i < ms.Count; i++) if ((startAt[i] - at[i]).magnitude > 0.05f) seatBy = Mathf.Max(seatBy, WalkTime(startAt[i], at[i], Walk) + 0.5f);
+            float t = Mathf.Max(wIn, seatBy);
+            // the wolf comes out of the dark once they sit by the fire
+            s.Quad(Wolf, 0f, t - wIn, plan.wolfStart, fire, QuadAct.Stand);
+            s.Quad(Wolf, t - wIn, t, plan.wolfStop, fire, QuadAct.Stand, DogGeo.WolfTrot);
+            wIn = t;
+            void Stay(int m, float until)
+            {
+                int i = ms.IndexOf(m);
+                if (startAt == null || (startAt[i] - at[i]).magnitude <= 0.05f) { s.Stay(m, 0f, until, DollStyle.Sit); return; }
+                float w = WalkTime(startAt[i], at[i], Walk);
+                s.Part(m, 0f, w, at[i], fire, DollStyle.Stand, null, PropKind.None, Walk);
+                s.Part(m, w, until, at[i], fire, DollStyle.Sit);
+            }
             // the shout
-            s.Stay(ms[0], 0f, t, DollStyle.Sit);
+            Stay(ms[0], t);
             s.Part(ms[0], t, t + 1.4f, at[0], plan.wolfStop, DollStyle.Stand, PointShoutPose);
             // the torch
             int torch = ms.Count > 1 ? ms[1] : ms[0];
@@ -550,13 +567,13 @@ namespace AquariumCiv.View
             float tt = t;
             if (torch != ms[0])
             {
-                s.Stay(torch, 0f, t, DollStyle.Sit);
+                Stay(torch, t);
                 float tw = WalkTime(at[torch], take, Walk);
                 s.Part(torch, t, t + tw, take, fire, DollStyle.Stand, null, PropKind.None, Walk);
                 s.Part(torch, t + tw, t + tw + 0.6f, take, fire, DollStyle.Stand, CrouchPose);
                 tt = t + tw + 0.6f;
             }
-            for (int i = 2; i < ms.Count; i++) { s.Stay(ms[i], 0f, t + 0.6f, DollStyle.Sit); s.Part(ms[i], t + 0.6f, t + 1.4f, at[i], plan.wolfStop, DollStyle.Stand, JabPose); }
+            for (int i = 2; i < ms.Count; i++) { Stay(ms[i], t + 0.6f); s.Part(ms[i], t + 0.6f, t + 1.4f, at[i], plan.wolfStop, DollStyle.Stand, JabPose); }
             float go = Mathf.Max(t + 1.4f, tt);
             if (torch == ms[0]) s.Part(ms[0], t + 1.4f, go, at[0], plan.wolfStop, DollStyle.Stand, JabPose);
             if (torch != ms[0] && go > tt) s.Part(torch, tt, go, take, plan.wolfStop, DollStyle.Stand, null, PropKind.Stick);
@@ -715,12 +732,12 @@ namespace AquariumCiv.View
             float t = Mathf.Max(dw, kw);
             s.Quad(Dog, dw, t + 0.8f, spot, end, QuadAct.Wag);
             if (t > kw) s.Part(m, kw, t, climb, spot, DollStyle.Stand);
-            s.Part(m, t, t + 0.8f, spot, end, DollStyle.Stand, RidePose(-1f), PropKind.None, 0.12f).poseWalking = true;
+            var up = s.Part(m, t, t + 0.8f, spot, end, DollStyle.Sit, RidePose(-1f), PropKind.None, 0.12f); up.poseWalking = true; up.carried = true;
             t += 0.8f; s.a = t;
             float ride = DogGeo.RideLen / DogGeo.RideSpeed;
             s.Quad(Dog, t, t + ride, end, end + along, QuadAct.Stand, DogGeo.RideSpeed);
-            var rp = s.Part(m, t, t + ride, end, end + along, DollStyle.Stand, (ref DollPose p, float u, float l) => { RidePose(-1f)(ref p, u + 0.4f, l); }, PropKind.None, DogGeo.RideSpeed);
-            rp.poseWalking = true;
+            var rp = s.Part(m, t, t + ride, end, end + along, DollStyle.Sit, (ref DollPose p, float u, float l) => { RidePose(-1f)(ref p, u + 0.4f, l); }, PropKind.None, DogGeo.RideSpeed);
+            rp.poseWalking = true; rp.carried = true;
             int o = -1;
             if (older >= 0)
             {
@@ -734,7 +751,7 @@ namespace AquariumCiv.View
             s.Quad(Dog, t, t + 3f, end, end + along, QuadAct.Lie);
             s.b = t + 0.5f;
             var off = end + toCam * 0.07f;
-            s.Part(m, t, t + 1f, off, end + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { RidePose(0.4f)(ref p, u + 0.4f, l); }, PropKind.None, 0.1f).poseWalking = true;
+            var down = s.Part(m, t, t + 1f, off, end + toCam, DollStyle.Sit, (ref DollPose p, float u, float l) => { RidePose(0.4f)(ref p, u + 0.4f, l); }, PropKind.None, 0.1f); down.poseWalking = true; down.carried = true;
             s.Part(m, t + 1f, t + 2.8f, off, end, DollStyle.Laugh);
             if (o >= 0) s.Part(o, t, t + 2.8f, end + toCam * 0.09f, off, DollStyle.Laugh);
             Go(s, m, t + 2.8f, 1f, off + toCam * 0.25f, off + toCam, KidWalk);
@@ -744,10 +761,10 @@ namespace AquariumCiv.View
         // ================================================================== B56.e / B25 the dog's rest
         /// <summary>B56.e: the grown dog curls up asleep at the fire ring's edge (<see cref="DogGeo.FireSleep"/> from the fire, never in it);
         /// a kid (−1 none) comes and lies down with the head on it for 4 s before bedtime. <see cref="CampScene.a"/>: asleep.</summary>
-        public static CampScene DogFire(int dog, Vector2 dogAt, Vector2 fire, int kid, Vector2 kidAt, Vector2 toCam, float t0)
+        public static CampScene DogFire(int dog, Vector2 dogAt, Vector2 fire, int kid, Vector2 kidAt, Vector2 toCam, float t0, Vector2? at = null)
         {
             toCam = Unit(toCam, Vector2.down);
-            var spot = fire + Rot(toCam, -50f) * DogGeo.FireSleep;
+            var spot = at ?? fire + Rot(toCam, -50f) * DogGeo.FireSleep;
             var s = new CampScene(CampUse.DogFire, t0, (spot * 2f + fire) / 3f) { holdFocus = true, dog = dog };
             float w = QTime(dogAt, spot, DogGeo.DogWalk);
             var curl = spot + Rot(fire - spot, -90f);

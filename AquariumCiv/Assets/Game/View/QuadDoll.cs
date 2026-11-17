@@ -468,7 +468,7 @@ namespace AquariumCiv.View
                         float hl = l.headLen, r = hl * 0.42f * l.headRound;
                         var face = l.paleFace ? Color.Lerp(l.coat, l.belly, 0.55f) : l.coat;
                         if (l.kind == QuadKind.Dog && l.patch > 0.5f) face = Color.Lerp(face, l.patchCol, 0.85f); // the blaze
-                        if (l.greyMuzzle) face = Color.Lerp(face, new Color(0.8f, 0.8f, 0.78f), 0.8f); // #694 B25.c: grey round the muzzle
+                        if (l.greyMuzzle) face = new Color(0.86f, 0.86f, 0.84f); // #694 B25.c: grey round the muzzle
                         mb.Ico(new Vector3(0f, r * 0.25f, hl * 0.18f), r, new Vector3(0.9f, 0.9f, 1.05f), l.coat, 0.05f, l.belly);
                         float ml = hl * 0.38f * l.muzzle;
                         mb.Ico(new Vector3(0f, r * 0.02f, hl * 0.2f + r * 0.6f + ml * 0.5f), Mathf.Max(ml, 0.006f), new Vector3(r * 0.55f / Mathf.Max(ml, 0.006f), r * 0.5f / Mathf.Max(ml, 0.006f), 1f), face, 0.04f);

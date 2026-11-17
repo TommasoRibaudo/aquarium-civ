@@ -282,6 +282,8 @@ namespace AquariumCiv.View
         public CampPoseFn pose;
         /// <summary>Lay the pose even while walking (a heavy carry, a slow bent walk).</summary>
         public bool poseWalking;
+        /// <summary>#694 (B56.d): they are carried along (a kid on a dog's back): moving keeps <see cref="style"/>, no walking legs.</summary>
+        public bool carried;
         /// <summary>B30.b (the user's review): this part is a dip at the pot; seconds into the dip at the part's start (−1: not a dip).
         /// CampLife puts the pot's ladle in the right hand while the dip says so.</summary>
         public float dipFrom = -1f;

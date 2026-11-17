@@ -74,6 +74,15 @@ namespace AquariumCiv.View.PlayTests
             yield return Play(pv, CampUse.DogFetch, CampCheats.DogFetch, 11f);
             yield return Play(pv, CampUse.DogRide, CampCheats.DogRide, 11f);
             yield return Play(pv, CampUse.DogSun, CampCheats.DogSun, 11f);
+            // the work still gets done: after the day's uses a meal still seats people at the fire (before the night's: the meal cheat
+            // walks the clock on to noon, through the night)
+            CampLife.OnlyCheats = false;
+            Debug.Log("[694 uses] " + PeopleView.DebugMealNow());
+            float tm = Time.time; int eaters = 0;
+            while (Time.time - tm < 40f && eaters == 0) { yield return null; eaters = camp.EatersNow; }
+            if (eaters == 0) failed.Add("no supper after the uses (nobody sat down to eat)");
+            CampLife.OnlyCheats = true;
+            yield return new WaitForSeconds(3f);
             yield return Play(pv, CampUse.PupSleep, CampCheats.PupSleep, 19f);
             yield return Play(pv, CampUse.DogFire, CampCheats.DogFire, 19f);
             // the wolves (placed by the cheat if need be): the guard, the drive-off, the kids held close
@@ -86,13 +95,6 @@ namespace AquariumCiv.View.PlayTests
             if (camp.VisitorRuleBreaks > 0) failed.Add($"{camp.VisitorRuleBreaks} frames the visiting wolf broke a hard rule (min to people {camp.VisitorMinToPeople:0.00})");
             if (WolfView.Instance != null && WolfView.Instance.RuleBreaks > 0) failed.Add($"{WolfView.Instance.RuleBreaks} wolf rule breaks in WolfView");
             Assert.AreEqual(-1, WolfView.LentId, "the wolf is handed back after its scenes");
-            // the work still gets done: a meal still seats people at the fire
-            CampLife.OnlyCheats = false;
-            PeopleView.DebugSetHour(17.6f);
-            Debug.Log("[694 uses] " + PeopleView.DebugMealNow());
-            float tm = Time.time; int eaters = 0;
-            while (Time.time - tm < 40f && eaters == 0) { yield return null; eaters = camp.EatersNow; }
-            if (eaters == 0) failed.Add("no supper after the uses (nobody sat down to eat)");
             Debug.Log("[694 uses] misses: " + string.Join(" | ", failed));
             CloseSlice();
             Assert.IsEmpty(failed, string.Join(" | ", failed));
