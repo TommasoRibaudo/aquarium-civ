@@ -66,6 +66,21 @@ namespace AquariumCiv.View.Tests
         }
 
         [Test]
+        public void B77b_InRain_TheKidsCrouchInTheBoatsLee()
+        {
+            var s = RitualScenes.BoatLee(new[] { 1, 2, 3 }, new[] { Far, Far2, Far3 }, Spot, Vector2.right, ToCam, 0f);
+            Ok(s);
+            Assert.AreEqual(CampUse.BoatHouse, s.use); Assert.AreEqual(1, s.kind, "the rain variant");
+            Assert.IsTrue(s.parts.All(l => l[0].run), "they run in");
+            var a = s.parts[0].First(p => p.pose != null).pos; var b = s.parts[1].First(p => p.pose != null).pos;
+            Assert.AreEqual(0.06f, (a - b).magnitude, 0.005f, "pressed together, 0.06 u apart (B54.d)");
+            Assert.Less(Vector2.Dot(a - Spot, ToCam), 0.2f); Assert.Greater(Vector2.Dot(a - Spot, ToCam), 0.1f, "against the hull on the camera's side");
+            var d = DollPose.Rest; var hud = s.parts[0].First(p => p.pose != null); hud.pose(ref d, 1f, hud.Len);
+            Assert.Less(d.squash, 0.85f, "crouched");
+            Assert.GreaterOrEqual(s.fx.Count(f => f.kind == CampFxKind.Droplets), 6, "drops off the hull");
+        }
+
+        [Test]
         public void B76_TheTellersLines_EachOnceAtItsBeat()
         {
             int Count(bool slow, bool wood, int line) { int n = 0; float last = -1f; for (float s = 0f; s < 30f; s += 1f / 30f) { if (TellerBeats.LineBetween(slow, wood, last, s) == line) n++; last = s; } return n; }

@@ -26,7 +26,7 @@ namespace AquariumCiv.View
         public static CampScene OfferingEmpty(int kid, Vector2 kidAt, IList<int> grown, IList<Vector2> grownAt, Vector2 basket, Vector2 fire, Vector2 toCam, float t0)
         {
             toCam = CampScenes5.Unit(toCam, Vector2.down); var acr = Across(toCam);
-            var s = new CampScene(CampUse.OfferingEmpty, t0, (basket + fire) * 0.5f) { holdFocus = true, followReach = 2.5f, p0 = basket };
+            var s = new CampScene(CampUse.OfferingEmpty, t0, (basket + fire) * 0.5f) { followReach = 2.5f, p0 = basket }; // the camera keeps on the kid (its run is the beat)
             int k = s.Add(kid);
             var peek = basket + toCam * 0.1f + acr * 0.04f;
             float t = WalkTime(kidAt, peek, KidWalk);
@@ -117,6 +117,43 @@ namespace AquariumCiv.View
             s.b = t + 1.1f;
             t += 1.3f;
             CampScenes5.Go(s, m, t, WalkTime(lay, rack, Walk), rack, rack + toCam, Walk).prop = PropKind.FishBasket;
+            return s;
+        }
+
+        // ================================================================== B77.b in rain: the kids crouch in the boat's lee (B54.d's huddle)
+        /// <summary>B77.b in rain: the kids run to the boat and crouch pressed together against the hull on its camera side (B54.d's rain
+        /// huddle: shoulders up, hands in front, looking out now this way, now that), drops running off the keel, 8 s; then they run off.
+        /// <see cref="CampScene.kind"/> = 1.</summary>
+        public static CampScene BoatLee(IList<int> kids, IList<Vector2> at, Vector2 boat, Vector2 along, Vector2 toCam, float t0)
+        {
+            toCam = CampScenes5.Unit(toCam, Vector2.down); along = CampScenes5.Unit(along, Vector2.right);
+            var s = new CampScene(CampUse.BoatHouse, t0, boat) { holdFocus = true, kind = 1 };
+            var near = Vector2.Dot(toCam, new Vector2(-along.y, along.x)) >= 0f ? new Vector2(-along.y, along.x) : new Vector2(along.y, -along.x);
+            int n = Mathf.Min(3, kids.Count);
+            var ms = new int[n]; var spots = new Vector2[n];
+            float t = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                ms[i] = s.Add(kids[i]);
+                spots[i] = boat + near * 0.15f + along * ((i - (n - 1) * 0.5f) * 0.06f); // pressed against the hull, 0.06 apart
+                float w = WalkTime(at[i], spots[i], KidRun);
+                s.Part(ms[i], 0f, w, spots[i], spots[i] + near, DollStyle.Stand, null, PropKind.None, KidRun).run = true;
+                t = Mathf.Max(t, w);
+            }
+            s.a = t;
+            for (int i = 0; i < n; i++)
+            {
+                float ph = i * 0.31f;
+                s.Part(ms[i], WalkTime(at[i], spots[i], KidRun), t + CampScenes6.HuddleFor, spots[i], spots[i] + near, DollStyle.Stand, (ref DollPose p, float u, float l) =>
+                {
+                    p.squash = Mathf.Lerp(p.squash, 0.8f, In(u, 0f, 0.3f)); p.offset.y -= 0.01f * In(u, 0f, 0.3f); // crouched in its lee
+                    p.armL = new Vector3(30f, 0f, -4f); p.armR = new Vector3(30f, 0f, 4f);
+                    p.yaw += 12f * Mathf.Sin((u + ph) * 0.9f);
+                });
+            }
+            for (int k = 0; k < 16; k++) s.Fx(t + 0.3f + k * 0.45f, CampFxKind.Droplets, CampScenes5.G(boat + near * 0.08f + along * ((k % 4 - 1.5f) * 0.07f), HullTop), 0.6f, 3); // drops off the hull
+            t += CampScenes6.HuddleFor;
+            for (int i = 0; i < n; i++) CampScenes5.Go(s, ms[i], t, 1.2f, spots[i] + near * 0.35f + along * ((i - 1) * 0.15f), spots[i] + near, KidRun, true);
             return s;
         }
 

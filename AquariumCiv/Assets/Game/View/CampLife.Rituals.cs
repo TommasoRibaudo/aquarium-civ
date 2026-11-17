@@ -216,7 +216,7 @@ namespace AquariumCiv.View
                 triedAt[u] = clock; return true;
             }
             if (Go(CampUse.BoatSort, Often) && TryBoatSort(acts, time, false, boat) == null) return;
-            if (!wet && Go(CampUse.BoatHouse, Sometimes) && TryBoatHouse(acts, time, false, boat) == null) return;
+            if (Go(CampUse.BoatHouse, Sometimes) && TryBoatHouse(acts, time, false, boat, wet) == null) return; // in rain: in its lee
         }
 
         ChronicleEntry LastEmptyLine()
@@ -261,7 +261,8 @@ namespace AquariumCiv.View
                 case CampUse.BoatSort:
                 case CampUse.BoatHouse:
                     if (!PropOf(ConsequenceKind.ShoreBoat, out var boat)) return "no boat by the fire (the pond family's 'A home here' first)";
-                    return use == CampUse.BoatSort ? TryBoatSort(acts, time, true, boat) ?? "a fisher sorts the catch on the boat" : TryBoatHouse(acts, time, true, boat) ?? "kids play house round the boat";
+                    bool rain = planner.WeatherOn(now.day) is Weather.KeeperRain or Weather.Storm;
+                    return use == CampUse.BoatSort ? TryBoatSort(acts, time, true, boat) ?? "a fisher sorts the catch on the boat" : TryBoatHouse(acts, time, true, boat, rain) ?? (rain ? "kids shelter in the boat's lee from the rain" : "kids play house round the boat");
             }
             return "not a ritual use";
         }
@@ -298,11 +299,12 @@ namespace AquariumCiv.View
             return Nobody;
         }
 
-        string TryBoatHouse(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
+        string TryBoatHouse(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p, bool rain = false)
         {
             var kids = Kids(acts, p.at, 3, force);
             if (kids.Count < 2) return "two kids needed ('Two kids join the camp' first)";
-            return Start(RitualScenes.BoatHouse(kids, AtAll(kids), p.at, Local(p, 1f, 0f), ToCam(p.at), time), p, CampUse.BoatHouse);
+            return Start(rain ? RitualScenes.BoatLee(kids, AtAll(kids), p.at, Local(p, 1f, 0f), ToCam(p.at), time)
+                              : RitualScenes.BoatHouse(kids, AtAll(kids), p.at, Local(p, 1f, 0f), ToCam(p.at), time), p, CampUse.BoatHouse);
         }
 
         /// <summary>AnimLab's "camp" follow while a ritual plays (no camp use): where its people are drawn, on average; the telling: the fire.</summary>
@@ -311,14 +313,42 @@ namespace AquariumCiv.View
             if (tellKey >= 0) return tellFire;
             if (sim != null && meals != null && meals.HasFire && now.hour >= 17.8f && now.hour < 20f && sim.StoryTellerOn(now.day, out _, out _)) return meals.Fire; // the picked telling gathers
             if (sim == null || !StagedMoments.PlayingRitual(sim, out var sc, out float secs)) return null;
+            if (FocusKey != 0 && pv.DrawnAt(FocusKey) is Vector2 fk) return fk; // AnimLab's close look at one of them (FocusRitual)
             var sum = Vector2.zero; int n = 0;
             foreach (var m in sc.plan.members) if (secs >= m.JoinAt && secs < m.ReleaseAt && pv.DrawnAt(m.key) is Vector2 p) { sum += p; n++; }
             return n > 0 ? sum / n : new Vector2(sc.plan.centreX, sc.plan.centreZ);
         }
 
+        /// <summary>AnimLab: the "camp" follow keeps on this person while a ritual plays (0 = the ritual's people on average).</summary>
+        public static int FocusKey;
+
+        /// <summary>AnimLab: follow one member of the ritual playing now: "kid" (the first who carries the kids' small basket), "firstwalk"
+        /// (B72's kid on its first walk), else nobody.</summary>
+        public static string FocusRitual(string what)
+        {
+            FocusKey = 0;
+            var sim = AquariumCiv.Game.GameClock.Instance != null ? AquariumCiv.Game.GameClock.Instance.Sim : null;
+            if (!StagedMoments.PlayingRitual(sim, out var sc, out _)) return "no ritual playing";
+            var plan = sc.plan;
+            if (what == "firstwalk" && plan.geo.spots != null) FocusKey = plan.geo.spots.firstWalk;
+            if (what == "kid") { var k = plan.members.Find(m => m.steps.Exists(st => st.beat == StageBeat.KidCarry)); FocusKey = k?.key ?? 0; }
+            return FocusKey != 0 ? $"following {sim.FindNotable(FocusKey)?.name ?? FocusKey.ToString()}" : "nobody to follow";
+        }
+
         // ================================================================== drawing
         readonly List<Transform> ritualPool = new();
-        Mesh plankMesh, smallBasketMesh, heapLog, emptyBasket;
+        Mesh plankMesh, smallBasketMesh, heapLog, emptyBasket, bowlMesh;
+        MomentStagePlan ritualFxPlan;
+        readonly HashSet<int> ritualFx = new();
+        /// <summary>Tests: the woodpile's pops (B73), the most bowls stacked (B74), the leaves fallen (B75.a), this session.</summary>
+        public static int PilePulses, BowlsStacked, LeavesFallen;
+
+        static Mesh BowlMesh()
+        {
+            var mb = new MeshBuilder(7212);
+            mb.Prism(Vector3.zero, 0.012f, 0.017f, 0.009f, 8, Palette.Timber, topCol: Palette.WoodLight); // an empty wooden bowl, as the table's
+            var m = mb.ToMesh("Ritual_Bowl"); m.hideFlags = HideFlags.DontSave; return m;
+        }
 
         Transform RitualPiece(Transform root, Material material, int i, Mesh mesh)
         {
@@ -385,6 +415,7 @@ namespace AquariumCiv.View
         {
             if (!StagedMoments.PlayingRitual(sim, out var sc, out float t)) return used;
             var plan = sc.plan;
+            if (!ReferenceEquals(ritualFxPlan, plan)) { ritualFxPlan = plan; ritualFx.Clear(); }
             PegDollView V(int key) { var v = pv.ViewOf(key); return v != null && v.gameObject.activeInHierarchy ? v : null; }
             Vector3 On(float x, float z, float h = 0f) => new Vector3(x, groundAt(x, z) + h, z);
             switch (plan.RitualStaged)
@@ -437,10 +468,14 @@ namespace AquariumCiv.View
                         lt.localRotation = Quaternion.LookRotation(new Vector3(toPile.x, 0f, toPile.y)) * Quaternion.Euler(14f, 0f, 0f);
                         lt.localScale = Vector3.one * CampScenes6.LadderScale;
                     }
+                    // B73 beat 4: the pile pops (1.03) with each log the lead slides onto it
+                    if (PropOf(ConsequenceKind.WoodpileRoof, out var pileProp))
+                        for (int k = 0; k < plan.LogCount; k++)
+                            if (t >= plan.LogReaches(k, plan.Passers) + 0.45f && t < plan.LogReaches(k, plan.Passers) + 1.5f && ritualFx.Add(1000 + k)) { ConsequencePropsView.Pulse(pileProp.id); PilePulses++; }
                     // the kids' twig basket at the pile's foot
                     if (plan.TwigKids > 0)
                     {
-                        var at = new Vector2(plan.centreX, plan.centreZ) + new Vector2(plan.geo.nx, plan.geo.nz) * 0.17f + new Vector2(plan.LineX, plan.LineZ) * 0.1f;
+                        var at = new Vector2(plan.centreX, plan.centreZ) + new Vector2(plan.SideX, plan.SideZ) * 0.17f + new Vector2(plan.LineX, plan.LineZ) * 0.1f;
                         var bt = RitualPiece(root, material, used++, smallBasketMesh);
                         bt.localPosition = On(at.x, at.y); bt.localScale = Vector3.one * (ConsequenceMeshes.Scale * 0.6f);
                     }
@@ -459,6 +494,19 @@ namespace AquariumCiv.View
                         var dir = hb - ha; dir.y = 0f;
                         bt.localPosition = mid - Vector3.up * 0.01f;
                         bt.localRotation = Quaternion.LookRotation(dir.sqrMagnitude > 1e-6f ? dir.normalized : Vector3.forward);
+                    }
+                    // B74's end beat: the bowls stacked at the head of the table as they stand from the foot end (B30.e's stack)
+                    if (plan.BowlsStackFrom > 0f && t >= plan.BowlsStackFrom)
+                    {
+                        bowlMesh ??= BowlMesh();
+                        int bowls = Mathf.Clamp(Mathf.FloorToInt((t - plan.BowlsStackFrom) / 0.3f) + 1, 1, 7);
+                        var head = new Vector2(plan.centreX - plan.AxisX * (plan.TableLen * 0.5f - 0.07f), plan.centreZ - plan.AxisZ * (plan.TableLen * 0.5f - 0.07f));
+                        for (int k = 0; k < bowls; k++)
+                        {
+                            var bt = RitualPiece(root, material, used++, bowlMesh);
+                            bt.localPosition = On(head.x, head.y, PropGeo.TableTop + 0.012f * k); bt.localScale = Vector3.one * 1.4f;
+                        }
+                        BowlsStacked = Mathf.Max(BowlsStacked, bowls);
                     }
                     // the baskets set on the table
                     int baskets = 0;
@@ -493,6 +541,15 @@ namespace AquariumCiv.View
                         var at = new Vector2(st.x0, st.z0) + new Vector2(plan.geo.nx, plan.geo.nz) * -0.04f;
                         var bt = RitualPiece(root, material, used++, smallBasketMesh);
                         bt.localPosition = On(at.x, at.y); bt.localScale = Vector3.one * (ConsequenceMeshes.Scale * 0.6f);
+                    }
+                    // B75.a beat 6: one leaf falls from the crown while they stand still
+                    if (plan.StillAt > 0f && t >= plan.StillAt + 0.3f && plan.geo.spots != null && plan.geo.spots.hasTree && ritualFx.Add(3000))
+                    {
+                        var tr = new Vector2(plan.geo.spots.treeX, plan.geo.spots.treeZ);
+                        float crown = plan.geo.spots.keeperTree && TreeAt(out _, out int stage) ? TreeGeo.CrownY(stage) : 0.3f;
+                        var o = PuffOptions.Default; o.count = 1;
+                        HitFx.Puff(PuffKind.Leaves, root.TransformPoint(On(tr.x, tr.y, crown * 0.8f)), Vector3.down, 1f, o);
+                        LeavesFallen++;
                     }
                     // the best basket left at the tallest tree (no offering basket there to tip it into)
                     var lead = plan.members.Find(m => m.role == MomentRole.Leader);

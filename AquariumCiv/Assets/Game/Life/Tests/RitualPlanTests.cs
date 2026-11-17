@@ -135,6 +135,10 @@ namespace AquariumCiv.Life.Tests
                 Assert.IsTrue(m.steps[m.steps.Count - 1].beat is StageBeat.ShowHands or StageBeat.KidHands, "the hands up to the glass");
             }
             Assert.AreEqual(2, plan.members.Count(m => m.steps[m.steps.Count - 1].beat == StageBeat.KidHands), "two kids, hands side by side");
+            Assert.AreNotEqual(0, plan.RunAhead, "a kid runs ahead on the walk out");
+            var runner = plan.Member(plan.RunAhead);
+            Assert.IsTrue(runner.kid);
+            Assert.AreEqual(2, runner.steps.Count(s => s.beat == StageBeat.Run), "ahead and back, once");
             // the tips run down the line, 0.4 s apart
             var cues = plan.members.Select(m => m.steps.First(s => s.beat == StageBeat.Tip).cue).OrderBy(c => c).ToList();
             for (int i = 1; i < cues.Count; i++) Assert.AreEqual(MomentStagePlan.TipGap, cues[i] - cues[i - 1], 1e-4f);
@@ -195,6 +199,17 @@ namespace AquariumCiv.Life.Tests
                 Assert.AreEqual(StageBeat.SitLogs, k.steps[k.steps.Count - 1].beat, "the kids sit on the low logs at the end");
             }
             Assert.AreEqual(-1, plan.DropLogAt, "no dropped log unless the year's hash (or the cheat) says so");
+        }
+
+        [Test]
+        public void LogLine_ByTheFrontGlass_TheLineRunsIntoTheBox()
+        {
+            var plan = Build(RitualKind.Woodpile, tweak: s => { s.pileZ = -1.6f; s.pileFZ = -1f; });
+            Assert.IsTrue(plan.ByGlass);
+            foreach (var m in plan.members)
+                foreach (var st in m.steps.Where(x => !x.travel))
+                    Assert.Greater(st.z1, -1.75f, $"{m.key} {st.beat}: nobody stands at the glass (z {st.z1:0.00})");
+            Assert.AreEqual(1f, plan.LineZ, 1e-4f, "the line runs into the box, away from the glass");
         }
 
         [Test]

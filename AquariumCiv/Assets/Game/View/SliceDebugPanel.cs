@@ -545,6 +545,7 @@ namespace AquariumCiv.View
             Row(); // S-ritual B77: the pond family's boat (upside down by the fire)
             if (Btn("Boat: sort the catch on it")) last = CampCheats.BoatSort(); // B77.a
             if (Btn("Boat: kids play house")) last = CampCheats.BoatHouse(); // B77.b
+            if (Btn("Boat: kids shelter in the rain")) last = CampCheats.BoatRain(); // B77.b in rain
             EndRow();
         }
 

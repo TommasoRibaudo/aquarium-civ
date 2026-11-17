@@ -143,5 +143,13 @@ namespace AquariumCiv.View
         public static string BoatSort() => Do(CampUse.BoatSort);
         /// <summary>"Boat: kids play house" (B77.b).</summary>
         public static string BoatHouse() => Do(CampUse.BoatHouse);
+        /// <summary>"Boat: kids shelter in the rain" (B77.b in rain): rain today, then the kids crouch in the boat's lee.</summary>
+        public static string BoatRain()
+        {
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no PeopleView";
+            pv.Planner.ForcedWeather = Weather.KeeperRain;
+            return "rain; " + Do(CampUse.BoatHouse);
+        }
     }
 }

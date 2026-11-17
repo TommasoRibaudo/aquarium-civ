@@ -135,6 +135,10 @@ namespace AquariumCiv.Life
 
         // ======================================================================== B72 the berrying walk
 
+        /// <summary>B72: the kid who runs 0.3 u ahead of the lead on the walk out and back (0 = none), when it sets off and turns back.</summary>
+        public int RunAhead;
+        public float RunAheadFrom, RunAheadBack;
+
         bool Berrying(MomentCast c, RitualSpots sp)
         {
             float fx = geo.fireX, fz = geo.fireZ;
@@ -241,11 +245,33 @@ namespace AquariumCiv.Life
                 tP = Math.Max(tP, arrive[i]);
             }
             if (firstKid != null && firstParent != null) { int ki = line.IndexOf(firstKid), pi = line.IndexOf(firstParent); arrive[ki] = arrive[pi] = Math.Max(arrive[ki], arrive[pi]); } // hand in hand: they arrive together
+            // a kid runs 0.3 u ahead of the lead and back once (the first kid in the line who isn't on its first walk)
+            RunAhead = 0; var runX = new float[2]; var runZ = new float[2];
+            int ra = line.FindIndex(m => m.kid && m != firstKid);
+            float runEnd = 0f;
+            if (ra > 0)
+            {
+                RunAhead = line[ra].key;
+                float leadAt = Math.Min(1f, 2.5f * Pace / Math.Max(0.01f, Dist(qx[0], qz[0], bx[0], bz[0]))); // where the lead is 2.5 s in
+                float lx2 = qx[0] + (bx[0] - qx[0]) * leadAt, lz2 = qz[0] + (bz[0] - qz[0]) * leadAt;
+                (runX[0], runZ[0]) = In(lx2 + dx * 0.3f, lz2 + dz * 0.3f);
+                (runX[1], runZ[1]) = In(qx[ra] + (bx[ra] - qx[ra]) * 0.4f, qz[ra] + (bz[ra] - qz[ra]) * 0.4f);
+                float r1 = Math.Max(0.8f, Dist(qx[ra], qz[ra], runX[0], runZ[0]) / RunSpeed), r2 = Math.Max(0.8f, Dist(runX[0], runZ[0], runX[1], runZ[1]) / RunSpeed);
+                runEnd = tF + r1 + r2;
+                arrive[ra] = Math.Max(arrive[ra], runEnd + Math.Max(0.8f, Dist(runX[1], runZ[1], bx[ra], bz[ra]) / Pace));
+                tP = Math.Max(tP, arrive[ra]);
+                RunAheadFrom = tF; RunAheadBack = tF + r1;
+            }
             // ---- 3 Pick: from arriving (0.8 s apart by slot) for at least 10 s; kids eat every other berry; the lead points a picker on.
             float tP1 = tP + PickSeconds - 2f;
             for (int i = 0; i < n; i++)
             {
                 var m = line[i];
+                if (i == ra && ra > 0)
+                {
+                    Put(m, Hold(Move(m, StageBeat.Run, ActivityKind.RunOver, RunAheadBack, runX[0], runZ[0]), HoldOf(m)));
+                    Put(m, Hold(Move(m, StageBeat.Run, ActivityKind.RunOver, runEnd, runX[1], runZ[1]), HoldOf(m)));
+                }
                 Put(m, Hold(Arg(Move(m, StageBeat.WalkOut, ActivityKind.Walk, arrive[i], bx[i], bz[i]), HandOf(m)), HoldOf(m)));
                 float cue = 0.8f * inBush[i];
                 int eat = m == firstKid ? 2 : m.kid ? 1 : 0; // 2: eats every berry (a first walk), 1: every other
@@ -340,6 +366,10 @@ namespace AquariumCiv.Life
 
         /// <summary>B73: the log line's own numbers (tests, the view): logs in it, passers, the first log's start, the dropped log (-1 none) and who drops it.</summary>
         public int LogCount, Passers, DropLogAt = -1, DropBy = -1, TwigCount, TwigKids;
+        /// <summary>B73: the pile stands by the front glass, so the line runs into the box from its side.</summary>
+        public bool ByGlass;
+        /// <summary>B73: across the line, on its open side (the kids' line, the zigzag).</summary>
+        public float SideX, SideZ;
         public float LineStart, LastLogAt;
         /// <summary>B73: the heap, the pile's foot (the lead), the line's way (unit, from the pile out to the heap).</summary>
         public float HeapX, HeapZ, LineX, LineZ;
@@ -357,11 +387,27 @@ namespace AquariumCiv.Life
             float gather = GatherOf(all, 6f, 1.5f);
             if (gather > MaxGather) return Fail("the lead can't get there in time");
             var (fx, fz) = Unit(sp.pileFX, sp.pileFZ, Gx, Gz);
-            // [est] the line stands in front of the pile (its camera side), not beside its roof: clip 721-log-line try 1 hid it behind the roof
+            // [est] the line stands in front of the pile (its camera side), not beside its roof: clip 721-log-line try 1 hid it behind the roof.
+            // A pile by the front glass (less than 0.9 u in from it): the line runs from the pile's side into the box instead, the heap on the
+            // open side, so the zigzag shows and nobody stands at the glass (clip try 2).
+            float inFromGlass = (sp.pileX - geo.glassX) * -Gx + (sp.pileZ - geo.glassZ) * -Gz;
+            bool byGlass = inFromGlass < 0.9f;
             float wx = sp.pileX + Gx * 0.16f, wz = sp.pileZ + Gz * 0.16f;
+            ByGlass = byGlass;
             // The line runs across the screen, out from the pile toward the chopping spot's side.
             float ax = Px, az = Pz;
             if (sp.hasChop && (sp.chopX - wx) * ax + (sp.chopZ - wz) * az < 0f) { ax = -ax; az = -az; }
+            if (byGlass)
+            {
+                float side = sp.hasChop && (sp.chopX - sp.pileX) * Px + (sp.chopZ - sp.pileZ) * Pz < 0f ? -1f : 1f;
+                wx = sp.pileX + Px * 0.2f * side; wz = sp.pileZ + Pz * 0.2f * side; // beside the pile
+                ax = -Gx; az = -Gz; // into the box, away from the glass
+                fx = -Gx; fz = -Gz; // and its "front" (the kids' sit, the lead's step) is the open side
+            }
+            // the line's own "toward the camera": across it, on the camera's side (by the glass: away from the pile)
+            float sx2 = -az, sz2 = ax;
+            if (byGlass ? sx2 * (wx - sp.pileX) + sz2 * (wz - sp.pileZ) < 0f : sx2 * Gx + sz2 * Gz < 0f) { sx2 = -sx2; sz2 = -sz2; }
+            SideX = sx2; SideZ = sz2;
             bool mends = grownN >= 4;
             int passers = Math.Min(MaxLogLine, grownN - (mends ? 1 : 0));
             Passers = passers;
@@ -393,7 +439,7 @@ namespace AquariumCiv.Life
             }
             foreach (var m in kidM)
             {
-                var (tx, tz) = In(hx + Gx * 0.3f + ax * (Hash01(seed, m.key, 3811) - 0.5f) * 0.3f, hz + Gz * 0.3f + az * (Hash01(seed, m.key, 3811) - 0.5f) * 0.3f);
+                var (tx, tz) = In(hx + sx2 * 0.3f + ax * (Hash01(seed, m.key, 3811) - 0.5f) * 0.3f, hz + sz2 * 0.3f + az * (Hash01(seed, m.key, 3811) - 0.5f) * 0.3f);
                 Put(m, Facing(Travel(m, GoAt(m.key, 0f, 1.5f), gather, tx, tz), hx, hz));
             }
             float tD = gather;
@@ -413,7 +459,7 @@ namespace AquariumCiv.Life
             for (int j = 0; j < grownM.Count; j++)
             {
                 float zig = (j & 1) == 1 ? Zig : 0f;
-                var (tx, tz) = In(wx + ax * Along(j) + Gx * zig, wz + az * Along(j) + Gz * zig);
+                var (tx, tz) = In(wx + ax * Along(j) + sx2 * zig, wz + az * Along(j) + sz2 * zig);
                 to.Add((grownM[j], tx, tz));
             }
             // the kids' line beside the big one (0.15 off it, toward the camera), into a basket at the pile's foot
@@ -422,11 +468,11 @@ namespace AquariumCiv.Life
             for (int q = 0; q < kidM.Count; q++)
             {
                 float along = q < twigKids ? 0.22f + TwigGap * (twigKids - 1 - q) : 0.3f + 0.1f * q;
-                var (tx, tz) = In(wx + ax * along + Gx * (0.15f + Zig), wz + az * along + Gz * (0.15f + Zig));
+                var (tx, tz) = In(wx + ax * along + sx2 * (0.15f + Zig), wz + az * along + sz2 * (0.15f + Zig));
                 to.Add((kidM[q], tx, tz));
             }
             // the mender: to the pile's other side, the short ladder on the roof
-            if (mender != null) { var (tx, tz) = In(wx - ax * 0.2f + fx * 0.05f, wz - az * 0.2f + fz * 0.05f); to.Add((mender, tx, tz)); }
+            if (mender != null) { var (tx, tz) = byGlass ? In(2f * sp.pileX - wx, 2f * sp.pileZ - wz) : In(wx - ax * 0.2f + fx * 0.05f, wz - az * 0.2f + fz * 0.05f); to.Add((mender, tx, tz)); } // by the glass: the pile's other side
             float lineAt = ArriveBy(tL0 + 1.2f, to);
             LineStart = lineAt + 0.3f;
             foreach (var (m, tx, tz) in to) Put(m, Move(m, StageBeat.Stand, ActivityKind.Walk, lineAt, tx, tz));
@@ -516,6 +562,8 @@ namespace AquariumCiv.Life
         /// <summary>B74: who sits where (seat 0 at the head, side 1 the camera's), the late one, the eldest, the board's carriers.</summary>
         public readonly Dictionary<int, (int side, int seat)> Seats = new Dictionary<int, (int side, int seat)>();
         public int LateKey, EldestKey, BoardA, BoardB;
+        /// <summary>B74's end beat: from here the bowls are stacked at the head, one per sitter standing up.</summary>
+        public float BowlsStackFrom = -1f;
         public float BoardLaidAt = -1f, HeadX, HeadZ, AxisX, AxisZ, NearX, NearZ, TableLen;
 
         /// <summary>B74: a seat's spot (box x, z) and the way it faces (the table's middle line).</summary>
@@ -723,6 +771,7 @@ namespace AquariumCiv.Life
             }
             // ---- 8 Bowls up (in step on purpose), 9 the song down the benches, 10 they stand from the foot end; the eldest naps.
             float tUp = tEat + 1.5f, tSong = tUp + SongSeconds, tEnd = tSong + 3f;
+            BowlsStackFrom = tSong; // 10: as they stand from the foot end, the bowls go onto a stack at the head (B30.e's stack, drawn by the view)
             foreach (var m in members)
             {
                 bool seated = Seats.TryGetValue(m.key, out var st4);
@@ -749,7 +798,7 @@ namespace AquariumCiv.Life
         // ======================================================================== B75.a the offering
 
         /// <summary>B75.a: when the basket is set down at the tree (the kids' small basket beside it), plan seconds.</summary>
-        public float OfferingSetAt = -1f;
+        public float OfferingSetAt = -1f, StillAt = -1f;
         public float OfferingX, OfferingZ;
 
         bool Offering(MomentCast c, RitualSpots sp)
@@ -841,6 +890,7 @@ namespace AquariumCiv.Life
             }
             // ---- 6 Still: two seconds, quiet (a leaf falls from the crown).
             float tStill = tBow + BowGap * bowers.Count + 2f;
+            StillAt = tStill - 2f; // one leaf falls from the crown (drawn by the view)
             foreach (var m in members) Put(m, Facing(Stay(m, StageBeat.Still, ActivityKind.Watch, tStill), vx, vz));
             // ---- 7 Walk back: they turn back; one kid looks back, a grown-up turns its head forward again. Released 2 s in.
             float tBack = tStill + 2f;

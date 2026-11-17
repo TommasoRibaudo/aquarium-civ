@@ -8,7 +8,7 @@
   "seed": 4242,
   "ecology": 1,
   "setup": [
-   "AquariumCiv.View.EveningTalkView.AutoStart = false; AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(10.0f, 4);",
+   "AquariumCiv.View.CampLife.FocusKey = 0; AquariumCiv.View.EveningTalkView.AutoStart = false; AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(10.0f, 4);",
    "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
    "var pv = AquariumCiv.View.PeopleView.Find(); if (pv != null && pv.Planner != null) pv.Planner.ForcedWeather = AquariumCiv.Life.Weather.Clear; return \"clear weather\";",
    "return AquariumCiv.View.ConsequenceCheats.PlaceEvery();",
@@ -19,14 +19,15 @@
    "return \"waiting for the camp\";",
    "return \"waiting for the camp\";",
    "return AquariumCiv.View.PeopleView.DebugSetHour(10f);",
-   "return AquariumCiv.View.CampCheats.Later(1.5f, () => AquariumCiv.View.StagedMoments.DebugPlayRitualNow(\"offering\"));"
+   "return AquariumCiv.View.CampCheats.Later(1.5f, () => AquariumCiv.View.StagedMoments.DebugPlayRitualNow(\"offering\"));",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampLife.FocusRitual(\"kid\"));"
   ],
   "warm": 0.5,
   "seconds": 48,
   "fps": 30,
   "follow": "camp",
-  "span": 3.2,
-  "closeSpan": 1.8,
+  "span": 2.2,
+  "closeSpan": 0.8,
   "yaw": 28,
   "pitch": 45
  }

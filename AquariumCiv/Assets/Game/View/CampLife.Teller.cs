@@ -42,8 +42,10 @@ namespace AquariumCiv.View
             if (!found || tellerAct.kind != ActivityKind.StoryTell) return;
             tellKey = id; tellManner = manner;
             // the beats' clock: real seconds since the telling began, scaled to the spec's 23 s (slow) / 9 s + 2.5 s (short)
-            float real = LifeClock.RealSecondsBetween(LifePlanner.TellFrom, now.hour);
-            float total = LifeClock.RealSecondsBetween(LifePlanner.TellFrom, slow ? LifePlanner.TellSlowUntil : LifePlanner.TellShortUntil);
+            // from when the teller really starts (a chat before it can hold them past TellFrom: the short telling's clip, try 2)
+            float from = Mathf.Clamp(tellerAct.start, LifePlanner.TellFrom, (slow ? LifePlanner.TellSlowUntil : LifePlanner.TellShortUntil) - 0.2f);
+            float real = LifeClock.RealSecondsBetween(from, now.hour);
+            float total = LifeClock.RealSecondsBetween(from, slow ? LifePlanner.TellSlowUntil : LifePlanner.TellShortUntil);
             tellScale = (slow ? TellerBeats.SlowLength : TellerBeats.ShortLength) / Mathf.Max(1f, total);
             tellS = real * tellScale;
             TellerBeats.SpeaksItsOwnLines = true;

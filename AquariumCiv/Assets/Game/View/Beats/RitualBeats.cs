@@ -10,7 +10,7 @@ namespace AquariumCiv.View
     public static class RitualBeats
     {
         /// <summary>A beat this file poses (the rest are MomentBeats').</summary>
-        public static bool Handles(StageBeat b) => b >= StageBeat.HandOut || b == StageBeat.Stand || b == StageBeat.Travel || b == StageBeat.WalkOut;
+        public static bool Handles(StageBeat b) => b >= StageBeat.HandOut || b == StageBeat.Stand || b == StageBeat.Travel || b == StageBeat.WalkOut || b == StageBeat.Run;
 
         // ---- small helpers
         static float In(float t, float from, float len) => len <= 0f ? (t >= from ? 1f : 0f) : Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((t - from) / len));
@@ -65,7 +65,7 @@ namespace AquariumCiv.View
                 default: (kind, slot) = (PropKind.None, PropSlot.Hand); break; // the board, the kids' small basket: drawn between the two (CampLife.Rituals)
             }
             if (st.hold == StageHold.SmallBasket && (st.beat == StageBeat.KidCarry || st.beat == StageBeat.KneelSet && st.arg >= 2)) kind = PropKind.None; // B75: the kids' basket is between them
-            if (walking) { style = DollStyle.Walk; return; }
+            if (walking) { style = st.beat == StageBeat.Run ? DollStyle.Run : DollStyle.Walk; return; }
             switch (st.beat)
             {
                 case StageBeat.Pick:

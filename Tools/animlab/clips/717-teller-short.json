@@ -8,7 +8,7 @@
   "seed": 4242,
   "ecology": 1,
   "setup": [
-   "AquariumCiv.View.EveningTalkView.AutoStart = false; AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(17.6f, 4);",
+   "AquariumCiv.View.CampLife.FocusKey = 0; AquariumCiv.View.EveningTalkView.AutoStart = false; AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(17.6f, 4);",
    "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
    "var pv = AquariumCiv.View.PeopleView.Find(); if (pv != null && pv.Planner != null) pv.Planner.ForcedWeather = AquariumCiv.Life.Weather.Clear; return \"clear weather\";",
    "return AquariumCiv.View.CampCheats.OnlyThing(AquariumCiv.Sim.ConsequenceKind.WoodpileRoof);",
@@ -23,7 +23,7 @@
   "fps": 30,
   "follow": "camp",
   "span": 1.6,
-  "closeSpan": 1.1,
+  "closeSpan": 0.9,
   "yaw": 28,
   "pitch": 45
  }
