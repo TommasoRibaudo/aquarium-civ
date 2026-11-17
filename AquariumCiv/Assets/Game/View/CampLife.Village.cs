@@ -17,9 +17,9 @@ namespace AquariumCiv.View
 {
     public sealed partial class CampLife
     {
-        static bool IsVillageUse(CampUse u) => u >= CampUse.FieldTag && u <= CampUse.FenceLean;
+        static bool IsVillageUse(CampUse u) => u >= CampUse.FieldTag && u <= CampUse.HayJump;
         const int ThingVillageBase = 70000, ThingWell = ThingVillageBase + 1, ThingMill = ThingVillageBase + 2, ThingPile = ThingVillageBase + 3,
-            ThingLog = ThingVillageBase + 4, ThingBakery = ThingVillageBase + 5, ThingStreet = ThingVillageBase + 6, ThingFieldBase = ThingVillageBase + 100,
+            ThingLog = ThingVillageBase + 4, ThingBakery = ThingVillageBase + 5, ThingStreet = ThingVillageBase + 6, ThingBarn = ThingVillageBase + 7, ThingFieldBase = ThingVillageBase + 100,
             ThingHomeBase = ThingVillageBase + 300, ThingFenceBase = ThingVillageBase + 200;
         /// <summary>[est] a home gets one more of its things every this many years, and at most <see cref="MaxExtras"/>.</summary>
         public const int ExtraEveryYears = 10, MaxExtras = 3;
@@ -285,6 +285,27 @@ namespace AquariumCiv.View
                 }
         }
 
+        /// <summary>B59.k/l: a barn (a family's outbuilding, Pieces.Barn: variant 0), its door (the lot's front) and its hay heap, beside the door on
+        /// the side toward the camera, clear of the other pieces [est: the barn piece has no heap of its own].</summary>
+        bool BarnOf(Vector2 near, out PieceData barn, out Vector2 door, out Vector2 heap)
+        {
+            barn = null; door = heap = default;
+            foreach (var p in PiecesOf(PieceKind.Barn, near))
+            {
+                if (p.variant != 0) continue; // a shed with a woodpile, not a barn
+                float bd = Mathf.Min(p.d * 0.85f, 0.2f), bw = Mathf.Min(p.w * 0.85f, 0.26f);
+                var front = LotDir(p, 0f, -1f); var x = LotDir(p, 1f, 0f);
+                var d = LotPoint(p, 0f, -bd / 2f - 0.03f);
+                foreach (float side in Vector2.Dot(x, ToCam(p.Pos)) >= 0f ? new[] { 1f, -1f } : new[] { -1f, 1f })
+                {
+                    var h = d + front * 0.09f + x * side * (bw * 0.5f + 0.02f);
+                    if (!Terrain.InBox(h.x, h.y, 0.3f) || Blocked(h, VillageGeo.HayR + 0.02f, p) || InAnyField(h, 0.05f)) continue;
+                    barn = p; door = d; heap = h; return true;
+                }
+            }
+            return false;
+        }
+
         /// <summary>The town bakery's door (PiecesTown.TownBakery: left of the front) and the way out of it.</summary>
         static void BakeryDoor(PieceData p, out Vector2 door, out Vector2 outward)
         {
@@ -434,6 +455,8 @@ namespace AquariumCiv.View
             if (h >= 8f && h < 11.5f && !wet && Go(CampUse.FenceFix, Sometimes, 0) && Tried(CampUse.FenceFix, TryFenceFix(acts, time, false))) return;
             // B58.g: two who meet in a street stop to talk (often, as B50.b)
             if (h >= 8f && h < 18f && Go(CampUse.StreetChat, Often, ThingStreet) && Tried(CampUse.StreetChat, TryStreetChat(acts, time, false))) return;
+            // B59.k (work): barn chores in the morning (often)
+            if (h >= 7f && h < 10f && Go(CampUse.BarnChores, Often, ThingBarn) && Tried(CampUse.BarnChores, TryBarnChores(acts, time, false))) return;
             // B57.i: a break on the log pile, midday (often)
             if (h >= 11.5f && h < 14f && Go(CampUse.LogPileSit, Often, ThingPile) && Tried(CampUse.LogPileSit, TryLogPile(acts, time, false))) return;
             if (!day || wet) return;
@@ -450,6 +473,8 @@ namespace AquariumCiv.View
             if (weather == Weather.Clear && Go(CampUse.SailShadow, Sometimes, ThingMill) && Tried(CampUse.SailShadow, TrySailShadow(acts, time, false))) return;
             // B57.j: a kid balances on a log (sometimes)
             if (Go(CampUse.LogBalance, Sometimes, ThingLog) && Tried(CampUse.LogBalance, TryLogBalance(acts, time, false))) return;
+            // B59.l: kids jump in the hay (sometimes; not in the wet)
+            if (Go(CampUse.HayJump, Sometimes, ThingBarn) && Tried(CampUse.HayJump, TryHayJump(acts, time, false))) return;
             // B58.f: hopscotch in a street (sometimes)
             if (Go(CampUse.Hopscotch, Sometimes, ThingStreet) && Tried(CampUse.Hopscotch, TryHopscotch(acts, time, false))) return;
         }
@@ -754,6 +779,24 @@ namespace AquariumCiv.View
             return StartV(VillageScenes.LogBalance(kid, At(kid).Value, a, b, ToCam(p.Pos), time), ThingLog, CampUse.LogBalance);
         }
 
+        string TryBarnChores(IReadOnlyList<PersonActivity> acts, float time, bool force)
+        {
+            if (!BarnOf(VillageMiddle(), out var barn, out var door, out var heap)) return "no barn in the box (a family's outbuilding)";
+            if (LabYaw.HasValue) LabCamYaw = YawFor(LotDir(barn, 0f, -1f)); // AnimLab: in front of the barn's door
+            int who = VGrown(acts, heap, force);
+            if (who == Nobody) return "no grown-up free";
+            return StartV(VillageScenes.BarnChores(who, At(who).Value, heap, door, ToCam(heap), time), ThingBarn, CampUse.BarnChores);
+        }
+
+        string TryHayJump(IReadOnlyList<PersonActivity> acts, float time, bool force)
+        {
+            if (!BarnOf(VillageMiddle(), out var barn, out var door, out var heap)) return "no barn in the box (a family's outbuilding)";
+            if (LabYaw.HasValue) LabCamYaw = YawFor(LotDir(barn, 0f, -1f)); // AnimLab: in front of the barn's door
+            var kids = VKids(acts, heap, 2, force);
+            if (kids.Count < 2) return "two kids needed ('Two kids join the camp' first)";
+            return StartV(VillageScenes.HayJump(kids, AtAll(kids), heap, ToCam(heap), time), ThingBarn, CampUse.HayJump);
+        }
+
         string TryCrust(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
             var bakeries = PiecesOf(PieceKind.Bakery, VillageMiddle());
@@ -859,6 +902,8 @@ namespace AquariumCiv.View
                 CampUse.StreetChat => TryStreetChat(acts, time, true),
                 CampUse.FenceFix => TryFenceFix(acts, time, true),
                 CampUse.FenceLean => TryFenceLean(acts, time, true),
+                CampUse.BarnChores => TryBarnChores(acts, time, true),
+                CampUse.HayJump => TryHayJump(acts, time, true),
                 _ => "not a village use: " + use,
             };
             return r ?? use + ": started (" + VillageCast() + ")";
@@ -1006,6 +1051,10 @@ namespace AquariumCiv.View
                     mb.Box(Vector3.zero, new Vector3(0.09f, 0.004f, 0.004f), Palette.Straw);
                     for (int k = 0; k < 3; k++) mb.Prism(new Vector3(-0.03f + k * 0.03f, -0.045f, 0f), 0.006f, 0.014f, 0.04f, 6, Color.Lerp(Palette.Sprout, new Color(0.35f, 0.5f, 0.28f), k * 0.3f));
                     break;
+                case 15: // a heap of hay: a low mound of straw, a few stalks on top
+                    mb.Ico(new Vector3(0f, VillageGeo.HayTop * 0.45f, 0f), VillageGeo.HayR, new Vector3(1f, VillageGeo.HayTop / VillageGeo.HayR * 0.6f, 0.9f), Palette.Straw, 0.15f);
+                    for (int k = 0; k < 5; k++) mb.Box(new Vector3(-0.03f + k * 0.015f, VillageGeo.HayTop * 0.9f, 0.01f * (k % 2)), new Vector3(0.004f, 0.004f, 0.03f), Color.Lerp(Palette.Straw, Palette.Wheat, 0.5f), Quaternion.Euler(0f, k * 37f, 20f));
+                    break;
                 case 14: Pieces.Log(mb, new Vector3(0f, VillageGeo.LogTop * 0.5f, 0f), VillageGeo.LogTop * 0.5f, VillageGeo.LogLen, 0f, Palette.Bark); break; // a felled log along +z
                 case 13: // a songbird (as B17.b's): body, head, tail
                     mb.Ico(Vector3.zero, 0.012f, new Vector3(1.4f, 1f, 1f), new Color(0.55f, 0.36f, 0.25f), 0.1f);
@@ -1061,6 +1110,13 @@ namespace AquariumCiv.View
                     var t = VPiece(root, material, used++, VMesh(14));
                     t.localPosition = G3(fl.at); t.localRotation = Quaternion.LookRotation(new Vector3(fl.along.x, 0f, fl.along.y)); t.localScale = Vector3.one;
                     break;
+                }
+                if (BarnOf(VillageMiddle(), out _, out _, out var hay))
+                {   // B59.k/l: the hay heap by the barn (dented for a moment when a kid lands in it)
+                    float dent = 0f;
+                    foreach (var s2 in scenes) if (s2.use == CampUse.HayJump) foreach (var f in s2.fx) if (f.kind == CampFxKind.Village && (VillageFx)f.count == VillageFx.HayDent) dent = Mathf.Max(dent, CampPose.Bump(time - s2.t0, f.time, 0.5f));
+                    var t = VPiece(root, material, used++, VMesh(15));
+                    t.localPosition = G3(hay); t.localRotation = Quaternion.identity; t.localScale = new Vector3(1f, 1f - dent * (0.02f / VillageGeo.HayTop), 1f);
                 }
                 foreach (var g in grids)
                 {
@@ -1131,6 +1187,9 @@ namespace AquariumCiv.View
                         }
                         break;
                     }
+                    case CampUse.BarnChores:
+                        if (u >= s.b && u < s.Length) { var t = VPiece(root, material, used++, VMesh(6)); t.localPosition = G3(s.p0); t.localRotation = Quaternion.identity; t.localScale = Vector3.one; }
+                        break;
                     case CampUse.LogPileSit:
                         if (u >= s.a && u < s.b)
                             for (int m = 0; m < s.Count; m++)
@@ -1245,6 +1304,8 @@ namespace AquariumCiv.View
         public static string StreetChat() => Do(CampUse.StreetChat);
         public static string FenceFix() => Do(CampUse.FenceFix);
         public static string FenceLean() => Do(CampUse.FenceLean);
+        public static string BarnChores() => Do(CampUse.BarnChores);
+        public static string HayJump() => Do(CampUse.HayJump);
         public static string VillageStatus() { var c = Camp; return c == null ? "no PeopleView" : c.VillageStatus(); }
         public static string VillageWho() { var c = Camp; return c == null ? "no PeopleView" : c.VillageWho(); }
     }

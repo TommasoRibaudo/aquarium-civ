@@ -248,7 +248,7 @@ namespace AquariumCiv.View.Tests
             }
             Assert.Less(ConsequenceMeshes.Build(ConsequenceKind.Baskets, 1).vertexCount, ConsequenceMeshes.Build(ConsequenceKind.Baskets).vertexCount, "a basket fewer");
             Assert.Greater(ConsequenceMeshes.Build(ConsequenceKind.NameStone, 1).vertexCount, ConsequenceMeshes.Build(ConsequenceKind.NameStone).vertexCount, "a row more");
-            Assert.AreEqual(CampUse.FenceLean, System.Enum.GetValues(typeof(CampUse)).Cast<CampUse>().Max(), "#695's village uses are the last (after #693's, the goat pen's and #694's)"); Assert.Less(CampUse.KidsClose, CampUse.FieldTag, "#694's dog and wolf uses come before #695's");
+            Assert.AreEqual(CampUse.HayJump, System.Enum.GetValues(typeof(CampUse)).Cast<CampUse>().Max(), "#695's village uses are the last (after #693's, the goat pen's and #694's)"); Assert.Less(CampUse.KidsClose, CampUse.FieldTag, "#694's dog and wolf uses come before #695's");
             foreach (CampUse u in System.Enum.GetValues(typeof(CampUse))) if (u >= CampUse.BasketTake && u <= CampUse.PenPet) Assert.IsNotEmpty(CampLife.KindFor(u), u + " has its thing");
         }
     }

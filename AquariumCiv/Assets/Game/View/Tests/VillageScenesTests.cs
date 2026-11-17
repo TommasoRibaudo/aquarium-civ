@@ -216,6 +216,26 @@ namespace AquariumCiv.View.Tests
         }
 
         [Test]
+        public void Barn_HayPitchedThenTheBucket_KidsDropIntoTheHeap()
+        {
+            Vector2 heap = new Vector2(0.2f, 0f), door = new Vector2(0f, 0f);
+            var c = VillageScenes.BarnChores(1, new Vector2(0.6f, -0.6f), heap, door, Vector2.down, 0f);
+            TimesInOrder(c);
+            Assert.AreEqual(3, c.parts[0].Count(p => p.prop == PropKind.Sheaf), "three armfuls of hay");
+            Assert.GreaterOrEqual(c.fx.Count(f => f.kind == CampFxKind.Grass), 6, "grass bits at the heap and the door");
+            Assert.Less(c.a, c.b);
+            Assert.IsTrue(c.parts[0].Any(p => p.prop == PropKind.Bucket), "the bucket for the animals");
+            foreach (var p in c.parts[0]) Assert.GreaterOrEqual((p.pos - heap).magnitude, VillageGeo.HayR + 0.04f, "never inside the heap");
+
+            var j = VillageScenes.HayJump(new[] { 5, 6 }, new[] { new Vector2(0f, -0.6f), new Vector2(0.4f, -0.6f) }, heap, Vector2.down, 0f);
+            TimesInOrder(j);
+            Assert.AreEqual(4, j.fx.Count(f => f.kind == CampFxKind.Village && (VillageFx)f.count == VillageFx.HayDent), "each kid drops in twice");
+            var drop = j.parts[0].First(p => p.from >= j.a - 0.4f && p.pose != null);
+            Assert.Less(Enumerable.Range(0, 12).Min(i => Pose(drop, i * 0.05f, d => d.squash)), 0.65f, "squash 0.6 on landing");
+            Assert.IsTrue(j.parts.All(l => l.Any(p => p.style == DollStyle.Laugh)), "they laugh");
+        }
+
+        [Test]
         public void StreetChat_IsB50bsMeet()
         {
             var s = VillageScenes.StreetChat(1, 2, new Vector2(-0.5f, 0f), new Vector2(0.5f, 0f), Vector2.zero, Vector2.right, 5f, 0f);

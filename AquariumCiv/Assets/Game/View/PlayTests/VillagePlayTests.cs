@@ -66,6 +66,8 @@ namespace AquariumCiv.View.PlayTests
             yield return Play(pv, CampUse.FenceFix, CampCheats.FenceFix, 12f);
             yield return Play(pv, CampUse.FenceLean, CampCheats.FenceLean, 12f);
             yield return Play(pv, CampUse.HarvestDance, CampCheats.HarvestDance, 15.5f);
+            yield return Play(pv, CampUse.BarnChores, CampCheats.BarnChores, 8f); // B59.k
+            yield return Play(pv, CampUse.HayJump, CampCheats.HayJump, 11f); // B59.l
             // the town: the bakery's crust
             Debug.Log("[695 uses] " + CampCheats.StageVillage(10f, true, 4));
             yield return new WaitForSeconds(3f);

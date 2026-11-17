@@ -2191,6 +2191,9 @@ in for the timber yard.
 | B58.k Leaning on and climbing the fences | grown-ups lean (arms x 70 on the top rail) to watch the animals; kids climb and sit on the top rail; **often** | as B54.w | R B54.w | **"Kids on the fence"** |
 
 #### B59. Jetty, orchard, quarry, dyer, watermill, outbuildings (one job and one life use each)
+
+**Built, part 2 (2026-11-17, `vs/695-village-b`):** B59.k and B59.l at a family's barn (a hay heap drawn beside it [est]); clips `Tools/animlab/clips/695-b59*.json` wait for sign-off. **Blocked:** B59.a–j (the jetty, orchard, quarry, dyer and watermill only answer the Keeper's shaping gifts, which the living land does not have).
+
 | # | Who · when · how often | Beats | Props · reuse | Cheat |
 |---|---|---|---|---|
 | B59.a Jetty W: tie up the boat | the boat's rower after a trip | kneels at the post, loops the rope (fiddle 1.5 s), pulls it tight (lean −10, `Back`); the boat bumps the jetty (`Jolt`, `Ring`) | R the boat (#404) | **"Tie up the boat"** |

@@ -538,6 +538,10 @@ namespace AquariumCiv.View
             if (Btn("Fix a fence")) last = CampCheats.FenceFix(); // #695 B58.j
             if (Btn("Kids on the fence")) last = CampCheats.FenceLean(); // #695 B58.k
             EndRow();
+            Row(); // #695 B59 outbuildings (the jetty, orchard, quarry, dyer and watermill can't stand in a living-land box)
+            if (Btn("Barn chores")) last = CampCheats.BarnChores(); // #695 B59.k
+            if (Btn("Kids jump in the hay")) last = CampCheats.HayJump(); // #695 B59.l
+            EndRow();
         }
 
         void OnGUI()

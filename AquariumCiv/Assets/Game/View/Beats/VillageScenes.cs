@@ -26,6 +26,8 @@ namespace AquariumCiv.View
         Grid,
         /// <summary>B58.j: the leaning post is pushed straight; a tap drives it in.</summary>
         PostStraight, PostTap,
+        /// <summary>B59.l: a kid lands in the hay heap: it dents (0.02 u) and springs back.</summary>
+        HayDent,
         /// <summary>B58.c: the crust goes from the baker's hand to a kid's, and a piece from that kid to another.</summary>
         CrustGive, CrustShare }
 
@@ -46,6 +48,8 @@ namespace AquariumCiv.View
         public const float Square = 0.05f, GridLen = 6 * Square;
         /// <summary>B57.d: how high the mender stands on the ladder's rungs [est].</summary>
         public const float RungUp = 0.07f;
+        /// <summary>B59.k/l: the hay heap by the barn [est]: its radius and its top.</summary>
+        public const float HayR = 0.07f, HayTop = 0.06f;
         public static float SeatLift(float top) => PropGeo.SeatLift(top);
     }
 
@@ -562,6 +566,96 @@ namespace AquariumCiv.View
             s.Part(m, t, t + 1f, land, land + toCam, DollStyle.Stand, ArmsUpPose); t += 1f;
             s.Part(m, t, t + 0.8f, land, land + toCam, DollStyle.Laugh); t += 0.8f;
             Go(s, m, t, 1f, land + toCam * 0.3f + along * 0.1f, land + toCam, KidWalk);
+            return s;
+        }
+
+        // ================================================================== B59.k barn chores (work)
+        /// <summary>B59.k: someone of the household comes to the hay heap by the barn (<paramref name="heap"/>), pitches three forkfuls into the barn's
+        /// door (<paramref name="door"/>): arm x 40 → 140 with an armful of hay, each throw a puff of grass bits at the door; then fetches the bucket
+        /// and sets it down at the door for the animals (a squash). <see cref="CampScene.a"/>: the first throw; <see cref="CampScene.b"/>: the bucket down.</summary>
+        public static CampScene BarnChores(int who, Vector2 at, Vector2 heap, Vector2 door, Vector2 toCam, float t0)
+        {
+            toCam = Unit(toCam, Vector2.down);
+            var s = new CampScene(CampUse.BarnChores, t0, Vector2.Lerp(heap, door, 0.5f)) { holdFocus = true };
+            int m = s.Add(who);
+            var toDoor = Dir(heap, door, Vector2.up);
+            var st = heap + toDoor * (VillageGeo.HayR + 0.05f);
+            float t = WalkTime(at, st, Walk);
+            s.Part(m, 0f, t, st, door, DollStyle.Stand, null, PropKind.None, Walk);
+            s.a = t + 0.9f;
+            for (int i = 0; i < 3; i++)
+            {
+                // bend to the heap (lean 30, arms x 40), lift and swing to the door (arms x 140), let go
+                s.Part(m, t, t + 0.6f, st, heap, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = Bump(u, 0f, l); p.lean += 30f * k; p.armL = Lerp(p.armL, new Vector3(40f, 0f, -12f), k); p.armR = Lerp(p.armR, new Vector3(40f, 0f, 12f), k); }, PropKind.None);
+                s.Fx(t + 0.3f, CampFxKind.Grass, G(heap, VillageGeo.HayTop), 0.3f, 2);
+                s.Part(m, t + 0.6f, t + 1.2f, st, door, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = In(u, 0f, l); p.armL = Lerp(new Vector3(40f, 0f, -12f), new Vector3(140f, 0f, -12f), k); p.armR = Lerp(new Vector3(40f, 0f, 12f), new Vector3(140f, 0f, 12f), k); p.lean -= 6f * k; }, PropKind.Sheaf);
+                s.Fx(t + 1.15f, CampFxKind.Grass, G(door, 0.06f), 0.45f, 4);
+                t += 1.3f;
+            }
+            var bucketAt = door - toDoor * 0.06f + new Vector2(-toDoor.y, toDoor.x) * 0.07f;
+            float w = WalkTime(st, bucketAt - toDoor * 0.05f, Walk);
+            s.Part(m, t, t + w, bucketAt - toDoor * 0.05f, bucketAt, DollStyle.Stand, null, PropKind.Bucket, Walk); t += w;
+            s.Part(m, t, t + 0.6f, bucketAt - toDoor * 0.05f, bucketAt, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = Bump(u, 0f, l); p.lean += 28f * k; p.squash = 1f - 0.1f * k; }, PropKind.Bucket);
+            s.b = t + 0.35f; s.p0 = bucketAt;
+            s.Fx(s.b, CampFxKind.Dust, G(bucketAt, 0.005f), 0.25f, 2);
+            t += 0.6f;
+            s.Part(m, t, t + 0.6f, bucketAt - toDoor * 0.05f, door, DollStyle.Stand, NodPose); t += 0.6f;
+            Go(s, m, t, 1.2f, bucketAt - toDoor * 0.05f + toCam * 0.3f, bucketAt + toCam, Walk);
+            return s;
+        }
+
+        // ================================================================== B59.l kids jump in the hay
+        /// <summary>B59.l: 2 kids climb onto the hay heap (up 0.06 u) and drop back into it, twice each, in turns: squash 0.6 on landing, grass bits fly,
+        /// the heap dents 0.02 u and springs back (<see cref="VillageFx.HayDent"/>); they laugh and climb out. <see cref="CampScene.a"/>: the first drop.</summary>
+        public static CampScene HayJump(IList<int> kids, IList<Vector2> at, Vector2 heap, Vector2 toCam, float t0)
+        {
+            toCam = Unit(toCam, Vector2.down);
+            var across = new Vector2(-toCam.y, toCam.x);
+            int n = Mathf.Min(2, kids.Count);
+            var s = new CampScene(CampUse.HayJump, t0, heap) { holdFocus = true };
+            var foot = new Vector2[n]; var top = new Vector2[n];
+            float t = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                s.Add(kids[i]);
+                float side = i == 0 ? -1f : 1f;
+                foot[i] = heap + toCam * (VillageGeo.HayR + 0.04f) + across * side * 0.05f;
+                top[i] = heap + across * side * 0.025f;
+                t = Mathf.Max(t, WalkTime(at[i], foot[i], KidWalk));
+            }
+            for (int i = 0; i < n; i++) s.Part(i, 0f, t, foot[i], heap, DollStyle.Stand, null, PropKind.None, KidWalk);
+            bool first = true;
+            for (int round = 0; round < 2; round++)
+                for (int i = 0; i < n; i++)
+                {
+                    int me = i, other = 1 - i;
+                    // climb up (0.6 s), stand on top arms up (0.4 s), drop back (0.35 s): squash 0.6, bits fly, the heap dents
+                    var up = s.Part(me, t, t + 0.6f, top[me], top[me] - toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = In(u, 0f, l); p.offset.y += VillageGeo.HayTop * k; p.lean += 25f * Bump(u, 0f, l); p.armL = new Vector3(110f * (1f - k), 0f, -12f); p.armR = new Vector3(110f * (1f - k), 0f, 12f); }, PropKind.None, 0.15f);
+                    up.poseWalking = true;
+                    s.Part(me, t + 0.6f, t + 1f, top[me], top[me] + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += VillageGeo.HayTop; p.armL = new Vector3(165f, 0f, -25f); p.armR = new Vector3(165f, 0f, 25f); });
+                    s.Part(me, t + 1f, t + 1.6f, top[me], top[me] + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) =>
+                    {
+                        float k = In(u, 0f, 0.35f);
+                        p.offset.y += Mathf.Lerp(VillageGeo.HayTop, VillageGeo.HayTop * 0.4f, k) + 0.03f * Bump(u, 0f, 0.35f);
+                        p.lean -= 35f * k; p.squash = 1f - 0.4f * Bump(u, 0.3f, 0.3f);
+                        p.armL = new Vector3(150f, 0f, -40f); p.armR = new Vector3(150f, 0f, 40f);
+                    });
+                    if (first) { s.a = t + 1.35f; first = false; }
+                    s.Fx(t + 1.35f, CampFxKind.Grass, G(heap, VillageGeo.HayTop), 0.45f, 5);
+                    Do(s, t + 1.35f, VillageFx.HayDent, heap);
+                    // the other laughs at the foot meanwhile
+                    if (n > 1) s.Part(other, t, t + 1.6f, foot[other], heap, DollStyle.Laugh);
+                    // slide off the front
+                    var down = s.Part(me, t + 1.6f, t + 2.1f, foot[me], heap, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += VillageGeo.HayTop * 0.4f * (1f - In(u, 0f, l)); }, PropKind.None, 0.2f);
+                    down.poseWalking = true;
+                    if (n > 1) s.Part(other, t + 1.6f, t + 2.1f, foot[other], heap, DollStyle.Stand);
+                    t += 2.1f;
+                }
+            for (int i = 0; i < n; i++)
+            {
+                s.Part(i, t, t + 1f, foot[i], heap, DollStyle.Laugh);
+                Go(s, i, t + 1f, 1f, foot[i] + toCam * 0.3f + across * (i == 0 ? -0.1f : 0.1f), foot[i] + toCam, KidWalk);
+            }
             return s;
         }
 

@@ -269,6 +269,10 @@ namespace AquariumCiv.View
         FenceFix,
         /// <summary>B58.k: kids climb and sit on a field's fence, a grown-up leans on it.</summary>
         FenceLean,
+        /// <summary>B59.k: barn chores: hay pitched from the heap into the barn, a bucket set down for the animals (work).</summary>
+        BarnChores,
+        /// <summary>B59.l: kids jump in the hay heap by the barn.</summary>
+        HayJump,
     }
 
     /// <summary>#694: what a dog or a visiting wolf does in a <see cref="QuadPart"/> (P0's moves; CampLife.Dogs poses them).</summary>
