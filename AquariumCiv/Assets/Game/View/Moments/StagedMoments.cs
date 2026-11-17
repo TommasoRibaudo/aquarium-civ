@@ -103,7 +103,7 @@ namespace AquariumCiv.View
             var planner = pv != null ? pv.Planner : null;
             if (planner == null || m == null) { LastWhy = "no people view"; return null; }
             var live = new Live { moment = m, sim = sim, pv = pv, planner = planner };
-            if (!LifePlanner.HeldMomentFits(pv.Now, LifePlanner.HeldMomentSeconds(m.kind)))
+            if (!Fits(m.kind, pv.Now))
             {
                 // t4-fixes (tester run 3): night. It waits for the morning in the queue (Waiting, not a try), never "playing" with nothing on
                 // screen: the stage sees it is no longer playing and lets it be.
@@ -115,6 +115,17 @@ namespace AquariumCiv.View
             if (!TryStart(live)) return null; // can't be cast: it waits (a card only after several tries)
             lives.Add(live);
             return new MomentStaging { Done = () => Done(live), Stop = () => End(live, true) };
+        }
+
+        /// <summary>S-ritual: a ritual is over before the evening's meal and bed (the work share run lost 7 % of sleep to one staged at dusk);
+        /// it waits for the morning like a moment at night. Every other kind: <see cref="LifePlanner.HeldMomentFits"/>.</summary>
+        public const float RitualLatest = 17.5f;
+        static bool Fits(MomentKind kind, ViewTime at)
+        {
+            if (!LifePlanner.HeldMomentFits(at, LifePlanner.HeldMomentSeconds(kind))) return false;
+            if (kind != MomentKind.Ritual) return true;
+            var end = LifeClock.Advance(at, LifePlanner.HeldMomentSeconds(kind));
+            return end.day == at.day && end.hour <= RitualLatest;
         }
 
         static bool TryStart(Live live)
@@ -154,7 +165,7 @@ namespace AquariumCiv.View
             {
                 // Night: the people hold it in the morning.
                 live.since += HeldMomentStage.CheckSeconds;
-                if (LifePlanner.HeldMomentFits(live.pv.Now, LifePlanner.HeldMomentSeconds(live.moment.kind)))
+                if (Fits(live.moment.kind, live.pv.Now))
                 {
                     if (TryStart(live)) return false;
                 }
@@ -298,7 +309,7 @@ namespace AquariumCiv.View
             var pv = PeopleView.Find();
             if (pv == null || pv.Planner == null) return "no people";
             string skipped = "";
-            if (!LifePlanner.HeldMomentFits(pv.Now, LifePlanner.HeldMomentSeconds(MomentKind.Ritual))) { PeopleView.DebugSetHour(9.5f); skipped = " (skipped to the morning)"; }
+            if (!Fits(MomentKind.Ritual, pv.Now)) { PeopleView.DebugSetHour(9.5f); skipped = " (skipped to the morning)"; }
             var e = sim.DebugPlayRitual(ritual);
             if (e == null) return "no such ritual: " + ritual;
             var m = sim.MomentOfEntry(e.id);

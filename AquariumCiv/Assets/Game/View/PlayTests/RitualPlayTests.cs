@@ -78,6 +78,7 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log("[ritual] " + CampCheats.StageCamp(9f, 4));
             Debug.Log("[ritual] " + ConsequenceCheats.PlaceEvery());
             Debug.Log("[ritual] " + EcoDebug.AddBushes(6));
+            Debug.Log("[ritual] grown-ups +" + AquariumCiv.Game.GameClock.Instance.Sim.DebugAddKids(3, 22f)); // a fuller camp: the log line needs free grown-ups
             Debug.Log("[ritual] " + CampCheats.GrowTree());
             yield return new WaitForSeconds(3f);
             var pv = PeopleView.Find();
