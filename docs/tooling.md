@@ -1009,3 +1009,16 @@ Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or
   option, village ones too (they fall back to the fire's ring or the edge), so the village props' uses can be shot without a village. Some
   kinds stand twice (two stew pots, baskets, staffs, pegs); the #693 cheats take the first drawn. The axe stump stands at the edge (2+ u
   out): its clips need a `lead`. [verified]
+
+### 2026-11-16 · #694 dogs and wolves: night clips and the visiting wolf
+- **A fresh `StageCamp` at 19.4-20.2 h has no grown-up free at the fire** (they pitch tents and go to bed): "two grown-ups needed by the fire"
+  in the `[CampLife] later:` line, and the clip showed only the dog. Night clips now stage at 18.8 h + `DebugPauseClock(true)`, and the
+  wolf cheats walk any drawn grown-up (`StageGrown`) and kid to the fire first. [verified]
+- **A planned wolf point can be correct and still off every frame**: the drive-off planner first stopped the wolf at the camp's edge
+  + 0.85 (2.6 u from the fire in a spread camp). Find it with `bash Tools/animlab/probe.sh <request> <lines>` and
+  `CampCheats.DogStatus()` (the visitor's spot, each scene's focus and cast) plus `GameObject.Find("Visiting wolf")` renderer bounds.
+  The wolf now stops at the first clear point past the firelight's edge. Even in frame, a grey wolf at dusk does not show at phone
+  scale: the spec's eye glints need a glowing material (the Stylized solid is lit only by the fire). [verified: probe]
+- `Tools/animlab.sh live` reads a request's JSON when the batch queues it, but a `.cs` edited mid-batch is compiled at the next play
+  exit/restart: edit code only between batches (as 2026-11-16 above). Old AnimLab logs rotate at each `restart-editor.sh`: read a clip's
+  `[CampLife] later:` line before the next restart. [verified]

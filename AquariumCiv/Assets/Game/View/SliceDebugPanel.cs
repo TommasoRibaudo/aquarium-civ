@@ -483,6 +483,34 @@ namespace AquariumCiv.View
             if (Btn("Kids at the goat pen")) last = CampCheats.PenRails(); // #693 B54.w
             if (Btn("Kid pets the goat")) last = CampCheats.PenPet(); // B58.d at the pen
             EndRow();
+            // #694 dogs and wolves in the people's day (B24.b, B25, B55, B56); "Pup now" / "Grown dog now" first. "Lost pup now" is in the sim panel.
+            Row(); // #694
+            if (Btn("Pup now")) last = CampCheats.PupNow(); // #694
+            if (Btn("Grown dog now")) last = CampCheats.GrownDogNow(); // #694
+            if (Btn("Big dog now")) last = CampCheats.BigDogNow(); // #694 (gen 3: big enough to ride)
+            if (Btn("Old dog now")) last = CampCheats.OldDogNow(); // #694 B25.c (grey muzzle)
+            if (Btn("Dogs: status")) last = CampCheats.DogStatus(); // #694
+            EndRow();
+            Row(); // #694 the pup at the fire (B24.b)
+            if (Btn("Pup: chew a hide")) last = CampCheats.PupChew(); // #694 B24.b
+            if (Btn("Pup: play with the kids")) last = CampCheats.PupPlay(); // #694 B24.b
+            if (Btn("Pup: sleep by the embers")) last = CampCheats.PupSleep(); // #694 B24.b
+            if (Btn("Pup: steal a fish")) last = CampCheats.PupSteal(); // #694 B24.b
+            if (Btn("Pup: shooed off the meat")) last = CampCheats.PupShoo(); // #694 B24.b
+            if (Btn("Pup: run along in a game")) last = CampCheats.PupRunAlong(); // #694 B24.b
+            EndRow();
+            Row(); // #694 the grown dog (B25, B56)
+            if (Btn("Dog: hunt now")) last = CampCheats.DogHunt(); // #694 B25.a + B56.a
+            if (Btn("Wolves come near (guard)")) last = CampCheats.DogGuard(); // #694 B25.b + B56.b
+            if (Btn("Dog: fetch")) last = CampCheats.DogFetch(); // #694 B56.c
+            if (Btn("Dog: a kid rides")) last = CampCheats.DogRide(); // #694 B56.d
+            if (Btn("Dog by the fire")) last = CampCheats.DogFire(); // #694 B56.e
+            if (Btn("Dog: lie in the sun")) last = CampCheats.DogSun(); // #694 B25
+            EndRow();
+            Row(); // #694 the people and the wolves (B55)
+            if (Btn("Wolves come near: drive them off")) last = CampCheats.DriveOff(); // #694 B55.a
+            if (Btn("Wolves in view: hold the kids close")) last = CampCheats.KidsClose(); // #694 B55.b
+            EndRow();
         }
 
         void OnGUI()

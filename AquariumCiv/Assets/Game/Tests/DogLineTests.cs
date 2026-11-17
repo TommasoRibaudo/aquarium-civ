@@ -230,6 +230,34 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(dog.id, sim.FirstDogId, "the first dog's record stays");
         }
 
+        /// <summary>#694's cheats ("Pup now", "Grown dog now", "Big dog now", "Old dog now"): each stage and generation on demand, under the
+        /// cap; and a grown dog's first guard stops the meat thief (the view's guard scene then plays instead of a theft).</summary>
+        [Test]
+        public void DebugDogNow_EachStage_UnderTheCap_AndTheGuardStopsTheThief()
+        {
+            var sim = Pack();
+            sim.DebugWolvesBold();
+            var pup = sim.DebugDogNow(0, DogStage.Pup);
+            Assert.IsNotNull(pup);
+            Assert.AreEqual(DogStage.Pup, sim.DogStageOf(pup));
+            Assert.AreEqual(pup.id, sim.FirstDogId, "the first comes home as the first dog");
+            Assert.IsTrue(sim.DebugMeatThiefNow(), "no guard yet: the thief can come");
+            var big = sim.DebugDogNow(3, DogStage.Grown);
+            Assert.AreEqual(DogStage.Grown, sim.DogStageOf(big));
+            Assert.AreEqual(3, big.gen);
+            Assert.IsTrue(sim.DogCollar(big));
+            var old = sim.DebugDogNow(2, DogStage.Old);
+            Assert.AreEqual(DogStage.Old, sim.DogStageOf(old));
+            Assert.IsTrue(sim.DogGrey(old));
+            Assert.AreEqual(SimCore.DogCap, sim.DogCount);
+            sim.DebugDogNow(1, DogStage.Grown);
+            Assert.AreEqual(SimCore.DogCap, sim.DogCount, "never past the cap");
+            Assert.IsFalse(sim.MeatThiefStopped);
+            sim.Step();
+            Assert.IsTrue(sim.MeatThiefStopped, "a grown dog guards: the thief stops");
+            Assert.IsFalse(sim.DebugMeatThiefNow());
+        }
+
         [Test]
         public void Grown_TheCollar_TheGuard_StopsTheThief_AndHelpsTheHunt()
         {

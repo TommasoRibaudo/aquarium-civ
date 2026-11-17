@@ -209,6 +209,56 @@ namespace AquariumCiv.View
         PenRails,
         /// <summary>B58.d at the pen: a kid pets the goat over the rail; it butts gently.</summary>
         PenPet,
+        // #694 dogs and wolves in the people's day (View/Beats/DogScenes.cs, View/CampLife.Dogs.cs)
+        /// <summary>B24.b: the pup chews a hide by its keeper.</summary>
+        PupChew,
+        /// <summary>B24.b: the pup play-bows to the kids; a kid bows back.</summary>
+        PupPlay,
+        /// <summary>B24.b: the pup sleeps curled by the embers.</summary>
+        PupSleep,
+        /// <summary>B24.b: the pup steals a fish from the stash and runs; a grown-up chases and gives up.</summary>
+        PupSteal,
+        /// <summary>B24.b: the pup is shooed off the meat (it growls, head low).</summary>
+        PupShoo,
+        /// <summary>B24.b: the pup runs along in the kids' race.</summary>
+        PupRunAlong,
+        /// <summary>B25.a + B56.a: the hunter whistles the dog to heel, it flushes the rabbits, the pat after the catch.</summary>
+        DogHunt,
+        /// <summary>B25.b + B56.b: the dog barks at a wolf by night and it turns back; a grown-up scratches its head.</summary>
+        DogGuard,
+        /// <summary>B56.c: a kid throws a stick, the dog fetches it.</summary>
+        DogFetch,
+        /// <summary>B56.d: a small kid rides a big dog.</summary>
+        DogRide,
+        /// <summary>B56.e: the dog asleep at the fire ring's edge; a kid lies with the head on it.</summary>
+        DogFire,
+        /// <summary>B25: the grown dog lies in the sun by its keeper's tent.</summary>
+        DogSun,
+        /// <summary>B55.a: the grown-ups drive a wolf off with shouts and a torch.</summary>
+        WolfDriveOff,
+        /// <summary>B55.b: grown-ups hold the kids close while a wolf is in view.</summary>
+        KidsClose,
+    }
+
+    /// <summary>#694: what a dog or a visiting wolf does in a <see cref="QuadPart"/> (P0's moves; CampLife.Dogs poses them).</summary>
+    public enum QuadAct { Stand, Sit, Lie, Sleep, PlayBow, Sniff, Bark, Alert, Chew, Growl, Wag, HeadDown }
+
+    /// <summary>#694: what a dog carries in its mouth for a part.</summary>
+    public enum QuadHeld { None, Stick, Fish, Hide }
+
+    /// <summary>#694: one stretch of a scene's dog (<see cref="actor"/> 0) or visiting wolf (1): it goes to <see cref="pos"/> at
+    /// <see cref="speed"/> (the gait from the speed), then does <see cref="act"/> facing <see cref="face"/>.</summary>
+    public sealed class QuadPart
+    {
+        public int actor;
+        public float from, to;
+        public Vector2 pos, face;
+        public QuadAct act;
+        public float speed = 0.3f;
+        public QuadHeld held;
+        /// <summary>Off the ground (a pup carried in the arms; a kid's weight is not one).</summary>
+        public float lift;
+        public float Len => to - from;
     }
 
     /// <summary>A pose laid over the doll's pose for one part: <paramref name="into"/> seconds into the part, <paramref name="len"/> its length.</summary>
@@ -232,6 +282,8 @@ namespace AquariumCiv.View
         public CampPoseFn pose;
         /// <summary>Lay the pose even while walking (a heavy carry, a slow bent walk).</summary>
         public bool poseWalking;
+        /// <summary>#694 (B56.d): they are carried along (a kid on a dog's back): moving keeps <see cref="style"/>, no walking legs.</summary>
+        public bool carried;
         /// <summary>B30.b (the user's review): this part is a dip at the pot; seconds into the dip at the part's start (−1: not a dip).
         /// CampLife puts the pot's ladle in the right hand while the dip says so.</summary>
         public float dipFrom = -1f;
@@ -365,6 +417,10 @@ namespace AquariumCiv.View
         public readonly List<PairEvent> pairs = new();
         /// <summary>#692 part 4: things thrown along an arc (B15.d's crumbs).</summary>
         public readonly List<CampArc> arcs = new();
+        /// <summary>#694: the scene's dog and visiting wolf, part by part (<see cref="QuadPart.actor"/> 0 the dog <see cref="dog"/>, 1 the wolf).</summary>
+        public readonly List<QuadPart> quads = new();
+        /// <summary>#694: the sim dog the scene casts (−1 none).</summary>
+        public int dog = -1;
         /// <summary>Extra state a use carries (the spit's meat, the pot's lift), read by the director.</summary>
         public float a, b;
         /// <summary>#692 part 4: more moments and spots a use hands its animal (the frog's wriggle, the kit's hops: B37, B39.a).</summary>
@@ -388,6 +444,7 @@ namespace AquariumCiv.View
                 foreach (var l in parts) foreach (var p in l) e = Mathf.Max(e, p.to);
                 foreach (var f in fx) e = Mathf.Max(e, f.time);
                 foreach (var r in arcs) e = Mathf.Max(e, r.from + r.seconds);
+                foreach (var q in quads) e = Mathf.Max(e, q.to);
                 return e;
             }
         }
@@ -413,6 +470,21 @@ namespace AquariumCiv.View
 
         public void Fx(float time, CampFxKind kind, Vector3 at, float scale = 1f, int count = 0, CampAnchor anchor = CampAnchor.Ground, int member = -1) =>
             fx.Add(new CampFx { time = time, kind = kind, at = at, scale = scale, count = count, anchor = anchor, member = member });
+
+        /// <summary>#694: a part of the dog (actor 0) or the visiting wolf (1).</summary>
+        public QuadPart Quad(int actor, float from, float to, Vector2 pos, Vector2 face, QuadAct act, float speed = 0.3f, QuadHeld held = QuadHeld.None)
+        {
+            var q = new QuadPart { actor = actor, from = from, to = to, pos = pos, face = face, act = act, speed = speed, held = held };
+            quads.Add(q);
+            return q;
+        }
+
+        /// <summary>#694: the part actor <paramref name="actor"/> is in at scene second <paramref name="u"/> (null before its first and after its last).</summary>
+        public QuadPart QuadAt(int actor, float u)
+        {
+            foreach (var q in quads) if (q.actor == actor && u >= q.from && u < q.to) return q;
+            return null;
+        }
 
         public void Tip(int member, float from, float to, CampTipKind kind, float grow = 1f, float darken = 0f) =>
             tips.Add(new CampTip { member = member, from = from, to = to, kind = kind, grow = grow, darken = darken });

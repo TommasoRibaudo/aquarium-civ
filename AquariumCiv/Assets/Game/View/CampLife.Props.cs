@@ -19,7 +19,7 @@ namespace AquariumCiv.View
     public sealed partial class CampLife
     {
         const int ThingPropBase = 60000;
-        static bool IsPropUse(CampUse u) => u >= CampUse.BasketTake;
+        static bool IsPropUse(CampUse u) => u >= CampUse.BasketTake && u <= CampUse.PenPet; // #694: the dogs' uses come after
 
         /// <summary>A choice's thing as drawn now: its id, kind, spot (box x, z), yaw and transform.</summary>
         struct PropSpot { public int id; public string kind; public Vector2 at; public float yaw; public Transform t; public int personId; public bool onTree; }
