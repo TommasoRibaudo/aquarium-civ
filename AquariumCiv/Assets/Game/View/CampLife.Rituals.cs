@@ -200,6 +200,13 @@ namespace AquariumCiv.View
                 ConsequencePropsView.SetLook(table.id, TableBoards(sim, before));
             }
             StepPurple();
+            // bedtime and mealtime end a ritual's camp use (the boat, the empty basket): whoever's plan has gone to sleep or to eat leaves it
+            // (the work share, as #695's village uses: a kid's nap fell inside the boat's house, 7 % of sleep)
+            bool cut = false;
+            foreach (var a in acts)
+                if ((a.kind == ActivityKind.Sleep || a.kind == ActivityKind.Nap || a.kind == ActivityKind.Eat && !OnlyCheats) && byKey.TryGetValue(a.who.Key, out var rs) && IsRitualUse(rs.use) && rs != forced)
+                { int m = rs.IndexOf(a.who.Key); if (m >= 0 && rs.parts[m].Count > 0) { rs.parts[m].Clear(); SleepCut++; cut = true; } }
+            if (cut) Index();
             if (OnlyCheats || meals == null || meals.Eaters > 0) return;
             float h = Hour;
             var weather = planner.WeatherOn(now.day);

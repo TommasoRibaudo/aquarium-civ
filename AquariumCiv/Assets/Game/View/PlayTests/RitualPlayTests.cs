@@ -145,34 +145,43 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(10);
             var pv = PeopleView.Find();
             pv.timeScale = 16f;
-            float work = 0f, taken = 0f, eat = 0f, eatTaken = 0f, sleep = 0f, sleepTaken = 0f;
+            float work = 0f, taken = 0f, takenRitual = 0f, eat = 0f, eatTaken = 0f, sleep = 0f, sleepTaken = 0f;
             int days = 0, rituals = 0; float hourWas = pv.Now.hour; float t0 = Time.realtimeSinceStartup;
             bool InRitual(int key) => StagedMoments.PlayingRitual(sim, out var sc, out float s) && sc.plan.StepAt(key, s, out _, out _);
             bool InUse(int key) => pv.Camp.Cued(key) && pv.Camp.Scenes.Any(x => x.use >= CampUse.OfferingEmpty && x.keys.Contains(key));
-            bool wasRitual = false;
+            bool wasRitual = false; long playedDay = -1;
             while (days < 5 && Time.realtimeSinceStartup - t0 < 780f)
             {
                 yield return null;
                 float dt = Time.deltaTime * pv.timeScale;
                 if (pv.Now.hour < hourWas - 12f) { days++; AquariumCiv.Game.GameClock.DebugSkipHours(1.0 / 12.0 + 0.001); Debug.Log($"[ritual work] day {pv.Now.day} (month {sim.CalendarMonth}): rituals {rituals}, {string.Join(", ", pv.Camp.Started.Where(kv => kv.Key >= CampUse.OfferingEmpty).Select(kv => $"{kv.Key} x{kv.Value}"))}"); }
                 hourWas = pv.Now.hour;
+                // the month's ritual, played at 10:00 as the Keeper would watch it (the sim queues it only for a watching Keeper)
+                int cal = sim.CalendarMonth;
+                string want = cal == 8 ? RitualKind.Berrying : cal == 9 ? RitualKind.Feast : cal == 10 ? RitualKind.Woodpile : null;
+                if (want != null && pv.Now.hour >= 10f && pv.Now.hour < 11f && playedDay != pv.Now.day && StagedMoments.Playing == 0)
+                { playedDay = pv.Now.day; pv.timeScale = 1f; Debug.Log("[ritual work] " + StagedMoments.DebugPlayRitualNow(want)); }
+                if (pv.timeScale < 16f && StagedMoments.Playing == 0 && playedDay == pv.Now.day) pv.timeScale = 16f;
                 bool r = StagedMoments.PlayingRitual(sim, out _, out _);
                 if (r && !wasRitual) rituals++;
                 wasRitual = r;
                 foreach (var a in pv.Activities)
                 {
-                    bool cued = InRitual(a.who.Key) || InUse(a.who.Key);
-                    if (WorkKind(a.kind)) { work += dt; if (cued) taken += dt; }
+                    bool inRitual = InRitual(a.who.Key), cued = inRitual || InUse(a.who.Key);
+                    if (WorkKind(a.kind)) { work += dt; if (inRitual) takenRitual += dt; else if (cued) taken += dt; }
                     else if (a.kind == ActivityKind.Eat) { eat += dt; if (cued) eatTaken += dt; }
                     else if (a.kind == ActivityKind.Sleep) { sleep += dt; if (cued) sleepTaken += dt; }
                 }
             }
             pv.timeScale = 1f;
             var uses = string.Join(", ", pv.Camp.Started.Where(kv => kv.Key >= CampUse.OfferingEmpty).Select(kv => $"{kv.Key} x{kv.Value}"));
-            Debug.Log($"[ritual work] {days} view days; rituals staged {rituals}; uses {uses}; work {work:0} s, in a ritual or a boat use {taken:0.0} s ({100f * taken / Mathf.Max(1f, work):0.0} %); meals {eat:0} ({eatTaken:0.0}); sleep {sleep:0} ({sleepTaken:0.0})");
+            float yearWork = work * 12f / Mathf.Max(1, days); // a view day is a sim month: the year's three rituals against a year's work
+            Debug.Log($"[ritual work] {days} view days; rituals staged {rituals}; uses {uses}; work {work:0} s, in a boat or basket use {taken:0.0} s ({100f * taken / Mathf.Max(1f, work):0.0} %), in the year's rituals {takenRitual:0.0} s ({100f * takenRitual / Mathf.Max(1f, yearWork):0.0} % of a year's work); meals {eat:0} ({eatTaken:0.0}); sleep {sleep:0} ({sleepTaken:0.0})");
             Assert.GreaterOrEqual(days, 5, "ran 5 view days");
             Assert.Greater(work, 0f);
-            Assert.Less(taken / work, 0.05f, "under 5 % of work minutes in a ritual or a boat use");
+            Assert.GreaterOrEqual(rituals, 2, "the month's rituals played");
+            Assert.Less(taken / work, 0.05f, "under 5 % of work minutes in a boat or basket use");
+            Assert.Less(takenRitual / yearWork, 0.05f, "the year's rituals take under 5 % of a year's work minutes (they come once a year each)");
             Assert.Less(eat > 0f ? eatTaken / eat : 0f, 0.05f, "no meal lost");
             Assert.LessOrEqual(sleep > 0f ? sleepTaken / sleep : 0f, 0.02f, "no sleep lost");
             CloseSlice();
