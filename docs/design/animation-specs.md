@@ -2153,6 +2153,14 @@ the tents** (decisions.md 2026-11-07).
 The village and town come after the camp (people-and-things.md, order confirmed 2026-11-14). Same rules (D), same short tables.
 Building site: work only (the user dropped both life uses), so nothing new there.
 
+**Built, part 1 (2026-11-16, `View/Beats/VillageScenes.cs` + `View/CampLife.Village.cs`; clips `Tools/animlab/clips/695-*.json` wait for sign-off):**
+B57.a–j, B58.c, B58.f, B58.g, B58.j, B58.k. **Blocked** (no such thing can stand in a living-land box: the smithy, the kiln, the potter,
+the pasture, the beekeeper's meadow and the dug channels that bridges cross all come from the Keeper's shaping gifts, which the living land
+does not have): B58.a, B58.b, B58.d at a pasture (built at the goat pen, 2026-11-16), B58.e, B58.h, B58.i. Calls marked [est] in the code:
+the harvest dance on calendar month 10 with its own cheat ("Harvest dance": "Start a ritual now" is the Keeper Doll's relic ritual); the
+scarecrow stands the growing season; a home shows one thing per 10 years of age; no pebble in the town's fountain; the lumber mill stands
+in for the timber yard.
+
 #### B57. Fields, homes, well, windmill, timber
 | # | Who · when · how often | Beats | Props · reuse | Cheat |
 |---|---|---|---|---|

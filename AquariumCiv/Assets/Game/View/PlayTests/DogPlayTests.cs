@@ -134,14 +134,14 @@ namespace AquariumCiv.View.PlayTests
                 hourWas = pv.Now.hour;
                 foreach (var a in pv.Activities)
                 {
-                    bool cued = pv.Camp.Cued(a.who.Key) && pv.Camp.Scenes.Any(s => s.use >= CampUse.PupChew && s.keys.Contains(a.who.Key));
+                    bool cued = pv.Camp.Cued(a.who.Key) && pv.Camp.Scenes.Any(s => s.use >= CampUse.PupChew && s.use <= CampUse.KidsClose && s.keys.Contains(a.who.Key));
                     if (WorkKind(a.kind)) { work += dt; if (cued) taken += real; }
                     else if (a.kind == ActivityKind.Eat) { eat += dt; if (cued) eatTaken += real; }
                     else if (a.kind == ActivityKind.Sleep) { sleep += dt; if (cued) sleepTaken += real; }
                 }
             }
             pv.timeScale = 1f;
-            var dogs = string.Join(", ", pv.Camp.Started.Where(kv => kv.Key >= CampUse.PupChew).Select(kv => $"{kv.Key} x{kv.Value}"));
+            var dogs = string.Join(", ", pv.Camp.Started.Where(kv => kv.Key >= CampUse.PupChew && kv.Key <= CampUse.KidsClose).Select(kv => $"{kv.Key} x{kv.Value}"));
             Debug.Log($"[694 work] {days} view days; dog uses started: {dogs}; work {work:0} s, in a dog use {taken:0.0} s; meals {eat:0} ({eatTaken:0.0}); sleep {sleep:0} ({sleepTaken:0.0}); {pv.Camp.DogStatus()}");
             Assert.GreaterOrEqual(days, 5, "ran 5 view days");
             Assert.Greater(work, 0f);

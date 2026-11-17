@@ -1,0 +1,28 @@
+{
+ "name": "695-b57j-log-balance",
+ "notes": "B57.j: a kid walks along the lumber mill's lying log, arms out, wobbling; jumps off the end, arms up.",
+ "animlab": {
+  "issue": 695
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(11.0f, false, 6);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return \"waiting for the village\";",
+   "return \"waiting for the village\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11.0f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.LogBalance());"
+  ],
+  "warm": 0.5,
+  "seconds": 8,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.1,
+  "closeSpan": 0.45,
+  "yaw": 28,
+  "pitch": 32,
+  "lead": 4.5
+ }
+}

@@ -1,0 +1,30 @@
+{
+ "name": "695-b57c-harvest-dance",
+ "notes": "B57.c: the last harvest day: a ring round the last sheaf on the cut field, skipping one way and back, then the jump all together.",
+ "animlab": {
+  "issue": 695
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(15.5f, false, 6);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return AquariumCiv.View.CampCheats.ToSeason(AquariumCiv.Life.Season.Autumn);",
+   "return \"waiting for the season\";",
+   "return \"waiting for the village\";",
+   "return \"waiting for the village\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(15.5f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.HarvestDance());"
+  ],
+  "warm": 0.5,
+  "seconds": 15,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.8,
+  "yaw": 28,
+  "pitch": 40,
+  "lead": 12.0
+ }
+}

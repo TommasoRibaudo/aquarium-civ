@@ -511,6 +511,33 @@ namespace AquariumCiv.View
             if (Btn("Wolves come near: drive them off")) last = CampCheats.DriveOff(); // #694 B55.a
             if (Btn("Wolves in view: hold the kids close")) last = CampCheats.KidsClose(); // #694 B55.b
             EndRow();
+            // #695 the village and the town (B57, B58.c/f/g/j/k); "Jump: a village box" / "Jump: a town box" first
+            Row(); // #695
+            if (Btn("Jump: a village box")) last = CampCheats.StageVillage(10f, false, 4, false); // #695
+            if (Btn("Jump: a town box")) last = CampCheats.StageVillage(8f, true, 4, false); // #695 (a bakery stands)
+            if (Btn("Village: status")) last = CampCheats.VillageStatus(); // #695
+            EndRow();
+            Row(); // #695 fields, homes, the well (B57.a-f)
+            if (Btn("Kids run in the fields")) last = CampCheats.FieldTag(); // #695 B57.a
+            if (Btn("Make a scarecrow")) last = CampCheats.Scarecrow(); // #695 B57.b
+            if (Btn("Harvest dance")) last = CampCheats.HarvestDance(); // #695 B57.c
+            if (Btn("Mend and dress a home")) last = CampCheats.HomeMend(); // #695 B57.d
+            if (Btn("Gossip at the well")) last = CampCheats.WellGossip(); // #695 B57.e
+            if (Btn("Kid drops a pebble down the well")) last = CampCheats.WellPebble(); // #695 B57.f
+            EndRow();
+            Row(); // #695 the windmill, the lumber mill (B57.g-j)
+            if (Btn("Kids watch the sails")) last = CampCheats.SailWatch(); // #695 B57.g
+            if (Btn("Kids race the sails' shadow")) last = CampCheats.SailShadow(); // #695 B57.h
+            if (Btn("Break on the log pile")) last = CampCheats.LogPileSit(); // #695 B57.i
+            if (Btn("Kid balances on a log")) last = CampCheats.LogBalance(); // #695 B57.j
+            EndRow();
+            Row(); // #695 the bakery, streets, fences (B58.c/f/g/j/k)
+            if (Btn("Kids wait for a crust")) last = CampCheats.CrustWait(); // #695 B58.c (a town)
+            if (Btn("Kids play hopscotch")) last = CampCheats.Hopscotch(); // #695 B58.f
+            if (Btn("Stop to talk in a street")) last = CampCheats.StreetChat(); // #695 B58.g
+            if (Btn("Fix a fence")) last = CampCheats.FenceFix(); // #695 B58.j
+            if (Btn("Kids on the fence")) last = CampCheats.FenceLean(); // #695 B58.k
+            EndRow();
         }
 
         void OnGUI()

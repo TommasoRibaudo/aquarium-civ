@@ -238,6 +238,37 @@ namespace AquariumCiv.View
         WolfDriveOff,
         /// <summary>B55.b: grown-ups hold the kids close while a wolf is in view.</summary>
         KidsClose,
+        // #695 part 1: the village and the town (View/Beats/VillageScenes.cs, View/CampLife.Village.cs). Keep these last.
+        /// <summary>B57.a: kids play tag along the furrows; the farmer waves them out.</summary>
+        FieldTag,
+        /// <summary>B57.b: a scarecrow made together after sowing.</summary>
+        Scarecrow,
+        /// <summary>B57.c: the harvest dance round the last sheaf.</summary>
+        HarvestDance,
+        /// <summary>B57.d: a home mended and dressed (work).</summary>
+        HomeMend,
+        /// <summary>B57.e: gossip at the well.</summary>
+        WellGossip,
+        /// <summary>B57.f: a kid drops a pebble down the well and listens.</summary>
+        WellPebble,
+        /// <summary>B57.g: kids watch the windmill's sails.</summary>
+        SailWatch,
+        /// <summary>B57.h: kids race the sails' shadow round the mill.</summary>
+        SailShadow,
+        /// <summary>B57.i: a break on the lumber mill's log pile.</summary>
+        LogPileSit,
+        /// <summary>B57.j: a kid balances along a lying log.</summary>
+        LogBalance,
+        /// <summary>B58.c: kids wait at the bakery door for a crust.</summary>
+        CrustWait,
+        /// <summary>B58.f: kids play hopscotch in a street.</summary>
+        Hopscotch,
+        /// <summary>B58.g: two who meet in a street stop to talk.</summary>
+        StreetChat,
+        /// <summary>B58.j: a leaning fence post set straight and tapped in (work).</summary>
+        FenceFix,
+        /// <summary>B58.k: kids climb and sit on a field's fence, a grown-up leans on it.</summary>
+        FenceLean,
     }
 
     /// <summary>#694: what a dog or a visiting wolf does in a <see cref="QuadPart"/> (P0's moves; CampLife.Dogs poses them).</summary>
@@ -322,7 +353,9 @@ namespace AquariumCiv.View
         BushSway,
         /// <summary>#693: something happens to the scene's choice prop (what: <see cref="CampFx.count"/>, a <see cref="PropFx"/>; a value in
         /// <see cref="CampFx.scale"/>). CampLife.Props handles it.</summary>
-        Prop }
+        Prop,
+        /// <summary>#695: something happens to a village thing (what: <see cref="CampFx.count"/>, a <see cref="VillageFx"/>). CampLife.Village handles it.</summary>
+        Village }
 
     /// <summary>#693: what a <see cref="CampFxKind.Prop"/> does to the scene's prop (or draws beside it).</summary>
     public enum PropFx { None,

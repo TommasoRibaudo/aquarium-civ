@@ -1,0 +1,28 @@
+{
+ "name": "695-b57g-sail-watch",
+ "notes": "B57.g: 1-2 kids sit facing the windmill, heads nodding in step with the sails.",
+ "animlab": {
+  "issue": 695
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(11.0f, false, 6);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return \"waiting for the village\";",
+   "return \"waiting for the village\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11.0f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.SailWatch());"
+  ],
+  "warm": 0.5,
+  "seconds": 9,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.8,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 25,
+  "lead": 0.5
+ }
+}

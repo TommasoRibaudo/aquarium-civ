@@ -1,0 +1,28 @@
+{
+ "name": "695-b58k-fence-lean",
+ "notes": "B58.k: two kids climb a field's fence and sit on the top rail swinging their legs; a grown-up leans on the rail beside them.",
+ "animlab": {
+  "issue": 695
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(11.0f, false, 6);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return \"waiting for the village\";",
+   "return \"waiting for the village\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11.0f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.FenceLean());"
+  ],
+  "warm": 0.5,
+  "seconds": 9,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.2,
+  "closeSpan": 0.5,
+  "yaw": 28,
+  "pitch": 32,
+  "lead": 1.0
+ }
+}

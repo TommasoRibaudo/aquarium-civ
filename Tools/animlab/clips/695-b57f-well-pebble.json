@@ -1,0 +1,28 @@
+{
+ "name": "695-b57f-well-pebble",
+ "notes": "B57.f: a kid on tiptoe at the well's rim drops a pebble, leans over with a hand at the ear; the tiny ring deep down; the kid jumps back delighted.",
+ "animlab": {
+  "issue": 695
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(11.0f, false, 6);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return \"waiting for the village\";",
+   "return \"waiting for the village\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11.0f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.WellPebble());"
+  ],
+  "warm": 0.5,
+  "seconds": 7,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.0,
+  "closeSpan": 0.45,
+  "yaw": 28,
+  "pitch": 38,
+  "lead": 2.0
+ }
+}

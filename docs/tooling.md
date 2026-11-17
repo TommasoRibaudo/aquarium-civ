@@ -1022,3 +1022,17 @@ Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or
 - `Tools/animlab.sh live` reads a request's JSON when the batch queues it, but a `.cs` edited mid-batch is compiled at the next play
   exit/restart: edit code only between batches (as 2026-11-16 above). Old AnimLab logs rotate at each `restart-editor.sh`: read a clip's
   `[CampLife] later:` line before the next restart. [verified]
+
+### 2026-11-16 · #695 village uses: a lived-in village for clips, and the crowd's key -1
+- **A living-land village does not grow by skipping years.** `ForceNextEra` + `SimLayoutSource.DebugSkipYears(60)` left one home and a
+  well (pop 5-12: wood comes only from grown wild trees and births need food). `CampCheats.StageVillage(hour, town, kids)` ("Jump: a village
+  box" / "Jump: a town box") feeds the sim between short skips (`State.population` 26, `wood` 2000, `food` 200, five 3-year skips): 8 homes,
+  the well, the windmill, the lumber mill, 4 fenced fields, barns, market, tavern, church; the town adds the workshop and stalls and
+  `DebugBuild("Bakery")` (its 20 slots fill before the bakery comes by itself). It ends the era's festival year. [verified]
+- **`CampLife.Nearest` returns -1 for "nobody", but -1 is a person: the crowd's first member** (crowd keys are -1, -2, ...). In a village
+  most grown-ups are the crowd, so every cheat said "no grown-up free" while -1 stood there (the camp code has the same blind spot for the
+  crowd). The village picks with its own list (`CampLife.VPick`, `VillageScenes.Nobody` = int.MinValue). [verified: probe]
+- **What a living-land box can never have:** no smithy, kiln, potter, pasture, beekeeper's meadow, timber yard, watermill, orchard, jetty,
+  quarry or dyer (they answer the Keeper's shaping gifts, `Settlement.KindFor`), and no bridges (they stand where a path crosses a dug
+  channel). Check `GameHud.KitTool` before planning a use at one of them.
+- Writing a `.cs` while `Tools/animlab/probe.sh` runs recompiles under it: the next probe's setup ran in a camp ("not a village"). [verified]
