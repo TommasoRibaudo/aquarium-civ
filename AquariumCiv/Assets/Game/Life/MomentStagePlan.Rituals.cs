@@ -353,11 +353,12 @@ namespace AquariumCiv.Life
             if (!c.hasOfficiant) return Fail("nobody to lead the log line");
             var all = RitualCrowd(c, MaxLogLine + 1, MaxTwigKids, 1.5f);
             int grownN = 0; foreach (var e in all) if (!e.lead && !e.p.kid) grownN++;
-            if (grownN < 2) return Fail("too few grown-ups for a log line");
+            if (grownN < 1) return Fail("too few grown-ups for a log line"); // [est] a small camp: the lead and one passer
             float gather = GatherOf(all, 6f, 1.5f);
             if (gather > MaxGather) return Fail("the lead can't get there in time");
-            float wx = sp.pileX, wz = sp.pileZ;
             var (fx, fz) = Unit(sp.pileFX, sp.pileFZ, Gx, Gz);
+            // [est] the line stands in front of the pile (its camera side), not beside its roof: clip 721-log-line try 1 hid it behind the roof
+            float wx = sp.pileX + Gx * 0.16f, wz = sp.pileZ + Gz * 0.16f;
             // The line runs across the screen, out from the pile toward the chopping spot's side.
             float ax = Px, az = Pz;
             if (sp.hasChop && (sp.chopX - wx) * ax + (sp.chopZ - wz) * az < 0f) { ax = -ax; az = -az; }
@@ -462,10 +463,10 @@ namespace AquariumCiv.Life
                     Put(m, pass);
                 }
             }
-            Put(lead, Arg(Facing(Stay(lead, StageBeat.PileLog, ActivityKind.Watch, LastLogAt - 0.6f), wx, wz), passers));
+            Put(lead, Arg(Facing(Stay(lead, StageBeat.PileLog, ActivityKind.Watch, LastLogAt - 0.6f), sp.pileX, sp.pileZ), passers));
             // ---- 8 End beat: the lead sets the last log on top and pats it; everyone claps; the kids sit on the low logs.
             float tClap = LastLogAt + 1.6f, tEnd = tClap + 1.2f, tKids = tClap + 2f;
-            Put(lead, Facing(Stay(lead, StageBeat.LastLog, ActivityKind.Watch, tClap), wx, wz));
+            Put(lead, Facing(Stay(lead, StageBeat.LastLog, ActivityKind.Watch, tClap), sp.pileX, sp.pileZ));
             Put(lead, EndBeat(Glass(Stay(lead, StageBeat.Clap, ActivityKind.Clap, tEnd))));
             foreach (var m in grownM)
             {
@@ -474,7 +475,7 @@ namespace AquariumCiv.Life
             }
             if (mender != null)
             {
-                Put(mender, Facing(Stay(mender, StageBeat.MendRoof, ActivityKind.Hammer, LineStart + 6.5f), wx, wz));
+                Put(mender, Facing(Stay(mender, StageBeat.MendRoof, ActivityKind.Hammer, LineStart + 6.5f), sp.pileX, sp.pileZ));
                 Put(mender, Facing(Stay(mender, StageBeat.Stand, ActivityKind.Watch, tClap), wx, wz));
                 Put(mender, EndBeat(Facing(Stay(mender, StageBeat.Clap, ActivityKind.Clap, tEnd), wx, wz)));
             }

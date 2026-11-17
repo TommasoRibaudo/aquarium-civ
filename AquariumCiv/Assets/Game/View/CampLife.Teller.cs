@@ -14,7 +14,7 @@ namespace AquariumCiv.View
     public sealed partial class CampLife
     {
         /// <summary>B76: the teller's distance behind the fire (the festival lead's spot), the kids' and the grown-ups' rings (u).</summary>
-        public const float TellerBehind = 0.22f, KidRing = 0.4f, GrownRing = 0.55f, KidsNearest = 0.33f;
+        public const float TellerBehind = 0.36f, KidRing = 0.4f, GrownRing = 0.55f, KidsNearest = 0.33f; // [est] the spec's 0.22 stood the teller in the flames (the fire is drawn ~0.3 u across): clip 717-teller-slow try 1
 
         int tellKey = -1, tellManner;
         float tellS = -1f, tellLastS = -1f, tellScale = 1f;

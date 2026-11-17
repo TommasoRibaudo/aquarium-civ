@@ -308,7 +308,8 @@ namespace AquariumCiv.View
         /// <summary>AnimLab's "camp" follow while a ritual plays (no camp use): where its people are drawn, on average; the telling: the fire.</summary>
         Vector2? RitualFocus()
         {
-            if (tellKey >= 0) return tellFire + tellToCam * 0.15f;
+            if (tellKey >= 0) return tellFire;
+            if (sim != null && meals != null && meals.HasFire && now.hour >= 17.8f && now.hour < 20f && sim.StoryTellerOn(now.day, out _, out _)) return meals.Fire; // the picked telling gathers
             if (sim == null || !StagedMoments.PlayingRitual(sim, out var sc, out float secs)) return null;
             var sum = Vector2.zero; int n = 0;
             foreach (var m in sc.plan.members) if (secs >= m.JoinAt && secs < m.ReleaseAt && pv.DrawnAt(m.key) is Vector2 p) { sum += p; n++; }

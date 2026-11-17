@@ -14,7 +14,7 @@ namespace AquariumCiv.View
         static Vector2 Across(Vector2 toCam) => new Vector2(-toCam.y, toCam.x);
 
         /// <summary>The hull's top over the ground (the boat lies upside down, flat; ConsequenceMeshes.KenneyBoat × the prop scale) [est].</summary>
-        public const float HullTop = 0.045f;
+        public const float HullTop = 0.12f; // measured: the Kenney hull is ~0.1 mesh u high before the prop's 1.5 scale, a sitter on its end sits a little lower than the keel
         /// <summary>B77.a: the sort's length (SortBasket, as built).</summary>
         public const float SortFor = 4f;
 

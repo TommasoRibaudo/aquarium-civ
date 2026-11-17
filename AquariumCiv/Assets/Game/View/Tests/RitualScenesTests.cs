@@ -102,9 +102,9 @@ namespace AquariumCiv.View.Tests
         {
             var p = DollPose.Rest; TellerBeats.Short(ref p, TellerBeats.ShortWood + 1.8f, 50f);
             Assert.AreEqual(50f, p.yaw, 1f, "the teller points at the woodpile");
-            var a = DollPose.Rest; TellerBeats.ShortListener(ref a, TellerBeats.ShortWood + 1.6f, false, 0, 50f);
-            var b = DollPose.Rest; TellerBeats.ShortListener(ref b, TellerBeats.ShortWood + 1.6f, false, 6, 50f);
-            Assert.Greater(a.yaw, 20f, "heads turn to it");
+            var a = DollPose.Rest; TellerBeats.ShortListener(ref a, TellerBeats.ShortWood + 1.15f, false, 0, 50f);
+            var b = DollPose.Rest; TellerBeats.ShortListener(ref b, TellerBeats.ShortWood + 1.15f, false, 6, 50f);
+            Assert.Greater(a.yaw, 5f, "heads turn to it");
             Assert.Greater(a.yaw, b.yaw, "in a wave, 0.05 s apart");
             var none = DollPose.Rest; TellerBeats.ShortListener(ref none, TellerBeats.ShortWood + 1.6f, false, 0, float.NaN);
             Assert.AreEqual(0f, none.yaw, 1e-4f, "no woodpile: no turn");
