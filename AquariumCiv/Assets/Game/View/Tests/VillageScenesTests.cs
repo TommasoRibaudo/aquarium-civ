@@ -67,8 +67,7 @@ namespace AquariumCiv.View.Tests
             CollectionAssert.AreEqual(new[] { VillageFx.Cross, VillageFx.Straw, VillageFx.Hat, VillageFx.Bird }, Fx(s).ToArray());
             Assert.AreEqual(s.a, FxAt(s, VillageFx.Cross), 1e-3f);
             Assert.AreEqual(s.b, FxAt(s, VillageFx.Hat), 1e-3f);
-            Assert.IsTrue(s.parts[2].Any(p => p.prop == PropKind.Bundle), "the kid brings the straw");
-            Assert.IsTrue(s.parts[0].Any(p => p.prop == PropKind.Pole), "the poles are carried in");
+            Assert.IsTrue(s.parts[2].Any(p => p.prop == PropKind.Sheaf), "the kid brings the straw");
             foreach (var p in All(s)) Assert.GreaterOrEqual((p.pos - spot).magnitude, 0.06f, "nobody stands in the scarecrow");
             Assert.IsTrue(s.parts.All(l => l.Any(p => p.style == DollStyle.Laugh)), "everyone laughs");
         }

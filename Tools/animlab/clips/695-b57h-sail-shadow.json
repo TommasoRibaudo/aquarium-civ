@@ -8,7 +8,7 @@
   "seed": 4242,
   "ecology": 1,
   "setup": [
-   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(11.0f, false, 6);",
+   "AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(11.0f, false, 6);",
    "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
    "return \"waiting for the village\";",
    "return \"waiting for the village\";",
@@ -19,10 +19,10 @@
   "seconds": 10,
   "fps": 30,
   "follow": "camp",
-  "span": 1.9,
-  "closeSpan": 0.8,
+  "span": 1.8,
+  "closeSpan": 0.9,
   "yaw": 28,
-  "pitch": 40,
+  "pitch": 45,
   "lead": 1.5
  }
 }

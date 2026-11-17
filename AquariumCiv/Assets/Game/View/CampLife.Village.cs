@@ -111,7 +111,9 @@ namespace AquariumCiv.View
                 if (!Terrain.InBox(c.x, c.y, 0.35f)) continue;
                 r.Add(f);
             }
-            r.Sort((a, b) => (Centroid(a.polygon) - near).sqrMagnitude.CompareTo((Centroid(b.polygon) - near).sqrMagnitude));
+            // [est] a field by the front glass is seen through its frame: the ones well inside the box first
+            float Rank(FieldData f) { var c = Centroid(f.polygon); return (c - near).magnitude + (Terrain.InBox(c.x, c.y, 0.9f) ? 0f : 3f); }
+            r.Sort((a, b) => Rank(a).CompareTo(Rank(b)));
             return r;
         }
 
@@ -186,6 +188,22 @@ namespace AquariumCiv.View
         }
 
         int FieldKey(FieldData f) => f.seed;
+
+        /// <summary>Inside a field, or within <paramref name="margin"/> of its fence.</summary>
+        bool InAnyField(Vector2 q, float margin)
+        {
+            var L = Layout; if (L == null) return false;
+            foreach (var f in L.fields) if (f.polygon != null && f.polygon.Length >= 3 && (InPoly(f.polygon, q) || DistRing(f.polygon, q) < margin)) return true;
+            return false;
+        }
+
+        /// <summary>A piece (other than <paramref name="self"/>) stands within <paramref name="r"/> of <paramref name="at"/>.</summary>
+        bool Blocked(Vector2 at, float r, PieceData self = null)
+        {
+            var L = Layout; if (L == null) return false;
+            foreach (var p in L.pieces) if (p != self && p.era != Era.Camp && (p.Pos - at).magnitude < r + Mathf.Max(p.w, p.d) * 0.4f) return true;
+            return false;
+        }
 
         // ---- the well, the mill, the lumber mill, the bakery, homes, streets
         bool WellOf(Vector2 near, out PieceData well, out float rimR, bool villageOnly = false)
@@ -271,7 +289,7 @@ namespace AquariumCiv.View
             return kind switch
             {
                 0 => new Vector3(-hw * 0.2f, wy - 0.075f, fz - 0.03f),
-                1 => new Vector3(hw * 0.18f, 0.19f, fz - 0.009f),
+                1 => new Vector3(hw * 0.18f, 0.19f, fz - 0.016f),
                 _ => new Vector3(hw * 0.18f + 0.09f, 0.29f, fz - 0.012f),
             };
         }
@@ -411,7 +429,7 @@ namespace AquariumCiv.View
             foreach (var a in acts)
             {
                 if (not != null && not.Contains(a.who.Key)) continue;
-                if (force ? byKey.ContainsKey(a.who.Key) || a.hunt != HuntPhase.None || a.tent != TentPhase.None : !Free(a, clock)) continue;
+                if (force ? byKey.ContainsKey(a.who.Key) || a.hunt != HuntPhase.None || a.tent != TentPhase.None || HeldElsewhere(a) : !Free(a, clock)) continue;
                 if (!ok(a) || !(At(a.who.Key) is Vector2 p)) continue;
                 float d = (p - near).magnitude;
                 if (d <= (force ? 9f : BorrowReach)) cand.Add((d, a.who.Key));
@@ -421,6 +439,13 @@ namespace AquariumCiv.View
             for (int i = 0; i < cand.Count && r.Count < max; i++) r.Add(cand[i].k);
             return r;
         }
+
+        /// <summary>A staged moment, a placed-life scene or a pair beat has them: PeopleView draws them there, never in a camp cue (a cheat that
+        /// cast a kid watching a moment saw them walk back to it).</summary>
+        bool HeldElsewhere(in PersonActivity a) =>
+            PeopleView.StagedSpot != null && PeopleView.StagedSpot(a, now, out _, out _, out _)
+            || PeopleView.LifeSpot != null && PeopleView.LifeSpot(a, now, out _, out _, out _)
+            || PairStage.TryCue(a.who.Key, clock, out _, out _);
 
         List<int> VKids(IReadOnlyList<PersonActivity> acts, Vector2 near, int max, bool force, ICollection<int> not = null) => VPick(acts, near, a => IsKid(a), max, force, not);
         int VGrown(IReadOnlyList<PersonActivity> acts, Vector2 near, bool force, ICollection<int> not = null) { var g = VPick(acts, near, a => IsGrown(a), 1, force, not); return g.Count > 0 ? g[0] : Nobody; }
@@ -468,7 +493,7 @@ namespace AquariumCiv.View
                 int kid = VKid(acts, gOut, force);
                 scarecrows[FieldKey(f)] = (spot, year, 0);
                 // they come in at the gate: the scene's spots face the gate (the people stand between it and the gate)
-                var s = VillageScenes.Scarecrow(g1, At(g1).Value, g2, At(g2).Value, kid, kid != Nobody ? At(kid).Value : default, spot, -inward, time);
+                var s = VillageScenes.Scarecrow(g1, At(g1).Value, g2, At(g2).Value, kid, kid != Nobody ? At(kid).Value : default, spot, ToCam(spot), time);
                 ViaGate(s, gOut, gIn, new[] { At(g1).Value, At(g2).Value, kid != Nobody ? At(kid).Value : gOut });
                 s.kind = FieldKey(f);
                 return StartV(s, ThingFieldBase + FieldKey(f) % 100, CampUse.Scarecrow);
@@ -519,28 +544,35 @@ namespace AquariumCiv.View
             Gate(f, out var gOut, out var gIn);
             var c = Centroid(f.polygon);
             var who = new List<int>();
-            who.AddRange(VPick(acts, c, a => IsGrown(a), 6, force));
-            who.AddRange(VPick(acts, c, a => IsKid(a), 4, force, who));
+            who.AddRange(VPick(acts, c, a => IsGrown(a), 4, force));
+            who.AddRange(VPick(acts, c, a => IsKid(a), 3, force, who));
             if (who.Count < 4) return "four free people needed for the ring";
-            float r = Mathf.Max(0.13f, VillageGeo.RingPer * who.Count / (Mathf.PI * 2f) * 6.3f);
-            // the ring's middle: inside the fence with room for the ring
-            var centre = c;
-            if (DistRing(f.polygon, centre) < r + 0.09f) centre = Vector2.Lerp(c, gIn, 0.2f);
+            float r = VillageScenes.RingR(who.Count);
+            if (f.crop == CropKind.Fallow && DistRing(f.polygon, c) >= r + 0.09f)
+            {
+                var sf = VillageScenes.HarvestDance(who, AtAll(who), c, BeatHash.Range(12f, 16f, (int)today, 3, 6950), time);
+                ViaGate(sf, gOut, gIn, AtAll(who));
+                return StartV(sf, ThingFieldBase + FieldKey(f) % 100, CampUse.HarvestDance);
+            }
+            // [est] the crop still stands in the drawn field (the view has no cut field): the ring dances on open ground by the gate
+            var outN = (gOut - gIn).normalized;
+            var centre = gOut + outN * (r + 0.06f);
             var s = VillageScenes.HarvestDance(who, AtAll(who), centre, BeatHash.Range(12f, 16f, (int)today, 3, 6950), time);
-            ViaGate(s, gOut, gIn, AtAll(who));
             return StartV(s, ThingFieldBase + FieldKey(f) % 100, CampUse.HarvestDance);
         }
 
         string TryHomeMend(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
             var homes = PiecesOf(PieceKind.Home, VillageMiddle());
+            if (force) homes.Sort((a, b) => Vector2.Dot(LotDir(b, 0f, -1f), ToCam(b.Pos)).CompareTo(Vector2.Dot(LotDir(a, 0f, -1f), ToCam(a.Pos))));
             foreach (var home in homes)
             {
                 int done = ExtrasOf(home);
                 if (done >= MaxExtras && !force) continue;
                 if (ThingBusy(ThingHomeBase + Mathf.Abs(home.seed) % 100)) continue;
                 var front = LotDir(home, 0f, -1f);
-                if (!force && Vector2.Dot(front, ToCam(home.Pos)) < -0.2f) continue; // [est] the natural mend happens where it can be seen: the front toward the camera
+                if (Vector2.Dot(front, ToCam(home.Pos)) < (force ? 0.35f : -0.2f)) continue; // [est] the mend happens where it can be seen: the front toward the camera
+                if (force && Blocked(home.Pos + front * (home.d * 0.5f + 0.3f), 0.25f, home)) continue; // the cheat: nothing stands in front of it
                 HomeFront(home, out float fz, out float hw, out float wallH);
                 var wall = LotPoint(home, -hw * 0.2f - 0.08f, fz);
                 var foot = LotPoint(home, -hw * 0.2f - 0.08f, fz - 0.095f);
@@ -562,7 +594,6 @@ namespace AquariumCiv.View
             var who = VPick(acts, well.Pos, a => IsGrown(a), 3, force);
             if (who.Count < 2) return "two grown-ups needed";
             var toCam = ToCam(well.Pos);
-            if (well.era != Era.Town) toCam = WellSide(well);
             return StartV(VillageScenes.WellGossip(who, AtAll(who), well.Pos, rimR, toCam, BeatHash.Range(6f, 10f, (int)today, 4, 6951), time), ThingWell, CampUse.WellGossip);
         }
 
@@ -583,9 +614,23 @@ namespace AquariumCiv.View
             var kids = VKids(acts, mill.Pos, 2, force);
             if (kids.Count == 0) return "no kid free ('Two kids join the camp' first)";
             var front = LotDir(mill, 0f, -1f);
-            var dir = (front + ToCam(mill.Pos)).normalized; if (dir.sqrMagnitude < 0.01f) dir = front;
-            var across = new Vector2(-dir.y, dir.x);
+            var want = (front + ToCam(mill.Pos)).normalized; if (want.sqrMagnitude < 0.01f) want = front;
             float rr = mill.era == Era.Town ? 0.52f : 0.46f;
+            // the seats on open ground: never in a field (the crop hides a sitting kid), on a piece or by the glass; the side nearest the
+            // camera's and the sails' first
+            Vector2 dir = want; float best = -9f;
+            for (int k = 0; k < 24; k++)
+            {
+                var d = CampScenes5.Rot(want, k * 15f);
+                var acr = new Vector2(-d.y, d.x);
+                bool ok = true;
+                foreach (var q in new[] { mill.Pos + d * rr - acr * 0.05f, mill.Pos + d * rr + acr * 0.06f })
+                    if (!Terrain.InBox(q.x, q.y, 0.3f) || InAnyField(q, 0.06f) || Blocked(q, 0.05f, mill)) ok = false;
+                float score = Vector2.Dot(d, want);
+                if (ok && score > best) { best = score; dir = d; }
+            }
+            if (best < -1f) return "no open ground by the windmill to sit on";
+            var across = new Vector2(-dir.y, dir.x);
             var seats = new List<Vector2> { mill.Pos + dir * rr - across * 0.05f, mill.Pos + dir * rr + across * 0.06f };
             return StartV(VillageScenes.SailWatch(kids, AtAll(kids), seats, mill.Pos, SailDegPerSec, BeatHash.Range(9f, 12f, (int)today, 5, 6952), time), ThingMill, CampUse.SailWatch);
         }
@@ -957,7 +1002,7 @@ namespace AquariumCiv.View
                             var yaw = Quaternion.Euler(0f, Mathf.Repeat(s.kind * 37f, 360f), 0f);
                             var perch = G3(sc.at) + yaw * new Vector3(0.07f, 0.185f, 0f);
                             var t = VPiece(root, material, used++, VMesh(13));
-                            t.localPosition = perch + new Vector3(0.1f, 0.15f, 0.05f) * (1f - k); t.localRotation = yaw * Quaternion.Euler(0f, 180f, 0f); t.localScale = Vector3.one * 1.3f;
+                            t.localPosition = perch + new Vector3(0.1f, 0.15f, 0.05f) * (1f - k); t.localRotation = yaw * Quaternion.Euler(0f, 180f, 0f); t.localScale = Vector3.one * 2f;
                             birdPerched = s.kind;
                         }
                         break;
@@ -981,7 +1026,7 @@ namespace AquariumCiv.View
                             var part = s.parts[m].Count > 0 ? s.parts[m][0] : null;
                             if (part == null) continue;
                             var foot = part.pos + Dir2(part.pos, s.focus) * 0.035f + new Vector2(-(s.focus - part.pos).y, (s.focus - part.pos).x).normalized * 0.03f;
-                            var t = VPiece(root, material, used++, VMesh(6)); t.localPosition = G3(foot); t.localRotation = Quaternion.identity; t.localScale = Vector3.one * 1.4f;
+                            var t = VPiece(root, material, used++, VMesh(6)); t.localPosition = G3(foot); t.localRotation = Quaternion.identity; t.localScale = Vector3.one;
                         }
                         break;
                     case CampUse.WellPebble:
@@ -1076,6 +1121,23 @@ namespace AquariumCiv.View
             PeopleView.DebugSetHour(hour);
             var c = Camp;
             return r + $"{sim.State.era} at {hour:0.0} h, kids +{kids}; " + (c != null ? c.VillageStatus() : "");
+        }
+
+        /// <summary>AnimLab: the camera yaw (deg, AnimLabLive's convention) that looks at the front of the nearest standing <paramref name="kind"/>
+        /// (its door side), so a use at its door is not behind its roof; also sets <see cref="CampLife.LabYaw"/>. NaN: none stands.</summary>
+        public static float FrontYaw(PieceKind kind)
+        {
+            var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+            if (box == null) return float.NaN;
+            foreach (var p in box.layout.pieces)
+                if (p.kind == kind && p.era != Era.Camp)
+                {
+                    var w = Quaternion.Euler(0f, p.yaw, 0f) * Vector3.back; // the front (local -z)
+                    float y = Mathf.Atan2(-w.x, -w.z) * Mathf.Rad2Deg;
+                    CampLife.LabYaw = y;
+                    return y;
+                }
+            return float.NaN;
         }
 
         public static string FieldTag() => Do(CampUse.FieldTag);

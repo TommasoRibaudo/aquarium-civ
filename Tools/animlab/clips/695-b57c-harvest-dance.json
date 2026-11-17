@@ -8,7 +8,7 @@
   "seed": 4242,
   "ecology": 1,
   "setup": [
-   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(15.5f, false, 6);",
+   "AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(15.5f, false, 6);",
    "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
    "return AquariumCiv.View.CampCheats.ToSeason(AquariumCiv.Life.Season.Autumn);",
    "return \"waiting for the season\";",
@@ -24,7 +24,7 @@
   "span": 1.6,
   "closeSpan": 0.8,
   "yaw": 28,
-  "pitch": 40,
+  "pitch": 42,
   "lead": 12.0
  }
 }

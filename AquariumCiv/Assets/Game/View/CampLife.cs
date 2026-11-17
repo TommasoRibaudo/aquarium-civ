@@ -177,8 +177,12 @@ namespace AquariumCiv.View
             return v.sqrMagnitude > 1e-4f ? v.normalized : Vector2.right;
         }
 
+        /// <summary>#695: AnimLab's own camera yaw (deg): the uses play on its side, not the game camera's (null: the game camera).</summary>
+        public static float? LabYaw;
+
         Vector2 TowardCamera(Vector2 from)
         {
+            if (LabYaw is float ly) { float r = ly * Mathf.Deg2Rad; return from + new Vector2(-Mathf.Sin(r), -Mathf.Cos(r)); }
             var cam = Camera.main;
             if (cam == null) return from + Vector2.down;
             var f = cam.transform.forward; var v = new Vector2(-f.x, -f.z);

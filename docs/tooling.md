@@ -1036,3 +1036,13 @@ Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or
   quarry or dyer (they answer the Keeper's shaping gifts, `Settlement.KindFor`), and no bridges (they stand where a path crosses a dug
   channel). Check `GameHud.KitTool` before planning a use at one of them.
 - Writing a `.cs` while `Tools/animlab/probe.sh` runs recompiles under it: the next probe's setup ran in a camp ("not a village"). [verified]
+- **Village clips: the uses played on the game camera's side, AnimLab filmed from another.** `CampLife.ToCam` reads `Camera.main`
+  (the game camera); AnimLab's own camera has the request's yaw. A request now sets `AquariumCiv.View.CampLife.LabYaw = <its yaw>f` in its
+  first setup step, and `CampCheats.FrontYaw(PieceKind.X)` + `AnimLabLive.YawOverride` turn the camera to a building's door (the bakery).
+  A village is full of roofs: the well's roof hides its camera side from above (gossip stands at its sides; pebble clips use pitch 55),
+  a house in front hides the well from a low camera, and a kid sitting in a field is lost in the crop (seats are now searched off fields).
+  [verified]
+- **A cheat that casts someone a staged moment holds (`PeopleView.StagedSpot`, `LifeSpot`) gets nothing:** PeopleView draws them at the
+  moment (`tenting`), never at the camp cue; the kids walked back to it. `CampLife.VPick` skips them (`HeldElsewhere`). [verified: probe]
+- **`restart-editor.sh` sat 10 min twice when a `.cs` had been saved during the live batch before it** (the quit waited on the compile).
+  Edit code only between batches; restarts between batches took 35-50 s. [verified]

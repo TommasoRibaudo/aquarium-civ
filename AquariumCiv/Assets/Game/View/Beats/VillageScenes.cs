@@ -144,23 +144,23 @@ namespace AquariumCiv.View
             var across = new Vector2(-toCam.y, toCam.x);
             var s = new CampScene(CampUse.Scarecrow, t0, spot) { holdFocus = true };
             int a = s.Add(g1), b = s.Add(g2), k = kid != Nobody ? s.Add(kid) : -1;
-            var pa = spot + toCam * 0.08f - across * 0.06f; var pb = spot + toCam * 0.08f + across * 0.07f; var pk = spot + toCam * 0.15f + across * 0.12f;
+            var pa = spot + toCam * 0.02f - across * 0.1f; var pb = spot + toCam * 0.02f + across * 0.1f; var pk = spot + toCam * 0.1f + across * 0.17f;
             float wa = WalkTime(at1, pa, Walk), wb = WalkTime(at2, pb, Walk), wk = k >= 0 ? WalkTime(kidAt, pk, KidWalk) : 0f;
-            s.Part(a, 0f, wa, pa, spot, DollStyle.Stand, null, PropKind.Pole, Walk);
+            s.Part(a, 0f, wa, pa, spot, DollStyle.Stand, null, PropKind.None, Walk);
             s.Part(b, 0f, wb, pb, spot, DollStyle.Stand, null, PropKind.None, Walk);
-            if (k >= 0) s.Part(k, 0f, wk, pk, pb, DollStyle.Stand, null, PropKind.Bundle, KidWalk);
+            if (k >= 0) s.Part(k, 0f, wk, pk, pb, DollStyle.Stand, null, PropKind.Sheaf, KidWalk);
             float t = Mathf.Max(wa, Mathf.Max(wb, wk));
-            if (wa < t) s.Part(a, wa, t, pa, spot, DollStyle.Stand, null, PropKind.Pole);
+            if (wa < t) s.Part(a, wa, t, pa, spot, DollStyle.Stand);
             if (wb < t) s.Part(b, wb, t, pb, spot, DollStyle.Stand);
-            if (k >= 0 && wk < t) s.Part(k, wk, t, pk, pb, DollStyle.Stand, null, PropKind.Bundle);
+            if (k >= 0 && wk < t) s.Part(k, wk, t, pk, pb, DollStyle.Stand, null, PropKind.Sheaf);
             // plant the cross: two pushes
             s.Part(a, t, t + 1.4f, pa, spot, DollStyle.Stand, (ref DollPose p, float u, float l) =>
             {
                 float push = Mathf.Max(Bump(u, 0.1f, 0.6f), Bump(u, 0.7f, 0.6f));
                 p.lean += 30f * push; p.armL = new Vector3(70f - 30f * push, 0f, -10f); p.armR = new Vector3(70f - 30f * push, 0f, 10f); p.squash = 1f - 0.08f * push;
-            }, PropKind.Pole);
+            });
             s.Part(b, t, t + 1.4f, pb, spot, DollStyle.Look);
-            if (k >= 0) s.Part(k, t, t + 1.4f, pk, spot, DollStyle.Stand, null, PropKind.Bundle);
+            if (k >= 0) s.Part(k, t, t + 1.4f, pk, spot, DollStyle.Stand, null, PropKind.Sheaf);
             s.a = t + 0.45f;
             Do(s, s.a, VillageFx.Cross, spot);
             s.Fx(t + 0.45f, CampFxKind.Dust, G(spot, 0.01f), 0.45f, 3);
@@ -169,13 +169,13 @@ namespace AquariumCiv.View
             // the kid hands the straw up (B7.b)
             if (k >= 0)
             {
-                s.Part(k, t, t + 1f, pk - across * 0.04f, pb, DollStyle.Stand, (ref DollPose p, float u, float l) => { float r = Bump(u, 0f, l); p.armR = Lerp(p.armR, new Vector3(150f, 0f, 8f), r); p.armL = Lerp(p.armL, new Vector3(150f, 0f, -8f), r); p.offset.y += 0.015f * r; }, PropKind.Bundle);
+                s.Part(k, t, t + 1f, pk - across * 0.04f, pb, DollStyle.Stand, (ref DollPose p, float u, float l) => { float r = Bump(u, 0f, l); p.armR = Lerp(p.armR, new Vector3(150f, 0f, 8f), r); p.armL = Lerp(p.armL, new Vector3(150f, 0f, -8f), r); p.offset.y += 0.015f * r; }, PropKind.Sheaf);
                 s.Part(b, t, t + 1f, pb, pk, DollStyle.Stand, (ref DollPose p, float u, float l) => { float r = Bump(u, 0f, l); p.armR = Lerp(p.armR, new Vector3(70f, 0f, 6f), r); p.lean += 10f * r; });
                 s.Part(a, t, t + 1f, pa, spot, DollStyle.Stand, NodPose);
                 t += 1f;
             }
             // tied on
-            s.Part(b, t, t + 1.5f, pb, spot, DollStyle.Stand, (ref DollPose p, float u, float l) => { FiddleHandsPose(ref p, u, l); p.armL.x += 30f; p.armR.x += 30f; }, PropKind.Bundle);
+            s.Part(b, t, t + 1.5f, pb, spot, DollStyle.Stand, (ref DollPose p, float u, float l) => { FiddleHandsPose(ref p, u, l); p.armL.x += 30f; p.armR.x += 30f; }, PropKind.Sheaf);
             s.Part(a, t, t + 1.5f, pa, spot, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.armL = new Vector3(100f, 0f, -14f); p.armR = new Vector3(100f, 0f, 14f); }); // holds the cross
             if (k >= 0) s.Part(k, t, t + 1.5f, pk, spot, DollStyle.Look);
             Do(s, t + 1.4f, VillageFx.Straw, spot);
@@ -188,7 +188,7 @@ namespace AquariumCiv.View
             Do(s, s.b, VillageFx.Hat, spot);
             t += 1f;
             // everyone steps back and laughs; a bird lands on it, they laugh harder
-            var ba = pa + toCam * 0.08f - across * 0.03f; var bb = pb + toCam * 0.08f + across * 0.03f; var bk = pk + toCam * 0.06f;
+            var ba = pa + toCam * 0.06f - across * 0.06f; var bb = pb + toCam * 0.06f + across * 0.06f; var bk = pk + toCam * 0.04f + across * 0.04f;
             Go(s, a, t, 0.6f, ba, spot, Walk); Go(s, b, t, 0.6f, bb, spot, Walk); if (k >= 0) Go(s, k, t, 0.6f, bk, spot, KidWalk);
             t += 0.6f;
             s.Part(a, t, t + 1.4f, ba, spot, DollStyle.Laugh); s.Part(b, t, t + 1.4f, bb, spot, DollStyle.Laugh); if (k >= 0) s.Part(k, t, t + 1.4f, bk, spot, DollStyle.Laugh);
@@ -205,6 +205,9 @@ namespace AquariumCiv.View
             return s;
         }
 
+        /// <summary>B57.c: the ring's radius for <paramref name="n"/> dancers (room for each, never under 0.16 u round the sheaf) [est].</summary>
+        public static float RingR(int n) => Mathf.Max(0.16f, n * 0.07f / (Mathf.PI * 2f) * 1.6f + 0.04f);
+
         // ================================================================== B57.c the harvest dance
         /// <summary>B57.c: on the last harvest day everyone free comes to the cut field: the last sheaf stands up in the middle (<see cref="VillageFx.Sheaf"/>),
         /// and they make B2.e's ring round it, hands joined (arms z ∓70), skipping (hop 0.02 u at 2.5 Hz, 0.3 u/s) one way and back,
@@ -212,7 +215,7 @@ namespace AquariumCiv.View
         public static CampScene HarvestDance(IList<int> who, IList<Vector2> at, Vector2 centre, float danceFor, float t0)
         {
             int n = who.Count;
-            float r = Mathf.Max(0.13f, VillageGeo.RingPer * n / (Mathf.PI * 2f) * 6.3f);
+            float r = RingR(n);
             var s = new CampScene(CampUse.HarvestDance, t0, centre) { holdFocus = true };
             float walk = 0f;
             var start = new Vector2[n];
@@ -322,10 +325,11 @@ namespace AquariumCiv.View
             for (int i = 0; i < n; i++)
             {
                 s.Add(who[i]);
-                // round the camera's side of the well, spread over 140 deg; the leaner (0) at the rim
-                float ang = (i - (n - 1) * 0.5f) * 55f;
+                // at the well's two sides as the camera sees it (its roof hides the camera's side from above): the leaner (0) at the rim on one
+                // side, the others facing her across the well's corner on the other [est]
+                float ang = i == 0 ? -80f : i == 1 ? 80f : 45f;
                 var d = Rot(toCam, ang);
-                spots[i] = well + d * (rimR + (i == 0 ? 0.045f : 0.085f));
+                spots[i] = well + d * (rimR + (i == 0 ? 0.045f : i == 1 ? 0.075f : 0.13f));
                 t = Mathf.Max(t, WalkTime(at[i], spots[i], Walk));
             }
             for (int i = 0; i < n; i++) s.Part(i, 0f, t, spots[i], well, DollStyle.Stand, null, PropKind.Bucket, Walk);
