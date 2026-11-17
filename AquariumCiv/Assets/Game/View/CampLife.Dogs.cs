@@ -48,6 +48,9 @@ namespace AquariumCiv.View
         public float VisitorMinToDrivers { get; private set; } = float.MaxValue;
         public float VisitorMinToPeople { get; private set; } = float.MaxValue;
         public int VisitorFrames { get; private set; }
+        /// <summary>Frames the visiting wolf waited (its next step was near someone) or gave way to someone who walked up to it.</summary>
+        public int VisitorHolds { get; private set; }
+        public int VisitorGaveWay { get; private set; }
         public int DogFlushes { get; private set; }
         public int DogHuntFollows { get; private set; }
         public Transform DogTransform(int id) => dogActors.TryGetValue(id, out var a) && a.doll?.go != null ? a.doll.go.transform : null;
@@ -61,14 +64,16 @@ namespace AquariumCiv.View
             WolfView.LentId = -1;
         }
 
+        static void Kill(Object o) { if (o == null) return; if (Application.isPlaying) Object.Destroy(o); else Object.DestroyImmediate(o); } // edit-mode tests run the camp too
+
         void DestroyDogs()
         {
-            foreach (var a in dogActors.Values) { a.doll?.Destroy(); if (a.held != null) Object.Destroy(a.held.gameObject); }
+            foreach (var a in dogActors.Values) { a.doll?.Destroy(); if (a.held != null) Kill(a.held.gameObject); }
             dogActors.Clear();
             wolfDoll?.Destroy(); wolfDoll = null;
-            if (stickT != null) Object.Destroy(stickT.gameObject);
+            if (stickT != null) Kill(stickT.gameObject);
             stickT = null;
-            if (dogHolder != null) Object.Destroy(dogHolder.gameObject);
+            if (dogHolder != null) Kill(dogHolder.gameObject);
             dogHolder = null;
             WolfView.LentId = -1;
         }
@@ -491,7 +496,7 @@ namespace AquariumCiv.View
         {
             if (dogHolder == null || dogHolder.parent != root)
             {
-                if (dogHolder != null) Object.Destroy(dogHolder.gameObject);
+                if (dogHolder != null) Kill(dogHolder.gameObject);
                 dogHolder = new GameObject("Camp dogs") { hideFlags = HideFlags.DontSave }.transform;
                 dogHolder.SetParent(root, false);
                 foreach (var a in dogActors.Values) a.doll?.Destroy();
@@ -531,9 +536,10 @@ namespace AquariumCiv.View
                 wolfDoll?.SetActive(false); if (stickT != null) stickT.gameObject.SetActive(false);
                 WolfView.LentId = -1; return;
             }
+            var alive = AliveDogs();
+            if (alive.Count == 0 && dogHolder == null && !WolfScenePlaying()) { WolfView.LentId = -1; return; } // nothing to draw: no holder yet
             var holder = DogHolder(root);
             float dt = dLast < 0f ? 0f : Mathf.Clamp(time - dLast, 0f, 0.1f); dLast = time;
-            var alive = AliveDogs();
             var keep = new HashSet<int>();
             for (int i = 0; i < alive.Count; i++)
             {
@@ -550,7 +556,7 @@ namespace AquariumCiv.View
             }
             var gone = new List<int>();
             foreach (var kv in dogActors) if (!keep.Contains(kv.Key)) gone.Add(kv.Key);
-            foreach (int id in gone) { var a = dogActors[id]; a.doll?.Destroy(); if (a.held != null) Object.Destroy(a.held.gameObject); dogActors.Remove(id); }
+            foreach (int id in gone) { var a = dogActors[id]; a.doll?.Destroy(); if (a.held != null) Kill(a.held.gameObject); dogActors.Remove(id); }
             DrawVisitor(holder, material, time, groundAt);
             DrawFetchStick(holder, material, time, groundAt);
         }
@@ -774,7 +780,24 @@ namespace AquariumCiv.View
             }
             var dv = part.pos - wPos; float dist = dv.magnitude; bool moving = dist > 0.012f;
             bool backing = part.act == QuadAct.Alert && moving; // B55.a: it backs off facing the people
-            if (moving) wPos += dv / dist * Mathf.Min(dist, part.speed * dt);
+            var ringNow = sim.WolfGroundNow().ring;
+            bool Clear(Vector2 q)
+            {
+                if (WolfRules.InTentRing(q.x, q.y, ringNow)) return false;
+                foreach (var pa in pv.Activities) if (At(pa.who.Key) is Vector2 pp && (pp - q).magnitude < WolfRules.PersonGap + 0.03f) return false;
+                return true;
+            }
+            if (moving)
+            {
+                var next = wPos + dv / dist * Mathf.Min(dist, part.speed * dt);
+                if (Clear(next) || !Clear(wPos)) wPos = next; else { moving = false; VisitorHolds++; } // the hard rules: it waits rather than step near anyone
+            }
+            if (!Clear(wPos))
+            {   // someone walked up to it (the plan was safe when it began): it gives way, out into the dark
+                var away = (wPos - (meals.HasFire ? meals.Fire : wPos + Vector2.up)).normalized;
+                for (int st = 1; st <= 12; st++) { var q = wPos + away * (0.03f * st); if (Clear(q) && WolfRules.OnLand(q.x, q.y)) { wPos = q; break; } }
+                VisitorGaveWay++;
+            }
             if (part.act != wAct) wActSince = 0f; else wActSince += dt;
             wAct = part.act;
             var lookTo = moving && !backing ? dv : part.face - wPos;
@@ -789,8 +812,7 @@ namespace AquariumCiv.View
             wolfDoll.Apply(p); wolfDoll.SetActive(p.scale > 0.02f);
             // the hard rules, every frame it is drawn
             VisitorFrames++;
-            var ring = sim.WolfGroundNow().ring;
-            bool bad = WolfRules.InTentRing(wPos.x, wPos.y, ring);
+            bool bad = WolfRules.InTentRing(wPos.x, wPos.y, ringNow);
             var drivers = s.use == CampUse.WolfDriveOff ? s.keys : null;
             foreach (var a in pv.Activities)
             {
@@ -812,7 +834,7 @@ namespace AquariumCiv.View
             if (wolfDoll?.go != null) sb.Append($" visitor at ({wPos.x:0.00},{wPos.y:0.00}) shown {wolfDoll.go.activeSelf} scale {wGrow:0.00} lent {WolfView.LentId};");
             if (meals != null) sb.Append($" fire ({meals.Fire.x:0.00},{meals.Fire.y:0.00});");
             foreach (var sc in scenes) { sb.Append($" scene {sc.use} focus ({sc.focus.x:0.00},{sc.focus.y:0.00}) u {clock - sc.t0:0.0}/{sc.Length:0.0} cast"); foreach (int k in sc.keys) sb.Append(At(k) is Vector2 q ? $" {k}@({q.x:0.00},{q.y:0.00})" : $" {k}@-"); sb.Append(';'); }
-            sb.Append($" visitor frames {VisitorFrames}, rule breaks {VisitorRuleBreaks}, min to drivers {(VisitorMinToDrivers < 99f ? VisitorMinToDrivers.ToString("0.00") : "-")}, flushes {DogFlushes}");
+            sb.Append($" visitor holds {VisitorHolds} gave way {VisitorGaveWay}, frames {VisitorFrames}, rule breaks {VisitorRuleBreaks}, min to drivers {(VisitorMinToDrivers < 99f ? VisitorMinToDrivers.ToString("0.00") : "-")}, flushes {DogFlushes}");
             return sb.ToString();
         }
     }
