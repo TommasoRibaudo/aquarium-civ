@@ -211,7 +211,7 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(1f - CampGeo5.ShoreBack, CampGeo5.ToShore(new Vector2(0f, 0.6f), Vector2.up, wet).y, 0.011f, "walked down to the drawn water");
             Assert.AreEqual(Vector2.zero, CampGeo5.ToShore(Vector2.zero, Vector2.up, (x, z) => false), "no water near: the spot stays");
             Assert.That(CampScenes5.ClimbSeatFor(0.16f), Is.InRange(CampScenes5.ClimbMin, 0.26f)); // the notes: up a grown-up's height
-            var climb = CampScenes5.ClimbTree(1, Far, Spot, ToCam, 8f, -1, default, 0f, 0.12f, 0.7f);
+            var climb = CampScenes5.ClimbTree(1, Far, Spot, ToCam, 8f, VillageScenes.Nobody, default, 0f, 0.12f, 0.7f);
             Ok(climb);
             var up = DollPose.Rest; climb.parts[0].First(x => x.style == DollStyle.Sit).pose(ref up, 1f, 8f);
             Assert.GreaterOrEqual(up.offset.y * 0.7f, 0.12f, "the seat in box units, after the kid's scale");
@@ -251,7 +251,7 @@ namespace AquariumCiv.View.Tests
             // B44.a: up a grown-up's height, out under the crown's edge
             Assert.GreaterOrEqual(CampScenes5.ClimbSeatFor(0.12f), CampScenes5.ClimbMin);
             Assert.That(CampScenes5.ClimbOutFor(0.16f), Is.InRange(0.17f, 0.26f));
-            var climb = CampScenes5.ClimbTree(1, Far, Spot, ToCam, 8f, -1, default, 0f, 0.2f, 0.7f, 0.2f);
+            var climb = CampScenes5.ClimbTree(1, Far, Spot, ToCam, 8f, VillageScenes.Nobody, default, 0f, 0.2f, 0.7f, 0.2f);
             Ok(climb);
             var sit = climb.parts[0].First(x => x.style == DollStyle.Sit);
             Assert.AreEqual(0.2f, (sit.pos - Spot).magnitude, 1e-3f, "the seat out along the bough");
@@ -264,14 +264,14 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(face + CampScenes5.LeanGap, (lean.parts[0][0].pos - Spot).magnitude, 1e-3f, "by the trunk's real face");
             Assert.Greater(Vector2.Dot(lean.parts[0][0].face - lean.parts[0][0].pos, lean.parts[0][0].pos - Spot), 0f, "facing away: the back to the bark");
             // B46.a: at the puddle's rim, never flat
-            var look = CampScenes5.PuddleLook(1, -1, Far, default, Spot, 0.08f, ToCam, 0f);
+            var look = CampScenes5.PuddleLook(1, VillageScenes.Nobody, Far, default, Spot, 0.08f, ToCam, 0f);
             Assert.GreaterOrEqual((look.parts[0][0].pos - Spot).magnitude, 0.08f * CampScenes5.PuddleRim, "outside the drawn puddle");
             foreach (var part in look.parts[0]) if (part.pose != null) { var q = DollPose.Rest; part.pose(ref q, 1f, part.Len); Assert.LessOrEqual(q.lean, 40f, "bent over, not flat"); Assert.GreaterOrEqual(q.offset.y, -0.02f, "not sunk"); }
             // B43.b: upright the whole time
             var peek = CampScenes5.ThicketPeek(new[] { 1, 2 }, new[] { Far, Far2 }, Spot, Spot + Vector2.down * 0.06f, Vector2.up, 5f, 0f, ToCam);
             foreach (var m in peek.parts) foreach (var part in m) if (part.pose != null) for (float u = 0f; u <= part.Len; u += 0.1f) { var q = DollPose.Rest; part.pose(ref q, u, part.Len); Assert.LessOrEqual(q.lean, 30f, "never lying down"); }
             // B51: outside the stone
-            var gift = CampScenes5b.StoneGift(1, Far, -1, default, Spot, ToCam, 1, 0f, 0.09f);
+            var gift = CampScenes5b.StoneGift(1, Far, VillageScenes.Nobody, default, Spot, ToCam, 1, 0f, 0.09f);
             Assert.GreaterOrEqual((gift.parts[0][0].pos - Spot).magnitude, 0.09f + 0.06f, "kneels outside the stone");
         }
 
@@ -302,7 +302,7 @@ namespace AquariumCiv.View.Tests
             Ok(sw);
             Assert.AreEqual(2, rides.Count, "they swap");
             var lone = new List<CampScenes5b.Ride>();
-            var one = CampScenes5b.Swing(1, Far, -1, default, Spot, Across, 8f, 0.7f, lone, 0f);
+            var one = CampScenes5b.Swing(1, Far, VillageScenes.Nobody, default, Spot, Across, 8f, 0.7f, lone, 0f);
             Ok(one);
             Assert.AreEqual(1, lone.Count);
             Assert.Greater(one.fx.Count(f => f.kind == CampFxKind.Creak), 4, "a creak at each end of the arc");

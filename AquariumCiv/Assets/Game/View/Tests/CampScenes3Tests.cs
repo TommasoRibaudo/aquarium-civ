@@ -74,7 +74,7 @@ namespace AquariumCiv.View.Tests
             Assert.IsTrue(s.parts[1].Any(p => p.pose == (CampPoseFn)CampScenes1.SniffNodPose), "the taker sniffs it (B30.d's sniff)");
             var take = s.parts[1].First(p => p.pose == (CampPoseFn)CampScenes1.SniffNodPose);
             Assert.Less((take.pos - flowers[2]).magnitude, 0.2f, "#692 p3: the taker comes to the grass, so the camera stays on the flowers");
-            var stone = CampScenes3.PickFlowers(1, Spot, flowers.Take(2).ToList(), -1, Spot + Vector2.up, 0f);
+            var stone = CampScenes3.PickFlowers(1, Spot, flowers.Take(2).ToList(), VillageScenes.Nobody, Spot + Vector2.up, 0f);
             Sane(stone);
             Assert.AreEqual(1, stone.Count, "laid on the stone: nobody else");
             Assert.AreEqual(1, Marks(stone, CampMark.EarFlower), "the flowers stay on the stone");
@@ -184,7 +184,7 @@ namespace AquariumCiv.View.Tests
             var seat = sh.parts[0].First(p => p.style == DollStyle.Sit).pos; var king = sh.parts[1].First(p => p.style == DollStyle.PoseBig).pos;
             Assert.Greater((seat - king).magnitude, 0.06f, "side by side, not in each other");
             Assert.Less((sh.focus - r1).magnitude, 0.05f, "the camera on the boulder");
-            var alone = CampScenes3.SitRock(-1, default, r1, ToCam, 5f, 2, Spot + Vector2.left, r2, 0f);
+            var alone = CampScenes3.SitRock(VillageScenes.Nobody, default, r1, ToCam, 5f, 2, Spot + Vector2.left, r2, 0f);
             Sane(alone); Assert.AreEqual(1, alone.Count, "a kid alone");
         }
 

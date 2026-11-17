@@ -261,10 +261,10 @@ namespace AquariumCiv.View
         string TryPupChew(IReadOnlyList<PersonActivity> acts, float time, bool force, Dog pup)
         {
             var at = DogNow(pup);
-            int keeper = pup.keeperId > 0 && (force ? Shown(acts, pup.keeperId) : FreeKey(acts, pup.keeperId)) ? pup.keeperId : -1;
+            int keeper = pup.keeperId > 0 && (force ? Shown(acts, pup.keeperId) : FreeKey(acts, pup.keeperId)) ? pup.keeperId : Nobody;
             // on the bare earth by the fire, where the hide shows (#694 clip: in the grass the pup was lost) [est]
             var spot = FireSide(0.42f, 65f);
-            return StartDog(DogScenes.PupChew(pup.id, at, keeper, keeper >= 0 ? At(keeper).Value : default, spot, ToCam(spot), time), CampUse.PupChew);
+            return StartDog(DogScenes.PupChew(pup.id, at, keeper, keeper != Nobody ? At(keeper).Value : default, spot, ToCam(spot), time), CampUse.PupChew);
         }
 
         string TryPupPlay(IReadOnlyList<PersonActivity> acts, float time, bool force, Dog pup)
@@ -297,7 +297,7 @@ namespace AquariumCiv.View
             var away = Rotate(ToCam(stash), 90f);
             var fire = meals.Fire;
             if (Vector2.Dot(away, stash - fire) < 0f) away = -away; // off away from the fire
-            return StartDog(DogScenes.PupSteal(pup.id, DogNow(pup), stash, g, g >= 0 ? At(g).Value : default, away, ToCam(stash), time), CampUse.PupSteal);
+            return StartDog(DogScenes.PupSteal(pup.id, DogNow(pup), stash, g, g != Nobody ? At(g).Value : default, away, ToCam(stash), time), CampUse.PupSteal);
         }
 
         string TryPupShoo(IReadOnlyList<PersonActivity> acts, float time, bool force, Dog pup)
@@ -305,7 +305,7 @@ namespace AquariumCiv.View
             var meat = MeatAt();
             if (!force && (!FishRackAt(out _, out _, out int fish) || fish + meatStrips == 0)) return "no meat on the rack";
             int g = Grown1(acts, meat, force);
-            if (g < 0) return "no grown-up free";
+            if (g == Nobody) return "no grown-up free";
             return StartDog(DogScenes.PupShoo(pup.id, DogNow(pup), meat, g, At(g).Value, ToCam(meat), time), CampUse.PupShoo);
         }
 
@@ -323,7 +323,7 @@ namespace AquariumCiv.View
         {
             var fire = meals.Fire;
             int hunter = Grown1(acts, fire, force);
-            if (hunter < 0) return "no grown-up free";
+            if (hunter == Nobody) return "no grown-up free";
             var hAt = At(hunter).Value;
             Vector2 rabbits = fire + Rotate(ToCam(fire), 80f) * 1.2f;
             var rv = RabbitView.Instance;
@@ -340,7 +340,7 @@ namespace AquariumCiv.View
         {
             var at = DogNow(dog);
             int kid = Kid1(acts, at, force);
-            if (kid < 0) return "no kid free ('Two kids join the camp' first)";
+            if (kid == Nobody) return "no kid free ('Two kids join the camp' first)";
             var fire = meals.Fire;
             var spot = fire + Rotate(ToCam(fire), -40f) * 0.6f;
             return StartDog(DogScenes.Fetch(kid, At(kid).Value, dog.id, at, spot, ToCam(spot), 3, time), CampUse.DogFetch);
@@ -352,17 +352,17 @@ namespace AquariumCiv.View
             var kids = Pick(acts, at, a => IsKid(a), 3, force);
             if (kids.Count == 0) return "no kid free ('Two kids join the camp' first)";
             kids.Sort((x, y) => AgeOf(x).CompareTo(AgeOf(y)));
-            int small = kids[0], older = kids.Count > 1 ? kids[^1] : -1;
+            int small = kids[0], older = kids.Count > 1 ? kids[^1] : Nobody;
             var fire = meals.Fire;
             var spot = fire + Rotate(ToCam(fire), 30f) * 0.5f - CameraAcross() * 0.2f;
-            return StartDog(DogScenes.Ride(small, At(small).Value, older, older >= 0 ? At(older).Value : default, dog.id, at, spot, CameraAcross(), ToCam(spot), time), CampUse.DogRide);
+            return StartDog(DogScenes.Ride(small, At(small).Value, older, older != Nobody ? At(older).Value : default, dog.id, at, spot, CameraAcross(), ToCam(spot), time), CampUse.DogRide);
         }
 
         string TryDogFire(IReadOnlyList<PersonActivity> acts, float time, bool force, Dog dog)
         {
             if (!meals.HasFire) return "no fire in the camp";
             int kid = Kid1(acts, meals.Fire, force);
-            return StartDog(DogScenes.DogFire(dog.id, DogNow(dog), meals.Fire, kid, kid >= 0 ? At(kid).Value : default, ToCam(meals.Fire), time, FireSideClear(DogGeo.FireSleep)), CampUse.DogFire);
+            return StartDog(DogScenes.DogFire(dog.id, DogNow(dog), meals.Fire, kid, kid != Nobody ? At(kid).Value : default, ToCam(meals.Fire), time, FireSideClear(DogGeo.FireSleep)), CampUse.DogFire);
         }
 
         string TryDogSun(IReadOnlyList<PersonActivity> acts, float time, bool force, Dog dog)
@@ -387,21 +387,21 @@ namespace AquariumCiv.View
             var guard = FirstDog(DogStage.Grown);
             var g = sim.WolfGroundNow();
             var grownUps = Pick(acts, fire, a => IsGrown(a), 3, force);
-            while (force && grownUps.Count < 2) { int gk = StageGrown(acts, fire, grownUps); if (gk < 0 || grownUps.Contains(gk)) break; grownUps.Add(gk); } // the cheat: any grown-up drawn
+            while (force && grownUps.Count < 2) { int gk = StageGrown(acts, fire, grownUps); if (gk == Nobody || grownUps.Contains(gk)) break; grownUps.Add(gk); } // the cheat: any grown-up drawn
             var ans = answer ?? WolfDriveOff.AnswerFor(guard != null && !DogBusy(guard.id), grownUps.Count);
             string r;
             var used = new List<int>();
             if (ans == WolfDriveOff.Answer.Guard)
             {
                 if (guard == null) return "no grown dog ('Grown dog now' first)";
-                int sitter = grownUps.Count > 0 ? grownUps[0] : -1;
+                int sitter = grownUps.Count > 0 ? grownUps[0] : Nobody;
                 var plan = WolfDriveOff.Make(g, wolfAt, null, PeoplePairs(acts, null));
                 if (!plan.ok) return "no clear way for the wolf (tents all round)";
-                if (sitter >= 0) used.Add(sitter);
-                var seat = sitter >= 0 ? At(sitter).Value : default;
-                if (sitter >= 0 && (seat - fire).magnitude > 0.45f) seat = fire + Rotate(ToCam(fire), -35f) * 0.3f; // the cheat: they sit by the fire first
+                if (sitter != Nobody) used.Add(sitter);
+                var seat = sitter != Nobody ? At(sitter).Value : default;
+                if (sitter != Nobody && (seat - fire).magnitude > 0.45f) seat = fire + Rotate(ToCam(fire), -35f) * 0.3f; // the cheat: they sit by the fire first
                 r = StartDog(DogScenes.DogGuard(guard.id, DogNow(guard), plan, fire, sitter, seat, ToCam(fire), time), CampUse.DogGuard);
-                if (r == null) r = $"the dog barks at the wolf{(sitter >= 0 ? "; a grown-up scratches its head" : "")}";
+                if (r == null) r = $"the dog barks at the wolf{(sitter != Nobody ? "; a grown-up scratches its head" : "")}";
             }
             else if (ans == WolfDriveOff.Answer.DriveOff)
             {
@@ -437,7 +437,7 @@ namespace AquariumCiv.View
                 var kp = At(k).Value;
                 skip.Add(k);
                 int g = force ? Grown1(acts, kp, true, skip) : Nearest(acts, kp, 1f, a => IsGrown(a), skip);
-                if (g < 0) continue;
+                if (g == Nobody) continue;
                 skip.Add(g); kids.Add(k); grown.Add(g);
             }
             if (kids.Count == 0) return "no kid with a grown-up near";

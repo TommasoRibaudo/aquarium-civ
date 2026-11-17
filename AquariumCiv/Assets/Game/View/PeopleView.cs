@@ -725,6 +725,9 @@ namespace AquariumCiv.View
             var drawnWas = d.drawn;
             bool wasPlaced = d.placed;
             StepDrawn(d, a, jump, hidden, prev, inst, dt);
+            if (!hidden && !jump && KeepClear.Count > 0)
+                foreach (var kc in KeepClear)
+                    if (!kc.cast.Contains(a.who.Key)) { var one = new[] { kc.solid }; CrowdAvoid.KeepOut(ref d.drawn.x, ref d.drawn.y, one, d.heading.x, d.heading.y); }
             if (StepWatch != null && wasPlaced && !hidden && (d.drawn - drawnWas).magnitude > StepWatchOver)
                 StepWatch($"{a.who} drawn {(d.drawn - drawnWas).magnitude:0.000} u in {dt * 1000f:0} ms: jump {jump} (wasHidden {d.wasHidden}, snapAll {snapAll}, inTent {inTent}) pos step {(d.pos - prev).magnitude:0.000} target gap {(target - d.pos).magnitude:0.000} playing {playing} paired {paired} camp {camping}/{campMoves} toddling {toddling} kind {a.kind} at {a.place.kind} moving {a.moving}");
             if (!jump) inst = (d.drawn - drawnWas).magnitude / dt; // the legs follow the doll drawn: one still easing back to its plan walks there
@@ -1631,6 +1634,8 @@ namespace AquariumCiv.View
         public static StagedPoseHook DogPose;
         /// <summary>#694 (B56.e): things people step round this frame (a dog asleep by the fire), filled by CampLife.Dogs.</summary>
         public static readonly List<Solid> ExtraSolids = new();
+        /// <summary>#695: spots kept clear of everyone but the people a use names (B58.c: the bakery door while the kids wait for a crust).</summary>
+        public static readonly List<(Solid solid, HashSet<int> cast)> KeepClear = new();
 
         /// <summary>#656/#677: what a new-start scene asks of one person this frame: where they stand (box units), what they face, the
         /// pose while they stand still, and what they hold.</summary>

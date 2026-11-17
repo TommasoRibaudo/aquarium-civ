@@ -210,6 +210,8 @@ namespace AquariumCiv.View
 
     public static class CampScenes5
     {
+        /// <summary>#695: no one in an optional part (a crowd member's key is negative, so −1 is a person).</summary>
+        const int Nobody = VillageScenes.Nobody;
         internal const float Walk = CampScenes1.Walk, KidWalk = CampScenes1.KidWalk, KidRun = CampScenes1.KidRun, Snap = 5f;
 
         internal static float WalkTime(Vector2 a, Vector2 b, float speed) => Mathf.Clamp((b - a).magnitude / speed + 0.25f, 0.4f, 9f);
@@ -360,7 +362,7 @@ namespace AquariumCiv.View
             s.Part(g, t, t + w, seat, fire, DollStyle.Stand, null, PropKind.None, Walk); t += w;
             float sat = t;
             sitFor = Mathf.Max(6f, sitFor);
-            bool withKid = kid >= 0;
+            bool withKid = kid != Nobody;
             float hugAt = sat + 2.2f;
             s.Part(g, t, t + sitFor, seat, fire, DollStyle.Sit, (ref DollPose p, float u, float l) =>
             {
@@ -397,7 +399,7 @@ namespace AquariumCiv.View
             toCam = Unit(toCam, Vector2.down);
             var mid = Vector2.zero; foreach (var p in things) mid += p; mid /= Mathf.Max(1, things.Count);
             var s = new CampScene(use, t0, mid) { holdFocus = true };
-            int a = s.Add(k1), b = k2 >= 0 ? s.Add(k2) : -1;
+            int a = s.Add(k1), b = k2 != Nobody ? s.Add(k2) : -1;
             var line = things.Count > 1 ? Unit(things[things.Count - 1] - things[0], new Vector2(-toCam.y, toCam.x)) : new Vector2(-toCam.y, toCam.x);
             var front = toCam; // they crouch on the camera's side, facing the things
             Vector2 Stand(int i) => things[Mathf.Clamp(i, 0, things.Count - 1)] + front * 0.08f;
@@ -556,7 +558,7 @@ namespace AquariumCiv.View
             float end = Mathf.Max(duck + 0.3f + w2, t + cWay);
             s.Part(r, duck + 0.3f + w2, end + 1.2f, outR, endC, DollStyle.Laugh);
             s.Part(c, t + cWay, end + 1.2f, endC, outR, DollStyle.Laugh);
-            if (scraper >= 0)
+            if (scraper != Nobody)
             {
                 int sc = s.Add(scraper);
                 s.Part(sc, 0f, s.a, scAt, hideMid, DollStyle.ScrapeHide, null, PropKind.Scraper).keepSpot = true;
@@ -594,7 +596,7 @@ namespace AquariumCiv.View
             s.Part(g, gs, gs + 1.6f, chaseTo, behind, DollStyle.Stand, HipsPose);
             s.Part(g, gs + 1.6f, gs + 2.6f, chaseTo, behind, DollStyle.Laugh);
             t += wr;
-            if (friend >= 0)
+            if (friend != Nobody)
             {
                 int f = s.Add(friend);
                 var fs = behind + Unit(behind - st, Vector2.right) * 0.06f + toCam * 0.03f;
@@ -686,7 +688,7 @@ namespace AquariumCiv.View
             s.a = t;
             Worn(s, t, CampMark.PurpleMouth, k);
             s.Part(k, t, t + 1.2f, st, st + toCam, DollStyle.Laugh); t += 1.2f;
-            if (parent >= 0)
+            if (parent != Nobody)
             {
                 int g = s.Add(parent);
                 var gs = st + Rot(toCam, 80f) * 0.09f; // #692 p5 (the Editor pass): beside the kid as the camera sees it, never in front
@@ -744,13 +746,13 @@ namespace AquariumCiv.View
             t += 0.8f;
             s.a = t;
             float waveAt = sitFor * 0.5f;
-            bool waves = friend >= 0;
+            bool waves = friend != Nobody;
             s.Part(m, t, t + sitFor, seat, seat + toCam, DollStyle.Sit, (ref DollPose p, float u, float l) =>
             {
                 p.offset.y += up + CampGeo5.SitDrop; p.roll += 5f * Mathf.Sin(u * Mathf.PI * 2f);
                 if (waves) { float w = Bump(u, waveAt, 1.2f); p.armR = Lerp(p.armR, new Vector3(160f, 0f, 20f + 25f * Mathf.Sin(u * 12f)), Mathf.Min(1f, w * 2f)); }
             });
-            if (friend >= 0)
+            if (friend != Nobody)
             {
                 int f = s.Add(friend);
                 var fs = seat + toCam * 0.1f + new Vector2(-toCam.y, toCam.x) * 0.15f; // #692 p5 retakes: beside the tree, not in front of the climber
@@ -910,7 +912,7 @@ namespace AquariumCiv.View
             toWater = Unit(toWater, Vector2.up);
             var along = new Vector2(-toWater.y, toWater.x);
             var s = new CampScene(CampUse.FeetInWater, t0, bank + toWater * 0.08f) { holdFocus = true };
-            int n = b >= 0 ? 2 : 1;
+            int n = b != Nobody ? 2 : 1;
             sitFor = Mathf.Max(6f, sitFor);
             float t = 0f;
             var spots = new Vector2[n];
@@ -958,7 +960,7 @@ namespace AquariumCiv.View
             var back = edge + side * 0.06f;
             s.Part(a, t, t + 0.5f, back, puddle, DollStyle.HopBack, null, PropKind.None, 0.2f); t += 0.5f;
             s.Part(a, t, t + 1f, back, puddle, DollStyle.Laugh); t += 1f;
-            if (k2 >= 0)
+            if (k2 != Nobody)
             {
                 int b = s.Add(k2);
                 var e1 = edge + along * 0.035f; var e2 = edge - along * 0.035f;

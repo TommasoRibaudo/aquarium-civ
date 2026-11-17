@@ -8,6 +8,8 @@ namespace AquariumCiv.View
 {
     public static class CampScenes1
     {
+        /// <summary>#695: no one in an optional part (a crowd member's key is negative, so −1 is a person).</summary>
+        const int Nobody = VillageScenes.Nobody;
         /// <summary>A grown-up's and a kid's walking pace in the scenes (box units a second).</summary>
         public const float Walk = 0.22f, KidWalk = 0.3f, KidRun = 0.5f;
         /// <summary>The pot's rim above the ground (MealDirector.PotTop; kept here so AnimBench compiles the scenes).</summary>
@@ -452,7 +454,7 @@ namespace AquariumCiv.View
             var move = Dir(hot, cold, Vector2.right);
             var side = new Vector2(-move.y, move.x);
             var s = new CampScene(CampUse.PotOff, t0, (cold + hot) * 0.5f);
-            int c = s.Add(cook), h = helper >= 0 ? s.Add(helper) : -1, k = kid >= 0 ? s.Add(kid) : -1;
+            int c = s.Add(cook), h = helper != Nobody ? s.Add(helper) : -1, k = kid != Nobody ? s.Add(kid) : -1;
             float t = 0f, w = WalkTime(cookAt, hot + side * 0.13f, Walk);
             s.Part(c, t, t + w, hot + side * 0.13f, hot, DollStyle.Stand, null, PropKind.Stick, Walk); t += w;
             s.Part(c, t, t + 1.5f, hot + side * 0.13f, hot, DollStyle.Stand, ScrapePose, PropKind.Stick); t += 1.5f;
@@ -552,7 +554,7 @@ namespace AquariumCiv.View
             s.Part(k, t, t + 1.1f, spot, pot, DollStyle.Stand, TiptoePeekPose); t += 1.1f;
             s.Fx(t - 0.35f, CampFxKind.PotSteam, G(pot), 1.2f); // the user's review: rising wisps, not a grey disc
             s.Part(k, t, t + 1.5f, spot, pot, DollStyle.Stand, SteamFacePose); t += 1.5f;
-            if (cook >= 0) s.Part(s.Add(cook), t - 0.4f, t + 0.3f, cookAt, pot, DollStyle.Stir, ShooPose, PropKind.Stick).keepSpot = true;
+            if (cook != Nobody) s.Part(s.Add(cook), t - 0.4f, t + 0.3f, cookAt, pot, DollStyle.Stir, ShooPose, PropKind.Stick).keepSpot = true;
             s.Part(k, t, t + 0.55f, spot, pot, DollStyle.Laugh); t += 0.55f;
             float wr = WalkTime(spot, away, KidRun);
             s.Part(k, t, t + wr, away, away + (away - spot), DollStyle.Laugh, null, PropKind.None, KidRun).run = true; t += wr;
@@ -611,7 +613,7 @@ namespace AquariumCiv.View
             s.Part(m, t, t + SniffSeconds, rim, pot, DollStyle.Stand, SniffNodPose);
             s.Fx(t + 0.3f, CampFxKind.PotSteam, G(pot), 1f);
             s.Fx(t + 1.4f, CampFxKind.PotSteam, G(pot), 0.8f);
-            if (cook >= 0) s.Part(s.Add(cook), t + WaftEnd + 1.2f, t + WaftEnd + 1.8f, cookAt, pot, DollStyle.Stir, (ref DollPose p, float u, float l) => { p.lean += 10f * Bump(u, 0f, l); }, PropKind.Stick).keepSpot = true;
+            if (cook != Nobody) s.Part(s.Add(cook), t + WaftEnd + 1.2f, t + WaftEnd + 1.8f, cookAt, pot, DollStyle.Stir, (ref DollPose p, float u, float l) => { p.lean += 10f * Bump(u, 0f, l); }, PropKind.Stick).keepSpot = true;
             t += SniffSeconds;
             var on = rim + Dir(pot, rim, Vector2.down) * 0.4f;
             s.Part(m, t, t + WalkTime(rim, on, Walk), on, on + Dir(pot, rim, Vector2.down), DollStyle.Stand, null, PropKind.None, Walk);
@@ -660,7 +662,7 @@ namespace AquariumCiv.View
                 who.Add(m); spots.Add(sp);
             }
             int kk = -1; Vector2 ks = pole + out1 * 0.32f + Rot(out1, 90f) * 0.08f;
-            if (kid >= 0) { kk = s.Add(kid); s.Part(kk, 0f, s.a, ks, pole, DollStyle.Stand, null, PropKind.None, KidWalk); }
+            if (kid != Nobody) { kk = s.Add(kid); s.Part(kk, 0f, s.a, ks, pole, DollStyle.Stand, null, PropKind.None, KidWalk); }
             for (int i = 0; i < who.Count; i++) s.Part(who[i], t, t + 3f, spots[i], pole, DollStyle.Pray);
             if (kk >= 0) s.Part(kk, s.a, t + 3f, ks, pole, DollStyle.Stand);
             t += 3f;
@@ -749,7 +751,7 @@ namespace AquariumCiv.View
                 for (int i = 0; i < n; i++) if (i != darer) s.Part(i, touchAt + 0.2f, t + back, spots[i], pole, i % 2 == 0 ? DollStyle.Hop : DollStyle.Laugh);
                 t += back;
             }
-            if (adult >= 0)
+            if (adult != Nobody)
             {
                 int a = s.Add(adult);
                 s.Part(a, t, t + 1.2f, adultAt, bunch, DollStyle.Look).keepSpot = true;

@@ -28,6 +28,8 @@ namespace AquariumCiv.View
 
     public static class CampScenes6
     {
+        /// <summary>#695: no one in an optional part (a crowd member's key is negative, so −1 is a person).</summary>
+        const int Nobody = VillageScenes.Nobody;
         static Vector2 Across(Vector2 toCam) => new Vector2(-toCam.y, toCam.x);
         static void PropDo(CampScene s, float t, PropFx what, float value = 0f, int member = -1) =>
             s.Fx(t, CampFxKind.Prop, Vector3.zero, value, (int)what, CampAnchor.Ground, member);
@@ -218,7 +220,7 @@ namespace AquariumCiv.View
             });
             s.Fx(t + 0.7f, CampFxKind.Dust, G(stone + toCam * 0.05f, 0.12f), 0.2f, 1);
             t += 1.5f;
-            if (grown >= 0)
+            if (grown != Nobody)
             {
                 int g = s.Add(grown);
                 var gs = stone + toCam * 0.28f - acr * 0.1f;
@@ -292,7 +294,7 @@ namespace AquariumCiv.View
             }
             for (float b = 0.06f; b < drumFor; b += 0.25f) { Jolt(s, t + b); if (((int)(b / 0.25f)) % 2 == 0) s.Fx(t + b, CampFxKind.Chips, G(pot + toCam * 0.06f, PropGeo.PotRim * 0.7f), 0.3f, 2); }
             t += drumFor;
-            if (grown >= 0)
+            if (grown != Nobody)
             {
                 int g = s.Add(grown);
                 var gs = pot + toCam * 0.1f - acr * 0.14f;
@@ -356,7 +358,7 @@ namespace AquariumCiv.View
             s.Part(m, t, t + 0.4f, seat, seat + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.offset.y += PropGeo.SeatLift(PropGeo.StumpTop) * In(u, 0f, 0.4f); }, PropKind.None, 0.2f).poseWalking = true;
             t += 0.4f; s.a = t;
             s.Part(m, t, t + sitFor, seat, seat + toCam, DollStyle.Sit, SitOn(PropGeo.StumpTop));
-            if (friend >= 0)
+            if (friend != Nobody)
             {
                 int f = s.Add(friend);
                 var fs = stump + toCam * 0.06f - acr * 0.035f;
@@ -444,7 +446,7 @@ namespace AquariumCiv.View
             t += w2;
             s.Part(m, t, t + 1.2f, a2, a2 + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lean -= 12f; p.armR = new Vector3(40f, 0f, 12f); p.armL = new Vector3(20f, 0f, -70f); }, PropKind.None);
             t += 1.2f;
-            if (headman >= 0)
+            if (headman != Nobody)
             {
                 int h = s.Add(headman);
                 var hs = a2 + acr * 0.22f + toCam * 0.05f;
@@ -709,7 +711,7 @@ namespace AquariumCiv.View
             t = endBt + 1.4f;
             Go(s, a, t, 1f, outA + toCam * 0.3f + dir * 0.1f, outA + toCam, KidRun, true);
             Go(s, b, t, 1f, outB + toCam * 0.35f, outB + toCam, KidRun, true);
-            if (old >= 0)
+            if (old != Nobody)
             {
                 int o = s.Add(old);
                 var endIn = endA + dir * 0.02f;
@@ -911,7 +913,7 @@ namespace AquariumCiv.View
             s.Part(k, wk, wk + 0.6f, back, back + toCam, DollStyle.Stand, null, PropKind.None, 0.2f);
             float t = wk + 0.6f;
             int g = -1; var gs = peg + toCam * 0.02f + acr * 0.13f; // beside the post, not in front of the kid
-            if (marker >= 0)
+            if (marker != Nobody)
             {
                 g = s.Add(marker);
                 float wg = WalkTime(markerAt, gs, Walk);
@@ -1032,7 +1034,7 @@ namespace AquariumCiv.View
             s.Part(b, t, t + 0.6f, seatB, seatB + toCam, DollStyle.Stand, climb, PropKind.None, 0.2f).poseWalking = true;
             t += 0.6f; s.a = t;
             float end = t + sitFor;
-            if (crawler >= 0 && gapOpen)
+            if (crawler != Nobody && gapOpen)
             {
                 int c = s.Add(crawler);
                 var outside = gap + outward * 0.12f; var inside = gap - outward * 0.12f;

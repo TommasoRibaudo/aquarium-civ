@@ -155,7 +155,7 @@ namespace AquariumCiv.View
             var kids = Pick(acts, at, a => IsKid(a), 2, force);
             if (kids.Count == 0) { pond.FreeFrog(frog); return "no kid free ('Two kids join the camp' first)"; }
             bool miss = force ? ForceFrogMiss : BeatHash.Pick(2, (int)today, kids[0], 6951) == 0; // 1 in 2
-            var s = CampScenes4.FrogCatch(kids[0], kids.Count > 1 ? kids[1] : -1, At(kids[0]).Value, kids.Count > 1 ? At(kids[1]).Value : default, at, toWater, miss, time);
+            var s = CampScenes4.FrogCatch(kids[0], kids.Count > 1 ? kids[1] : Nobody, At(kids[0]).Value, kids.Count > 1 ? At(kids[1]).Value : default, at, toWater, miss, time);
             Add(Thing(s, ThingFrogs));
             Track(s).frog = frog;
             doneToday.Add(CampUse.FrogCatch);
@@ -195,7 +195,7 @@ namespace AquariumCiv.View
             int grown = Nearest(acts, line, 3f, a => IsGrown(a), kids, false);
             var at = new List<Vector2>(); foreach (int k in kids) at.Add(At(k).Value);
             bool twig = BeatHash.Pick(2, (int)today, kids[0], 6953) == 0;
-            var s = CampScenes4.DeerCreep(kids, at, grown, grown >= 0 ? At(grown).Value : camp, nearest, camp, twig, time);
+            var s = CampScenes4.DeerCreep(kids, at, grown, grown != Nobody ? At(grown).Value : camp, nearest, camp, twig, time);
             Add(Thing(s, ThingHerd));
             doneToday.Add(CampUse.DeerCreep);
             return null;
@@ -215,7 +215,7 @@ namespace AquariumCiv.View
             if (!Terrain.InBox(spot.x, spot.y, Terrain.GlassMargin + 0.1f)) spot = mother + Dir2(mother, TowardCamera(mother)) * 0.35f;
             var kids = Pick(acts, spot, a => IsKid(a), 2, force);
             if (kids.Count == 0) return "no kid free ('Two kids join the camp' first)";
-            var s = CampScenes4.KitHold(kids[0], kids.Count > 1 ? kids[1] : -1, At(kids[0]).Value, kids.Count > 1 ? At(kids[1]).Value : default, spot, mother, time);
+            var s = CampScenes4.KitHold(kids[0], kids.Count > 1 ? kids[1] : Nobody, At(kids[0]).Value, kids.Count > 1 ? At(kids[1]).Value : default, spot, mother, time);
             Add(Thing(s, ThingMeadow));
             doneToday.Add(CampUse.KitHold);
             return null;

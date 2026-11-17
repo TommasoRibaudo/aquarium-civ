@@ -69,7 +69,7 @@ namespace AquariumCiv.View
         string TryPenMend(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int who = Grown1(acts, p.at, force);
-            if (who < 0) return "no grown-up free";
+            if (who == Nobody) return "no grown-up free";
             mendedDay = now.day;
             return Start(CampScenes6.PenMend(who, At(who).Value, PenGapAt(p), PenOut(p), ToCam(p.at), time), p, CampUse.PenMend);
         }
@@ -79,15 +79,15 @@ namespace AquariumCiv.View
             var kids = Kids(acts, p.at, 3, force);
             if (kids.Count < 2) return "two kids needed ('Two kids join the camp' first)";
             PenNearRail(p, out var rail, out _, out var along);
-            int c = kids.Count > 2 ? kids[2] : -1;
-            return Start(CampScenes6.PenRails(kids[0], kids[1], At(kids[0]).Value, At(kids[1]).Value, c, c >= 0 ? At(c).Value : default, rail, along, PenGapAt(p), PenOut(p), !PenMended, ToCam(p.at), 6f, time), p, CampUse.PenRails);
+            int c = kids.Count > 2 ? kids[2] : Nobody;
+            return Start(CampScenes6.PenRails(kids[0], kids[1], At(kids[0]).Value, At(kids[1]).Value, c, c != Nobody ? At(c).Value : default, rail, along, PenGapAt(p), PenOut(p), !PenMended, ToCam(p.at), 6f, time), p, CampUse.PenRails);
         }
 
         string TryPenPet(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             if (!sim.PenGoat) return "no goat in the pen";
             int kid = Kid1(acts, p.at, force);
-            if (kid < 0) return "no kid free ('Two kids join the camp' first)";
+            if (kid == Nobody) return "no kid free ('Two kids join the camp' first)";
             PenNearRail(p, out var rail, out var inward, out _);
             return Start(CampScenes6.PenPet(kid, At(kid).Value, rail, inward, ToCam(p.at), time), p, CampUse.PenPet);
         }

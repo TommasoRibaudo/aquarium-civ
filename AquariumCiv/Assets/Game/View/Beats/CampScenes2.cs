@@ -37,10 +37,10 @@ namespace AquariumCiv.View
         /// <summary>B32.d: a death is visited this many dusks at most (Q10: "waits up to two dusks for you to be watching").</summary>
         public const int Dusks = 2;
 
-        /// <summary>B32.d: the one closest to the dead: the partner, else a grown kid, else a friend (alive and drawn: <paramref name="shown"/>). −1 none.</summary>
+        /// <summary>B32.d: the one closest to the dead: the partner, else a grown kid, else a friend (alive and drawn: <paramref name="shown"/>). <see cref="VillageScenes.Nobody"/> none.</summary>
         public static int Mourner(IReadOnlyList<Notable> notables, Notable dead, System.Func<int, bool> shown)
         {
-            if (dead == null) return -1;
+            if (dead == null) return VillageScenes.Nobody;
             Notable Find(int id) { if (id < 0) return null; foreach (var n in notables) if (n.id == id) return n; return null; }
             var p = Find(dead.partnerId);
             if (p != null && p.alive && shown(p.id)) return p.id;
@@ -50,7 +50,7 @@ namespace AquariumCiv.View
             var f = Find(dead.friendId);
             if (f != null && f.alive && shown(f.id)) return f.id;
             foreach (var n in notables) if (n.alive && n.friendId == dead.id && shown(n.id)) return n.id;
-            return -1;
+            return VillageScenes.Nobody;
         }
 
         /// <summary>B32.d [est]: the first view day of the next spring after a death on <paramref name="died"/> (at least two days on), or −1.</summary>
@@ -93,6 +93,8 @@ namespace AquariumCiv.View
 
     public static class CampScenes2
     {
+        /// <summary>#695: no one in an optional part (a crowd member's key is negative, so −1 is a person).</summary>
+        const int Nobody = VillageScenes.Nobody;
         const float Walk = CampScenes1.Walk, KidWalk = CampScenes1.KidWalk, KidRun = CampScenes1.KidRun;
 
         static float WalkTime(Vector2 a, Vector2 b, float speed) => Mathf.Clamp((b - a).magnitude / speed + 0.25f, 0.4f, 9f);
@@ -255,12 +257,12 @@ namespace AquariumCiv.View
         /// same 50° round, a second later. <paramref name="sitFor"/>: seconds sitting (at least 6).</summary>
         /// <remarks>#692 p5 retakes (B44.b, a wild tree): <paramref name="doze"/> (null: B32.a's doze) takes the leaf's brush time and gives the
         /// sitting pose; <paramref name="trunkR"/> (≤ 0: the Keeper's tree at <paramref name="stage"/>) puts the back against a thinner trunk.</remarks>
-        public static CampScene TreeSit(int key, Vector2 at, Vector2 tree, int stage, Vector2 dir, float sitFor, float t0, int second = -1, Vector2 secondAt = default,
+        public static CampScene TreeSit(int key, Vector2 at, Vector2 tree, int stage, Vector2 dir, float sitFor, float t0, int second = Nobody, Vector2 secondAt = default,
             System.Func<float, CampPoseFn> doze = null, float trunkR = -1f)
         {
             var s = new CampScene(CampUse.TreeSit, t0, TreeGeo.Visit(tree, stage, dir));
             Sitter(s, key, at, tree, stage, dir, Mathf.Max(6f, sitFor), 0f, doze, trunkR);
-            if (second >= 0) Sitter(s, second, secondAt, tree, stage, Rot(dir, 55f), Mathf.Max(6f, sitFor) - 1f, 1f, doze, trunkR);
+            if (second != Nobody) Sitter(s, second, secondAt, tree, stage, Rot(dir, 55f), Mathf.Max(6f, sitFor) - 1f, 1f, doze, trunkR);
             return s;
         }
 
@@ -437,14 +439,14 @@ namespace AquariumCiv.View
             }
             s.Part(m, t, t + 2f, touch + dir * 0.04f, tree, DollStyle.LookUp, null, PropKind.None, 0.1f); t += 2f;
             // 6: back toward the fire at a normal pace; someone at the fire meets them 0.3 u out: a hug
-            var home = meeter >= 0 ? meeterAt : at;
+            var home = meeter != Nobody ? meeterAt : at;
             var toTree = Dir(home, visit, dir);
             // [est] the spec's 0.3 u out from the fire; when the tree stands far off (over 1 u), they meet halfway, so the hug is seen with the tree
             var meet = home + toTree * Mathf.Max(0.3f, ((visit - home).magnitude - 1f) * 0.5f + 0.3f);
             var stop = meet + toTree * PairStage.HugFrom;
             float wb = WalkTime(visit, stop, Walk);
             s.Part(m, t, t + wb, stop, meet, DollStyle.Stand, null, PropKind.None, Walk);
-            if (meeter >= 0)
+            if (meeter != Nobody)
             {
                 int k = s.IndexOf(meeter); if (k < 0) k = s.Add(meeter);
                 float stand = t + wb - 1.6f;
@@ -536,7 +538,7 @@ namespace AquariumCiv.View
             s.Part(m, t, t + 0.6f, spot, outward, DollStyle.Sit, SlideSitPose); t += 0.6f;
             float sitFrom = t;
             sitFor = Mathf.Max(8f, sitFor);
-            if (kid >= 0)
+            if (kid != Nobody)
             {
                 int k = s.Add(kid);
                 float come = sitFrom + sitFor * 0.3f;
@@ -557,8 +559,8 @@ namespace AquariumCiv.View
             }
             else s.Part(m, sitFrom, sitFrom + sitFor, spot, outward, DollStyle.Sit, DozePose);
             t = sitFrom + sitFor;
-            var home = helper >= 0 ? helperAt : at;
-            if (helper >= 0)
+            var home = helper != Nobody ? helperAt : at;
+            if (helper != Nobody)
             {
                 int h = s.Add(helper);
                 var front = spot + dir * 0.1f;

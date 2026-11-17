@@ -9,6 +9,8 @@ namespace AquariumCiv.View
 {
     public static class CampScenes5b
     {
+        /// <summary>#695: no one in an optional part (a crowd member's key is negative, so −1 is a person).</summary>
+        const int Nobody = VillageScenes.Nobody;
         // ================================================================== B47.a cut reeds to weave (work)
         public const float WeaveFor = 4f;
 
@@ -128,7 +130,7 @@ namespace AquariumCiv.View
             along = Unit(along, Vector2.right);
             var across = new Vector2(-along.y, along.x);
             var s = new CampScene(CampUse.BuildDam, t0, bed) { holdFocus = true };
-            int a = s.Add(k1), b = k2 >= 0 ? s.Add(k2) : -1;
+            int a = s.Add(k1), b = k2 != Nobody ? s.Add(k2) : -1;
             var sa = bed - along * 0.06f + across * 0.03f; var sb = bed - along * 0.06f - across * 0.05f;
             float t = Mathf.Max(WalkTime(at1, pile, KidWalk), b >= 0 ? WalkTime(at2, pile + across * 0.06f, KidWalk) : 0f);
             s.Part(a, 0f, t, pile, bed, DollStyle.Stand, null, PropKind.None, KidWalk);
@@ -362,7 +364,7 @@ namespace AquariumCiv.View
             s.Part(m, t, t + 1.2f, kneel, stone, DollStyle.Stand, (ref DollPose p, float u, float l) => { KneelPose(ref p, 1f, l); float k = In(u, 0f, 0.2f) * (1f - In(u, 1f, 0.2f)); p.armR = Lerp(p.armR, new Vector3(90f, 0f, 6f), k); });
             t += 1.2f;
             s.Part(m, t, t + 1.2f, kneel + toCam * 0.02f, stone, DollStyle.Bow, null, PropKind.None, 0.2f);
-            if (second >= 0)
+            if (second != Nobody)
             {
                 int b = s.Add(second);
                 var bs = kneel + new Vector2(-toCam.y, toCam.x) * 0.08f + toCam * 0.03f;
@@ -571,8 +573,8 @@ namespace AquariumCiv.View
             fwd = Unit(fwd, Vector2.right);
             sc = Mathf.Max(0.3f, sc);
             var s = new CampScene(CampUse.Swing, t0, pivot) { holdFocus = true };
-            int r = s.Add(rider), p2 = pusher >= 0 ? s.Add(pusher) : -1;
-            float ride = CampGeo5.RideLength(Mathf.Clamp(rideFor, 6f, 10f) * (pusher >= 0 ? 0.5f : 1f) + (pusher >= 0 ? 1.5f : 0f));
+            int r = s.Add(rider), p2 = pusher != Nobody ? s.Add(pusher) : -1;
+            float ride = CampGeo5.RideLength(Mathf.Clamp(rideFor, 6f, 10f) * (pusher != Nobody ? 0.5f : 1f) + (pusher != Nobody ? 1.5f : 0f));
             var behind = pivot - fwd * (CampGeo5.ArcReach + 0.07f);
             float t = WalkTime(rAt, pivot, KidWalk);
             if (p2 >= 0) t = Mathf.Max(t, WalkTime(pAt, behind, KidWalk));

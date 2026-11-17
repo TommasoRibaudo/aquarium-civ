@@ -151,10 +151,13 @@ namespace AquariumCiv.View
 
         Vector2? At(int key) => pv.DrawnAt(key);
 
-        /// <summary>The free person nearest <paramref name="to"/> within <paramref name="reach"/> who passes <paramref name="ok"/> (−1 none).</summary>
+        /// <summary>The cook seated at the fire (MealDirector's −1 none read as <see cref="Nobody"/>).</summary>
+        int CookKey => meals.CookAtFire == -1 ? Nobody : meals.CookAtFire;
+
+        /// <summary>The free person nearest <paramref name="to"/> within <paramref name="reach"/> who passes <paramref name="ok"/> (<see cref="Nobody"/> none: a crowd member's key is negative).</summary>
         int Nearest(IReadOnlyList<PersonActivity> acts, Vector2 to, float reach, Func<PersonActivity, bool> ok, ICollection<int> not = null, bool free = true)
         {
-            int best = -1; float bd = reach * reach;
+            int best = Nobody; float bd = reach * reach;
             for (int i = 0; i < acts.Count; i++)
             {
                 var a = acts[i];
@@ -179,6 +182,10 @@ namespace AquariumCiv.View
 
         /// <summary>#695: AnimLab's own camera yaw (deg): the uses play on its side, not the game camera's (null: the game camera).</summary>
         public static float? LabYaw;
+        /// <summary>#695: the yaw a use asks AnimLab's camera for (sails behind the watching kids; the well's rim from its gable end); null: none.</summary>
+        public static float? LabCamYaw;
+        /// <summary>The AnimLab yaw (deg) that looks along <paramref name="toCamDir"/> reversed: the camera stands on that side.</summary>
+        public static float YawFor(Vector2 toCamDir) => Mathf.Atan2(-toCamDir.x, -toCamDir.y) * Mathf.Rad2Deg;
 
         Vector2 TowardCamera(Vector2 from)
         {
@@ -220,10 +227,10 @@ namespace AquariumCiv.View
                 for (int i = 0; i < acts.Count; i++)
                 {
                     var a = acts[i];
-                    if (!a.moving || byKey.ContainsKey(a.who.Key) || !IsGrown(a) || a.hunt != HuntPhase.None || a.who.Key == meals.CookAtFire) continue;
+                    if (!a.moving || byKey.ContainsKey(a.who.Key) || !IsGrown(a) || a.hunt != HuntPhase.None || a.who.Key == CookKey) continue;
                     if (!(At(a.who.Key) is Vector2 p) || (p - pot).sqrMagnitude > 0.3f * 0.3f) continue;
                     if (Roll(CampUse.PotSniff) > Often) break;
-                    Add(CampScenes1.PotSniff(a.who.Key, meals.CookAtFire, p, pot, At(meals.CookAtFire) ?? pot, time, SideOn(pot, p)));
+                    Add(CampScenes1.PotSniff(a.who.Key, CookKey, p, pot, At(CookKey) ?? pot, time, SideOn(pot, p)));
                     break;
                 }
             }
@@ -232,7 +239,7 @@ namespace AquariumCiv.View
             if (potState == PotState.Hot && evening && !doneToday.Contains(CampUse.PotPeek) && Roll(CampUse.PotPeek) < Sometimes && LifeOk(CampUse.PotPeek) && !ThingBusy(ThingPot))
             {
                 int kid = Nearest(acts, meals.Pot, BorrowReach, a => IsKid(a));
-                if (kid >= 0) { Add(Thing(CampScenes1.PotPeek(kid, meals.CookAtFire, At(kid).Value, At(meals.CookAtFire) ?? meals.Pot + Vector2.down * 0.16f, meals.Pot, time), ThingPot)); doneToday.Add(CampUse.PotPeek); }
+                if (kid != Nobody) { Add(Thing(CampScenes1.PotPeek(kid, CookKey, At(kid).Value, At(CookKey) ?? meals.Pot + Vector2.down * 0.16f, meals.Pot, time), ThingPot)); doneToday.Add(CampUse.PotPeek); }
             }
 
             // B29.b: kids poke sticks in the fire (evenings, sometimes, a grown-up sitting by)
@@ -261,13 +268,13 @@ namespace AquariumCiv.View
         string TryStartKidPoke(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
             var fire = meals.Fire;
-            int adult = -1;
+            int adult = Nobody;
             foreach (int k in meals.Sitters) if (!byKey.ContainsKey(k) && !meals.PokingNow(k)) { adult = k; break; }
             bool seat = false;
-            if (adult < 0 && force) { adult = Nearest(acts, fire, 9f, a => IsGrown(a), null, false); seat = true; }
-            if (adult < 0) return "no grown-up sitting at the fire";
+            if (adult == Nobody && force) { adult = Nearest(acts, fire, 9f, a => IsGrown(a), null, false); seat = true; }
+            if (adult == Nobody) return "no grown-up sitting at the fire";
             int kid = Nearest(acts, fire, force ? 9f : BorrowReach, a => IsKid(a), new[] { adult }, !force);
-            if (kid < 0) return "no kid near the fire ('Two kids join the camp' first)";
+            if (kid == Nobody) return "no kid near the fire ('Two kids join the camp' first)";
             var adultAt = seat ? fire + Rotate(TowardCamera(fire) - fire, -40f) * 0.33f /* front-left: the kid squats in front of the fire, clear of the pot */ : At(adult) ?? fire + Vector2.down * 0.32f;
             int pokes = BeatHash.Pick(2, kid, (int)today, 6923) == 0 ? 2 : 3;
             var sc = CampScenes1.KidPoke(kid, adult, At(kid).Value, adultAt, fire, pokes, time);
@@ -292,8 +299,8 @@ namespace AquariumCiv.View
             if (!(Stash is Vector2 stash)) return "no stash pile";
             bool grown = !force && BeatHash.Pick(4, (int)today, 0, 6924) == 0; // now and then a grown-up
             int who = Nearest(acts, fire, force ? 6f : BorrowReach, a => grown ? IsGrown(a) : IsKid(a), null, !force);
-            if (who < 0 && force) { who = Nearest(acts, fire, 6f, a => IsGrown(a), null, false); grown = true; }
-            if (who < 0) return "nobody free near the fire";
+            if (who == Nobody && force) { who = Nearest(acts, fire, 6f, a => IsGrown(a), null, false); grown = true; }
+            if (who == Nobody) return "nobody free near the fire";
             Add(Thing(CampScenes1.BerryStick(who, At(who).Value, stash, fire, time, !grown), ThingFire));
             doneToday.Add(CampUse.BerryStick);
             return "berry on a stick: " + who;
@@ -316,18 +323,18 @@ namespace AquariumCiv.View
         string TryStartSpit(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
             var fire = meals.Fire;
-            int hunter = -1;
+            int hunter = Nobody;
             var hunts = planner.HuntsOn(now.day);
             if (hunts != null) foreach (var h in hunts) if (h.caught && h.hunter.Key != 0) { hunter = h.hunter.Key; break; }
-            if (hunter >= 0 && byKey.ContainsKey(hunter)) hunter = -1;
-            if (hunter < 0) hunter = Nearest(acts, fire, force ? 6f : BorrowReach, a => IsGrown(a), null, !force);
-            if (hunter < 0) return "no hunter near the fire";
-            int turner = -1;
+            if (hunter != Nobody && byKey.ContainsKey(hunter)) hunter = Nobody;
+            if (hunter == Nobody) hunter = Nearest(acts, fire, force ? 6f : BorrowReach, a => IsGrown(a), null, !force);
+            if (hunter == Nobody) return "no hunter near the fire";
+            int turner = Nobody;
             foreach (int k in meals.Sitters) if (k != hunter && !byKey.ContainsKey(k)) { turner = k; break; }
-            if (turner < 0) turner = Nearest(acts, fire, 6f, a => IsGrown(a), new[] { hunter }, !force);
-            if (turner < 0) turner = hunter;
-            int cook = meals.CookAtFire >= 0 && meals.CookAtFire != hunter && meals.CookAtFire != turner ? meals.CookAtFire : Nearest(acts, fire, 6f, a => IsGrown(a), new[] { hunter, turner }, false);
-            if (cook < 0) cook = hunter;
+            if (turner == Nobody) turner = Nearest(acts, fire, 6f, a => IsGrown(a), new[] { hunter }, !force);
+            if (turner == Nobody) turner = hunter;
+            int cook = CookKey != Nobody && CookKey != hunter && CookKey != turner ? CookKey : Nearest(acts, fire, 6f, a => IsGrown(a), new[] { hunter, turner }, false);
+            if (cook == Nobody) cook = hunter;
             var s = CampScenes1.Spit(hunter, turner, cook, At(hunter).Value, At(turner) ?? fire, At(cook) ?? fire, fire, CameraAcross(), spitKind == 1, time, out float roundAt, out var stone);
             s.thing = ThingFire;
             spitRound = (s, roundAt, stone, hunter, cook);
@@ -379,7 +386,7 @@ namespace AquariumCiv.View
             for (int n = 0; n < 2; n++)
             {
                 int kid = Nearest(acts, r.stone, 3f, a => IsKid(a), kids, false);
-                if (kid < 0 || byKey.ContainsKey(kid)) break;
+                if (kid == Nobody || byKey.ContainsKey(kid)) break;
                 kids.Add(kid); kat.Add(At(kid).Value);
             }
             CampScenes1.SpitKids(r.s, kids, kat, r.stone, time + 0.4f - r.s.t0);
@@ -394,17 +401,17 @@ namespace AquariumCiv.View
             if (!sim.FeatherPoleSpot(out float px, out float pz)) return "no feather pole";
             var pole = new Vector2(px, pz);
             var f = sim.PoleFeathers[index];
-            int chief = -1;
+            int chief = Nobody;
             string leaderRole = SimCore.LeaderOf(sim.State.era);
             foreach (var r in sim.State.roles) if (r.role == leaderRole && r.holderId >= 0) { chief = r.holderId; break; }
             bool Shown(int k) => k > 0 && At(k).HasValue && !byKey.ContainsKey(k) && !Tied(acts, k); // the user's review: the chief left mid-tie to pitch a tent
             if (!Shown(chief))
             {
-                chief = -1; float age = -1f;
+                chief = Nobody; float age = -1f;
                 foreach (var n in sim.State.notables) if (n.alive && n.age > age && n.age >= 18f && Shown(n.id)) { age = n.age; chief = n.id; }
             }
-            if (chief < 0) chief = Nearest(acts, pole, 9f, a => IsGrown(a), null, false);
-            if (chief < 0) return "nobody to tie it";
+            if (chief == Nobody) chief = Nearest(acts, pole, 9f, a => IsGrown(a), null, false);
+            if (chief == Nobody) return "nobody to tie it";
             var forKeys = new List<int>(); var forAt = new List<Vector2>();
             foreach (int id in new[] { f.forA, f.forB })
                 if (id > 0 && id != chief && Shown(id) && sim.FindNotable(id) is Notable n && n.age >= 12f) { forKeys.Add(id); forAt.Add(At(id).Value); }
@@ -413,11 +420,11 @@ namespace AquariumCiv.View
                 {
                     var not = new List<int>(forKeys) { chief };
                     int k = Nearest(acts, pole, 6f, a => IsGrown(a), not, !force);
-                    if (k < 0) break;
+                    if (k == Nobody) break;
                     forKeys.Add(k); forAt.Add(At(k).Value);
                 }
             int kid = Nearest(acts, pole, force ? 6f : 3f, a => IsKid(a), null, !force);
-            var s = CampScenes1.FeatherTie(chief, forKeys, kid, At(chief).Value, forAt, kid >= 0 ? At(kid).Value : pole, pole, TowardCamera(pole), time);
+            var s = CampScenes1.FeatherTie(chief, forKeys, kid, At(chief).Value, forAt, kid != Nobody ? At(kid).Value : pole, pole, TowardCamera(pole), time);
             s.thing = ThingPole; s.kind = index;
             Add(s);
             tieIndex = index;
@@ -441,12 +448,12 @@ namespace AquariumCiv.View
             while (kids.Count < 4)
             {
                 int k = Nearest(acts, pole, force ? 8f : reach, a => IsKid(a), kids, !force);
-                if (k < 0) break;
+                if (k == Nobody) break;
                 kids.Add(k); at.Add(At(k).Value);
             }
             if (kids.Count < 2) return $"only {kids.Count} kid(s) near the pole ('Two kids join the camp' first)";
             int adult = Nearest(acts, pole, 2.5f, a => IsGrown(a), kids, false);
-            Add(Thing(CampScenes1.PoleDare(kids, at, adult, adult >= 0 ? At(adult).Value : pole, pole, TowardCamera(pole), time), ThingPole));
+            Add(Thing(CampScenes1.PoleDare(kids, at, adult, adult != Nobody ? At(adult).Value : pole, pole, TowardCamera(pole), time), ThingPole));
             doneToday.Add(CampUse.PoleDare);
             return $"pole dare: {kids.Count} kids";
         }
@@ -478,7 +485,7 @@ namespace AquariumCiv.View
                 else if (potDayToday && potState == PotState.Cold && Hour >= 18.4f && Hour < 21.5f && !doneToday.Contains(CampUse.PotOff)) potState = PotState.Hot; // nobody filled it on view
                 else if (potState == PotState.Hot && meals.Eaters == 0 && (Hour < 16f || Hour >= 21.5f || !potDayToday)) potState = PotState.Cold;
                 // B30.a: the cook's block at the fire starts with the fill (a work use: inside the cook's own block)
-                if (!OnlyCheats && potDayToday && !potForcedCold && potState == PotState.Cold && meals.CookAtFire >= 0 && Hour >= 15f && Hour < 18.4f && !doneToday.Contains(CampUse.PotFill) && meals.Eaters == 0)
+                if (!OnlyCheats && potDayToday && !potForcedCold && potState == PotState.Cold && CookKey != Nobody && Hour >= 15f && Hour < 18.4f && !doneToday.Contains(CampUse.PotFill) && meals.Eaters == 0)
                     TryStartFill(acts, time, false);
                 // B30.e: after supper the pot is scraped and lifted off
                 else if (!OnlyCheats && supperDay == now.day && potState == PotState.Hot && meals.Eaters == 0 && potQuietSince >= 0f && time - potQuietSince > 5f && Hour >= 18.8f && !doneToday.Contains(CampUse.PotOff))
@@ -530,13 +537,13 @@ namespace AquariumCiv.View
 
         string TryStartFill(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
-            int cook = meals.CookAtFire;
-            if (cook < 0 || byKey.ContainsKey(cook)) cook = Nearest(acts, meals.Fire, 6f, a => IsGrown(a), null, false);
-            if (cook < 0) return "no cook";
+            int cook = CookKey;
+            if (cook == Nobody || byKey.ContainsKey(cook)) cook = Nearest(acts, meals.Fire, 6f, a => IsGrown(a), null, false);
+            if (cook == Nobody) return "no cook";
             int helper = Nearest(acts, meals.Fire, force ? 6f : 4f, a => IsGrown(a), new[] { cook }, !force);
-            if (helper < 0) helper = Nearest(acts, meals.Fire, 9f, a => IsGrown(a), new[] { cook }, false);
-            if (helper < 0 && force) helper = Nearest(acts, meals.Fire, 9f, a => IsKid(a), new[] { cook }, false); // the cheat: a big kid carries the water
-            if (helper < 0) return "no helper";
+            if (helper == Nobody) helper = Nearest(acts, meals.Fire, 9f, a => IsGrown(a), new[] { cook }, false);
+            if (helper == Nobody && force) helper = Nearest(acts, meals.Fire, 9f, a => IsKid(a), new[] { cook }, false); // the cheat: a big kid carries the water
+            if (helper == Nobody) return "no helper";
             if (!(Stash is Vector2 stash)) return "no stash";
             bool fish = sim != null && sim.StewOn(now.day) == StewKind.Fish;
             potState = PotState.Cold; potForcedCold = false; meals.BowlStack = false;
@@ -548,12 +555,12 @@ namespace AquariumCiv.View
 
         string TryStartOff(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
-            int cook = meals.CookAtFire >= 0 && !byKey.ContainsKey(meals.CookAtFire) ? meals.CookAtFire : Nearest(acts, meals.Fire, force ? 6f : BorrowReach, a => IsGrown(a), null, !force);
-            if (cook < 0) cook = Nearest(acts, meals.Fire, 6f, a => IsGrown(a), null, false);
-            if (cook < 0) { potState = PotState.Cold; doneToday.Add(CampUse.PotOff); return "nobody to lift it: cold"; }
+            int cook = CookKey != Nobody && !byKey.ContainsKey(CookKey) ? CookKey : Nearest(acts, meals.Fire, force ? 6f : BorrowReach, a => IsGrown(a), null, !force);
+            if (cook == Nobody) cook = Nearest(acts, meals.Fire, 6f, a => IsGrown(a), null, false);
+            if (cook == Nobody) { potState = PotState.Cold; doneToday.Add(CampUse.PotOff); return "nobody to lift it: cold"; }
             int helper = Nearest(acts, meals.Fire, 6f, a => IsGrown(a), new[] { cook }, !force);
             int kid = Nearest(acts, meals.Fire, 6f, a => IsKid(a), new[] { cook, helper }, !force);
-            var s = CampScenes1.PotOff(cook, helper, kid, At(cook).Value, helper >= 0 ? At(helper).Value : meals.Fire, kid >= 0 ? At(kid).Value : meals.Fire, meals.PotHotSpot, meals.PotColdSpot, time, out _, out _);
+            var s = CampScenes1.PotOff(cook, helper, kid, At(cook).Value, helper != Nobody ? At(helper).Value : meals.Fire, kid != Nobody ? At(kid).Value : meals.Fire, meals.PotHotSpot, meals.PotColdSpot, time, out _, out _);
             Add(Thing(s, ThingPot));
             doneToday.Add(CampUse.PotOff);
             return $"pot off: cook {cook}, helper {helper}, kid {kid}";
@@ -910,21 +917,21 @@ namespace AquariumCiv.View
                     potState = PotState.Hot; potForcedCold = false;
                     var hotPot = meals.PotHotSpot; meals.PotAt = null; // the user's review: the cheat aimed at the cold spot, 0.15 u out
                     int kid = Nearest(acts, hotPot, 8f, a => IsKid(a), null, false);
-                    if (kid < 0) return "no kid on view ('Two kids join the camp' first)";
-                    int cook = meals.CookAtFire;
-                    if (cook < 0) cook = Nearest(acts, hotPot, 6f, a => IsGrown(a), new[] { kid }, false);
-                    var cookAt = cook >= 0 ? At(cook) ?? meals.CookSpot(hotPot + Vector2.down) : meals.CookSpot(hotPot + Vector2.down);
-                    if (cook >= 0 && meals.CookAtFire != cook) { var c = Stand(cook, cookAt, meals.CookSpot(hotPot + Vector2.down), hotPot, time, 9f, DollStyle.Stir, PropKind.Stick); cookAt = c; }
-                    Add(Thing(CampScenes1.PotPeek(kid, cook, At(kid).Value, cookAt, hotPot, time + (cook >= 0 && meals.CookAtFire != cook ? 1.5f : 0f)), ThingPot));
+                    if (kid == Nobody) return "no kid on view ('Two kids join the camp' first)";
+                    int cook = CookKey;
+                    if (cook == Nobody) cook = Nearest(acts, hotPot, 6f, a => IsGrown(a), new[] { kid }, false);
+                    var cookAt = cook != Nobody ? At(cook) ?? meals.CookSpot(hotPot + Vector2.down) : meals.CookSpot(hotPot + Vector2.down);
+                    if (cook != Nobody && CookKey != cook) { var c = Stand(cook, cookAt, meals.CookSpot(hotPot + Vector2.down), hotPot, time, 9f, DollStyle.Stir, PropKind.Stick); cookAt = c; }
+                    Add(Thing(CampScenes1.PotPeek(kid, cook, At(kid).Value, cookAt, hotPot, time + (cook != Nobody && CookKey != cook ? 1.5f : 0f)), ThingPot));
                     return "kids peek in the pot";
                 }
                 case CampUse.PotSniff:
                 {
                     potState = PotState.Hot; potForcedCold = false;
                     var hotPot = meals.PotHotSpot; meals.PotAt = null; // the user's review: at the pot's cooking spot, right at its rim
-                    int g = Nearest(acts, hotPot, 8f, a => IsGrown(a) && a.who.Key != meals.CookAtFire, null, false);
-                    if (g < 0) return "no grown-up on view";
-                    Add(Thing(CampScenes1.PotSniff(g, meals.CookAtFire, At(g).Value, hotPot, At(meals.CookAtFire) ?? hotPot, time, SideOn(hotPot, At(g).Value)), ThingPot));
+                    int g = Nearest(acts, hotPot, 8f, a => IsGrown(a) && a.who.Key != CookKey, null, false);
+                    if (g == Nobody) return "no grown-up on view";
+                    Add(Thing(CampScenes1.PotSniff(g, CookKey, At(g).Value, hotPot, At(CookKey) ?? hotPot, time, SideOn(hotPot, At(g).Value)), ThingPot));
                     return "someone sniffs the pot";
                 }
                 case CampUse.FeatherTie:
@@ -959,7 +966,7 @@ namespace AquariumCiv.View
             while (who.Count < 3)
             {
                 int k = Nearest(acts, fire, 9f, a => IsGrown(a), who, false);
-                if (k < 0) break;
+                if (k == Nobody) break;
                 who.Add(k);
             }
             if (who.Count == 0) return "no grown-up on view";
@@ -997,9 +1004,9 @@ namespace AquariumCiv.View
             potState = PotState.Hot; potForcedCold = false; meals.PotAt = null; // the user's review: the pot was still at its cold spot on the cheat's frame
             var who = new List<int>();
             int giver = Nearest(acts, meals.PotHotSpot, 9f, a => IsGrown(a), null, false); // the bowl-giver is a grown-up (a kid was picked)
-            if (giver < 0) return "no grown-up on view";
+            if (giver == Nobody) return "no grown-up on view";
             who.Add(giver);
-            while (who.Count < 5) { int k = Nearest(acts, fire, 9f, a => IsGrown(a) || IsKid(a), who, false); if (k < 0) break; who.Add(k); }
+            while (who.Count < 5) { int k = Nearest(acts, fire, 9f, a => IsGrown(a) || IsKid(a), who, false); if (k == Nobody) break; who.Add(k); }
             if (who.Count < 3) return $"only {who.Count} on view";
             var seats = new List<Vector2>(); var takers = new List<int>();
             var cam = TowardCamera(fire) - fire;

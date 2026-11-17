@@ -91,7 +91,7 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(1, s.pairs.Count, "a hug at the end");
             Assert.AreEqual(PairKind.Hug, s.pairs[0].kind);
             Assert.IsTrue(s.parts[1].Any(x => x.keepSpot), "the people at the fire turn and watch, from where they sit");
-            var noTie = CampScenes2.TreeQuiet(1, fire, Tree, Stage, Dir, false, new List<int>(), new List<Vector2>(), -1, fire, 0f);
+            var noTie = CampScenes2.TreeQuiet(1, fire, Tree, Stage, Dir, false, new List<int>(), new List<Vector2>(), VillageScenes.Nobody, fire, 0f);
             Sane(noTie);
             Assert.IsFalse(noTie.tips.Any(t => t.kind == CampTipKind.Charm), "no charm: the forehead on the bark");
             Assert.That(noTie.Length, Is.InRange(20f, 40f), "~25 s");
@@ -138,7 +138,7 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(2, TreeVisits.Mourner(all, dead, k => true), "the partner");
             Assert.AreEqual(3, TreeVisits.Mourner(all, dead, k => k != 2), "else a grown kid (not the 8-year-old)");
             Assert.AreEqual(5, TreeVisits.Mourner(all, dead, k => k == 5 || k == 4), "else a friend");
-            Assert.AreEqual(-1, TreeVisits.Mourner(all, dead, k => k == 4), "nobody: no visit");
+            Assert.AreEqual(VillageScenes.Nobody, TreeVisits.Mourner(all, dead, k => k == 4), "nobody: no visit");
         }
 
         [Test]

@@ -86,12 +86,12 @@ namespace AquariumCiv.View
             return null;
         }
 
-        /// <summary>A drawn, free grown-up with this job (the cheat: not free too), else −1.</summary>
+        /// <summary>A drawn, free grown-up with this job (the cheat: not free too), else <see cref="Nobody"/>.</summary>
         int WithJob(IReadOnlyList<PersonActivity> acts, string job, bool force)
         {
             foreach (var n in sim.State.notables)
                 if (n.alive && n.job == job && Shown(acts, n.id) && (force || FreeKey(acts, n.id))) return n.id;
-            return -1;
+            return Nobody;
         }
 
         int DeathsSince(int propId)
@@ -181,7 +181,7 @@ namespace AquariumCiv.View
         string TryBasketTake(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int who = Grown1(acts, p.at, force);
-            if (who < 0) return "no grown-up free";
+            if (who == Nobody) return "no grown-up free";
             var toCam = ToCam(p.at);
             var bush = p.at + toCam * 0.45f + CameraAcross() * 0.35f; // [est] the pick is cut short and played on the camera's side (a real bush was often behind the camp's things)
             return Start(CampScenes6.BasketTake(who, At(who).Value, p.at, bush, toCam, time), p, CampUse.BasketTake);
@@ -190,7 +190,7 @@ namespace AquariumCiv.View
         string TryWoodStack(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p, bool fetch)
         {
             int who = Grown1(acts, p.at, force);
-            if (who < 0) return "no grown-up free";
+            if (who == Nobody) return "no grown-up free";
             var face = FaceToCam(p, false); // the logs' front (they lie along the pile's z)
             var fire = meals.HasFire ? meals.Fire : p.at + face * 0.8f;
             int had = woodStacked.TryGetValue(p.id, out int n0) ? n0 : 0;
@@ -211,8 +211,8 @@ namespace AquariumCiv.View
         string TryNameCut(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int who = WithJob(acts, JobType.Toolmaker, force);
-            if (who < 0) who = Grown1(acts, p.at, force);
-            if (who < 0) return "no grown-up free";
+            if (who == Nobody) who = Grown1(acts, p.at, force);
+            if (who == Nobody) return "no grown-up free";
             if (!force) nameSeen[p.id] = nameSeen.TryGetValue(p.id, out int seen) ? seen + 1 : 1;
             return Start(CampScenes6.NameCut(who, At(who).Value, p.at, FaceToCam(p, false), time), p, CampUse.NameCut); // #693 notes: off the slab's face, by its footprint
         }
@@ -220,15 +220,15 @@ namespace AquariumCiv.View
         string TryNameTrace(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int kid = Kid1(acts, p.at, force);
-            if (kid < 0) return "no kid free ('Two kids join the camp' first)";
+            if (kid == Nobody) return "no kid free ('Two kids join the camp' first)";
             int g = Grown1(acts, p.at, force, new[] { kid });
-            return Start(CampScenes6.NameTrace(kid, At(kid).Value, g, g >= 0 ? At(g).Value : default, p.at, FaceToCam(p, false), time), p, CampUse.NameTrace);
+            return Start(CampScenes6.NameTrace(kid, At(kid).Value, g, g != Nobody ? At(g).Value : default, p.at, FaceToCam(p, false), time), p, CampUse.NameTrace);
         }
 
         string TryCharmFlick(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int kid = Kid1(acts, p.at, force);
-            if (kid < 0) return "no kid free ('Two kids join the camp' first)";
+            if (kid == Nobody) return "no kid free ('Two kids join the camp' first)";
             var toCam = ToCam(p.at);
             // under a charm on the camera's side: on a tree, out at the ring the charms hang on (#635 CharmTie); on its own pole, under the bough
             Vector2 under;
@@ -247,20 +247,20 @@ namespace AquariumCiv.View
             var kids = Kids(acts, p.at, 2, force);
             if (kids.Count == 0) return "no kid free ('Two kids join the camp' first)";
             int g = Grown1(acts, p.at, force, kids);
-            return Start(CampScenes6.PotDrum(kids, AtAll(kids), g, g >= 0 ? At(g).Value : default, p.at, ToCam(p.at), 3.5f, time), p, CampUse.PotDrum);
+            return Start(CampScenes6.PotDrum(kids, AtAll(kids), g, g != Nobody ? At(g).Value : default, p.at, ToCam(p.at), 3.5f, time), p, CampUse.PotDrum);
         }
 
         string TryBigPot(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
-            int cook = meals.CookAtFire >= 0 && (force || FreeKey(acts, meals.CookAtFire)) ? meals.CookAtFire : Grown1(acts, p.at, force);
-            if (cook < 0) return "no cook free";
+            int cook = CookKey != Nobody && (force || FreeKey(acts, CookKey)) ? CookKey : Grown1(acts, p.at, force);
+            if (cook == Nobody) return "no cook free";
             return Start(CampScenes6.BigPotStir(cook, At(cook).Value, p.at, ToCam(p.at), time), p, CampUse.BigPot);
         }
 
         string TryStumpSplit(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int who = Grown1(acts, p.at, force);
-            if (who < 0) return "no grown-up free";
+            if (who == Nobody) return "no grown-up free";
             var toCam = ToCam(p.at);
             var s = CampScenes6.StumpSplit(who, At(who).Value, p.at, toCam, time);
             splits[s] = (p.at, new Vector2(-toCam.y, toCam.x));
@@ -271,7 +271,7 @@ namespace AquariumCiv.View
         {
             var kids = Kids(acts, p.at, 2, force);
             if (kids.Count == 0) return "no kid free ('Two kids join the camp' first)";
-            return Start(CampScenes6.StumpSit(kids[0], At(kids[0]).Value, kids.Count > 1 ? kids[1] : -1, kids.Count > 1 ? At(kids[1]).Value : default, p.at, ToCam(p.at), 6f, time), p, CampUse.StumpSit);
+            return Start(CampScenes6.StumpSit(kids[0], At(kids[0]).Value, kids.Count > 1 ? kids[1] : Nobody, kids.Count > 1 ? At(kids[1]).Value : default, p.at, ToCam(p.at), 6f, time), p, CampUse.StumpSit);
         }
 
         /// <summary>The era's leader if drawn and free (the cheat: any grown-up nearest the thing).</summary>
@@ -279,13 +279,13 @@ namespace AquariumCiv.View
         {
             var n = sim.HolderOf(SimCore.LeaderOf(sim.State.era));
             if (n != null && n.alive && (not == null || !not.Contains(n.id)) && Shown(acts, n.id) && (force || FreeKey(acts, n.id))) return n.id;
-            return force ? Grown1(acts, near, true, not) : -1;
+            return force ? Grown1(acts, near, true, not) : Nobody;
         }
 
         string TryStaffWalk(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int who = Leader(acts, p.at, force);
-            if (who < 0) return "the headman is not free";
+            if (who == Nobody) return "the headman is not free";
             var toCam = ToCam(p.at); var acr = CameraAcross();
             var round = new List<Vector2>();
             var c = meals.HasFire ? meals.Fire : p.at;
@@ -302,7 +302,7 @@ namespace AquariumCiv.View
             if (kids.Count < 2) return "two kids needed ('Two kids join the camp' first)";
             int head = Leader(acts, p.at, force, kids);
             var others = kids.GetRange(1, kids.Count - 1);
-            return Start(CampScenes6.StaffPlay(kids[0], At(kids[0]).Value, others, AtAll(others), head, head >= 0 ? At(head).Value : default, p.at, ToCam(p.at), time), p, CampUse.StaffPlay);
+            return Start(CampScenes6.StaffPlay(kids[0], At(kids[0]).Value, others, AtAll(others), head, head != Nobody ? At(head).Value : default, p.at, ToCam(p.at), time), p, CampUse.StaffPlay);
         }
 
         /// <summary>B54.n: where the flour goes: the nearest home's door or the bakery's, else toward the fire [est].</summary>
@@ -323,7 +323,7 @@ namespace AquariumCiv.View
         string TryFlourCarry(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int who = Grown1(acts, p.at, force);
-            if (who < 0) return "no grown-up free";
+            if (who == Nobody) return "no grown-up free";
             return Start(CampScenes6.FlourCarry(who, At(who).Value, p.at, FlourDoor(p.at), ToCam(p.at), time), p, CampUse.FlourCarry);
         }
 
@@ -337,7 +337,7 @@ namespace AquariumCiv.View
         string TryBird(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int who = Grown1(acts, p.at, force);
-            if (who < 0) return "no grown-up free";
+            if (who == Nobody) return "no grown-up free";
             var toCam = ToCam(p.at);
             var s = CampScenes6.BirdStraighten(who, At(who).Value, p.at, toCam, time);
             ladders[s] = (p.at + toCam * 0.07f + new Vector2(-toCam.y, toCam.x) * 0.03f, p.at);
@@ -385,18 +385,18 @@ namespace AquariumCiv.View
             var along = Local(p, 1f, 0f).normalized;
             if (Vector2.Dot(along, CameraAcross()) < 0f) along = -along; // they crawl across the screen
             var endA = p.at - along * (ConsequenceMeshes.TableLegX * PropGeo.S + 0.07f); var endB = p.at + along * (ConsequenceMeshes.TableLegX * PropGeo.S + 0.07f); // #693 notes: in and out between the legs
-            int old = -1;
+            int old = Nobody;
             foreach (var a in acts) if (planner.StageOf(a.who) == LifeStage.Elder && !kids.Contains(a.who.Key) && (force ? !byKey.ContainsKey(a.who.Key) && At(a.who.Key).HasValue : Free(a, clock))) { old = a.who.Key; break; }
-            if (old < 0 && force) old = Grown1(acts, p.at, true, kids);
+            if (old == Nobody && force) old = Grown1(acts, p.at, true, kids);
             var bench = p.at + FaceToCam(p, false) * CampScenes6Geo.BenchOut;
-            return Start(CampScenes6.TableUnder(kids[0], kids[1], At(kids[0]).Value, At(kids[1]).Value, endA, endB, old, old >= 0 ? At(old).Value : default, bench, along, ToCam(p.at), time), p, CampUse.TableUnder);
+            return Start(CampScenes6.TableUnder(kids[0], kids[1], At(kids[0]).Value, At(kids[1]).Value, endA, endB, old, old != Nobody ? At(old).Value : default, bench, along, ToCam(p.at), time), p, CampUse.TableUnder);
         }
 
         string TryOffer(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int who = Leader(acts, p.at, force);
-            if (who < 0) { int kid = Kid1(acts, p.at, force); who = kid; } // the chief, or a kid the chief sends
-            if (who < 0) return "nobody free to carry the offering";
+            if (who == Nobody) { int kid = Kid1(acts, p.at, force); who = kid; } // the chief, or a kid the chief sends
+            if (who == Nobody) return "nobody free to carry the offering";
             return Start(CampScenes6.OfferingFill(who, At(who).Value, p.at, ToCam(p.at), time), p, CampUse.OfferingFill);
         }
 
@@ -411,8 +411,8 @@ namespace AquariumCiv.View
         string TryCrateFish(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int who = WithJob(acts, JobType.Fisher, force); // the rack keeper: a fisher [est]
-            if (who < 0) who = Grown1(acts, p.at, force);
-            if (who < 0) return "no grown-up free";
+            if (who == Nobody) who = Grown1(acts, p.at, force);
+            if (who == Nobody) return "no grown-up free";
             if (force) ConsequencePropsView.SetLook(p.id, 0);
             Vector2 rack, face;
             if (FishRackAt(out var mid, out var rackAlong, out _)) { var n = new Vector2(-rackAlong.y, rackAlong.x); if (Vector2.Dot(n, ToCam(mid)) < 0f) n = -n; rack = mid + n * 0.12f; face = mid; }
@@ -485,7 +485,7 @@ namespace AquariumCiv.View
             var n = p.personId >= 0 ? sim.FindNotable(p.personId) : null;
             if (n != null && n.alive && Shown(acts, n.id) && (force || FreeKey(acts, n.id)))
                 foreach (var a in acts) if (a.who.Key == n.id && IsKid(a)) return n.id;
-            return force ? Kid1(acts, p.at, true) : -1;
+            return force ? Kid1(acts, p.at, true) : Nobody;
         }
 
         /// <summary>The named child's parent if drawn and free, else a grown-up.</summary>
@@ -501,7 +501,7 @@ namespace AquariumCiv.View
         string TryPostCarve(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int who = PostGrown(acts, p, force);
-            if (who < 0) return "no grown-up free";
+            if (who == Nobody) return "no grown-up free";
             retieYear = now.day / SimConfig.MonthsPerYear;
             return Start(CampScenes6.PostCarve(who, At(who).Value, p.at, FaceToCam(p, false), time), p, CampUse.PostCarve);
         }
@@ -509,9 +509,9 @@ namespace AquariumCiv.View
         string TryPostMeasure(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
         {
             int kid = PostKid(acts, p, force);
-            if (kid < 0) return "no kid free ('Two kids join the camp' first)";
+            if (kid == Nobody) return "no kid free ('Two kids join the camp' first)";
             int g = PostGrown(acts, p, force, new[] { kid });
-            return Start(CampScenes6.PostMeasure(kid, At(kid).Value, g, g >= 0 ? At(g).Value : default, p.at, FaceToCam(p, false), time), p, CampUse.PostMeasure);
+            return Start(CampScenes6.PostMeasure(kid, At(kid).Value, g, g != Nobody ? At(g).Value : default, p.at, FaceToCam(p, false), time), p, CampUse.PostMeasure);
         }
 
         // ================================================================== what the scenes do to the thing (CampFxKind.Prop)

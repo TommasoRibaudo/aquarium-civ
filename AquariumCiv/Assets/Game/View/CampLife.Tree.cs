@@ -54,11 +54,11 @@ namespace AquariumCiv.View
         bool FreeKey(IReadOnlyList<PersonActivity> acts, int key) { foreach (var a in acts) if (a.who.Key == key) return Free(a, clock); return false; }
 
         /// <summary>Cheats only (#692 part 2, B32.d/e shot tests): the free grown-up nearest <paramref name="to"/>; else any grown-up drawn on the land
-        /// and not in a scene (a tent or a hunt is left for the visit), so a forced visit always plays. −1 only when no grown-up is drawn at all.</summary>
+        /// and not in a scene (a tent or a hunt is left for the visit), so a forced visit always plays. Nobody only when no grown-up is drawn at all.</summary>
         int StageGrown(IReadOnlyList<PersonActivity> acts, Vector2 to, ICollection<int> not = null)
         {
             int k = Nearest(acts, to, 9f, a => IsGrown(a), not, false);
-            if (k >= 0) return k;
+            if (k != Nobody) return k;
             float bd = float.MaxValue;
             for (int i = 0; i < acts.Count; i++)
             {
@@ -171,7 +171,7 @@ namespace AquariumCiv.View
                 if (quietDone.Contains(key)) continue;
                 if (!TreeVisits.PlayNow(dusk, Hour, watched)) continue;
                 int mourner = TreeVisits.Mourner(sim.State.notables, dead, k => Shown(acts, k));
-                if (mourner < 0) { if (dusk >= TreeVisits.Dusks - 1 && Hour >= TreeVisits.UnseenFrom) quietDone.Add(key); continue; }
+                if (mourner == Nobody) { if (dusk >= TreeVisits.Dusks - 1 && Hour >= TreeVisits.UnseenFrom) quietDone.Add(key); continue; }
                 StartQuiet(acts, time, tree, stage, dir, mourner, which == 0 && sim.HasCustom("remember:tree"));
                 quietDone.Add(key);
                 return true;
@@ -188,8 +188,8 @@ namespace AquariumCiv.View
             // the one who meets them: one who watched from the fire, else a grown-up nearest the fire (the walk back is to the fire)
             var home = meals != null && meals.HasFire ? meals.Fire : At(mourner).Value;
             int meeter = watchers.Count > 0 ? watchers[0] : Nearest(acts, home, 9f, a => IsGrown(a), new[] { mourner }, false);
-            if (meeter < 0) meeter = Nearest(acts, home, 9f, a => IsKid(a), new[] { mourner }, false); // anyone at the fire: a kid runs out to them
-            var meeterAt = meeter >= 0 ? At(meeter) ?? At(mourner).Value : At(mourner).Value;
+            if (meeter == Nobody) meeter = Nearest(acts, home, 9f, a => IsKid(a), new[] { mourner }, false); // anyone at the fire: a kid runs out to them
+            var meeterAt = meeter != Nobody ? At(meeter) ?? At(mourner).Value : At(mourner).Value;
             var s = CampScenes2.TreeQuiet(mourner, At(mourner).Value, tree, stage, dir, tie, watchers, wat, meeter, meeterAt, time);
             Add(Thing(s, ThingTree));
             return $"quiet visit: {mourner}{(tie ? ", ties a charm" : "")}, {watchers.Count} watch, met by {meeter}";
@@ -229,10 +229,10 @@ namespace AquariumCiv.View
         string TrySit(IReadOnlyList<PersonActivity> acts, float time, Vector2 tree, int stage, Vector2 dir, bool force)
         {
             var who = force ? new List<int>() : FreeNear(acts, tree, BorrowReach, a => IsGrown(a), 2, napToo: true);
-            if (force) { int k1 = Nearest(acts, tree, 9f, a => IsGrown(a), null, false); if (k1 >= 0) { who.Add(k1); int k2 = Nearest(acts, tree, 9f, a => IsGrown(a), who, false); if (k2 >= 0) who.Add(k2); } }
+            if (force) { int k1 = Nearest(acts, tree, 9f, a => IsGrown(a), null, false); if (k1 != Nobody) { who.Add(k1); int k2 = Nearest(acts, tree, 9f, a => IsGrown(a), who, false); if (k2 != Nobody) who.Add(k2); } }
             if (who.Count == 0) return "no grown-up free near the tree";
             bool two = who.Count > 1 && (force || BeatHash.U01((int)(today & 0x7fffffff), 3, 6931) < 0.5f);
-            var s = CampScenes2.TreeSit(who[0], At(who[0]).Value, tree, stage, dir, force ? 8f : SitSeconds, time, two ? who[1] : -1, two ? At(who[1]).Value : default);
+            var s = CampScenes2.TreeSit(who[0], At(who[0]).Value, tree, stage, dir, force ? 8f : SitSeconds, time, two ? who[1] : Nobody, two ? At(who[1]).Value : default);
             Add(Thing(s, ThingTree));
             doneToday.Add(CampUse.TreeSit);
             return null;
@@ -241,7 +241,7 @@ namespace AquariumCiv.View
         string TryCircle(IReadOnlyList<PersonActivity> acts, float time, Vector2 tree, int stage, Vector2 dir, bool force)
         {
             var kids = force ? new List<int>() : FreeNear(acts, tree, BorrowReach, a => IsKid(a), 5);
-            if (force) while (kids.Count < 5) { int k = Nearest(acts, tree, 9f, a => IsKid(a), kids, false); if (k < 0) break; kids.Add(k); }
+            if (force) while (kids.Count < 5) { int k = Nearest(acts, tree, 9f, a => IsKid(a), kids, false); if (k == Nobody) break; kids.Add(k); }
             if (kids.Count < 3) return $"only {kids.Count} kid(s) near the tree (3 needed: 'Two kids join the camp' first)";
             var at = new List<Vector2>(); foreach (int k in kids) at.Add(At(k).Value);
             Add(Thing(CampScenes2.TreeCircle(kids, at, tree, stage, dir, time), ThingTree));
@@ -251,7 +251,7 @@ namespace AquariumCiv.View
 
         int Eldest(IReadOnlyList<PersonActivity> acts, bool elderOnly, ICollection<int> not = null)
         {
-            int best = -1; float age = -1f;
+            int best = Nobody; float age = -1f;
             foreach (var n in sim.State.notables)
             {
                 if (!n.alive || n.age < 18f || n.age <= age || not != null && not.Contains(n.id) || !Shown(acts, n.id)) continue;
@@ -268,24 +268,24 @@ namespace AquariumCiv.View
             {
                 bool free = false;
                 foreach (var a in acts) if (a.who.Key == old) { free = Free(a, clock); break; }
-                if (old < 0 || !free) return "the old one is not free";
+                if (old == Nobody || !free) return "the old one is not free";
             }
             else
             {
-                if (old < 0) old = Eldest(acts, false);
-                if (old < 0) old = Nearest(acts, tree, 9f, a => IsGrown(a), null, false);
-                if (old < 0) return "nobody old on view";
+                if (old == Nobody) old = Eldest(acts, false);
+                if (old == Nobody) old = Nearest(acts, tree, 9f, a => IsGrown(a), null, false);
+                if (old == Nobody) return "nobody old on view";
             }
-            int kid = -1;
+            int kid = Nobody;
             if (force || BeatHash.U01((int)(today & 0x7fffffff), 5, 6932) < Sometimes)
             {
                 var ks = force ? null : FreeNear(acts, tree, 3f, a => IsKid(a), 1);
-                kid = force ? Nearest(acts, tree, 9f, a => IsKid(a), new[] { old }, false) : ks.Count > 0 ? ks[0] : -1;
+                kid = force ? Nearest(acts, tree, 9f, a => IsKid(a), new[] { old }, false) : ks.Count > 0 ? ks[0] : Nobody;
             }
-            int helper = -1;
+            int helper = Nobody;
             foreach (var n in sim.State.notables) if (n.alive && n.parentId == old && n.age >= 16f && n.id != kid && Shown(acts, n.id)) { helper = n.id; break; }
-            if (helper < 0) helper = Nearest(acts, tree, 9f, a => IsGrown(a), new[] { old, kid }, false);
-            var s = CampScenes2.TreeOld(old, At(old).Value, tree, stage, dir, force ? 12f : OldSitSeconds, kid, kid >= 0 ? At(kid).Value : default, helper, helper >= 0 ? At(helper).Value : default, time);
+            if (helper == Nobody) helper = Nearest(acts, tree, 9f, a => IsGrown(a), new[] { old, kid }, false);
+            var s = CampScenes2.TreeOld(old, At(old).Value, tree, stage, dir, force ? 12f : OldSitSeconds, kid, kid != Nobody ? At(kid).Value : default, helper, helper != Nobody ? At(helper).Value : default, time);
             Add(Thing(s, ThingTree));
             doneToday.Add(CampUse.TreeOld);
             return null;
@@ -294,11 +294,11 @@ namespace AquariumCiv.View
         string TryTell(IReadOnlyList<PersonActivity> acts, float time, Vector2 tree, int stage, Vector2 dir, bool force)
         {
             int eldest = Eldest(acts, false);
-            if (!force && eldest >= 0) { bool free = false; foreach (var a in acts) if (a.who.Key == eldest) { free = Free(a, clock); break; } if (!free) eldest = -1; }
-            if (eldest < 0 && force) eldest = Nearest(acts, tree, 9f, a => IsGrown(a), null, false);
-            if (eldest < 0) return "the eldest is not free";
+            if (!force && eldest != Nobody) { bool free = false; foreach (var a in acts) if (a.who.Key == eldest) { free = Free(a, clock); break; } if (!free) eldest = Nobody; }
+            if (eldest == Nobody && force) eldest = Nearest(acts, tree, 9f, a => IsGrown(a), null, false);
+            if (eldest == Nobody) return "the eldest is not free";
             var kids = force ? new List<int>() : FreeNear(acts, tree, 3f, a => IsKid(a), 4);
-            if (force) while (kids.Count < 4) { int k = Nearest(acts, tree, 9f, a => IsKid(a), kids, false); if (k < 0) break; kids.Add(k); }
+            if (force) while (kids.Count < 4) { int k = Nearest(acts, tree, 9f, a => IsKid(a), kids, false); if (k == Nobody) break; kids.Add(k); }
             if (kids.Count < 2) return $"only {kids.Count} kid(s) near the tree ('Two kids join the camp' first)";
             var at = new List<Vector2>(); foreach (int k in kids) at.Add(At(k).Value);
             Add(Thing(CampScenes2.TreeTell(eldest, At(eldest).Value, kids, at, tree, stage, dir, time), ThingTree));
@@ -327,36 +327,36 @@ namespace AquariumCiv.View
                     // a grown-up walks past the trunk, then a kid the other way (who slaps it)
                     var across = new Vector2(-dir.y, dir.x);
                     int g = Nearest(acts, tree, 9f, a => IsGrown(a), null, false);
-                    if (g < 0) return "no grown-up on view";
+                    if (g == Nobody) return "no grown-up on view";
                     Add(PassBy(g, false, tree, stage, across, dir, time)); // from behind the tree toward the camera, the trunk at its side: the hand shows
                     int k = Nearest(acts, tree, 9f, a => IsKid(a), new[] { g }, false);
-                    if (k >= 0) Add(PassBy(k, true, tree, stage, -across, -dir, time + 3.5f));
-                    return $"touch the bark: {g}{(k >= 0 ? $", kid {k} slaps it" : "")}";
+                    if (k != Nobody) Add(PassBy(k, true, tree, stage, -across, -dir, time + 3.5f));
+                    return $"touch the bark: {g}{(k != Nobody ? $", kid {k} slaps it" : "")}";
                 }
                 case CampUse.TreeQuiet:
                 {
                     Notable dead = null;
                     foreach (var n in sim.State.notables) if (!n.alive && (dead == null || n.diedMonth > dead.diedMonth)) dead = n;
-                    int m = dead != null ? TreeVisits.Mourner(sim.State.notables, dead, k => Shown(acts, k)) : -1;
-                    if (m < 0) m = StageGrown(acts, meals != null && meals.HasFire ? meals.Fire : tree);
-                    if (m < 0) return "no grown-up on view:" + GrownWhy(acts);
+                    int m = dead != null ? TreeVisits.Mourner(sim.State.notables, dead, k => Shown(acts, k)) : Nobody;
+                    if (m == Nobody) m = StageGrown(acts, meals != null && meals.HasFire ? meals.Fire : tree);
+                    if (m == Nobody) return "no grown-up on view:" + GrownWhy(acts);
                     return StartQuiet(acts, time, tree, stage, dir, m, sim.HasCustom("remember:tree"));
                 }
                 case CampUse.TreeWed:
                 {
                     int a = StageGrown(acts, tree);
-                    if (a < 0) return "no grown-up on view:" + GrownWhy(acts);
+                    if (a == Nobody) return "no grown-up on view:" + GrownWhy(acts);
                     int b = sim.FindNotable(a) is Notable na && na.partnerId > 0 && Shown(acts, na.partnerId) ? na.partnerId : StageGrown(acts, At(a).Value, new[] { a });
-                    if (b < 0) return "only one grown-up on view:" + GrownWhy(acts);
+                    if (b == Nobody) return "only one grown-up on view:" + GrownWhy(acts);
                     Add(Thing(CampScenes2.TreeWed(a, b, At(a).Value, At(b).Value, tree, stage, dir, time), ThingTree));
                     return $"newlyweds' visit: {a} and {b}";
                 }
                 case CampUse.TreeNewborn:
                 {
-                    int p = -1;
+                    int p = Nobody;
                     foreach (var n in sim.State.notables) if (n.alive && n.age < 1f && n.parentId > 0 && Shown(acts, n.parentId)) { p = n.parentId; break; }
-                    if (p < 0) p = Nearest(acts, tree, 9f, a => IsGrown(a), null, false);
-                    if (p < 0) return "no grown-up on view";
+                    if (p == Nobody) p = Nearest(acts, tree, 9f, a => IsGrown(a), null, false);
+                    if (p == Nobody) return "no grown-up on view";
                     Add(Thing(CampScenes2.TreeNewborn(p, At(p).Value, tree, stage, dir, time), ThingTree));
                     return "newborn visit: " + p;
                 }

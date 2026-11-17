@@ -59,6 +59,8 @@ namespace AquariumCiv.View
 
     public static class CampScenes3
     {
+        /// <summary>#695: no one in an optional part (a crowd member's key is negative, so −1 is a person).</summary>
+        const int Nobody = VillageScenes.Nobody;
         const float Walk = CampScenes1.Walk, KidWalk = CampScenes1.KidWalk, KidRun = CampScenes1.KidRun;
         /// <summary>A part that snaps to a new spot (the offset a pose carried becomes the real spot in one frame).</summary>
         const float Snap = 5f;
@@ -278,12 +280,12 @@ namespace AquariumCiv.View
             // #692 p3 (the user's review: the camera drifted to the fire): the taker comes to the picker in the grass, so the hand-over stays
             // where the flowers were; laid on the stone, the picker still walks there
             var meet = from + Dir(from, takerAt, Vector2.down) * 0.1f;
-            var give = taker >= 0 ? from : takerAt + Dir(takerAt, from, Vector2.down) * 0.07f;
-            var takeAt = taker >= 0 ? meet : takerAt;
-            float wg = taker >= 0 ? 0.4f : WalkTime(from, give, Walk);
+            var give = taker != Nobody ? from : takerAt + Dir(takerAt, from, Vector2.down) * 0.07f;
+            var takeAt = taker != Nobody ? meet : takerAt;
+            float wg = taker != Nobody ? 0.4f : WalkTime(from, give, Walk);
             s.Part(m, t, t + wg, give, takeAt, DollStyle.Stand, null, PropKind.None, Walk); t += wg;
             s.Tip(m, firstPick, t + 0.5f, n > 1 ? CampTipKind.Bunch : CampTipKind.Flower);
-            if (taker >= 0)
+            if (taker != Nobody)
             {
                 int k = s.Add(taker);
                 float wk = WalkTime(takerAt, meet, Walk);
@@ -451,7 +453,7 @@ namespace AquariumCiv.View
         {
             var s = new CampScene(CampUse.RingSapling, t0, sapling) { holdFocus = true };
             int g = s.Add(grown);
-            int k = kid >= 0 ? s.Add(kid) : -1;
+            int k = kid != Nobody ? s.Add(kid) : -1;
             var out1 = Dir(sapling, pile, Vector2.down);
             Vector2 gFrom = gAt, kFrom = kAt;
             float t = 0f, first = -1f, last = 0f;
@@ -615,11 +617,11 @@ namespace AquariumCiv.View
             var across = new Vector2(toCam.y, -toCam.x);
             // #692 p3 (the user's review): one boulder shared (the cheat picks the other only when it is near): the grown-up sits on its top to one
             // side as the camera sees it, the kid climbs the other side; the camera holds both
-            bool shared = (kidRock - rock).sqrMagnitude < 1e-4f && grown >= 0;
+            bool shared = (kidRock - rock).sqrMagnitude < 1e-4f && grown != Nobody;
             if (shared) kidRock = rock - across * KidSide;
-            var s = new CampScene(CampUse.SitRock, t0, grown >= 0 && kid >= 0 ? Vector2.Lerp(rock, kidRock, 0.5f) : grown >= 0 ? rock : kidRock) { holdFocus = true };
+            var s = new CampScene(CampUse.SitRock, t0, grown != Nobody && kid != Nobody ? Vector2.Lerp(rock, kidRock, 0.5f) : grown != Nobody ? rock : kidRock) { holdFocus = true };
             float t = 0f;
-            if (grown >= 0)
+            if (grown != Nobody)
             {
                 int g = s.Add(grown);
                 var front = rock + toCam * 0.1f;
@@ -633,12 +635,12 @@ namespace AquariumCiv.View
                 s.Part(g, t, t + 0.4f, front, front + toCam, DollStyle.Stand, null, PropKind.None, 0.3f);
                 s.Part(g, t + 0.4f, t + 0.4f + WalkTime(front, gAt, Walk) * 0.5f, Vector2.Lerp(front, gAt, 0.5f), gAt, DollStyle.Stand, null, PropKind.None, Walk);
             }
-            if (kid >= 0)
+            if (kid != Nobody)
             {
                 int k = s.Add(kid);
                 var into = Dir(kAt, kidRock, -toCam);
                 var edge = kidRock - into * 0.08f;
-                float tk = grown >= 0 ? 2f : 0f;
+                float tk = grown != Nobody ? 2f : 0f;
                 float w = WalkTime(kAt, edge, KidWalk);
                 s.Part(k, tk, tk + w, edge, kidRock, DollStyle.Stand, null, PropKind.None, KidWalk); tk += w;
                 s.Part(k, tk, tk + 0.2f, edge, kidRock, DollStyle.Stand, CrouchPose); tk += 0.2f;

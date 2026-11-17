@@ -156,6 +156,8 @@ namespace AquariumCiv.View
     public static class DogScenes
     {
         const int Dog = 0, Wolf = 1;
+        /// <summary>#695: no one in an optional part (a crowd member's key is negative, so −1 is a person).</summary>
+        const int Nobody = VillageScenes.Nobody;
         static Vector2 Across(Vector2 toCam) => new Vector2(-toCam.y, toCam.x);
         static float QTime(Vector2 a, Vector2 b, float speed) => Mathf.Clamp((b - a).magnitude / Mathf.Max(0.01f, speed) + 0.15f, 0.3f, 9f);
 
@@ -227,7 +229,7 @@ namespace AquariumCiv.View
             s.Quad(Dog, 0f, w, spot, spot + toCam, QuadAct.Stand, DogGeo.DogTrot, QuadHeld.Hide);
             s.Quad(Dog, w, w + 9f, spot, spot + Across(toCam), QuadAct.Chew, DogGeo.DogTrot, QuadHeld.Hide);
             s.a = w + 0.6f;
-            if (keeper >= 0)
+            if (keeper != Nobody)
             {
                 int m = s.Add(keeper);
                 var seat = spot + Across(toCam) * 0.12f + toCam * 0.04f;
@@ -329,7 +331,7 @@ namespace AquariumCiv.View
             float t = take + 0.3f + r;
             s.Quad(Dog, t, t + 0.6f, run, at, QuadAct.Lie, DogGeo.DogRun, QuadHeld.Fish);
             s.Quad(Dog, t + 0.6f, t + 5f, run, at, QuadAct.Chew, DogGeo.DogRun, QuadHeld.Fish);
-            if (grown >= 0)
+            if (grown != Nobody)
             {
                 int m = s.Add(grown);
                 var watch = stash - away * 0.16f + toCam * 0.1f;
@@ -358,7 +360,7 @@ namespace AquariumCiv.View
             s.Quad(Dog, w, w + 1.2f, at, meat, QuadAct.Sniff);
             float t = w + 1.2f;
             var st = meat - toCam * 0.07f + across * 0.13f; // behind the meat from the camera, so the pup stays in view
-            if (grown >= 0)
+            if (grown != Nobody)
             {
                 int m = s.Add(grown);
                 float gw = WalkTime(grownAt, st, Walk);
@@ -507,7 +509,7 @@ namespace AquariumCiv.View
             var guardHop = guard + plan.dir * DogGeo.BarkHop * 3f;
             s.Quad(Dog, tb, t + 0.8f + back + away, guardHop, plan.wolfAway, QuadAct.Alert);
             float te = t + 0.8f + back + away;
-            if (grown >= 0)
+            if (grown != Nobody)
             {
                 int m = s.Add(grown);
                 s.Part(m, 0f, t, grownAt, fire, DollStyle.Sit, null, PropKind.None, Walk); // at the fire (walks there first when the cheat brings them)
@@ -741,7 +743,7 @@ namespace AquariumCiv.View
             var rp = s.Part(m, t, t + ride, end, end + along, DollStyle.Sit, (ref DollPose p, float u, float l) => { RidePose(-1f)(ref p, u + 0.4f, l); }, PropKind.None, DogGeo.RideSpeed);
             rp.poseWalking = true; rp.carried = true;
             int o = -1;
-            if (older >= 0)
+            if (older != Nobody)
             {
                 o = s.Add(older);
                 var beside0 = spot - toCam * 0.1f; var beside1 = end - toCam * 0.1f; // the far side, so the camera sees the rider
@@ -775,7 +777,7 @@ namespace AquariumCiv.View
             s.Quad(Dog, w + 0.8f, w + 1.4f, spot, curl, QuadAct.Lie);
             s.a = w + 1.4f;
             float end = w + 12f;
-            if (kid >= 0)
+            if (kid != Nobody)
             {
                 int m = s.Add(kid);
                 var away = Unit(spot - fire, toCam);

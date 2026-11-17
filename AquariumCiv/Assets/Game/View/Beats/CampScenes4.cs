@@ -39,6 +39,8 @@ namespace AquariumCiv.View
 
     public static class CampScenes4
     {
+        /// <summary>#695: no one in an optional part (a crowd member's key is negative, so −1 is a person).</summary>
+        const int Nobody = VillageScenes.Nobody;
         const float Walk = CampScenes1.Walk, KidWalk = CampScenes1.KidWalk, KidRun = CampScenes1.KidRun;
         const float Snap = 5f;
 
@@ -161,7 +163,7 @@ namespace AquariumCiv.View
             float t = WalkTime(kidAt, start, KidWalk);
             s.Part(m, 0f, t, start, frog, DollStyle.Stand, null, PropKind.None, KidWalk);
             int f = -1; Vector2 fs = default;
-            if (friend >= 0)
+            if (friend != Nobody)
             {
                 f = s.Add(friend);
                 fs = start + Rot(-toWater, 60f) * 0.13f;
@@ -335,7 +337,7 @@ namespace AquariumCiv.View
                 var b = back + across * ((i - (n - 1) * 0.5f) * 0.08f);
                 s.Part(i, t, t + WalkTime(close[i], b, KidWalk), b, b + fromDeer, DollStyle.Stand, null, PropKind.None, KidWalk);
             }
-            if (grown >= 0)
+            if (grown != Nobody)
             {
                 int g = s.Add(grown);
                 var gs = back + fromDeer * 0.12f;
@@ -384,7 +386,7 @@ namespace AquariumCiv.View
             float t = WalkTime(kidAt, spot, KidWalk);
             s.Part(m, 0f, t, spot, mother, DollStyle.Stand, null, PropKind.None, KidWalk);
             int o = -1; Vector2 os = spot - toMeadow * 0.25f + Rot(toMeadow, 90f) * 0.12f;
-            if (other >= 0) { o = s.Add(other); s.Part(o, 0f, t + 0.5f, os, spot, DollStyle.Stand, null, PropKind.None, KidWalk); }
+            if (other != Nobody) { o = s.Add(other); s.Part(o, 0f, t + 0.5f, os, spot, DollStyle.Stand, null, PropKind.None, KidWalk); }
             s.Part(m, t, t + 3f, spot, mother, DollStyle.Stand, CrouchStillPose);
             if (o >= 0) s.Part(o, t + 0.5f, t + 3f, os, spot, DollStyle.Stand, CrouchStillPose);
             s.p0 = mother; s.p1 = spot + toMeadow * 0.045f;

@@ -76,7 +76,7 @@ namespace AquariumCiv.EditorTools
         /// put back as soon as the box has read it.</summary>
         public static string Load(int seed, int ecology = 1)
         {
-            YawOverride = null;
+            YawOverride = null; AquariumCiv.View.CampLife.LabCamYaw = null;
             if (!EditorApplication.isPlaying) return "ERROR: not in play mode";
             ecologyWas = -1;
             if (ecology >= 0)
@@ -265,7 +265,7 @@ namespace AquariumCiv.EditorTools
             var target = float.IsNaN(followY) ? new Vector3(focus.x, y + 0.07f, focus.y) : new Vector3(focus.x, followY, focus.y); // #708/#709: the glass fish, the nest
             float hfov = 2f * Mathf.Atan(Mathf.Tan(cam.fieldOfView * Mathf.Deg2Rad * 0.5f) * aspect);
             float dist = span * 0.5f / Mathf.Tan(hfov * 0.5f);
-            cam.transform.position = target + Quaternion.Euler(spec.pitch, YawOverride ?? spec.yaw, 0) * Vector3.back * dist;
+            cam.transform.position = target + Quaternion.Euler(spec.pitch, YawOverride ?? AquariumCiv.View.CampLife.LabCamYaw ?? spec.yaw, 0) * Vector3.back * dist;
             cam.transform.LookAt(target);
             cam.aspect = aspect;
         }

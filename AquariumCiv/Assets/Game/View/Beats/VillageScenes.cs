@@ -206,7 +206,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>B57.c: the ring's radius for <paramref name="n"/> dancers (room for each, never under 0.16 u round the sheaf) [est].</summary>
-        public static float RingR(int n) => Mathf.Max(0.16f, n * 0.07f / (Mathf.PI * 2f) * 1.6f + 0.04f);
+        public static float RingR(int n) => Mathf.Max(0.2f, n * 0.07f / (Mathf.PI * 2f) * 1.9f + 0.06f);
 
         // ================================================================== B57.c the harvest dance
         /// <summary>B57.c: on the last harvest day everyone free comes to the cut field: the last sheaf stands up in the middle (<see cref="VillageFx.Sheaf"/>),

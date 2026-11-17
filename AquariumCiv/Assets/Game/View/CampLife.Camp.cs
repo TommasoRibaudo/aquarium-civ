@@ -514,13 +514,13 @@ namespace AquariumCiv.View
         {
             var g = Pick(acts, near, a => IsGrown(a), 1, force, not);
             if (g.Count > 0) return g[0];
-            return force ? StageGrown(acts, near, not) : -1;
+            return force ? StageGrown(acts, near, not) : Nobody;
         }
 
         int Kid1(IReadOnlyList<PersonActivity> acts, Vector2 near, bool force, ICollection<int> not = null)
         {
             var k = Pick(acts, near, a => IsKid(a), 1, force, not);
-            return k.Count > 0 ? k[0] : -1;
+            return k.Count > 0 ? k[0] : Nobody;
         }
 
         Vector2 ToCam(Vector2 p) => Dir2(p, TowardCamera(p));
@@ -528,14 +528,14 @@ namespace AquariumCiv.View
         string TryPeek(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
             var fire = meals.Fire;
-            Tent tent = default; int kid = -1;
+            Tent tent = default; int kid = Nobody;
             foreach (var t in Tents())
             {
                 if (!force && peekedToday.Contains(t.id)) continue;
                 int k = force ? Kid1(acts, t.door, true) : Nearest(acts, t.door, 0.6f, a => IsKid(a));
-                if (k >= 0) { tent = t; kid = k; break; }
+                if (k != Nobody) { tent = t; kid = k; break; }
             }
-            if (kid < 0) return Tents().Count == 0 ? "no tents" : "no kid by a tent ('Two kids join the camp' first)";
+            if (kid == Nobody) return Tents().Count == 0 ? "no tents" : "no kid by a tent ('Two kids join the camp' first)";
             if (force && NearestTent(At(kid).Value, 9f, out var near)) tent = near;
             Add(Thing(CampScenes5.TentPeek(kid, tent.look, tent.lookOut, time), ThingTentBase + tent.id));
             peekedToday.Add(tent.id);
@@ -549,8 +549,8 @@ namespace AquariumCiv.View
             var fire = meals.Fire;
             if (!NearestTent(fire, 9f, out var tent, t => Room(t) && (force || !tentToyDone.ContainsKey(t.id)))) return "every tent has two things on its pole";
             int who = Kid1(acts, tent.door, force);
-            if (who < 0) who = Grown1(acts, tent.door, force);
-            if (who < 0) return "nobody free by a tent";
+            if (who == Nobody) who = Grown1(acts, tent.door, force);
+            if (who == Nobody) return "nobody free by a tent";
             bool beads = BeatHash.Pick(2, tent.id, (int)(today & 0x7fff), 6960) == 1;
             float standOut = tent.r - CampGeo5.CanvasR(tent.r, tent.h, CampGeo5.ToyH) + 0.05f; // at the canvas's foot, the toy over the head
             Add(Thing(CampScenes5.TentToy(who, At(who).Value, tent.pole, tent.centre, beads, time, CampGeo5.HomeToCam, standOut), ThingTentBase + tent.id));
@@ -566,24 +566,24 @@ namespace AquariumCiv.View
         {
             if (!CampGeo5.AllowedNow(CampUse.TentDoorSit, InTents)) return "houses only: nobody sits in a tent's door (the user, 2026-11-16)";
             var fire = meals.Fire;
-            int grown = -1; Tent tent = default;
+            int grown = Nobody; Tent tent = default;
             foreach (var t in Tents())
             {
                 if (ThingBusy(ThingTentBase + t.id)) continue;
-                int g = force ? -1 : Nearest(acts, t.door, BorrowReach, a => IsGrown(a));
-                if (g >= 0) { grown = g; tent = t; break; }
+                int g = force ? Nobody : Nearest(acts, t.door, BorrowReach, a => IsGrown(a));
+                if (g != Nobody) { grown = g; tent = t; break; }
             }
-            if (force && grown < 0)
+            if (force && grown == Nobody)
             {
                 if (!NearestTent(fire, 9f, out tent, t => !ThingBusy(ThingTentBase + t.id))) return "no tents";
                 grown = Grown1(acts, tent.door, true);
             }
-            if (grown < 0) return "no grown-up free by a tent";
-            int kid = -1;
+            if (grown == Nobody) return "no grown-up free by a tent";
+            int kid = Nobody;
             foreach (var n in sim.State.notables) if (n.alive && n.parentId == grown && n.age < 12f && Shown(acts, n.id) && (force || FreeKey(acts, n.id))) { kid = n.id; break; }
-            if (kid < 0) kid = Kid1(acts, tent.door, force, new[] { grown });
+            if (kid == Nobody) kid = Kid1(acts, tent.door, force, new[] { grown });
             var watch = Vector2.Dot(fire - tent.look, tent.lookOut) > 0f ? fire : tent.look + tent.lookOut; // the fire, else (it is behind the tent) out over the camp [est]
-            Add(Thing(CampScenes5.TentDoorSit(grown, kid, At(grown).Value, kid >= 0 ? At(kid).Value : default, tent.look, tent.lookOut, watch, force ? 10f : BeatHash.Range(10f, 18f, (int)today, tent.id, 6961), time, CampGeo5.HomeToCam), ThingTentBase + tent.id));
+            Add(Thing(CampScenes5.TentDoorSit(grown, kid, At(grown).Value, kid != Nobody ? At(kid).Value : default, tent.look, tent.lookOut, watch, force ? 10f : BeatHash.Range(10f, 18f, (int)today, tent.id, 6961), time, CampGeo5.HomeToCam), ThingTentBase + tent.id));
             doneToday.Add(CampUse.TentDoorSit);
             return null;
         }
@@ -605,13 +605,13 @@ namespace AquariumCiv.View
         {
             if (!PileAt(out var pile)) return "no stash pile";
             // a grown-up at the stash (sorting, carrying) who turns: else (the cheat) the nearest grown-up comes over
-            int grown = -1;
+            int grown = Nobody;
             foreach (var a in acts) if (IsGrown(a) && !byKey.ContainsKey(a.who.Key) && a.place.kind == PlaceKind.Stash && At(a.who.Key).HasValue) { grown = a.who.Key; break; }
-            if (grown < 0 && !force) return "nobody at the stash";
-            if (grown < 0) grown = Grown1(acts, pile, true);
-            if (grown < 0) return "no grown-up";
+            if (grown == Nobody && !force) return "nobody at the stash";
+            if (grown == Nobody) grown = Grown1(acts, pile, true);
+            if (grown == Nobody) return "no grown-up";
             int sneak = Kid1(acts, pile, force, new[] { grown });
-            if (sneak < 0) return "no kid free";
+            if (sneak == Nobody) return "no kid free";
             Add(Thing(CampScenes5.SnackSneak(sneak, At(sneak).Value, grown, At(grown).Value, pile, ToCam(pile), time), ThingStash));
             doneToday.Add(CampUse.SnackSneak);
             return null;
@@ -621,10 +621,10 @@ namespace AquariumCiv.View
         {
             if (!PileAt(out var pile)) return "no stash pile";
             int kid = Kid1(acts, pile, force);
-            if (kid < 0) return "no kid free ('Two kids join the camp' first)";
+            if (kid == Nobody) return "no kid free ('Two kids join the camp' first)";
             int parent = ParentOf(kid);
             if (parent <= 0 || !Shown(acts, parent)) parent = Grown1(acts, pile, force, new[] { kid });
-            Add(Thing(CampScenes5.BerryWipe(kid, At(kid).Value, parent, parent >= 0 ? At(parent).Value : default, pile, ToCam(pile), time), ThingStash));
+            Add(Thing(CampScenes5.BerryWipe(kid, At(kid).Value, parent, parent != Nobody ? At(parent).Value : default, pile, ToCam(pile), time), ThingStash));
             doneToday.Add(CampUse.BerryWipe);
             return null;
         }
@@ -641,7 +641,7 @@ namespace AquariumCiv.View
         {
             if (!FishRackAt(out var mid, out var along, out int fish) || fish + meatStrips == 0) return force ? RackReady(true) ?? "nothing on the rack" : "nothing on the rack";
             int keeper = Grown1(acts, mid, force);
-            if (keeper < 0) return "no grown-up free";
+            if (keeper == Nobody) return "no grown-up free";
             var pieces = RackPoints(mid, along, Mathf.Clamp(fish, 1, 6));
             bool hide = HideRackAt(out var hm, out var ha);
             Add(Thing(CampScenes5.TendRacks(keeper, At(keeper).Value, pieces, mid, ToCam(mid), hide, hm, ha, time), ThingFishRack));
@@ -666,15 +666,15 @@ namespace AquariumCiv.View
             var r = RackReady(force); if (r != null) return r;
             FishRackAt(out var mid, out var along, out int fish);
             int kid = Kid1(acts, mid, force);
-            if (kid < 0) return "no kid free";
+            if (kid == Nobody) return "no kid free";
             int keeper = Nearest(acts, mid, force ? 9f : 1.5f, a => IsGrown(a), new[] { kid }, false);
-            if (keeper < 0) return "no keeper near the rack";
+            if (keeper == Nobody) return "no keeper near the rack";
             int friend = Kid1(acts, mid, force, new[] { kid, keeper });
             var pts = RackPoints(mid, along, fish);
             var fishAt = pts[pts.Count - 1];
             var behind = mid + ToCam(mid) * 0.2f + Dir2(mid, fishAt) * 0.6f;
             if (NearestTent(mid, 2f, out var tent)) behind = tent.centre - ToCam(tent.centre) * 0.15f + Dir2(tent.centre, mid) * 0.05f;
-            Add(Thing(CampScenes5.SneakFish(kid, At(kid).Value, keeper, At(keeper).Value, fishAt, ToCam(mid), friend, friend >= 0 ? At(friend).Value : default, behind, time), ThingFishRack));
+            Add(Thing(CampScenes5.SneakFish(kid, At(kid).Value, keeper, At(keeper).Value, fishAt, ToCam(mid), friend, friend != Nobody ? At(friend).Value : default, behind, time), ThingFishRack));
             doneToday.Add(CampUse.SneakFish);
             return null;
         }
@@ -689,7 +689,7 @@ namespace AquariumCiv.View
             }
             var kids = Pick(acts, mid, a => IsKid(a), 2, force);
             if (kids.Count < 2) return $"only {kids.Count} kid(s) free";
-            int scraper = -1; Vector2 scAt = default;
+            int scraper = Nobody; Vector2 scAt = default;
             foreach (var a in acts) if (a.kind == ActivityKind.ScrapeHide && !byKey.ContainsKey(a.who.Key) && At(a.who.Key) is Vector2 p) { scraper = a.who.Key; scAt = p; break; }
             Add(Thing(CampScenes5.DuckUnderHides(kids[0], kids[1], At(kids[0]).Value, At(kids[1]).Value, mid, along, scraper, scAt, time), ThingHideRack));
             doneToday.Add(CampUse.DuckUnderHides);
@@ -719,12 +719,12 @@ namespace AquariumCiv.View
         {
             if (!WildTree(meals.Fire, force ? 4f : 2f, out int cell, out var trunk, out float crownR, (c, p) => !ThingBusy(ThingWildBase + c) && c != swingCell)) return "no wild tree near the camp ('Land: a wild tree and saplings' first)";
             int kid = Kid1(acts, trunk, force);
-            if (kid < 0) return "no kid free";
+            if (kid == Nobody) return "no kid free";
             int friend = Kid1(acts, trunk, force, new[] { kid });
             float sc = pv.ScaleOf(kid, out float s0) ? s0 : 0.7f;
             float seatH = CampScenes5.ClimbSeatFor(crownR), seatOut = CampScenes5.ClimbOutFor(crownR);
             var boughWay = CampScenes5.Rot(ToCam(trunk), 55f); // the bough off to the side as the camera sees it, so its length shows beside the kid [est]
-            var climb = CampScenes5.ClimbTree(kid, At(kid).Value, trunk, boughWay, force ? 7f : BeatHash.Range(6f, 10f, (int)today, 2, 6963), friend, friend >= 0 ? At(friend).Value : default, time, seatH, sc, seatOut);
+            var climb = CampScenes5.ClimbTree(kid, At(kid).Value, trunk, boughWay, force ? 7f : BeatHash.Range(6f, 10f, (int)today, 2, 6963), friend, friend != Nobody ? At(friend).Value : default, time, seatH, sc, seatOut);
             climbOf[climb] = (trunk, boughWay, seatH, seatOut);
             Add(Thing(climb, ThingWildBase + cell));
             doneToday.Add(CampUse.ClimbTree);
@@ -736,8 +736,8 @@ namespace AquariumCiv.View
             if (!WildTree(meals.Fire, force ? 4f : 2.5f, out int cell, out var trunk, out float napCrown, (c, p) => !ThingBusy(ThingWildBase + c))) return "no wild tree near the camp";
             int who;
             if (force) who = Grown1(acts, trunk, true);
-            else { var n = FreeNear(acts, trunk, BorrowReach, a => IsGrown(a) && a.kind == ActivityKind.Nap, 1, true); who = n.Count > 0 ? n[0] : -1; }
-            if (who < 0) return "nobody napping near a wild tree";
+            else { var n = FreeNear(acts, trunk, BorrowReach, a => IsGrown(a) && a.kind == ActivityKind.Nap, 1, true); who = n.Count > 0 ? n[0] : Nobody; }
+            if (who == Nobody) return "nobody napping near a wild tree";
             // #692 p5 retakes: the back on this tree's bark (a wild trunk is 0.045 x its scale), asleep (CampScenes5.NapPose)
             var s = CampScenes2.TreeSit(who, At(who).Value, trunk, 4, ToCam(trunk), force ? 9f : BeatHash.Range(10f, 18f, (int)today, 3, 6964), time,
                 doze: CampScenes5.NapPose, trunkR: 0.045f * napCrown / 0.16f);
@@ -753,10 +753,10 @@ namespace AquariumCiv.View
             if (!WildTree(meals.Fire, force ? 4f : 2.5f, out int cell, out var trunk, out float leanCrown, (c, p) => !ThingBusy(ThingWildBase + c))) return "no wild tree near the camp";
             int a;
             if (force) a = Grown1(acts, trunk, true);
-            else { var n = FreeNear(acts, trunk, 1.2f, x => IsGrown(x) && x.kind == ActivityKind.Chat, 1); a = n.Count > 0 ? n[0] : -1; }
-            if (a < 0) return "nobody chatting near a wild tree";
+            else { var n = FreeNear(acts, trunk, 1.2f, x => IsGrown(x) && x.kind == ActivityKind.Chat, 1); a = n.Count > 0 ? n[0] : Nobody; }
+            if (a == Nobody) return "nobody chatting near a wild tree";
             int b = Grown1(acts, trunk, force, new[] { a });
-            if (b < 0) return "nobody to chat with";
+            if (b == Nobody) return "nobody to chat with";
             Add(Thing(CampScenes5.TrunkLean(a, b, At(a).Value, At(b).Value, trunk, CampGeo5.TrunkFaceAt(leanCrown / 0.16f, 0.11f), ToCam(trunk), force ? 5f : BeatHash.Range(4f, 6f, (int)today, 4, 6965), time), ThingWildBase + cell));
             doneToday.Add(CampUse.TrunkLean);
             return null;
@@ -769,8 +769,8 @@ namespace AquariumCiv.View
             if (!BankNear(meals.Fire, force ? 6f : 2f, out var bank, out var toWater)) return NoPond;
             bool plop = force ? ForcePlop : BeatHash.Pick(3, (int)today, 5, 6966) == 0;
             int who = plop ? Kid1(acts, bank, force) : Grown1(acts, bank, force);
-            if (who < 0) who = plop ? Grown1(acts, bank, force) : Kid1(acts, bank, force);
-            if (who < 0) return "nobody free by the pond";
+            if (who == Nobody) who = plop ? Grown1(acts, bank, force) : Kid1(acts, bank, force);
+            if (who == Nobody) return "nobody free by the pond";
             var s = CampScenes5.SkipStones(who, At(who).Value, bank, toWater, CameraAcross(), plop ? 0 : 3, time);
             waterOf[s] = (bank, toWater);
             Add(Thing(s, ThingBank));
@@ -782,7 +782,7 @@ namespace AquariumCiv.View
         {
             if (!BankNear(meals.Fire, force ? 6f : 2f, out var bank, out var toWater)) return NoPond;
             int kid = Kid1(acts, bank, force);
-            if (kid < 0) return "no kid free";
+            if (kid == Nobody) return "no kid free";
             var s = CampScenes5.LeafBoat(kid, At(kid).Value, bank, toWater, time);
             waterOf[s] = (bank, toWater);
             Add(Thing(s, ThingBank));
@@ -795,7 +795,7 @@ namespace AquariumCiv.View
             if (!BankNear(meals.Fire, force ? 6f : 2f, out var bank, out var toWater)) return NoPond;
             var g = Pick(acts, bank, a => IsGrown(a), 2, force);
             if (g.Count == 0) return "no grown-up free";
-            Add(Thing(CampScenes5.FeetInWater(g[0], g.Count > 1 ? g[1] : -1, At(g[0]).Value, g.Count > 1 ? At(g[1]).Value : default, bank, toWater, force ? 9f : BeatHash.Range(12f, 20f, (int)today, 6, 6967), time), ThingBank));
+            Add(Thing(CampScenes5.FeetInWater(g[0], g.Count > 1 ? g[1] : Nobody, At(g[0]).Value, g.Count > 1 ? At(g[1]).Value : default, bank, toWater, force ? 9f : BeatHash.Range(12f, 20f, (int)today, 6, 6967), time), ThingBank));
             doneToday.Add(CampUse.FeetInWater);
             return null;
         }
@@ -812,9 +812,9 @@ namespace AquariumCiv.View
             var pd = PuddlesNear(meals.Fire, force ? 4f : 2f);
             if (pd.Count == 0) return NoPuddles(force, 1);
             int k1 = Kid1(acts, pd[0].p, force);
-            if (k1 < 0) return "no kid free";
+            if (k1 == Nobody) return "no kid free";
             int k2 = Kid1(acts, pd[0].p, force, new[] { k1 });
-            Add(Thing(CampScenes5.PuddleLook(k1, k2, At(k1).Value, k2 >= 0 ? At(k2).Value : default, pd[0].p, pd[0].r, ToCam(pd[0].p), time), ThingPuddle));
+            Add(Thing(CampScenes5.PuddleLook(k1, k2, At(k1).Value, k2 != Nobody ? At(k2).Value : default, pd[0].p, pd[0].r, ToCam(pd[0].p), time), ThingPuddle));
             doneToday.Add(CampUse.PuddleLook);
             return null;
         }
@@ -838,7 +838,7 @@ namespace AquariumCiv.View
         {
             if (!BankNear(meals.Fire, force ? 6f : 2.5f, out var reeds, out var toWater, true)) return force && sim.DebugReedsNear(meals.Fire.x, meals.Fire.y, 6) > 0 ? "reeds grew at the water by the camp: press again in a moment" : "no reeds near the camp";
             int who = Grown1(acts, reeds, force);
-            if (who < 0) return "no grown-up free";
+            if (who == Nobody) return "no grown-up free";
             var home = At(who).Value;
             Tent tent;
             var door = NearestTent(home, 9f, out tent) ? tent.look : meals.Fire + ToCam(meals.Fire) * 0.3f;
@@ -891,7 +891,7 @@ namespace AquariumCiv.View
             if (kids.Count == 0) return "no kid free";
             var along = Bed().Count > 1 ? Dir2(Bed()[0], Bed()[^1]) : CameraAcross();
             var pile = bed + new Vector2(-along.y, along.x) * 0.18f;
-            Add(Thing(CampScenes5b.BuildDam(kids[0], kids.Count > 1 ? kids[1] : -1, At(kids[0]).Value, kids.Count > 1 ? At(kids[1]).Value : default, bed, along, pile, time), ThingStream));
+            Add(Thing(CampScenes5b.BuildDam(kids[0], kids.Count > 1 ? kids[1] : Nobody, At(kids[0]).Value, kids.Count > 1 ? At(kids[1]).Value : default, bed, along, pile, time), ThingStream));
             doneToday.Add(CampUse.BuildDam);
             return null;
         }
@@ -936,7 +936,7 @@ namespace AquariumCiv.View
         {
             if (!PathNear(meals.Fire, out var a, out var b) && !(force && TrodLine(out a, out b))) return "no path near the camp";
             var mid = (a + b) * 0.5f;
-            int x = force ? Grown1(acts, a, true) : -1;
+            int x = force ? Grown1(acts, a, true) : Nobody;
             if (!force)
             {   // B50.b: two walkers on the path (never on an urgent carry [est]: carrying walkers are left alone)
                 var on = RackSites.PathTest(sim);
@@ -949,9 +949,9 @@ namespace AquariumCiv.View
                 doneToday.Add(CampUse.PathChat);
                 return null;
             }
-            if (x < 0) return "no grown-up";
+            if (x == Nobody) return "no grown-up";
             int y = Grown1(acts, b, true, new[] { x });
-            if (y < 0) return "nobody to meet";
+            if (y == Nobody) return "nobody to meet";
             Add(Thing(CampScenes5b.PathChat(x, y, At(x).Value, At(y).Value, mid, Dir2(a, b), 5f, time), ThingPath));
             doneToday.Add(CampUse.PathChat);
             return null;
@@ -961,20 +961,20 @@ namespace AquariumCiv.View
         {
             if (!StoneAt(out var stone, out bool named, out float stoneR)) return "no remembering stone";
             // a family member of a name on the stone (a dead one's child, parent or partner), else (the cheat) any grown-up
-            int who = -1, second = -1;
+            int who = Nobody, second = Nobody;
             foreach (var d in sim.State.notables)
             {
                 if (d.alive) continue;
                 foreach (var n in sim.State.notables)
                     if (n.alive && n.age >= 10f && (n.parentId == d.id || d.parentId == n.id || n.partnerId == d.id || d.partnerId == n.id) && Shown(acts, n.id) && (force || FreeKey(acts, n.id)))
-                    { if (who < 0) who = n.id; else if (second < 0 && n.id != who) second = n.id; }
-                if (who >= 0) break;
+                    { if (who == Nobody) who = n.id; else if (second == Nobody && n.id != who) second = n.id; }
+                if (who != Nobody) break;
             }
-            if (who < 0 && !force) return "no family of a name on the stone free";
-            if (who < 0) who = Grown1(acts, stone, true);
-            if (who < 0) return "nobody";
+            if (who == Nobody && !force) return "no family of a name on the stone free";
+            if (who == Nobody) who = Grown1(acts, stone, true);
+            if (who == Nobody) return "nobody";
             int gift = BeatHash.Pick(3, (int)today, who, 6972);
-            Add(Thing(CampScenes5b.StoneGift(who, At(who).Value, second, second >= 0 ? At(second).Value : default, stone, ToCam(stone), gift, time, stoneR), ThingStone));
+            Add(Thing(CampScenes5b.StoneGift(who, At(who).Value, second, second != Nobody ? At(second).Value : default, stone, ToCam(stone), gift, time, stoneR), ThingStone));
             doneToday.Add(CampUse.StoneGift);
             return null;
         }
@@ -992,7 +992,7 @@ namespace AquariumCiv.View
             var from = meals.Fire;
             while (left.Count > 0) { int bi = 0; for (int i = 1; i < left.Count; i++) if ((left[i].pole - from).sqrMagnitude < (left[bi].pole - from).sqrMagnitude) bi = i; poles.Add(left[bi].pole); from = left[bi].pole; left.RemoveAt(bi); }
             int who = Grown1(acts, poles[0], force);
-            if (who < 0) return "no grown-up free";
+            if (who == Nobody) return "no grown-up free";
             Add(CampScenes5b.LightLanterns(who, At(who).Value, poles, ToCam(poles[0]), time));
             doneToday.Add(CampUse.LightLanterns);
             return null;
@@ -1004,7 +1004,7 @@ namespace AquariumCiv.View
             if (meals == null || !meals.HasFire) return "no fire";
             var mc = CampGeo5.MothCentre(meals.Fire, ToCam(meals.Fire));
             int kid = Kid1(acts, mc, force);
-            if (kid < 0) return "no kid free";
+            if (kid == Nobody) return "no kid free";
             Add(CampScenes5b.ChaseMoths(kid, At(kid).Value, mc, ToCam(mc), 3, time));
             doneToday.Add(CampUse.ChaseMoths);
             return null;
@@ -1022,7 +1022,7 @@ namespace AquariumCiv.View
             }
             if (c < 0) return "no seedling at a door, the fire or a path";
             int who = Grown1(acts, at, force);
-            if (who < 0) return "no grown-up free";
+            if (who == Nobody) return "no grown-up free";
             var edge = at + Dir2(meals.Fire, at) * 0.3f;
             Add(CampScenes5b.PullWeed(who, At(who).Value, at, edge, time));
             doneToday.Add(CampUse.PullWeed);
@@ -1049,8 +1049,8 @@ namespace AquariumCiv.View
             if (!SwingSpot(force ? 3f : CampGeo5.SwingReach, out int cell, out var pivot, out var fwd, out var trunk)) return "no grown wild tree near the fire with room for a swing ('Land: a wild tree and saplings' first)";
             int who;
             if (force) who = Grown1(acts, pivot, true);
-            else { var n = FreeNear(acts, pivot, BorrowReach, a => IsGrown(a) && a.kind == ActivityKind.SitOut, 1); who = n.Count > 0 ? n[0] : -1; }
-            if (who < 0) return "no grown-up with a free afternoon";
+            else { var n = FreeNear(acts, pivot, BorrowReach, a => IsGrown(a) && a.kind == ActivityKind.SitOut, 1); who = n.Count > 0 ? n[0] : Nobody; }
+            if (who == Nobody) return "no grown-up with a free afternoon";
             swingCell = cell; swingPivot = pivot; swingFwd = fwd; swingTrunk = trunk; swingTrunkSet = true; swingRope = swingHung = false; swingRides.Clear();
             bool miss = force ? false : BeatHash.Pick(2, (int)today, 11, 6973) == 0;
             Add(Thing(CampScenes5b.HangSwing(who, At(who).Value, pivot, trunk, fwd, miss, time), ThingSwing));
@@ -1070,18 +1070,18 @@ namespace AquariumCiv.View
             var kids = force ? Pick(acts, pivot, a => IsKid(a), 2, true) : FreeNear(acts, pivot, BorrowReach, a => IsKid(a) && a.kind == ActivityKind.Play, 2);
             if (kids.Count == 0) return "no kid at play ('Two kids join the camp' first)";
             // kids stay safe: a grown-up within 1 u; the cheat brings one over to watch
-            int grown = -1;
+            int grown = Nobody;
             foreach (var a in acts) if (IsGrown(a) && At(a.who.Key) is Vector2 p && (p - pivot).magnitude <= CampGeo5.GrownNear && !kids.Contains(a.who.Key)) { grown = a.who.Key; break; }
-            int watcher = -1;
-            if (grown < 0)
+            int watcher = Nobody;
+            if (grown == Nobody)
             {
                 if (!force) return "no grown-up within 1 u of the swing";
                 watcher = Grown1(acts, pivot, true, kids);
             }
             float sc = pv.ScaleOf(kids[0], out float s0) ? s0 : 0.7f;
             var rides = new List<CampScenes5b.Ride>();
-            var sw = CampScenes5b.Swing(kids[0], At(kids[0]).Value, kids.Count > 1 ? kids[1] : -1, kids.Count > 1 ? At(kids[1]).Value : default, pivot, swingFwd, force ? 8f : BeatHash.Range(6f, 10f, (int)today, 12, 6974), sc, rides, time);
-            if (watcher >= 0)
+            var sw = CampScenes5b.Swing(kids[0], At(kids[0]).Value, kids.Count > 1 ? kids[1] : Nobody, kids.Count > 1 ? At(kids[1]).Value : default, pivot, swingFwd, force ? 8f : BeatHash.Range(6f, 10f, (int)today, 12, 6974), sc, rides, time);
+            if (watcher != Nobody)
             {
                 int m = sw.Add(watcher);
                 var acr = CameraAcross(); float sd = Vector2.Dot(swingFwd, acr) >= 0f ? -1f : 1f;
