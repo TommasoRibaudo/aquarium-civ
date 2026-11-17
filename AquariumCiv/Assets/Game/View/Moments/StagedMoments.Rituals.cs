@@ -118,7 +118,7 @@ namespace AquariumCiv.View
         {
             var sim = Sim;
             if (sim != null && !sim.State.consequenceProps.Exists(p => p.kind == ConsequenceKind.LongTable)) ConsequenceCheats.PlaceEvery();
-            return Variant(RitualKind.Feast, () => CampLife.NextAddBoard = true, "the feast, a year's board added");
+            return Variant(RitualKind.Feast, () => { CampLife.NextAddBoard = true; CampLife.CheatBoards++; }, "the feast, a year's board added");
         }
         public static string DebugOfferingTallestTree() => Variant(RitualKind.Offering, () => CampLife.NextTallestTree = true, "the offering to the tallest tree");
 

@@ -1778,6 +1778,9 @@ namespace AquariumCiv.View
         }
 
         /// <summary>The pose a person's doll was drawn in last (tests).</summary>
+        /// <summary>Tests (B76): the move a doll is drawn with now (Stand when it has none).</summary>
+        public DollStyle StyleOf(int key) => dolls.TryGetValue(key, out var d) && d.placed ? d.drew : DollStyle.Stand;
+
         public bool TryGetDollPose(PersonRef who, out DollPose pose)
         {
             pose = default;

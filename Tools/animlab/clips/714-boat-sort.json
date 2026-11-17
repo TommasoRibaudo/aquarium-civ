@@ -1,0 +1,30 @@
+{
+ "name": "714-boat-sort",
+ "notes": "B77.a (work): a fisher lays the rod along the upside-down boat, sits on its end and sorts the catch from the fish basket, takes the rod and goes on to the rack.",
+ "animlab": {
+  "issue": "S-ritual"
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 4);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return AquariumCiv.View.ConsequenceCheats.PlaceEvery();",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11f);",
+   "return AquariumCiv.View.CampCheats.Later(1.0f, () => AquariumCiv.View.CampCheats.BoatSort());"
+  ],
+  "warm": 0.5,
+  "seconds": 16,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.4,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 40,
+  "lead": 2.0
+ }
+}

@@ -18,6 +18,8 @@ namespace AquariumCiv.View
 
         /// <summary>The cheats' wishes for the next ritual staged (SimDebugPanel's "Rituals" block); spent when its targets are read.</summary>
         public static bool NextToTable, NextFirstWalk, NextDropLog, NextAddBoard, NextTallestTree;
+        /// <summary>"Feast: add a year's board": boards the cheat added on top of the years' (view-only, this session).</summary>
+        public static int CheatBoards;
 
         /// <summary>The ritual's targets now (null: no camp to read them from).</summary>
         public RitualSpots RitualTargetsFor(SimCore s, HeldMoment m, string ritual)
@@ -33,7 +35,7 @@ namespace AquariumCiv.View
             {
                 var along = Local(table, 1f, 0f).normalized;
                 sp.hasTable = true; sp.tableX = table.at.x; sp.tableZ = table.at.y; sp.tableAX = along.x; sp.tableAZ = along.y;
-                sp.boards = TableBoards(s, false); sp.tableLen = TableLength(sp.boards + (ritual == RitualKind.Feast && FeastAddsBoard(s) ? 1 : 0));
+                sp.boards = TableBoards(s, false); sp.tableLen = TableLength(sp.boards);
             }
             switch (ritual)
             {
@@ -151,7 +153,7 @@ namespace AquariumCiv.View
         static int TableBoards(SimCore s, bool lessThisYear)
         {
             int times = s.RitualTimes(RitualKind.Feast);
-            return Mathf.Clamp(times - 1 - (lessThisYear ? 1 : 0), 0, ConsequenceMeshes.MaxBoards);
+            return Mathf.Clamp(Mathf.Max(0, times - 1) + CheatBoards - (lessThisYear ? 1 : 0), 0, ConsequenceMeshes.MaxBoards);
         }
         static bool FeastAddsBoard(SimCore s) => s.RitualTimes(RitualKind.Feast) >= 2; // every year after the first
         /// <summary>The table's length in box units with <paramref name="boards"/> boards.</summary>
@@ -301,6 +303,16 @@ namespace AquariumCiv.View
             var kids = Kids(acts, p.at, 3, force);
             if (kids.Count < 2) return "two kids needed ('Two kids join the camp' first)";
             return Start(RitualScenes.BoatHouse(kids, AtAll(kids), p.at, Local(p, 1f, 0f), ToCam(p.at), time), p, CampUse.BoatHouse);
+        }
+
+        /// <summary>AnimLab's "camp" follow while a ritual plays (no camp use): where its people are drawn, on average; the telling: the fire.</summary>
+        Vector2? RitualFocus()
+        {
+            if (tellKey >= 0) return tellFire + tellToCam * 0.15f;
+            if (sim == null || !StagedMoments.PlayingRitual(sim, out var sc, out float secs)) return null;
+            var sum = Vector2.zero; int n = 0;
+            foreach (var m in sc.plan.members) if (secs >= m.JoinAt && secs < m.ReleaseAt && pv.DrawnAt(m.key) is Vector2 p) { sum += p; n++; }
+            return n > 0 ? sum / n : new Vector2(sc.plan.centreX, sc.plan.centreZ);
         }
 
         // ================================================================== drawing

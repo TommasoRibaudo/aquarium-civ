@@ -2311,7 +2311,10 @@ chose) said the nest "costs no animal slots". **Ask:** keep the bird outside the
 
 ### Rituals and the teller (S-ritual, B72–)
 
-**Status: specs only.** The user asked for these on 2026-11-15 (approvals row 217: "Rituals and the teller's manner need
+**Status: built on `vs/ritual-b72` (S-ritual Editor pass, 2026-11-17), waiting for the clips' sign-off.** Plans: `Life/MomentStagePlan.Rituals.cs`
+(`RitualPlanTests`); poses: `View/Beats/RitualBeats.cs`; targets and what they leave: `View/CampLife.Rituals.cs`; B75.b and B77:
+`View/Beats/RitualScenes.cs`; B76: `View/CampLife.Teller.cs`, `View/Beats/TellerBeats.cs`. Calls made in the build are marked [est] in place.
+The user asked for these on 2026-11-15 (approvals row 217: "Rituals and the teller's manner need
 staging specs"). Each waits for its OK on the approvals page (rows 218–229), then its AnimLab clip is signed off before it
 merges. **Every number in this section is [est]** until AnimBench and AnimLab.
 
@@ -2450,15 +2453,14 @@ the glass.*
 
 | | |
 |---|---|
-| Who · where · when | the lead carries (`RitualLead`: the priest in the town); the year's `RitualKid` and one more kid carry the small basket; the people behind as in the Ask below. The year's offering moment (month 9). From the offering basket's stone (`ConsequenceKind.OfferingBasket`, `PropAnchor.Edge`) to the Keeper's tree's visit spot (B32: the stone ring's edge plus 0.08 u, on the camera's side) |
-| Before the tree stands | (`KeeperTreeGrown` false, W721.c) the tallest wild tree: the grown tree of the highest stage, the nearest the camp on a tie, its trunk plus 0.12 u on the camera's side. No grown tree at all: they set it down at its own stone and look up (beats 1, 5 and 6 only) |
+| Who · where · when | the lead carries (`RitualLead`: the priest in the town); the year's `RitualKid` and one more kid carry the small basket; the people behind as in the Ask below. The year's offering moment (month 9). **Following the 2026-11-16 note** (the offering basket's home is the foot of the Keeper's tree, `ConsequencePropsView.OfferingAtTree`; redrawn in the #693 notes): the lead lifts the best basket at the camp's stash (else in front of the fire) and carries it to the offering basket at the tree's foot, kneeling at it on the side they come from (0.12 u out). There is no stone to start from |
+| Before the tree stands | (`KeeperTreeGrown` false, W721.c) the tallest wild tree: the grown tree with the biggest crown, the nearest the camp on a tie, its trunk plus 0.12 u on the camera's side; the best basket is set down there (no offering basket to tip it into). No grown tree at all: they set it down in front of the camp and look up (beats 1, 5 and 6 only) |
 
 | Beat | What | Time |
 |---|---|---|
-| 1 Fill | the lead lifts the cloth (arm x 80), tips the best basket in (B54.t, `TipBasket`), lays the cloth back (`Pop`); each kid drops one berry into the small basket (arm x 60, `Pop`) | 4 s |
-| 2 Lift | the lead squats (squash 0.8, 0.3 s) and lifts it in both arms against the chest (arms x 90, lean −5, `Back` 0.5 s): "Gently. It's for the Keeper." | 1 s |
+| 1 Lift | at the stash the lead squats (squash 0.8, 0.3 s) and lifts the best basket in both arms against the chest (arms x 90, lean −5, `Back` 0.5 s): "Gently. It's for the Keeper."; the two kids lift the small one between them | 1.2 s |
 | 3 The walk | the careful walk: speed × 0.75, stride × 0.7, almost no bounce (0.002 u), the basket never swings. The two kids follow 0.2 u behind, the small basket between them, one hand each on it (arms x 70, B7.c's pair). The rest walk behind in pairs (B7.c), 0.2 u apart. The Doll symbol (R) over the lead | by distance, ≤ 14 s |
-| 4 Set down | the lead kneels at the spot (B4's kneel) and sets it down (arm x 40, lean 35 → `Pop`, `Squash` on the ground); the kids set theirs 0.06 u beside it the same way | 2 s |
+| 4 Fill at the tree | the lead kneels at the offering basket (B4's kneel), lifts its cloth (arm x 80), tips the best basket in (B54.t, `TipBasket`) and lays the cloth back; the kids set the small basket 0.08-0.12 u beside it and each drops one berry in (arm x 60). Before the tree stands: the best basket is set down (arm x 40, lean 35) | 3 s |
 | 5 To the Keeper | everyone looks up at the glass (`LookUp`, 1 s), then bows in a wave, nearest the basket first, 0.12 s apart (C3.c's bow wave); the lead bows last; a Sun over the lead | 3 s |
 | 6 Still | they stand quiet for 2 s; one leaf falls from the crown (`Leaves` 1) | 2 s |
 | 7 Walk back | they turn and walk back. One kid turns to look back (yaw 150°, 0.3 s); a grown-up puts a hand on its head (arm x 110) and turns it forward again (0.5 s): "Don't look back, it's rude." Released to their day 2 s into the walk | 3 s |
@@ -2466,7 +2468,7 @@ the glass.*
 | | |
 |---|---|
 | A far tree | a walk longer than 14 s starts part way: the cast is placed along the route, already walking (the plan's `Travel` from a point on the route) |
-| The basket's stay | the offering basket stays at the tree until spring: a second spot at the visit spot (R+, as the pot's second spot in B30.e), the cloth on, food showing at its rim; the kids' small basket beside it (× 0.6). B54.u's kids wait by it there. It goes back to its stone in spring (B75.b) |
+| The basket's stay | the offering basket stands at the tree all year (its home since the 2026-11-16 note): full under its cloth from the offering until the spring line, the kids' small basket beside it (× 0.6); empty after the spring line (B75.b's look) until the next offering. Read from the chronicle, so a reload keeps it. B54.u's kids wait by it there |
 | Props | the offering basket as a carried prop (R+ `ConsequenceMeshes` "offering_basket"), the small basket (R+ `Basket` × 0.6), the cloth (R, the prop's top) |
 | How it reads on a phone | one doll walking slowly with a basket held in both arms, two small dolls and a small basket behind, then the bow wave at the tree |
 | Kids safe | no water or fire on the way; the kids walk behind the lead, never ahead |
@@ -2484,7 +2486,7 @@ town's line says so).
 |---|---|
 | Who · where · when | the morning after the `ritual_offering_empty` line (month 3): the first kid who passes the tree (B32.b's passers), else the lead at midday. Over the winter, a kid passing now and then lifts the cloth to check (B54.u): "Is it empty yet?" |
 | Look | it empties in the dark with nobody within 1 u and the camera elsewhere, never in view: the line says nobody saw who emptied it. Empty: the cloth lies flat in the basket (0.02 u lower), no food at the rim. The kids' small basket empties too |
-| Beats | the kid lifts the cloth (arm x 80, lean 20), freezes (`Freeze` 0.5 s), lifts the empty basket high (`HoldUp`, x 150, 1 s) and runs to the fire with it held up; 2–3 grown-ups there look up at the glass (`LookUp`, 1 s) and one nods slowly (B7.a's nod). End beat: later that day the lead carries it back to its stone (B75.a's careful walk, no fill) |
+| Beats | the kid lifts the cloth (arm x 80, lean 20), freezes (`Freeze` 0.5 s), lifts the empty basket high (`HoldUp`, x 150, 1 s) and runs to the fire with it held up; 2–3 grown-ups there look up at the glass (`LookUp`, 1 s) and one nods slowly (B7.a's nod). End beat (following the 2026-11-16 note): the first of them takes it from the kid and carries it back to the foot of the Keeper's tree with B75.a's careful walk and sets it down there, empty [est: in the same scene, not "later that day"] |
 | How it reads on a phone | a kid running with an empty basket held high, the grown-ups at the fire looking up |
 | Sound · cheat | none · N **"Offering: empty it now (spring)"** |
 | Reuse | R B54.u, `Freeze`, `HoldUp`, `Run`, `LookUp`, B7.a's nod, B75.a's walk. N the empty look |

@@ -51,6 +51,7 @@ namespace AquariumCiv.View
         public Vector2? FocusNow()
         {
             var s = Latest;
+            if (s == null && RitualFocus() is Vector2 rf) return lastFocus = rf; // S-ritual, B76: the ritual's people, the telling at the fire
             if (s == null) return forced != null ? lastFocus : null; // the user's review: after a cheat's scene the camera stays where it was
             if (s.holdFocus) return lastFocus = s.focus;
             var sum = Vector2.zero; int n = 0;
