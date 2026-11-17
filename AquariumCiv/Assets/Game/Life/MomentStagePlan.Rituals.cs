@@ -398,10 +398,10 @@ namespace AquariumCiv.Life
             if (gather > MaxGather) return Fail("the lead can't get there in time");
             var (fx, fz) = Unit(sp.pileFX, sp.pileFZ, Gx, Gz);
             // [est] the line stands in front of the pile (its camera side), not beside its roof: clip 721-log-line try 1 hid it behind the roof.
-            // A pile by the front glass (less than 0.9 u in from it): the line runs from the pile's side into the box instead, the heap on the
+            // A pile by the front glass (less than 1.3 u in from it): the line runs from the pile's side into the box instead, the heap on the
             // open side, so the zigzag shows and nobody stands at the glass (clip try 2).
             float inFromGlass = (sp.pileX - geo.glassX) * -Gx + (sp.pileZ - geo.glassZ) * -Gz;
-            bool byGlass = inFromGlass < 0.9f;
+            bool byGlass = inFromGlass < 1.3f; // the coordinator's call (2026-11-17): 1.3 u
             float wx = sp.pileX + Gx * 0.16f, wz = sp.pileZ + Gz * 0.16f;
             ByGlass = byGlass;
             // The line runs across the screen, out from the pile toward the chopping spot's side.

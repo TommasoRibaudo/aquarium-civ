@@ -120,7 +120,11 @@ namespace AquariumCiv.View
             var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
             if (sim == null) return "no sim";
             if (sim.DebugTellStoryTonight(option) == null) return "fewer than two adults";
-            PeopleView.Find()?.Planner?.Invalidate();
+            // S-ritual (clip 717-teller-short): tonight is the VIEW's day. The view day turns at midnight and the sim's month mid-day, so after
+            // a month tick the sim's month is a day ahead and StoryTellerOn(view day) was false: nobody told the story.
+            var pvT = PeopleView.Find();
+            if (pvT != null) sim.State.storyTellerMonth = pvT.Now.day;
+            pvT?.Planner?.Invalidate();
             return $"{sim.FindNotable(sim.State.storyTellerId)?.name} tells it {(option == 0 ? "slow" : "short")}: " + PeopleView.DebugSetHour(18.2f);
         }
 
