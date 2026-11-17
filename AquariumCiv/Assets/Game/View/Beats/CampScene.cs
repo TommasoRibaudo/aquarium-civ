@@ -156,8 +156,6 @@ namespace AquariumCiv.View
         // #693: the choice props, a work use and a life use each (View/Beats/CampScenes6.cs, View/CampLife.Props.cs). Keep these last.
         /// <summary>B54.a: a gatherer takes a basket off the stack and brings it back full.</summary>
         BasketTake,
-        /// <summary>B54.b: two kids stack the baskets into a tower and it topples.</summary>
-        BasketTower,
         /// <summary>B54.c: a log stacked under the woodpile's roof (or one fetched for the fire on a wet day).</summary>
         WoodStack,
         /// <summary>B54.d: people squeeze under the woodpile's roof when it rains (kids sit on the logs on a dry day).</summary>
@@ -200,10 +198,10 @@ namespace AquariumCiv.View
         CrateFish,
         /// <summary>B54.y: kids on the crate wave across the pond.</summary>
         CrateWave,
-        /// <summary>B54.z: the name tag tied on the peg with a fresh cord.</summary>
-        PegRetie,
-        /// <summary>B54.zz: the named child taps their peg in passing.</summary>
-        PegTap,
+        /// <summary>B54.z (#693 notes): the name re-carved on the carved name post.</summary>
+        PostCarve,
+        /// <summary>B54.zz (#693 notes): a kid's height scratched on the name post.</summary>
+        PostMeasure,
         // 2026-11-16 "Bring a pen back": the pond family's goat pen (View/CampLife.Goat.cs)
         /// <summary>B54.v: the gnawed rail mended.</summary>
         PenMend,
@@ -289,8 +287,12 @@ namespace AquariumCiv.View
         NameRow,
         /// <summary>The offering basket is full today (B54.u waits by it).</summary>
         Offered,
-        /// <summary>#693 retakes: the thing swings (the name peg tapped, 15 deg, dying away over 1.2 s).</summary>
-        Swing }
+        /// <summary>#693 retakes: the thing swings (15 deg, dying away over 1.2 s).</summary>
+        Swing,
+        /// <summary>#693 notes: a log laid on the woodpile (it is part of the pile from then on); one taken off.</summary>
+        Stack, Unstack,
+        /// <summary>#693 notes: the name post's mark freshly re-cut; a kid's height scratched on it.</summary>
+        Recut, Measure }
 
     /// <summary>#692 part 3: what a <see cref="CampFxKind.Mark"/> leaves on the land (CampLife.Land draws them).</summary>
     public enum CampMark { None, WetPatch, RingStone, Twig, Pebble, Topple, Horse, GrassBits, EarFlower, Flatten,

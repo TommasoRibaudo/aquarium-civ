@@ -1,6 +1,6 @@
 {
- "name": "693-b54z-peg-retie",
- "notes": "B54.z: a parent crouches at the name peg, unties the tag and ties it on with a fresh cord, and nods.",
+ "name": "693-b54zz-post-measure",
+ "notes": "B54.zz (notes): a kid stands back to the name post; a grown-up lays a hand on the kid's head and scratches a line there; the kid looks and cheers.",
  "animlab": {
   "issue": 693
  },
@@ -13,16 +13,16 @@
    "return \"waiting for the things\";",
    "return \"waiting for the things\";",
    "return AquariumCiv.View.PeopleView.DebugSetHour(11.0f);",
-   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.PegRetie());"
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.PostMeasure());"
   ],
   "warm": 0.5,
-  "seconds": 5,
+  "seconds": 9,
   "fps": 30,
   "follow": "camp",
   "span": 1.6,
   "closeSpan": 0.7,
   "yaw": 28,
   "pitch": 25,
-  "lead": 2.0
+  "lead": 3.0
  }
 }

@@ -49,44 +49,18 @@ namespace AquariumCiv.View
                     for (int i = 0; i < 3; i++)
                     {
                         if (BasketGone(i, variant)) continue; // #693 (B54.a/b): taken off the stack
-                        var at = BasketAt(i);
-                        mb.Prism(at, 0.042f, 0.05f, 0.055f, 8, Palette.Thatch, topCol: Palette.Timber); // the dark inside shows at the top
-                        mb.Prism(at + new Vector3(0f, 0.016f, 0f), 0.046f, 0.047f, 0.008f, 8, Palette.WoodLight);
-                        mb.Prism(at + new Vector3(0f, 0.034f, 0f), 0.049f, 0.05f, 0.008f, 8, Palette.WoodLight);
-                        mb.Prism(at + new Vector3(0f, 0.052f, 0f), 0.053f, 0.053f, 0.008f, 8, Palette.Straw);
-                        var berry = i == 1 ? new Color(0.36f, 0.16f, 0.42f) : new Color(0.78f, 0.1f, 0.15f); // the middle one: dark blue-black berries
-                        for (int k = 0; k < 9; k++)
-                        {
-                            float a = k * 2.4f + i, r = k == 0 ? 0f : 0.012f + 0.022f * ((k % 3) / 2f);
-                            float y = 0.058f + (k == 0 ? 0.016f : (0.026f - r) * 0.55f);
-                            mb.Ico(at + new Vector3(Mathf.Cos(a) * r, y, Mathf.Sin(a) * r), 0.011f, Vector3.one, Color.Lerp(berry, Color.black, (k % 4) * 0.07f), 0.1f);
-                        }
-                        // a bent handle over the berries, across the basket
-                        for (int k = 0; k <= 4; k++)
-                        {
-                            float t = k / 4f * Mathf.PI, hx = Mathf.Cos(t) * 0.044f, hy = 0.06f + Mathf.Sin(t) * 0.05f;
-                            mb.Box(at + new Vector3(hx, hy, 0f), new Vector3(0.008f, 0.026f, 0.008f), Palette.WoodLight, Quaternion.Euler(0f, 0f, (t - Mathf.PI * 0.5f) * Mathf.Rad2Deg));
-                        }
+                        BerryBasket(mb, BasketAt(i), i);
                     }
                     break;
                 case ConsequenceKind.WoodpileRoof: // a tall woodpile under its own little roof
                     Pieces.Woodpile(mb, Vector3.zero, 0f);
+                    for (int i = 0; i < Mathf.Clamp(variant, 0, WoodSlots); i++) Pieces.Log(mb, WoodSlot(i), 0.026f, 0.26f, 90f, i % 2 == 0 ? Palette.WoodLight : Palette.Bark); // #693 notes: the logs laid across its top
                     foreach (int s in new[] { -1, 1 }) mb.Box(new Vector3(s * 0.15f, 0.12f, 0f), new Vector3(0.02f, 0.24f, 0.02f), Palette.Timber);
                     foreach (int s in new[] { -1, 1 })
                         mb.Box(new Vector3(0f, 0.26f, s * 0.05f), new Vector3(0.36f, 0.015f, 0.12f), Palette.Thatch, Quaternion.Euler(s * 28f, 0f, 0f), true);
                     break;
-                case ConsequenceKind.NameStone: // a standing stone cut with rows of names
-                    mb.Prism(Vector3.zero, 0.11f, 0.08f, 0.1f, 7, Palette.RockDark, topCol: Palette.Rock);
-                    mb.Box(new Vector3(0f, 0.2f, 0f), new Vector3(0.13f, 0.22f, 0.07f), Palette.Rock);
-                    mb.Box(new Vector3(0f, 0.325f, 0f), new Vector3(0.1f, 0.03f, 0.055f), Palette.RockLight);
-                    { // #693 (B54.e): a new row for each name cut since the stone stood (at most 3 more, closer together)
-                        int rows = 4 + Mathf.Clamp(variant, 0, 3); float gap = rows <= 4 ? 0.045f : 0.17f / (rows - 1);
-                        for (int i = 0; i < rows; i++)
-                        {
-                            bool fresh = variant > 0 && i == rows - 1; // #693 retakes: the newest row is freshly cut: pale and deeper, so it reads as new
-                            mb.Box(new Vector3(0f, 0.13f + i * gap, -0.036f), new Vector3(0.08f - (i % 2) * 0.02f, fresh ? 0.014f : 0.01f, fresh ? 0.006f : 0.004f), fresh ? Palette.Plaster : Palette.RockDark);
-                        }
-                    }
+                case ConsequenceKind.NameStone: // #693 notes: an archaic runestone: one rough standing slab, sunk in the ground, no shaped base or top
+                    RuneStone(mb, variant);
                     break;
                 case ConsequenceKind.CharmPole: // a bough on a post hung with charms
                     mb.Prism(Vector3.zero, 0.02f, 0.014f, 0.36f, 6, Palette.Bark, topCol: Palette.WoodLight);
@@ -126,13 +100,11 @@ namespace AquariumCiv.View
                     mb.Box(new Vector3(0.03f, 0.38f, 0f), new Vector3(0.06f, 0.05f, 0.003f), Palette.Accents[0]);
                     mb.sway = 0f;
                     break;
-                case ConsequenceKind.FlourSacks: // sacks heaped by the mill, one split open
-                    for (int i = 0; i < 4; i++)
-                    {
-                        var at = new Vector3((i % 2 - 0.5f) * 0.1f, (i / 2) * 0.07f, (i / 2) * 0.02f);
-                        mb.Ico(at + new Vector3(0f, 0.04f, 0f), 0.055f, new Vector3(1f, 0.75f, 0.8f), Palette.Canvas, 0.1f);
-                    }
-                    mb.Ico(new Vector3(0.12f, 0.025f, -0.05f), 0.04f, new Vector3(1.2f, 0.4f, 1f), Palette.Plaster, 0.1f);
+                case ConsequenceKind.FlourSacks: // sacks heaped by the mill, one split open (#693 notes: the classic fat sack tied at the neck)
+                    for (int i = 0; i < 3; i++) FlourSack(mb, new Vector3((i - 1) * 0.085f, 0f, i == 1 ? 0.04f : 0f), (i * 37f) % 40f - 20f); // three standing
+                    FlourSack(mb, new Vector3(-0.02f, 0.03f, -0.07f), 80f, 90f); // one lying in front
+                    mb.Ico(new Vector3(0.12f, 0.02f, -0.05f), 0.04f, new Vector3(1.2f, 0.35f, 1f), Palette.Canvas, 0.1f); // the split one, flat
+                    mb.Ico(new Vector3(0.13f, 0.03f, -0.06f), 0.035f, new Vector3(1.3f, 0.35f, 1f), new Color(0.97f, 0.96f, 0.92f), 0.1f); // its flour
                     break;
                 case ConsequenceKind.RoofBird: // a carved bird on a ridge pole
                     mb.Prism(Vector3.zero, 0.014f, 0.012f, 0.24f, 6, Palette.Timber);
@@ -142,13 +114,15 @@ namespace AquariumCiv.View
                     mb.Prism(new Vector3(-0.07f, 0.335f, 0f), 0.008f, 0f, 0.03f, 4, Palette.Accents[1], Quaternion.Euler(0f, 0f, 90f));
                     mb.Box(new Vector3(0.06f, 0.31f, 0f), new Vector3(0.05f, 0.012f, 0.03f), Palette.Accents[2]);
                     break;
-                case ConsequenceKind.LongTable: // a long table with benches either side
+                case ConsequenceKind.LongTable: // a long table with benches either side (#693 notes: four legs, so kids can crawl under it)
                     mb.Box(new Vector3(0f, 0.07f, 0f), new Vector3(0.44f, 0.014f, 0.1f), Palette.WoodLight);
-                    foreach (int s in new[] { -1, 1 })
-                    {
-                        mb.Box(new Vector3(s * 0.19f, 0.035f, 0f), new Vector3(0.015f, 0.07f, 0.09f), Palette.Timber);
-                        mb.Box(new Vector3(0f, 0.04f, s * 0.085f), new Vector3(0.4f, 0.012f, 0.04f), Palette.Timber);
-                    }
+                    foreach (int sx in new[] { -1, 1 })
+                        foreach (int sz in new[] { -1, 1 })
+                        {
+                            mb.Box(new Vector3(sx * TableLegX, 0.032f, sz * 0.04f), new Vector3(0.012f, 0.064f, 0.012f), Palette.Timber); // the table's legs
+                            mb.Box(new Vector3(sx * 0.17f, 0.017f, sz * 0.085f), new Vector3(0.01f, 0.034f, 0.01f), Palette.Timber); // the benches' legs
+                        }
+                    foreach (int sz in new[] { -1, 1 }) mb.Box(new Vector3(0f, 0.04f, sz * 0.085f), new Vector3(0.4f, 0.012f, 0.04f), Palette.Timber);
                     // 2026-11-14: wooden bowls of food (berries, stew, greens), not bright blobs (a pink one read as a gem)
                     var foods = new[] { new Color(0.72f, 0.12f, 0.16f), new Color(0.55f, 0.36f, 0.2f), new Color(0.42f, 0.55f, 0.25f) };
                     for (int i = 0; i < 3; i++)
@@ -162,22 +136,8 @@ namespace AquariumCiv.View
                         }
                     }
                     break;
-                case ConsequenceKind.OfferingBasket: // the best basket on a flat stone, a cloth over it
-                    mb.Prism(Vector3.zero, 0.09f, 0.075f, 0.04f, 7, Palette.Rock, topCol: Palette.RockLight);
-                    mb.Prism(new Vector3(0f, 0.04f, 0f), 0.055f, 0.07f, 0.07f, 8, Palette.Thatch, topCol: Palette.Straw);
-                    if (variant >= 2) // #693 (B54.t/u): the cloth lifted: the food shows (a heap of berries, roots and bread), the cloth folded at the side
-                    {
-                        var food = new[] { new Color(0.78f, 0.12f, 0.16f), new Color(0.55f, 0.36f, 0.2f), new Color(0.86f, 0.7f, 0.42f), new Color(0.36f, 0.16f, 0.42f) };
-                        int nf = variant >= 3 ? 11 : 6;
-                        for (int k = 0; k < nf; k++)
-                        {
-                            float a = k * 2.3f, r = k == 0 ? 0f : 0.015f + 0.025f * ((k % 3) / 2f);
-                            mb.Ico(new Vector3(Mathf.Cos(a) * r, 0.115f + (variant >= 3 ? 0.012f : 0f) + (0.03f - r) * 0.5f, Mathf.Sin(a) * r), 0.013f, Vector3.one, food[k % food.Length], 0.1f);
-                        }
-                        mb.Box(new Vector3(0.075f, 0.075f, 0f), new Vector3(0.025f, 0.05f, 0.06f), Palette.Accents[3], Quaternion.Euler(0f, 0f, -20f));
-                        break;
-                    }
-                    mb.Ico(new Vector3(0f, variant == 1 ? 0.13f : 0.12f, 0f), 0.05f, new Vector3(1f, variant == 1 ? 0.75f : 0.5f, 1f), Palette.Accents[3], 0.08f); // #693: fuller under the cloth once filled
+                case ConsequenceKind.OfferingBasket: // #693 notes: a big round woven basket heaped with food, half under a cloth, a flower on top, a handle
+                    OfferingBasketMesh(mb, variant);
                     break;
                 case ConsequenceKind.ShoreBoat: // #714: the pond family's boat, upside down by the fire (the children's house)
                 {
@@ -210,19 +170,14 @@ namespace AquariumCiv.View
                     }
                     break;
                 }
-                case ConsequenceKind.FishCrate: // a crate with fish on the near shore
-                    mb.Box(new Vector3(0f, 0.035f, 0f), new Vector3(0.16f, 0.07f, 0.1f), Palette.WoodLight);
-                    for (int i = 0; i < 3 - Mathf.Clamp(variant, 0, 3); i++) // #693 (B54.x): the fish lifted out one by one
-                        mb.Ico(new Vector3(-0.04f + i * 0.04f, 0.08f, 0f), 0.025f, new Vector3(1.6f, 0.5f, 0.6f), i % 2 == 0 ? Palette.Water : Palette.WaterDeep, 0.05f);
+                case ConsequenceKind.FishCrate: // #693 notes: a round woven fish basket at the shore, fish tails sticking out, two fish on top
+                    FishBasketMesh(mb, variant);
                     break;
                 case ConsequenceKind.GoatPen: // 2026-11-16 "Bring a pen back": a little rail pen, gnawed at one corner (variant 1: mended, a pale new rail)
                     GoatPenMesh(mb, variant);
                     break;
-                case ConsequenceKind.NamePeg: // a peg with a small wooden tag
-                    mb.Prism(Vector3.zero, 0.012f, 0.01f, 0.2f, 5, Palette.Bark);
-                    mb.Box(new Vector3(0f, 0.17f, 0f), new Vector3(0.09f, 0.05f, 0.012f), Palette.WoodLight);
-                    for (int i = 0; i < 3; i++) mb.Box(new Vector3(-0.025f + i * 0.025f, 0.17f, -0.008f), new Vector3(0.012f, 0.025f, 0.003f), Palette.Timber);
-                    if (variant == 1) { mb.Box(new Vector3(0f, 0.2f, 0f), new Vector3(0.018f, 0.012f, 0.018f), new Color(0.8f, 0.16f, 0.14f)); mb.Box(new Vector3(0f, 0.195f, 0f), new Vector3(0.006f, 0.02f, 0.006f), new Color(0.8f, 0.16f, 0.14f)); } // #693 retakes (B54.z): the fresh red cord
+                case ConsequenceKind.NamePeg: // #693 notes: a carved name post by the door: notches and a carved mark, height scratches
+                    NamePostMesh(mb, variant);
                     break;
                 default:
                     for (int i = 0; i < 4; i++) mb.Ico(new Vector3(0f, 0.02f + i * 0.04f, 0f) + new Vector3((i % 2) * 0.02f, 0f, 0f), 0.06f - i * 0.01f, new Vector3(1f, 0.7f, 1f), Palette.Rock, 0.2f);
@@ -395,6 +350,189 @@ namespace AquariumCiv.View
             mb.Ico(new Vector3(-h * 0.45f, 0.006f, -h * 0.4f), 0.03f, new Vector3(1f, 0.25f, 0.8f), Palette.Straw, 0.1f); // a little hay inside
         }
 
+
+        // ---------------------------------------------------------------- #693 notes: the reworked things
+        /// <summary>One berry basket of the pile (local, before <see cref="Scale"/>): body, bands, rim, berries, the bent handle. The carried
+        /// basket (B54.a) is this same piece.</summary>
+        public static void BerryBasket(MeshBuilder mb, Vector3 at, int i)
+        {
+            mb.Prism(at, 0.042f, 0.05f, 0.055f, 8, Palette.Thatch, topCol: Palette.Timber);
+            mb.Prism(at + new Vector3(0f, 0.016f, 0f), 0.046f, 0.047f, 0.008f, 8, Palette.WoodLight);
+            mb.Prism(at + new Vector3(0f, 0.034f, 0f), 0.049f, 0.05f, 0.008f, 8, Palette.WoodLight);
+            mb.Prism(at + new Vector3(0f, 0.052f, 0f), 0.053f, 0.053f, 0.008f, 8, Palette.Straw);
+            var berry = i == 1 ? new Color(0.36f, 0.16f, 0.42f) : new Color(0.78f, 0.1f, 0.15f);
+            for (int k = 0; k < 9; k++)
+            {
+                float a = k * 2.4f + i, r = k == 0 ? 0f : 0.012f + 0.022f * ((k % 3) / 2f);
+                float y = 0.058f + (k == 0 ? 0.016f : (0.026f - r) * 0.55f);
+                mb.Ico(at + new Vector3(Mathf.Cos(a) * r, y, Mathf.Sin(a) * r), 0.011f, Vector3.one, Color.Lerp(berry, Color.black, (k % 4) * 0.07f), 0.1f);
+            }
+            for (int k = 0; k <= 4; k++)
+            {
+                float t = k / 4f * Mathf.PI, hx = Mathf.Cos(t) * 0.044f, hy = 0.06f + Mathf.Sin(t) * 0.05f;
+                mb.Box(at + new Vector3(hx, hy, 0f), new Vector3(0.008f, 0.026f, 0.008f), Palette.WoodLight, Quaternion.Euler(0f, 0f, (t - Mathf.PI * 0.5f) * Mathf.Rad2Deg));
+            }
+        }
+
+        /// <summary>The runestone's footprint (local half-sizes before <see cref="Scale"/>): people stand outside it (tests: NoOneInsideTheStone).</summary>
+        public const float StoneHalfX = 0.07f, StoneHalfZ = 0.035f, StoneH = 0.36f;
+        static void RuneStone(MeshBuilder mb, int variant)
+        {
+            var grey = new Color(0.56f, 0.55f, 0.52f); var dark = new Color(0.33f, 0.32f, 0.31f);
+            // the slab: one rough piece of stone, an uneven five-sided section squashed thin, narrowing a little to an uneven cut top, leaning a
+            // touch and sunk in the ground (the props' jitter roughens it further)
+            var saved = mb.M;
+            mb.M = saved * Matrix4x4.TRS(new Vector3(0f, -0.02f, 0f), Quaternion.identity, new Vector3(1f, 1f, StoneHalfZ / (StoneHalfX * 0.866f)));
+            mb.Prism(Vector3.zero, StoneHalfX, StoneHalfX * 0.96f, StoneH - 0.02f, 6, grey, topCol: Color.Lerp(grey, dark, 0.25f)); // flat faces at +-z
+            mb.Prism(new Vector3(-0.02f, StoneH - 0.04f, 0f), StoneHalfX * 0.62f, StoneHalfX * 0.4f, 0.05f, 6, grey, topCol: Color.Lerp(grey, dark, 0.25f)); // an uneven, broken-off top
+            mb.M = saved;
+            mb.Ico(new Vector3(0.05f, 0.005f, 0.03f), 0.025f, new Vector3(1.2f, 0.4f, 1f), dark, 0.2f); // a stone at its foot
+            // the runes on both faces: rows of short strokes and slants (the newest row pale: freshly cut)
+            int rows = 4 + Mathf.Clamp(variant, 0, 3); float gap = rows <= 4 ? 0.045f : 0.17f / (rows - 1);
+            foreach (float face in new[] { -1f, 1f })
+                for (int i = 0; i < rows; i++)
+                {
+                    bool fresh = variant > 0 && i == rows - 1;
+                    var col = fresh ? new Color(0.88f, 0.86f, 0.80f) : dark;
+                    float y = 0.1f + i * gap, z = face * (StoneHalfZ + 0.002f);
+                    for (int k = 0; k < 4; k++)
+                    {
+                        float x = -0.04f + k * 0.027f;
+                        mb.Box(new Vector3(x, y, z), new Vector3(0.004f, 0.022f, 0.004f), col);
+                        mb.Box(new Vector3(x + 0.007f, y + 0.003f, z), new Vector3(0.004f, 0.016f, 0.004f), col, Quaternion.Euler(0f, 0f, (k % 2 == 0 ? 35f : -35f)));
+                    }
+                }
+        }
+
+        /// <summary>The classic flour sack: a fat cloth body, wider at the foot, pinched and tied at the neck with a cord, an ear of cloth on top
+        /// (local foot at <paramref name="at"/>, before <see cref="Scale"/>). The carried sack (B54.n) is this same piece.</summary>
+        public static void FlourSack(MeshBuilder mb, Vector3 at, float yaw = 0f, float lie = 0f)
+        {
+            var cloth = new Color(0.86f, 0.80f, 0.66f); var cord = new Color(0.55f, 0.38f, 0.22f);
+            var saved = mb.M; mb.M = saved * Matrix4x4.TRS(at, Quaternion.Euler(0f, yaw, lie), Vector3.one);
+            mb.Ico(new Vector3(0f, 0.036f, 0f), 0.045f, new Vector3(1.05f, 0.85f, 0.85f), cloth, 0.12f, Color.Lerp(cloth, Color.black, 0.15f)); // the fat body, flat at the foot
+            mb.Prism(new Vector3(0f, 0.062f, 0f), 0.034f, 0.01f, 0.026f, 8, cloth); // the shoulders gathered up to the neck
+            mb.Prism(new Vector3(0f, 0.086f, 0f), 0.012f, 0.012f, 0.006f, 8, cord); // the cord tied round the neck
+            mb.Ico(new Vector3(0f, 0.098f, 0f), 0.013f, new Vector3(1.3f, 0.8f, 0.7f), cloth, 0.2f); // the tuft of cloth above the tie
+            mb.M = saved;
+        }
+
+        /// <summary>The long table's legs: four posts at +-this x (and +-0.04 z), so a crawling kid passes between them.</summary>
+        public const float TableLegX = 0.18f;
+
+        /// <summary>A round woven basket (local, before <see cref="Scale"/>): alternating straw bands, a thick rim. Returns its rim's height.</summary>
+        static float WovenBasket(MeshBuilder mb, Vector3 at, float r, float h)
+        {
+            var a = new Color(0.86f, 0.70f, 0.38f); var b = new Color(0.72f, 0.54f, 0.26f);
+            mb.Prism(at, r * 0.82f, r, h, 10, a, topCol: new Color(0.35f, 0.24f, 0.12f));
+            for (int k = 1; k < 4; k++) mb.Prism(at + new Vector3(0f, h * k / 4f - 0.004f, 0f), r * (0.82f + 0.18f * k / 4f) + 0.002f, r * (0.82f + 0.18f * k / 4f) + 0.002f, 0.007f, 10, b);
+            mb.Prism(at + new Vector3(0f, h - 0.004f, 0f), r + 0.006f, r + 0.006f, 0.012f, 10, new Color(0.62f, 0.45f, 0.22f)); // the rim
+            return h;
+        }
+
+        /// <summary>#693 notes (the user: "does not read like one AT ALL"): the offering basket from scratch. A big round woven basket with a rim and
+        /// a handle arching over, heaped with food (apples, loaves, berries) poking up past the rim, a cloth over half of it, a flower on top.
+        /// Variant 1 fuller, 2 the cloth lifted, 3 lifted and fuller.</summary>
+        static void OfferingBasketMesh(MeshBuilder mb, int variant)
+        {
+            const float R = 0.075f, H = 0.065f;
+            WovenBasket(mb, Vector3.zero, R, H);
+            bool full = variant == 1 || variant == 3, lifted = variant >= 2;
+            var apple = new Color(0.82f, 0.16f, 0.14f); var bread = new Color(0.82f, 0.6f, 0.32f); var berry = new Color(0.36f, 0.14f, 0.42f); var pear = new Color(0.78f, 0.75f, 0.25f);
+            float lift = full ? 0.012f : 0f;
+            // the heap: a dome of food above the rim
+            mb.Ico(new Vector3(0f, H + 0.004f + lift * 0.5f, 0f), R * 0.9f, new Vector3(1f, 0.35f, 1f), new Color(0.6f, 0.42f, 0.24f), 0.1f);
+            mb.Ico(new Vector3(-0.03f, H + 0.022f + lift, 0.02f), 0.02f, Vector3.one, apple, 0.06f);
+            mb.Ico(new Vector3(0.025f, H + 0.02f + lift, -0.025f), 0.019f, Vector3.one, apple, 0.06f);
+            mb.Ico(new Vector3(0.0f, H + 0.028f + lift, -0.005f), 0.026f, new Vector3(1.4f, 0.8f, 0.9f), bread, 0.06f);
+            mb.Ico(new Vector3(0.038f, H + 0.016f + lift, 0.025f), 0.017f, new Vector3(0.9f, 1.2f, 0.9f), pear, 0.06f);
+            for (int k = 0; k < 6; k++) mb.Ico(new Vector3(-0.045f + k * 0.006f, H + 0.012f + lift + (k % 2) * 0.005f, -0.035f + k * 0.004f), 0.008f, Vector3.one, berry, 0.1f);
+            if (full) { mb.Ico(new Vector3(-0.012f, H + 0.045f, 0.03f), 0.018f, Vector3.one, apple, 0.06f); mb.Ico(new Vector3(0.03f, H + 0.04f, 0.0f), 0.02f, new Vector3(1.3f, 0.8f, 0.9f), bread, 0.06f); }
+            // the handle, arching over the top across the basket
+            for (int k = 0; k <= 8; k++)
+            {
+                float t = k / 8f * Mathf.PI, hx = Mathf.Cos(t) * (R + 0.002f), hy = H + Mathf.Sin(t) * 0.085f;
+                mb.Box(new Vector3(hx, hy, 0f), new Vector3(0.009f, 0.034f, 0.011f), new Color(0.62f, 0.45f, 0.22f), Quaternion.Euler(0f, 0f, t * Mathf.Rad2Deg)); // along the arch
+            }
+            var cloth = new Color(0.93f, 0.9f, 0.82f);
+            if (!lifted)
+            {
+                // the cloth over half (the +z half), draped over the rim, a flower on its top
+                mb.Ico(new Vector3(0f, H + 0.02f + lift, 0.035f), R * 0.75f, new Vector3(1.1f, 0.45f, 0.62f), cloth, 0.08f);
+                mb.Box(new Vector3(0f, H - 0.012f, R + 0.004f), new Vector3(R * 1.2f, 0.03f, 0.006f), cloth);
+                mb.Box(new Vector3(0.01f, H + 0.05f + lift, 0.035f), new Vector3(0.004f, 0.025f, 0.004f), new Color(0.35f, 0.55f, 0.2f)); // the stem
+                mb.Ico(new Vector3(0.01f, H + 0.066f + lift, 0.035f), 0.014f, new Vector3(1f, 0.55f, 1f), new Color(0.96f, 0.45f, 0.65f), 0.04f);
+                mb.Ico(new Vector3(0.01f, H + 0.072f + lift, 0.035f), 0.006f, Vector3.one, new Color(1f, 0.85f, 0.25f), 0.04f);
+            }
+            else mb.Box(new Vector3(R + 0.02f, 0.012f, 0f), new Vector3(0.04f, 0.022f, 0.07f), cloth, Quaternion.Euler(0f, 10f, 0f)); // folded on the ground beside it
+        }
+
+        /// <summary>#693 notes: the pond family's fish, in a round woven fish basket at the shore: tails sticking up out of it and two fish lying
+        /// on top. Variant 1-3: that many fish taken (the top ones first, then a tail).</summary>
+        static void FishBasketMesh(MeshBuilder mb, int variant)
+        {
+            const float R = 0.055f, H = 0.06f;
+            WovenBasket(mb, Vector3.zero, R, H);
+            int taken = Mathf.Clamp(variant, 0, 3);
+            var fishA = Palette.Water; var fishB = Palette.WaterDeep; var tailCol = new Color(0.35f, 0.5f, 0.6f);
+            // the tails sticking up: a stem and a forked fin each
+            int tails = taken >= 3 ? 2 : 3;
+            for (int i = 0; i < tails; i++)
+            {
+                float a = i * 2.1f + 0.4f; var p = new Vector3(Mathf.Cos(a) * 0.025f, H, Mathf.Sin(a) * 0.025f);
+                var tilt = Quaternion.Euler(Mathf.Sin(a) * 18f, a * 30f, -Mathf.Cos(a) * 18f);
+                mb.Box(p + tilt * new Vector3(0f, 0.012f, 0f), new Vector3(0.008f, 0.024f, 0.006f), i % 2 == 0 ? fishA : fishB, tilt);
+                mb.Box(p + tilt * new Vector3(-0.007f, 0.03f, 0f), new Vector3(0.006f, 0.016f, 0.003f), tailCol, tilt * Quaternion.Euler(0f, 0f, 30f));
+                mb.Box(p + tilt * new Vector3(0.007f, 0.03f, 0f), new Vector3(0.006f, 0.016f, 0.003f), tailCol, tilt * Quaternion.Euler(0f, 0f, -30f));
+            }
+            // two fish lying on top
+            for (int i = 0; i < 2 - Mathf.Min(2, taken); i++)
+            {
+                var c = new Vector3(-0.012f + i * 0.026f, H + 0.012f, -0.012f + i * 0.02f);
+                var r = Quaternion.Euler(0f, 30f + i * 70f, 0f);
+                var saved = mb.M; mb.M = saved * Matrix4x4.TRS(c, r, Vector3.one);
+                mb.Ico(Vector3.zero, 0.024f, new Vector3(1.7f, 0.5f, 0.65f), i == 0 ? fishA : fishB, 0.05f);
+                mb.Box(new Vector3(-0.045f, 0f, 0f), new Vector3(0.012f, 0.006f, 0.022f), tailCol);
+                mb.M = saved;
+            }
+        }
+
+        /// <summary>#693 notes: the carved name post by the family's door: a short square post, notches up its edges, a carved mark (a ring with a
+        /// stroke through it) on its face, a rounded top. Variant bits: 1-3 the kids' height scratches (B54.zz), +4 the mark freshly re-cut.</summary>
+        public const float PostH = 0.2f, PostHalf = 0.022f;
+        static void NamePostMesh(MeshBuilder mb, int variant)
+        {
+            var wood = new Color(0.55f, 0.38f, 0.22f); var cut = new Color(0.30f, 0.20f, 0.12f); var fresh = new Color(0.88f, 0.76f, 0.55f);
+            bool recut = (variant & 4) != 0; int scratches = variant & 3;
+            mb.Box(new Vector3(0f, PostH * 0.5f - 0.01f, 0f), new Vector3(PostHalf * 2f, PostH + 0.02f, PostHalf * 2f), wood);
+            mb.Ico(new Vector3(0f, PostH + 0.005f, 0f), PostHalf * 1.15f, new Vector3(1f, 0.55f, 1f), Color.Lerp(wood, Color.black, 0.1f), 0.05f); // the rounded top
+            for (int i = 0; i < 5; i++) foreach (float sx in new[] { -1f, 1f })
+                mb.Box(new Vector3(sx * PostHalf, 0.05f + i * 0.026f, -PostHalf), new Vector3(0.008f, 0.006f, 0.008f), cut, Quaternion.Euler(0f, 45f, 0f)); // the notches
+            var mark = recut ? fresh : cut;
+            float my = PostH * 0.72f;
+            foreach (float z in new[] { -PostHalf - 0.0015f, PostHalf + 0.0015f }) // both faces, so the mark faces the camera whichever way it stands
+            {
+                for (int k = 0; k < 8; k++)
+                {
+                    float a = k / 8f * Mathf.PI * 2f;
+                    mb.Box(new Vector3(Mathf.Cos(a) * 0.012f, my + Mathf.Sin(a) * 0.012f, z), new Vector3(0.006f, 0.004f, 0.003f), mark, Quaternion.Euler(0f, 0f, a * Mathf.Rad2Deg + 90f));
+                }
+                mb.Box(new Vector3(0f, my, z), new Vector3(0.004f, 0.034f, 0.003f), mark, Quaternion.Euler(0f, 0f, 25f));
+                for (int i = 0; i < scratches; i++) // the kids' heights, scratched across the face (0.145 u drawn = a kid, a little higher each year)
+                    mb.Box(new Vector3(0f, NameMarkY(i), z), new Vector3(PostHalf * 1.8f, 0.0035f, 0.003f), fresh);
+            }
+        }
+        /// <summary>The height scratch <paramref name="i"/> (local y before <see cref="Scale"/>): a kid's head height, the next a little higher.</summary>
+        public static float NameMarkY(int i) => 0.145f / Scale + i * 0.012f;
+
+        /// <summary>One flour sack on its own (the carried one: the same piece as the heap's), foot at the origin, before <see cref="Scale"/>.</summary>
+        public static Mesh OneSack() { var mb = new MeshBuilder(3801); FlourSack(mb, Vector3.zero); var m = mb.ToMesh("Consequence_OneSack"); m.hideFlags = HideFlags.DontSave; return m; }
+
+        /// <summary>#693 notes (B54.c): the woodpile's free slots for a laid log (local, before <see cref="Scale"/>): three side by side, crosswise, on
+        /// top of the top row (the pile's logs run along z).</summary>
+        public const int WoodSlots = 3;
+        public static Vector3 WoodSlot(int i) => new Vector3(0f, 0.124f + 0.052f, 0.06f * (Mathf.Clamp(i, 0, 2) - 1)); // across the top, carried crosswise so it never pokes into the pile
+
         /// <summary>#693 (B54.a/b): where basket <paramref name="i"/> of the three stands (local, before <see cref="Scale"/>), and which are gone when
         /// <paramref name="taken"/> have been taken: the right one first, then the left, then the middle (the back one).</summary>
         public static Vector3 BasketAt(int i) => new Vector3((i - 1) * 0.1f, 0f, i == 1 ? 0.05f : 0f);
@@ -403,11 +541,8 @@ namespace AquariumCiv.View
         /// <summary>#693 (B54.b): one basket of the stack on its own (local origin at its foot, before <see cref="Scale"/>): the tower's pieces.</summary>
         public static Mesh OneBasket(int i)
         {
-            var mb = new MeshBuilder(3790 + i) { jitter = 0.02f };
-            mb.Prism(Vector3.zero, 0.042f, 0.05f, 0.055f, 8, Palette.Thatch, topCol: Palette.Timber);
-            mb.Prism(new Vector3(0f, 0.016f, 0f), 0.046f, 0.047f, 0.008f, 8, Palette.WoodLight);
-            mb.Prism(new Vector3(0f, 0.034f, 0f), 0.049f, 0.05f, 0.008f, 8, Palette.WoodLight);
-            mb.Prism(new Vector3(0f, 0.052f, 0f), 0.053f, 0.053f, 0.008f, 8, Palette.Straw);
+            var mb = new MeshBuilder(3790 + i) { jitter = 0.025f };
+            BerryBasket(mb, Vector3.zero, i);
             var m = mb.ToMesh("Consequence_OneBasket_" + i); m.hideFlags = HideFlags.DontSave;
             return m;
         }
@@ -549,6 +684,21 @@ namespace AquariumCiv.View
         /// <summary>2026-11-16 "Bring a pen back": the goat pen's room at the fire (its half-width and the rails' reach, SimCore.PenRoom more than a
         /// small thing's): the boat and every later thing keep clear of it.</summary>
         public const float PenRadius = SimCore.PenRoom + CampSpots.PropRadius;
+
+        /// <summary>#693 notes: the offering basket stands at the foot of the Keeper's tree once it is grown (its line: "The best basket went to
+        /// the Keeper's tree"), out from the trunk on the camera's side, a little toward the fire [est 0.2 u]; before that where the sim put it.</summary>
+        public const float OfferingFromTrunk = 0.2f;
+        bool OfferingAtTree(SimCore sim, out float x, out float z)
+        {
+            x = z = 0f;
+            int cell = sim.State.eco.treeCell;
+            if (cell < 0 || !sim.KeeperTreeGrown || !TreeSpotOf(cell, AquariumCiv.Sim.Settle.SiteMap.CXc(cell), AquariumCiv.Sim.Settle.SiteMap.CZc(cell), out var at, out _)) return false;
+            var dir = new Vector2(0f, -1f);
+            var toFire = new Vector2(fx - at.x, fz - at.z);
+            if (toFire.sqrMagnitude > 1e-4f) dir = (dir * 0.7f + toFire.normalized * 0.3f).normalized;
+            x = at.x + dir.x * OfferingFromTrunk; z = at.z + dir.y * OfferingFromTrunk;
+            return true;
+        }
 
         /// <summary>The goat pen stands where the sim put it, moved out of every earlier thing's widened room (as the boat's spot).</summary>
         void PenSpot(ConsequenceProp p, System.Func<float, float, bool> onPath, out float px, out float pz)
@@ -713,6 +863,7 @@ namespace AquariumCiv.View
                     continue;
                 }
                 float px = p.x, pz = p.z;
+                if (p.kind == ConsequenceKind.OfferingBasket && OfferingAtTree(sim, out float ox, out float oz)) { px = ox; pz = oz; } // #693 notes: "The best basket went to the Keeper's tree"
                 if (haveFire && p.anchor == PropAnchor.Fire)
                 {
                     // #700: never on a path; one that a path grows over (or a moved rack reaches) moves at night, not in front of the player

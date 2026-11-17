@@ -2,7 +2,7 @@
 // work use and a life use: when each starts (the D rules: life uses borrow free time only; work uses borrow a free grown-up of the right
 // kind [est: they don't take a block of the day plan, so no plan starves]; how often by the view day's roll; one use per thing at a time),
 // the cheats ("#693" in SliceDebugPanel), what happens to the thing (a basket taken, the axe out, a new row of names: ConsequencePropsView's
-// looks), and what the uses draw beside it: the basket tower, the log split on the stump, the ladder at the roof bird, flour in flight and
+// looks), and what the uses draw beside it: the carried basket and log, the log split on the stump, the ladder at the roof bird, flour in flight and
 // on the kids. Unlike the camp's uses these play in every era (the village's things: the staff, the flour, the roof bird, the long table,
 // the offering, the fish crate). View-only and not saved [est] (a reload clears a tipped bird, the floury kids, the rows cut this session).
 // No goat pen: #714 made the pond family's goat pen their boat (B77), so B54.v/w and the goat have no thing to stand at.
@@ -25,7 +25,11 @@ namespace AquariumCiv.View
         struct PropSpot { public int id; public string kind; public Vector2 at; public float yaw; public Transform t; public int personId; public bool onTree; }
         readonly List<PropSpot> propSpots = new();
         int propFrame = -1;
-        readonly Dictionary<CampScene, (CampScenes6.Tower tw, Vector2 stack, Vector2 across, int prop)> towers = new();
+        /// <summary>#693 notes: logs laid on each woodpile (0-3, ConsequenceMeshes' slots), scratches and the re-cut day of each name post, and
+        /// the sacks set down at doors (view-only [est]).</summary>
+        readonly Dictionary<int, int> woodStacked = new(), postScratches = new();
+        readonly Dictionary<int, long> postRecut = new();
+        readonly List<(Vector2 at, float yaw)> sacksDown = new();
         readonly Dictionary<CampScene, (Vector2 foot, Vector2 pole)> ladders = new();
         readonly Dictionary<CampScene, (Vector2 stump, Vector2 across)> splits = new();
         readonly Dictionary<int, float> floured = new();
@@ -34,13 +38,13 @@ namespace AquariumCiv.View
         long propDay = long.MinValue, offeredDay = long.MinValue, bigPotDay = long.MinValue, birdFixedDay = long.MinValue, retieYear = long.MinValue;
         int nameExtra;
         readonly List<Transform> propPool = new();
-        Mesh[] oneBaskets; Mesh logMesh, halfMesh, ladderMesh, flourMesh, carryLog, staffMesh, fishMesh, charmMesh;
+        Mesh[] oneBaskets; Mesh logMesh, halfMesh, ladderMesh, flourMesh, carryLog, staffMesh, fishMesh, charmMesh, oneSack, blockMesh, ladleMesh;
         /// <summary>The cheats alternate: a log stacked, then one fetched for the fire (B54.c); rain, then a dry day's sit (B54.d).</summary>
         public static bool ForceFetch, ForceDry;
 
         void ResetProps()
         {
-            towers.Clear(); ladders.Clear(); splits.Clear(); floured.Clear(); nameSeen.Clear(); nameCut.Clear(); birdTipped.Clear();
+            woodStacked.Clear(); postScratches.Clear(); postRecut.Clear(); sacksDown.Clear(); ladders.Clear(); splits.Clear(); floured.Clear(); nameSeen.Clear(); nameCut.Clear(); birdTipped.Clear();
             propDay = offeredDay = bigPotDay = birdFixedDay = retieYear = long.MinValue; nameExtra = 0; propFrame = -1;
             ResetGoat();
         }
@@ -116,6 +120,7 @@ namespace AquariumCiv.View
                     if (look != 0 && (p.kind == ConsequenceKind.Baskets || p.kind == ConsequenceKind.AxeStump || p.kind == ConsequenceKind.Staff)) ConsequencePropsView.SetLook(p.id, 0);
                     if (p.kind == ConsequenceKind.OfferingBasket) ConsequencePropsView.SetLook(p.id, offeredDay == now.day ? 1 : 0);
                 }
+                if (p.kind == ConsequenceKind.NamePeg && !ThingBusy(ThingOf(p))) ConsequencePropsView.SetLook(p.id, PostLook(p.id)); // the fresh re-cut fades the next day
                 if (p.kind == ConsequenceKind.NameStone && !nameSeen.ContainsKey(p.id)) { int d = DeathsSince(p.id); nameSeen[p.id] = d; nameCut[p.id] = Mathf.Min(2, d); ConsequencePropsView.SetLook(p.id, nameCut[p.id]); } // [est] the rows already cut for the dead: at most 2 more, so the next one shows
                 // B54.p: a storm tips the bird over in the night
                 if (p.kind == ConsequenceKind.RoofBird && !birdTipped.Contains(p.id) && birdFixedDay != now.day && planner != null && planner.WeatherOn(now.day - 1) == Weather.Storm && Hour < 12f)
@@ -145,8 +150,8 @@ namespace AquariumCiv.View
             if (h >= 6.3f && h < 8.5f && season is Season.Summer or Season.Autumn && Go(CampUse.BasketTake, Often, ConsequenceKind.Baskets, out q) && TryBasketTake(acts, time, false, q) == null) return;
             if (h >= 7f && h < 10f && PropOf(ConsequenceKind.NameStone, out var ns) && DeathsSince(ns.id) > nameSeen[ns.id] && Go(CampUse.NameCut, 1f, ConsequenceKind.NameStone, out q) && TryNameCut(acts, time, false, q) == null) return;
             if (h >= 7f && h < 11f && birdTipped.Count > 0 && Go(CampUse.BirdStraighten, 1f, ConsequenceKind.RoofBird, out q) && TryBird(acts, time, false, q) == null) return;
-            if (h >= 7f && h < 10f && season == Season.Spring && retieYear != now.day / SimConfig.MonthsPerYear && Go(CampUse.PegRetie, Rare, ConsequenceKind.NamePeg, out q) && TryRetie(acts, time, false, q) == null) return;
-            if (h >= 6.5f && h < 9f && Go(CampUse.PegTap, Often, ConsequenceKind.NamePeg, out q) && TryPegTap(acts, time, false, q) == null) return;
+            if (h >= 7f && h < 10f && season == Season.Spring && retieYear != now.day / SimConfig.MonthsPerYear && Go(CampUse.PostCarve, Rare, ConsequenceKind.NamePeg, out q) && TryPostCarve(acts, time, false, q) == null) return;
+            if (h >= 8f && h < 11f && season == Season.Spring && Go(CampUse.PostMeasure, Sometimes, ConsequenceKind.NamePeg, out q) && TryPostMeasure(acts, time, false, q) == null) return; // [est] the kids' heights, on spring mornings
             if (h >= 8f && h < 10f && sim.FestivalOn && Go(CampUse.OfferingFill, 1f, ConsequenceKind.OfferingBasket, out q) && TryOffer(acts, time, false, q) == null) return;
             if (h >= 8.5f && h < 10.5f && Go(CampUse.StaffWalk, Often, ConsequenceKind.Staff, out q) && TryStaffWalk(acts, time, false, q) == null) return;
             if (h >= 17.4f && h < 18.6f && sim.FestivalOn && season == Season.Autumn && Go(CampUse.TableMeal, Often, ConsequenceKind.LongTable, out q) && TryTableMeal(acts, time, false, q) == null) return;
@@ -159,7 +164,6 @@ namespace AquariumCiv.View
             if (Go(CampUse.CrateFish, Often, ConsequenceKind.FishCrate, out q) && ConsequencePropsView.LookOf(q.id) < 3 && TryCrateFish(acts, time, false, q) == null) return;
             if (wet) return;
             // the life uses (kids at play, idle grown-ups)
-            if (Go(CampUse.BasketTower, Sometimes, ConsequenceKind.Baskets, out q) && TryTower(acts, time, false, q) == null) return;
             if (Go(CampUse.WoodShelter, Sometimes, ConsequenceKind.WoodpileRoof, out q) && TryShelter(acts, time, false, q, false) == null) return;
             if (Go(CampUse.NameTrace, Sometimes, ConsequenceKind.NameStone, out q) && TryNameTrace(acts, time, false, q) == null) return;
             if (Go(CampUse.CharmFlick, Sometimes, ConsequenceKind.CharmPole, out q) && TryCharmFlick(acts, time, false, q) == null) return;
@@ -183,24 +187,17 @@ namespace AquariumCiv.View
             return Start(CampScenes6.BasketTake(who, At(who).Value, p.at, bush, toCam, time), p, CampUse.BasketTake);
         }
 
-        string TryTower(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
-        {
-            var kids = Kids(acts, p.at, 2, force);
-            if (kids.Count < 2) return "two kids needed ('Two kids join the camp' first)";
-            var toCam = ToCam(p.at);
-            var s = CampScenes6.BasketTower(kids[0], kids[1], At(kids[0]).Value, At(kids[1]).Value, p.at, toCam, time, out var tw);
-            towers[s] = (tw, p.at, new Vector2(-toCam.y, toCam.x), p.id);
-            return Start(s, p, CampUse.BasketTower);
-        }
-
         string TryWoodStack(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p, bool fetch)
         {
             int who = Grown1(acts, p.at, force);
             if (who < 0) return "no grown-up free";
             var face = FaceToCam(p, false); // the logs' front (they lie along the pile's z)
             var fire = meals.HasFire ? meals.Fire : p.at + face * 0.8f;
-            var from = fetch ? At(who).Value : At(who).Value;
-            return Start(CampScenes6.WoodStack(who, from, p.at, face, fetch, fire, time), p, CampUse.WoodStack);
+            int had = woodStacked.TryGetValue(p.id, out int n0) ? n0 : 0;
+            if (!fetch && had >= ConsequenceMeshes.WoodSlots) fetch = true; // [est] a full pile: today one is fetched instead
+            var s = CampScenes6.WoodStack(who, At(who).Value, p.at, face, fetch, fire, time);
+            s.b = p.yaw; s.kind = fetch ? 1 : 0; s.p0 = new Vector2(had, 0f); // the pile's yaw and the slot the log goes to
+            return Start(s, p, CampUse.WoodStack);
         }
 
         string TryShelter(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p, bool rain)
@@ -217,7 +214,7 @@ namespace AquariumCiv.View
             if (who < 0) who = Grown1(acts, p.at, force);
             if (who < 0) return "no grown-up free";
             if (!force) nameSeen[p.id] = nameSeen.TryGetValue(p.id, out int seen) ? seen + 1 : 1;
-            return Start(CampScenes6.NameCut(who, At(who).Value, p.at, ToCam(p.at), time), p, CampUse.NameCut);
+            return Start(CampScenes6.NameCut(who, At(who).Value, p.at, FaceToCam(p, false), time), p, CampUse.NameCut); // #693 notes: off the slab's face, by its footprint
         }
 
         string TryNameTrace(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
@@ -225,7 +222,7 @@ namespace AquariumCiv.View
             int kid = Kid1(acts, p.at, force);
             if (kid < 0) return "no kid free ('Two kids join the camp' first)";
             int g = Grown1(acts, p.at, force, new[] { kid });
-            return Start(CampScenes6.NameTrace(kid, At(kid).Value, g, g >= 0 ? At(g).Value : default, p.at, ToCam(p.at), time), p, CampUse.NameTrace);
+            return Start(CampScenes6.NameTrace(kid, At(kid).Value, g, g >= 0 ? At(g).Value : default, p.at, FaceToCam(p, false), time), p, CampUse.NameTrace);
         }
 
         string TryCharmFlick(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
@@ -387,7 +384,7 @@ namespace AquariumCiv.View
             if (kids.Count < 2) return "two kids needed ('Two kids join the camp' first)";
             var along = Local(p, 1f, 0f).normalized;
             if (Vector2.Dot(along, CameraAcross()) < 0f) along = -along; // they crawl across the screen
-            var endA = p.at - along * (PropGeo.TableHalf + 0.06f); var endB = p.at + along * (PropGeo.TableHalf + 0.06f);
+            var endA = p.at - along * (ConsequenceMeshes.TableLegX * PropGeo.S + 0.07f); var endB = p.at + along * (ConsequenceMeshes.TableLegX * PropGeo.S + 0.07f); // #693 notes: in and out between the legs
             int old = -1;
             foreach (var a in acts) if (planner.StageOf(a.who) == LifeStage.Elder && !kids.Contains(a.who.Key) && (force ? !byKey.ContainsKey(a.who.Key) && At(a.who.Key).HasValue : Free(a, clock))) { old = a.who.Key; break; }
             if (old < 0 && force) old = Grown1(acts, p.at, true, kids);
@@ -431,40 +428,6 @@ namespace AquariumCiv.View
             foreach (var g in sim.ApartGroups) { shore = new Vector2(g.x, g.z); break; } // the pond family's hut across the water
             if (planner != null && sim.ApartGroups.Count == 0 && planner.Positions.TryGetPosition(AquariumCiv.Life.Place.Land(PlaceKind.Pond), out float wx, out float wz)) shore = new Vector2(wx, wz);
             return Start(CampScenes6.CrateWave(kids, AtAll(kids), p.at, shore, ToCam(p.at), time), p, CampUse.CrateWave);
-        }
-
-        /// <summary>The named child of a name peg (its person), else (the cheat) any kid.</summary>
-        int PegKid(IReadOnlyList<PersonActivity> acts, in PropSpot p, bool force)
-        {
-            var n = p.personId >= 0 ? sim.FindNotable(p.personId) : null;
-            if (n != null && n.alive && Shown(acts, n.id) && (force || FreeKey(acts, n.id)))
-                foreach (var a in acts) if (a.who.Key == n.id && IsKid(a)) return n.id;
-            return force ? Kid1(acts, p.at, true) : -1;
-        }
-
-        string TryPegTap(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
-        {
-            int kid = PegKid(acts, p, force);
-            if (kid < 0) return "the named child is not out ('Two kids join the camp' first)";
-            var from = At(kid).Value; var toCam = ToCam(p.at); var acr = CameraAcross();
-            // they come from one side and run on to the other, across the screen
-            if ((from - p.at).magnitude < 0.25f || Mathf.Abs(Vector2.Dot(from - p.at, acr)) < 0.15f) { /* walk out a little first */ }
-            float side = Vector2.Dot(from - p.at, acr) >= 0f ? 1f : -1f;
-            var onTo = p.at - acr * side * 0.7f + toCam * 0.15f;
-            return Start(CampScenes6.PegTap(kid, from, p.at, onTo, toCam, time), p, CampUse.PegTap);
-        }
-
-        string TryRetie(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
-        {
-            int who = -1;
-            var child = p.personId >= 0 ? sim.FindNotable(p.personId) : null;
-            if (child != null)
-                foreach (var n in sim.State.notables)
-                    if (n.alive && n.id == child.parentId && Shown(acts, n.id) && (force || FreeKey(acts, n.id))) { who = n.id; break; }
-            if (who < 0) who = Grown1(acts, p.at, force);
-            if (who < 0) return "no parent free";
-            retieYear = now.day / SimConfig.MonthsPerYear;
-            return Start(CampScenes6.PegRetie(who, At(who).Value, p.at, ToCam(p.at), time), p, CampUse.PegRetie);
         }
 
         // ================================================================== B54.u: the Keeper knocks while they wait
@@ -516,6 +479,41 @@ namespace AquariumCiv.View
             s.Fx(u + 0.05f, CampFxKind.Dust, new Vector3(s.focus.x, 0.01f, s.focus.y), 0.3f, 2);
         }
 
+        /// <summary>The named child of a name post (its person), else (the cheat) any kid.</summary>
+        int PostKid(IReadOnlyList<PersonActivity> acts, in PropSpot p, bool force)
+        {
+            var n = p.personId >= 0 ? sim.FindNotable(p.personId) : null;
+            if (n != null && n.alive && Shown(acts, n.id) && (force || FreeKey(acts, n.id)))
+                foreach (var a in acts) if (a.who.Key == n.id && IsKid(a)) return n.id;
+            return force ? Kid1(acts, p.at, true) : -1;
+        }
+
+        /// <summary>The named child's parent if drawn and free, else a grown-up.</summary>
+        int PostGrown(IReadOnlyList<PersonActivity> acts, in PropSpot p, bool force, ICollection<int> not = null)
+        {
+            var child = p.personId >= 0 ? sim.FindNotable(p.personId) : null;
+            if (child != null)
+                foreach (var n in sim.State.notables)
+                    if (n.alive && n.id == child.parentId && (not == null || !not.Contains(n.id)) && Shown(acts, n.id) && (force || FreeKey(acts, n.id))) return n.id;
+            return Grown1(acts, p.at, force, not);
+        }
+
+        string TryPostCarve(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
+        {
+            int who = PostGrown(acts, p, force);
+            if (who < 0) return "no grown-up free";
+            retieYear = now.day / SimConfig.MonthsPerYear;
+            return Start(CampScenes6.PostCarve(who, At(who).Value, p.at, FaceToCam(p, false), time), p, CampUse.PostCarve);
+        }
+
+        string TryPostMeasure(IReadOnlyList<PersonActivity> acts, float time, bool force, in PropSpot p)
+        {
+            int kid = PostKid(acts, p, force);
+            if (kid < 0) return "no kid free ('Two kids join the camp' first)";
+            int g = PostGrown(acts, p, force, new[] { kid });
+            return Start(CampScenes6.PostMeasure(kid, At(kid).Value, g, g >= 0 ? At(g).Value : default, p.at, FaceToCam(p, false), time), p, CampUse.PostMeasure);
+        }
+
         // ================================================================== what the scenes do to the thing (CampFxKind.Prop)
         void FireProp(CampScene s, in CampFx f)
         {
@@ -536,40 +534,32 @@ namespace AquariumCiv.View
                 }
                 case PropFx.Offered: offeredDay = now.day; break;
                 case PropFx.Swing: ConsequencePropsView.Swing(id); break;
+                case PropFx.Stack: { int n = Mathf.Min(ConsequenceMeshes.WoodSlots, (woodStacked.TryGetValue(id, out int w0) ? w0 : 0) + 1); woodStacked[id] = n; ConsequencePropsView.SetLook(id, n); break; }
+                case PropFx.Unstack: { int n = Mathf.Max(0, (woodStacked.TryGetValue(id, out int w0) ? w0 : 0) - 1); woodStacked[id] = n; ConsequencePropsView.SetLook(id, n); break; }
+                case PropFx.Recut: postRecut[id] = now.day; ConsequencePropsView.SetLook(id, PostLook(id)); break;
+                case PropFx.Measure: postScratches[id] = Mathf.Min(3, (postScratches.TryGetValue(id, out int m0) ? m0 : 0) + 1); ConsequencePropsView.SetLook(id, PostLook(id)); break;
             }
         }
+
+        /// <summary>The name post's look: its scratches (0-3) and +4 while the mark is freshly re-cut (the day it was).</summary>
+        int PostLook(int id) => (postScratches.TryGetValue(id, out int n) ? n : 0) | (postRecut.TryGetValue(id, out long d) && d == now.day ? 4 : 0);
 
         // ================================================================== drawn beside the things
         void DrawProps(Transform root, Material material, float time, System.Func<float, float, float> groundAt)
         {
             int used = 0;
-            CleanUp(towers); CleanUp(ladders); CleanUp(splits);
+            CleanUp(ladders); CleanUp(splits);
             foreach (var s in scenes)
             {
                 float u = time - s.t0;
-                if (s.use == CampUse.BasketTower && towers.TryGetValue(s, out var tw))
-                {
+                if (s.use == CampUse.BasketTake && u >= s.a && u < s.b && pv.ViewOf(s.keys[0]) is PegDollView bv && bv.gameObject.activeInHierarchy)
+                {   // #693 notes: the very basket of the pile (same mesh, size, colour), carried in both hands
                     oneBaskets ??= new[] { ConsequenceMeshes.OneBasket(0), ConsequenceMeshes.OneBasket(1), ConsequenceMeshes.OneBasket(2) };
-                    for (int i = 0; i < 3; i++)
-                    {
-                        if (!CampScenes6.TowerBasket(tw.tw, i, u, tw.stack, tw.across, out var at, out float roll, out bool carried)) continue;
-                        var t = PropPiece(root, material, used++, oneBaskets[i]);
-                        float yaw = Mathf.Atan2(tw.across.x, tw.across.y) * Mathf.Rad2Deg;
-                        if (carried)
-                        {
-                            int who = i == 1 ? 1 : 0;
-                            var v = who < s.Count ? pv.ViewOf(s.keys[who]) : null;
-                            if (v == null || !v.gameObject.activeInHierarchy) { t.gameObject.SetActive(false); continue; }
-                            t.localPosition = root.InverseTransformPoint(HandsMid(v)) + Vector3.up * 0.01f;
-                            t.localRotation = Quaternion.Euler(0f, v.transform.eulerAngles.y, 0f);
-                        }
-                        else
-                        {
-                            t.localPosition = new Vector3(at.x, groundAt(at.x, at.z) + at.y + PropGeo.BasketH, at.z);
-                            t.localRotation = Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(0f, 0f, roll) * Quaternion.Euler(180f, 0f, 0f); // upside down
-                        }
-                        t.localScale = Vector3.one * (carried ? 1.1f : ConsequenceMeshes.Scale);
-                    }
+                    var t = PropPiece(root, material, used++, oneBaskets[2]);
+                    var hands = root.InverseTransformPoint(HandsMid(bv));
+                    t.localPosition = new Vector3(hands.x, Mathf.Max(groundAt(hands.x, hands.z), hands.y - 0.05f), hands.z);
+                    t.localRotation = Quaternion.Euler(0f, bv.transform.eulerAngles.y, 0f);
+                    t.localScale = Vector3.one * ConsequenceMeshes.Scale;
                 }
                 if (s.use == CampUse.StumpSplit && splits.TryGetValue(s, out var sp) && u >= s.b && u < s.Length - 1.1f)
                 {
@@ -617,6 +607,14 @@ namespace AquariumCiv.View
                         t.localPosition = Vector3.Lerp(from, to, k) + Vector3.up * (4f * a.h * k * (1f - k)); t.localRotation = Quaternion.identity; t.localScale = Vector3.one * 0.03f; // #693 retakes: 1.7x
                     }
             }
+            // #693 notes: the sacks set down at doors stay there (view-only, at most 3)
+            foreach (var sc in scenes) if (sc.use == CampUse.FlourCarry && time - sc.t0 >= sc.a && time - sc.t0 < sc.a + 0.05f && (sacksDown.Count == 0 || (sacksDown[^1].at - sc.p0).sqrMagnitude > 1e-6f)) { sacksDown.Add((sc.p0, (sc.t0 * 37f) % 360f)); if (sacksDown.Count > 3) sacksDown.RemoveAt(0); }
+            foreach (var sd in sacksDown)
+            {
+                oneSack ??= ConsequenceMeshes.OneSack();
+                var t = PropPiece(root, material, used++, oneSack);
+                t.localPosition = new Vector3(sd.at.x, groundAt(sd.at.x, sd.at.y), sd.at.y); t.localRotation = Quaternion.Euler(0f, sd.yaw, 0f); t.localScale = Vector3.one * ConsequenceMeshes.Scale;
+            }
             // white flour on the kids until the evening wash
             foreach (var kv in floured)
             {
@@ -640,20 +638,27 @@ namespace AquariumCiv.View
         {
             PegDollView V(int m) { var v = m < s.Count ? pv.ViewOf(s.keys[m]) : null; return v != null && v.gameObject.activeInHierarchy ? v : null; }
             Vector3 Hand(PegDollView v) => root.InverseTransformPoint(v.armR.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f)));
-            if (s.use == CampUse.WoodStack && s.kind == 0)
-            {
+            if (s.use == CampUse.WoodStack && s.kind == 0 && u < s.a)
+            {   // #693 notes: the pile's own log piece, held along the pile's logs (no turn); over the front logs and down into its free slot
                 carryLog ??= PieceMesh(4);
-                var t = PropPiece(root, material, used++, carryLog);
                 var v = V(0);
-                if (u < s.a - 0.25f && v != null) { t.localPosition = root.InverseTransformPoint(HandsMid(v)) + Vector3.up * 0.005f; t.localRotation = Quaternion.Euler(0f, v.transform.eulerAngles.y + 90f, 0f); }
-                else
-                {   // slid onto the pile: it sits on top a moment, then the pile's own logs carry on (it fades into the pile at the scene's end)
-                    var f = s.focus; float k = CampPose.Smooth((u - (s.a - 0.25f)) / 0.35f);
-                    var top = new Vector3(f.x, groundAt(f.x, f.y) + PropGeo.LogsTop * 2.3f, f.y);
-                    var from = v != null ? root.InverseTransformPoint(HandsMid(v)) : top;
-                    t.localPosition = Vector3.Lerp(from, top, k); t.localRotation = Quaternion.Euler(0f, (v != null ? v.transform.eulerAngles.y : 0f) + 90f, 0f);
+                if (v != null)
+                {
+                    var t = PropPiece(root, material, used++, carryLog);
+                    var rot = Quaternion.Euler(0f, s.b, 0f);
+                    var hands = root.InverseTransformPoint(HandsMid(v));
+                    var slotL = ConsequenceMeshes.WoodSlot(Mathf.RoundToInt(s.p0.x)) * ConsequenceMeshes.Scale;
+                    var slot = new Vector3(s.focus.x, groundAt(s.focus.x, s.focus.y), s.focus.y) + rot * slotL;
+                    var pos = hands;
+                    if (u >= s.c)
+                    {
+                        float k = CampPose.Smooth(Mathf.Clamp01((u - s.c) / Mathf.Max(0.05f, s.a - s.c)));
+                        var front = new Vector3(hands.x, slot.y + 0.06f, hands.z);
+                        var over = new Vector3(slot.x, slot.y + 0.05f, slot.z);
+                        pos = k < 0.5f ? Vector3.Lerp(hands, front, k * 2f) : k < 0.85f ? Vector3.Lerp(front, over, (k - 0.5f) / 0.35f) : Vector3.Lerp(over, slot, (k - 0.85f) / 0.15f);
+                    }
+                    t.localPosition = pos; t.localRotation = rot; t.localScale = Vector3.one * ConsequenceMeshes.Scale;
                 }
-                t.localScale = Vector3.one * 1.6f;
             }
             if ((s.use == CampUse.StaffWalk || s.use == CampUse.StaffPlay) && u >= s.c && u < s.d && V(0) is PegDollView sv)
             {
@@ -672,6 +677,35 @@ namespace AquariumCiv.View
                         var t = PropPiece(root, material, used++, fishMesh);
                         t.localPosition = Hand(cv); t.localRotation = Quaternion.Euler(0f, cv.transform.eulerAngles.y, 15f * Mathf.Sin(u * 20f)); t.localScale = Vector3.one * 1.7f;
                     }
+            if (s.use == CampUse.CrateWave && u >= s.c && u < s.d && V(0) is PegDollView wv)
+            {
+                fishMesh ??= PieceMesh(6);
+                var t = PropPiece(root, material, used++, fishMesh);
+                t.localPosition = Hand(wv); t.localRotation = Quaternion.Euler(0f, wv.transform.eulerAngles.y, 20f * Mathf.Sin(u * 18f)); t.localScale = Vector3.one * 1.8f;
+            }
+            if (s.use == CampUse.BigPot)
+            {   // #693 notes: the block he stands on, and the ladle from his hands down into the pot, going round
+                blockMesh ??= PieceMesh(8); ladleMesh ??= PieceMesh(9);
+                var bt = PropPiece(root, material, used++, blockMesh);
+                bt.localPosition = new Vector3(s.p0.x, groundAt(s.p0.x, s.p0.y), s.p0.y); bt.localRotation = Quaternion.identity; bt.localScale = Vector3.one;
+                if (u >= s.c && u < s.d && V(0) is PegDollView lv)
+                {
+                    var hands = root.InverseTransformPoint(HandsMid(lv));
+                    float a = (u - s.c) * Mathf.PI * 2f * 0.9f;
+                    var pot = s.focus; float g = groundAt(pot.x, pot.y);
+                    var tip = new Vector3(pot.x + Mathf.Cos(a) * 0.035f, g + PropGeo.PotRim - 0.04f, pot.y + Mathf.Sin(a) * 0.035f);
+                    var lt = PropPiece(root, material, used++, ladleMesh);
+                    var d = hands - tip;
+                    lt.localPosition = tip; lt.localRotation = Quaternion.FromToRotation(Vector3.up, d.normalized); lt.localScale = new Vector3(1f, d.magnitude + 0.02f, 1f);
+                }
+            }
+            if (s.use == CampUse.FlourCarry && u >= s.c && u < s.a && V(0) is PegDollView fv)
+            {   // #693 notes: the heap's own sack, on the carrier's shoulder
+                oneSack ??= ConsequenceMeshes.OneSack();
+                var t = PropPiece(root, material, used++, oneSack);
+                t.position = fv.transform.TransformPoint(new Vector3(-0.022f, PegDoll.HeadY * 0.78f, 0.004f) * fv.scale);
+                t.localRotation = Quaternion.Euler(0f, fv.transform.eulerAngles.y, 70f); t.localScale = Vector3.one * ConsequenceMeshes.Scale;
+            }
             if (s.use == CampUse.CharmFlick)
             {
                 charmMesh ??= PieceMesh(7);
@@ -723,7 +757,9 @@ namespace AquariumCiv.View
                     foreach (float x in new[] { -0.025f, 0.025f }) mb.Box(new Vector3(x, CampScenes6.LadderH * 0.5f, 0f), new Vector3(0.008f, CampScenes6.LadderH, 0.008f), Palette.Timber);
                     for (int k = 0; k < 4; k++) mb.Box(new Vector3(0f, 0.03f + k * 0.045f, 0f), new Vector3(0.05f, 0.006f, 0.006f), Palette.WoodLight);
                     break;
-                case 4: mb.Prism(new Vector3(0f, 0f, -0.06f), 0.022f, 0.022f, 0.12f, 7, Palette.Bark, Quaternion.Euler(90f, 0f, 0f), true, true, Palette.WoodLight); break; // a log on its side, 0.12 u
+                case 4: Pieces.Log(mb, Vector3.zero, 0.026f, 0.26f, 90f, Palette.Bark); break; // #693 notes: the woodpile's own log, crosswise (before its 1.5 scale)
+                case 8: mb.Prism(Vector3.zero, 0.055f, 0.06f, CampScenes6.StirBlock, 8, Palette.Bark, topCol: Palette.WoodLight); for (int k = 0; k < 3; k++) mb.Prism(new Vector3(0f, CampScenes6.StirBlock + 0.0005f, 0f), 0.015f + k * 0.014f, 0.015f + k * 0.014f, 0.001f, 8, k % 2 == 0 ? Palette.Bark : Palette.WoodLight); break; // a round of log, its rings on top // the block of wood the stirrer stands on
+                case 9: mb.Box(new Vector3(0f, 0.5f, 0f), new Vector3(0.009f, 1f, 0.009f), Palette.WoodLight); break; // the ladle's handle, a unit long (scaled to reach)
                 case 5: // the headman's staff: a pale pole, a red knob, a ribbon
                     mb.Prism(Vector3.zero, 0.007f, 0.006f, 0.22f, 6, Palette.WoodLight);
                     mb.Ico(new Vector3(0f, 0.225f, 0f), 0.016f, Vector3.one, Palette.Accents[1], 0.05f);
@@ -759,7 +795,6 @@ namespace AquariumCiv.View
             switch (use)
             {
                 case CampUse.BasketTake: return TryBasketTake(acts, time, true, p) ?? "a basket taken and brought back full";
-                case CampUse.BasketTower: return TryTower(acts, time, true, p) ?? "kids stack the baskets";
                 case CampUse.WoodStack: { bool f = ForceFetch; ForceFetch = !ForceFetch; return TryWoodStack(acts, time, true, p, f) ?? (f ? "a log fetched for the fire" : "a log stacked under the roof"); }
                 case CampUse.WoodShelter:
                 {
@@ -786,15 +821,15 @@ namespace AquariumCiv.View
                 case CampUse.OfferingWait: return TryOfferWait(acts, time, true, p) ?? "kids wait by the offering";
                 case CampUse.CrateFish: return TryCrateFish(acts, time, true, p) ?? "the fish crate to the rack";
                 case CampUse.CrateWave: return TryCrateWave(acts, time, true, p) ?? "kids wave across the pond";
-                case CampUse.PegRetie: return TryRetie(acts, time, true, p) ?? "the name tag tied with a fresh cord";
-                case CampUse.PegTap: return TryPegTap(acts, time, true, p) ?? "a kid taps the name peg";
+                case CampUse.PostCarve: return TryPostCarve(acts, time, true, p) ?? "the name post re-carved";
+                case CampUse.PostMeasure: return TryPostMeasure(acts, time, true, p) ?? "a kid's height marked on the name post";
             }
             return "not a #693 use: " + use;
         }
 
         public static string KindFor(CampUse use) => use switch
         {
-            CampUse.BasketTake or CampUse.BasketTower => ConsequenceKind.Baskets,
+            CampUse.BasketTake => ConsequenceKind.Baskets,
             CampUse.WoodStack or CampUse.WoodShelter => ConsequenceKind.WoodpileRoof,
             CampUse.NameCut or CampUse.NameTrace => ConsequenceKind.NameStone,
             CampUse.CharmFlick => ConsequenceKind.CharmPole,
@@ -806,7 +841,7 @@ namespace AquariumCiv.View
             CampUse.TableMeal or CampUse.TableUnder => ConsequenceKind.LongTable,
             CampUse.OfferingFill or CampUse.OfferingWait => ConsequenceKind.OfferingBasket,
             CampUse.CrateFish or CampUse.CrateWave => ConsequenceKind.FishCrate,
-            CampUse.PegRetie or CampUse.PegTap => ConsequenceKind.NamePeg,
+            CampUse.PostCarve or CampUse.PostMeasure => ConsequenceKind.NamePeg,
             CampUse.PenMend or CampUse.PenRails or CampUse.PenPet => ConsequenceKind.GoatPen,
             _ => "",
         };
@@ -852,7 +887,6 @@ namespace AquariumCiv.View
             return $"only the {kind} stands ({sim.State.consequenceProps.Count} things)";
         }
         public static string BasketTake() => Do(CampUse.BasketTake);
-        public static string BasketTower() => Do(CampUse.BasketTower);
         public static string WoodStack() => Do(CampUse.WoodStack);
         public static string WoodShelter() => Do(CampUse.WoodShelter);
         public static string NameCut() => Do(CampUse.NameCut);
@@ -884,8 +918,8 @@ namespace AquariumCiv.View
         }
         public static string CrateFish() => Do(CampUse.CrateFish);
         public static string CrateWave() => Do(CampUse.CrateWave);
-        public static string PegRetie() => Do(CampUse.PegRetie);
-        public static string PegTap() => Do(CampUse.PegTap);
+        public static string PostCarve() => Do(CampUse.PostCarve);
+        public static string PostMeasure() => Do(CampUse.PostMeasure);
         public static string PropMarks() { var c = Camp; return c == null ? "no PeopleView" : c.PropMarks(); }
     }
 }

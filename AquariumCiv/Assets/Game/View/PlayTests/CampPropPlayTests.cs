@@ -65,7 +65,6 @@ namespace AquariumCiv.View.PlayTests
             int bird = PropId(ConsequenceKind.RoofBird), offer = PropId(ConsequenceKind.OfferingBasket), crate = PropId(ConsequenceKind.FishCrate);
             Func<int, int> look = ConsequencePropsView.LookOf;
             yield return Play(pv, CampUse.BasketTake, CampCheats.BasketTake, () => look(baskets) == 1, () => look(baskets) == 0, "basket taken");
-            yield return Play(pv, CampUse.BasketTower, CampCheats.BasketTower, () => look(baskets) == 3, () => look(baskets) == 0, "all three in the tower");
             yield return Play(pv, CampUse.WoodStack, CampCheats.WoodStack, null, null, "");
             yield return Play(pv, CampUse.WoodShelter, CampCheats.WoodShelter, null, null, "");
             pv.Planner.ForcedWeather = null;
@@ -89,8 +88,8 @@ namespace AquariumCiv.View.PlayTests
             yield return Play(pv, CampUse.OfferingWait, CampCheats.OfferingWaitKnock, () => camp.KnockAnswers > knocks, null, "jump and point at the Keeper's knock");
             yield return Play(pv, CampUse.CrateFish, CampCheats.CrateFish, () => look(crate) == 3, null, "the crate emptied");
             yield return Play(pv, CampUse.CrateWave, CampCheats.CrateWave, null, null, "");
-            yield return Play(pv, CampUse.PegRetie, CampCheats.PegRetie, null, null, "");
-            yield return Play(pv, CampUse.PegTap, CampCheats.PegTap, null, null, "");
+            yield return Play(pv, CampUse.PostCarve, CampCheats.PostCarve, null, null, "");
+            yield return Play(pv, CampUse.PostMeasure, CampCheats.PostMeasure, () => (look(PropId(ConsequenceKind.NamePeg)) & 3) > 0, null, "a height scratch on the post");
             yield return Play(pv, CampUse.BigPot, CampCheats.BigPot, null, null, "");
             // 2026-11-16 "Bring a pen back": the goat in its pen, outside every herd and drawn-animal count, and its pen's uses
             var sim = AquariumCiv.Game.GameClock.Instance.Sim;
@@ -198,6 +197,7 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log("[693 shots] " + CampCheats.StageCamp(11f, 4));
             yield return new WaitForSeconds(2f);
             if (kind == ConsequenceKind.FishCrate) { Debug.Log("[693 shots] " + CampCheats.PondReady()); yield return new WaitForSeconds(2f); }
+            if (kind == ConsequenceKind.OfferingBasket) { Debug.Log("[693 shots] " + CampCheats.GrowTree()); yield return new WaitForSeconds(2f); } // #693 notes: it stands at the Keeper's tree
             Debug.Log("[693 shots] " + CampCheats.OnlyThing(kind));
             yield return new WaitForSeconds(3f);
             PeopleView.DebugSetHour(11f);
@@ -222,7 +222,6 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest, Timeout(300000)] public IEnumerator B54a() => Use("b54a-basket-take", ConsequenceKind.Baskets, CampCheats.BasketTake);
-        [UnityTest, Timeout(300000)] public IEnumerator B54b() => Use("b54b-basket-tower", ConsequenceKind.Baskets, CampCheats.BasketTower, -0.5f);
         [UnityTest, Timeout(300000)] public IEnumerator B54c() => Use("b54c-wood-stack", ConsequenceKind.WoodpileRoof, CampCheats.WoodStack);
         [UnityTest, Timeout(300000)] public IEnumerator B54d() => Use("b54d-wood-shelter", ConsequenceKind.WoodpileRoof, CampCheats.WoodShelter, -2f);
         [UnityTest, Timeout(300000)] public IEnumerator B54e() => Use("b54e-name-cut", ConsequenceKind.NameStone, CampCheats.NameCut, -2f);
@@ -244,7 +243,7 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(300000)] public IEnumerator B54u() => Use("b54u-offering-wait", ConsequenceKind.OfferingBasket, CampCheats.OfferingWait, -0.4f);
         [UnityTest, Timeout(300000)] public IEnumerator B54x() => Use("b54x-crate-fish", ConsequenceKind.FishCrate, CampCheats.CrateFish, -1f);
         [UnityTest, Timeout(300000)] public IEnumerator B54y() => Use("b54y-crate-wave", ConsequenceKind.FishCrate, CampCheats.CrateWave, -0.5f);
-        [UnityTest, Timeout(300000)] public IEnumerator B54z() => Use("b54z-peg-retie", ConsequenceKind.NamePeg, CampCheats.PegRetie, 0.3f);
-        [UnityTest, Timeout(300000)] public IEnumerator B54zz() => Use("b54zz-peg-tap", ConsequenceKind.NamePeg, CampCheats.PegTap, 0f);
+        [UnityTest, Timeout(300000)] public IEnumerator B54z() => Use("b54z-post-carve", ConsequenceKind.NamePeg, CampCheats.PostCarve, 0.3f);
+        [UnityTest, Timeout(300000)] public IEnumerator B54zz() => Use("b54zz-post-measure", ConsequenceKind.NamePeg, CampCheats.PostMeasure, 0f);
     }
 }

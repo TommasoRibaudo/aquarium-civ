@@ -1,6 +1,6 @@
 {
- "name": "693-b54zz-peg-tap",
- "notes": "B54.zz: the named kid runs past their peg and taps it; the tag swings.",
+ "name": "693-b54z-post-carve",
+ "notes": "B54.z (notes): a grown-up re-carves the mark on the carved name post: knife scrapes, chips; the mark shows fresh.",
  "animlab": {
   "issue": 693
  },
@@ -13,16 +13,16 @@
    "return \"waiting for the things\";",
    "return \"waiting for the things\";",
    "return AquariumCiv.View.PeopleView.DebugSetHour(11.0f);",
-   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.PegTap());"
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.PostCarve());"
   ],
   "warm": 0.5,
-  "seconds": 4,
+  "seconds": 8,
   "fps": 30,
   "follow": "camp",
   "span": 1.6,
   "closeSpan": 0.7,
   "yaw": 28,
   "pitch": 25,
-  "lead": 1.0
+  "lead": 1.5
  }
 }
