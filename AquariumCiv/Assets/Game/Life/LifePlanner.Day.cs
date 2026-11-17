@@ -826,7 +826,7 @@ namespace AquariumCiv.Life
             float home = 19.4f + R(k, day, 2) * 0.4f - box.homeEarlyHours - p.hints.homeEarlyHours;
             if (StyleOf(p, d) != EveningStyle.Gather) { At(d.supper == SupperPick.Baskets ? ActivityKind.Eat : ActivityKind.SitOut, home, p.home, d.supper == SupperPick.Baskets ? Prop.Basket : Prop.Stool, default, TripType.Home); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #197, #589
             At(ActivityKind.SitOut, TellFrom, gather, Prop.Stool, default, TripType.HomeToGreen);
-            if (d.tellerPicked && d.teller == p) { At(ActivityKind.StoryTell, TellEnd(d), gather); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #717
+            if (d.tellerPicked && d.teller == p) { At(ActivityKind.StoryTell, TellerUntil(d), gather); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #717
             if (d.tellerPicked) ListenToTheTeller(d, Math.Max(home, TellEnd(d) + 0.05f));
             else At(d.supper == SupperPick.Pot ? ActivityKind.Eat : d.teller == p ? ActivityKind.StoryTell : ActivityKind.SitOut, Math.Min(home, 19.1f), gather);
             At(ActivityKind.SitOut, home, gather);
@@ -1183,7 +1183,7 @@ namespace AquariumCiv.Life
                 // #717: tonight's story, told by the Keeper's pick. The teller stands at the fire; the rest listen to the end (a short one
                 // ends on a laugh), then the evening goes on.
                 At(ActivityKind.SitOut, TellFrom, gather);
-                if (d.teller == p) At(ActivityKind.StoryTell, TellEnd(d), gather);
+                if (d.teller == p) At(ActivityKind.StoryTell, TellerUntil(d), gather);
                 else ListenToTheTeller(d, TellEnd(d) + (d.tellerManner == SmallChoices.MannerShort ? LaughHours : 0f));
                 At(ActivityKind.Chat, home, gather);
                 At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
@@ -1239,6 +1239,8 @@ namespace AquariumCiv.Life
         public const float TellFrom = 18.3f, TellSlowUntil = 19.7f, TellShortUntil = 18.85f, LaughHours = 0.15f;
 
         static float TellEnd(DayInfo d) => d.tellerManner == SmallChoices.MannerShort ? TellShortUntil : TellSlowUntil;
+        /// <summary>B76.b: the teller stays at the fire through the laugh (the mock-serious end beat, then laughs too).</summary>
+        static float TellerUntil(DayInfo d) => TellEnd(d) + (d.tellerManner == SmallChoices.MannerShort ? LaughHours : 0f);
 
         /// <summary>#717: listen to the picked teller until the story ends (a short one: a laugh at the end), until <paramref name="until"/>.</summary>
         void ListenToTheTeller(DayInfo d, float until)

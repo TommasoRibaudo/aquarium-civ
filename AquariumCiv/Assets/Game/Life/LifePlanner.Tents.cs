@@ -72,6 +72,9 @@ namespace AquariumCiv.Life
 
         // ---------------------------------------------------------------- the frame
 
+        /// <summary>S-ritual: where the camp's stash pile stands (the fire from the village on), world x/z.</summary>
+        public bool StashPoint(out float x, out float z) { Sync(); x = z = 0f; return !stash.IsNone && positions.TryGetPosition(stash, out x, out z); }
+
         /// <summary>Where the fire is now (follows it when the fire moves), world x/z.</summary>
         public bool FirePoint(out float x, out float z)
         {

@@ -115,6 +115,9 @@ namespace AquariumCiv.Sim
             return leader ?? State.notables.Where(n => n.alive && n.age >= AdultAge).OrderByDescending(n => n.age).ThenBy(n => n.id).FirstOrDefault();
         }
 
+        /// <summary>S-ritual (B75.a): this year's ritual kid (carries the small basket); null when there is none.</summary>
+        public Notable RitualKidThisYear => RitualKid();
+
         /// <summary>A child for a line that names one, picked from the year (no dice); null when there is none.</summary>
         Notable RitualKid()
         {
@@ -168,6 +171,13 @@ namespace AquariumCiv.Sim
         }
 
         // ---------- debug (SimDebugPanel's "Rituals" block) ----------
+        /// <summary>Debug (B75.b "Offering: empty it now (spring)"): the offering is kept and has played once; the spring line is written now.</summary>
+        public ChronicleEntry DebugEmptyOffering()
+        {
+            if (!RitualStarted(RitualKind.Offering)) DebugPlayRitual(RitualKind.Offering);
+            return Chronicle("ritual_offering_empty", "The offering basket was empty in the morning. Nobody saw who emptied it.", 0.55f);
+        }
+
         /// <summary>Debug: keep this ritual (its custom set if the choice was never asked) and play it now, whatever the month. Null for an unknown kind.</summary>
         public ChronicleEntry DebugPlayRitual(string kind)
         {

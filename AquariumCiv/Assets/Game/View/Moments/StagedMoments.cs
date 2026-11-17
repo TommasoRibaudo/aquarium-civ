@@ -24,7 +24,7 @@ namespace AquariumCiv.View
     /// everyone (the box changed, the app left).</item>
     /// </list>
     /// </summary>
-    public static class StagedMoments
+    public static partial class StagedMoments
     {
         /// <summary>The kinds staged here.</summary>
         public static readonly MomentKind[] Kinds = { MomentKind.Wedding, MomentKind.Newborn, MomentKind.NewLeader, MomentKind.Festival, MomentKind.Ritual };
@@ -44,6 +44,7 @@ namespace AquariumCiv.View
             public readonly HashSet<int> marked = new HashSet<int>();
             public List<RitualBubble> bubbles;
             public StagedSign sign; // t1-moments: the wedding's arch and petals
+            public readonly HashSet<long> said = new HashSet<long>(); // S-ritual: the beats' lines said (member key, step)
         }
 
         static readonly List<Live> lives = new List<Live>();
@@ -81,6 +82,7 @@ namespace AquariumCiv.View
             foreach (var k in Kinds) HeldMomentStage.Register(k, Stage);
             PeopleView.StagedSpot = SpotHook;
             PeopleView.StagedPose = PoseHook;
+            InstallRituals();
         }
 
         /// <summary>Tests: the placeholder back for these kinds and the hooks off.</summary>
@@ -89,6 +91,7 @@ namespace AquariumCiv.View
             foreach (var k in Kinds) HeldMomentStage.Register(k, null);
             PeopleView.StagedSpot = null;
             PeopleView.StagedPose = null;
+            UninstallRituals();
             StopAll();
         }
 
@@ -226,6 +229,7 @@ namespace AquariumCiv.View
             if (live == null || !Find(a, live.pv.Now, out live, out var sc, out var m, out int i, out float secs)) { view.LiftBaby(0f); return; }
             var st = m.steps[i];
             if (st.travel && a.moving) { view.LiftBaby(0f); return; }
+            if (sc.plan.RitualStaged != null && RitualBeats.Handles(st.beat)) { view.LiftBaby(0f); return; } // S-ritual: RitualPoseHook poses it
             MomentBeats.Apply(ref pose, sc.plan, m, i, secs, out float lift);
             view.LiftBaby(m.key == sc.plan.carrierKey ? lift : 0f);
             if (st.beat == StageBeat.Toss && pose.hit > 0f) HitFx.MarkStagedToss(a.who); // the log lands: HitFx flares the fire for this stroke only

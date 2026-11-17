@@ -105,8 +105,16 @@ namespace AquariumCiv.Life
         /// <summary>About how long a staged moment of this kind takes (real seconds), to check <see cref="HeldMomentFits"/> before casting.</summary>
         public static float HeldMomentSeconds(MomentKind kind) => kind switch
         {
-            MomentKind.Wedding => 42f, MomentKind.Newborn => 22f, MomentKind.NewLeader => 27f, MomentKind.Festival => 50f, MomentKind.Ruling => 50f, MomentKind.WhiteWolf => 50f, MomentKind.Ritual => 50f, _ => 10f,
+            MomentKind.Wedding => 42f, MomentKind.Newborn => 22f, MomentKind.NewLeader => 27f, MomentKind.Festival => 50f, MomentKind.Ruling => 50f, MomentKind.WhiteWolf => 50f, MomentKind.Ritual => RitualSeconds, _ => 10f,
         };
+
+        /// <summary>S-ritual: the longest a ritual's own plan runs (real seconds; the berrying walk with a full camp and far bushes), for
+        /// <see cref="HeldMomentFits"/> [est]. The spec's lengths: berrying 55 s, woodpile 45 s, feast 50 s, offering 45 s.</summary>
+        public const float RitualSeconds = 66f;
+
+        /// <summary>S-ritual: the view fills each ritual's own targets (the bushes, the woodpile, the long table, the tree) before the plan
+        /// is built (View/Moments/StagedMoments.Rituals.cs). Null, or no target: the festival's gathering stands in.</summary>
+        public static Func<SimCore, HeldMoment, string, RitualSpots> RitualTargets;
 
         /// <summary>
         /// Stage the held moment <paramref name="m"/> now. Null when it can't be: its people are gone, the principals can't get
@@ -130,6 +138,7 @@ namespace AquariumCiv.Life
             if (!positions.TryGetPosition(GlassPlace, out float gx, out float gz)) return NoHeld("no glass spot");
             var n = GlassNormalOf(glassSide);
             var geo = new MomentGeometry { fireX = fx, fireZ = fz, glassX = gx, glassZ = gz, nx = n.x, nz = n.z, halfX = Terrain.HX, halfZ = Terrain.HZ, centreZ = Terrain.CZ, blockers = HeldBlockers(fx, fz) };
+            if (m.kind == MomentKind.Ritual && sim.RitualOfEntry(m.entryId) is string ritual) geo.spots = RitualTargets?.Invoke(sim, m, ritual) ?? new RitualSpots { ritual = ritual };
 
             var cast = new MomentCast();
             var used = new HashSet<int>();
@@ -320,7 +329,9 @@ namespace AquariumCiv.Life
         MomentPerson Who(Person p, Place place, ViewTime at)
         {
             if (!PositionAt(p.who, at, out float x, out float z)) positions.TryGetPosition(StopPlace(p, at.hour), out x, out z);
-            return MomentPerson.Of(p.key, p.stage == LifeStage.Kid, x, z, WalkSecs(WalkLen(StopPlace(p, at.hour), place)));
+            var mp = MomentPerson.Of(p.key, p.stage == LifeStage.Kid, x, z, WalkSecs(WalkLen(StopPlace(p, at.hour), place)));
+            mp.age = p.age;
+            return mp;
         }
 
         Person EldestFree(ViewTime at, HashSet<int> used)

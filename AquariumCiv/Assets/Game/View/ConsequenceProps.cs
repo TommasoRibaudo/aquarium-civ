@@ -115,14 +115,21 @@ namespace AquariumCiv.View
                     mb.Box(new Vector3(0.06f, 0.31f, 0f), new Vector3(0.05f, 0.012f, 0.03f), Palette.Accents[2]);
                     break;
                 case ConsequenceKind.LongTable: // a long table with benches either side (#693 notes: four legs, so kids can crawl under it)
-                    mb.Box(new Vector3(0f, 0.07f, 0f), new Vector3(0.44f, 0.014f, 0.1f), Palette.WoodLight);
+                {
+                    // S-ritual (B74): one board longer for every feast after the first (variant = the boards, at most 12), the newest board pale
+                    int boards = Mathf.Clamp(variant, 0, MaxBoards);
+                    float grow = BoardLength * boards, half = 0.22f + grow * 0.5f;
+                    mb.Box(new Vector3(-grow * 0.5f, 0.07f, 0f), new Vector3(0.44f, 0.014f, 0.1f), Palette.WoodLight);
+                    for (int k = 0; k < boards; k++)
+                        mb.Box(new Vector3(0.22f - grow * 0.5f + BoardLength * (k + 0.5f), 0.0702f, 0f), new Vector3(BoardLength - 0.002f, 0.014f, 0.1f), k == boards - 1 ? NewBoard : k % 2 == 0 ? Palette.Timber : Palette.WoodLight);
+                    float legX = TableLegX + grow * 0.5f, benchLegX = 0.17f + grow * 0.5f;
                     foreach (int sx in new[] { -1, 1 })
                         foreach (int sz in new[] { -1, 1 })
                         {
-                            mb.Box(new Vector3(sx * TableLegX, 0.032f, sz * 0.04f), new Vector3(0.012f, 0.064f, 0.012f), Palette.Timber); // the table's legs
-                            mb.Box(new Vector3(sx * 0.17f, 0.017f, sz * 0.085f), new Vector3(0.01f, 0.034f, 0.01f), Palette.Timber); // the benches' legs
+                            mb.Box(new Vector3(sx * legX, 0.032f, sz * 0.04f), new Vector3(0.012f, 0.064f, 0.012f), Palette.Timber); // the table's legs
+                            mb.Box(new Vector3(sx * benchLegX, 0.017f, sz * 0.085f), new Vector3(0.01f, 0.034f, 0.01f), Palette.Timber); // the benches' legs
                         }
-                    foreach (int sz in new[] { -1, 1 }) mb.Box(new Vector3(0f, 0.04f, sz * 0.085f), new Vector3(0.4f, 0.012f, 0.04f), Palette.Timber);
+                    foreach (int sz in new[] { -1, 1 }) mb.Box(new Vector3(0f, 0.04f, sz * 0.085f), new Vector3(0.4f + grow, 0.012f, 0.04f), Palette.Timber);
                     // 2026-11-14: wooden bowls of food (berries, stew, greens), not bright blobs (a pink one read as a gem)
                     var foods = new[] { new Color(0.72f, 0.12f, 0.16f), new Color(0.55f, 0.36f, 0.2f), new Color(0.42f, 0.55f, 0.25f) };
                     for (int i = 0; i < 3; i++)
@@ -136,6 +143,7 @@ namespace AquariumCiv.View
                         }
                     }
                     break;
+                }
                 case ConsequenceKind.OfferingBasket: // #693 notes: a big round woven basket heaped with food, half under a cloth, a flower on top, a handle
                     OfferingBasketMesh(mb, variant);
                     break;
@@ -433,10 +441,33 @@ namespace AquariumCiv.View
         /// <summary>#693 notes (the user: "does not read like one AT ALL"): the offering basket from scratch. A big round woven basket with a rim and
         /// a handle arching over, heaped with food (apples, loaves, berries) poking up past the rim, a cloth over half of it, a flower on top.
         /// Variant 1 fuller, 2 the cloth lifted, 3 lifted and fuller.</summary>
+        /// <summary>S-ritual (B74): the long table's boards (one a year after the first feast), each this long (mesh units, before the prop scale);
+        /// the newest board's paler wood.</summary>
+        public const int MaxBoards = 12;
+        public const float BoardLength = 0.04f;
+        static readonly Color NewBoard = new Color(0.9f, 0.78f, 0.58f);
+        /// <summary>S-ritual (B75): the offering basket's looks after the 2026-11-16 note: empty in spring (the cloth lies flat in it, no food at the
+        /// rim); gone (in someone's hands: only the flattened grass where it stands).</summary>
+        public const int OfferingEmpty = 4, OfferingGone = 5;
+
         static void OfferingBasketMesh(MeshBuilder mb, int variant)
         {
             const float R = 0.075f, H = 0.065f;
+            if (variant == OfferingGone) { mb.Ico(new Vector3(0f, 0.001f, 0f), R * 1.05f, new Vector3(1f, 0.04f, 1f), new Color(0.48f, 0.56f, 0.3f), 0.1f); return; }
             WovenBasket(mb, Vector3.zero, R, H);
+            if (variant == OfferingEmpty)
+            {
+                // empty: the cloth lies flat in it, 0.02 lower than the heap's top, the flower on it
+                var flat = new Color(0.93f, 0.9f, 0.82f);
+                mb.Ico(new Vector3(0f, H - 0.012f, 0f), R * 0.86f, new Vector3(1f, 0.12f, 1f), flat, 0.06f);
+                mb.Ico(new Vector3(0.015f, H - 0.004f, 0.02f), 0.012f, new Vector3(1f, 0.55f, 1f), new Color(0.96f, 0.45f, 0.65f), 0.04f);
+                for (int k = 0; k <= 8; k++)
+                {
+                    float t = k / 8f * Mathf.PI, hx = Mathf.Cos(t) * (R + 0.002f), hy = H + Mathf.Sin(t) * 0.085f;
+                    mb.Box(new Vector3(hx, hy, 0f), new Vector3(0.009f, 0.034f, 0.011f), new Color(0.62f, 0.45f, 0.22f), Quaternion.Euler(0f, 0f, t * Mathf.Rad2Deg));
+                }
+                return;
+            }
             bool full = variant == 1 || variant == 3, lifted = variant >= 2;
             var apple = new Color(0.82f, 0.16f, 0.14f); var bread = new Color(0.82f, 0.6f, 0.32f); var berry = new Color(0.36f, 0.14f, 0.42f); var pear = new Color(0.78f, 0.75f, 0.25f);
             float lift = full ? 0.012f : 0f;

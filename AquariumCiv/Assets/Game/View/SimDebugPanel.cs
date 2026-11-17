@@ -315,6 +315,19 @@ namespace AquariumCiv.View
                         if (GUILayout.Button("Play " + RitualKind.All[j] + " now")) last = StagedMoments.DebugPlayRitualNow(RitualKind.All[j]); // the held moment, staged now
                     GUILayout.EndHorizontal();
                 }
+                // S-ritual (B72-B75): this year's variant, played now
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Berrying: end at the long table")) last = StagedMoments.DebugBerryingToTable();
+                if (GUILayout.Button("Berrying: a kid's first walk")) last = StagedMoments.DebugBerryingFirstWalk();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Log line: drop a log")) last = StagedMoments.DebugLogLineDrop();
+                if (GUILayout.Button("Feast: add a year's board")) last = StagedMoments.DebugFeastBoard();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Offering: before the tree (tallest tree)")) last = StagedMoments.DebugOfferingTallestTree();
+                if (GUILayout.Button("Offering: empty it now (spring)")) last = StagedMoments.DebugOfferingEmpty();
+                GUILayout.EndHorizontal();
             }
             // ---- end #721 ----
             // ---- fb4 #540: camp props ----

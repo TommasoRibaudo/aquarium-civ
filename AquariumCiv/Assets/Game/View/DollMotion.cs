@@ -34,6 +34,8 @@ namespace AquariumCiv.View
         RackMove,
         // #705 (B28, View/Beats/LaundryBeats.cs): hanging out the washing, taking it in
         HangWash, TakeInWash,
+        // B76 (View/Beats/TellerBeats.cs): the Keeper's pick telling tonight's story (the pose is laid over by TellerBeats; the unpicked teller keeps Speech)
+        Tell,
     }
 
     /// <summary>

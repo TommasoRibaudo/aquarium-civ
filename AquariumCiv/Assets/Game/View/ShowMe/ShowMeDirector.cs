@@ -606,6 +606,7 @@ namespace AquariumCiv.View
             string moment = now.hour >= 18f && now.hour < 21f ? PeopleMoment.Evening : null;
             bubbles.HeldNow = StagedMoments.PlayingMoment(Sim); // t1-moments: a staged moment's own words, not the stories
             bubbles.TellerNow = TellerNow(pv, now); // #717: the Keeper's pick telling tonight's story
+            if (StagedMoments.SpeaksItsOwnLines(Sim) || TellerBeats.SpeaksItsOwnLines) return; // S-ritual, B76: the beats say their own lines
             var b = bubbles.Next(Time.unscaledTime, moment, visibleNotables);
             if (b == null) return;
             ShowBubble(b);

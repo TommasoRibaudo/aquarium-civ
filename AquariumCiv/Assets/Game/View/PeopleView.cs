@@ -564,7 +564,8 @@ namespace AquariumCiv.View
             if (started) { x = startCue.pos.x; z = startCue.pos.y; huntFace = startCue.face; }
             bool tenting = !hunting && (started || (a.tent != TentPhase.None && TentSpot(a, out x, out z, out huntFace)) // #284: the planned walk to the frame and the lot
                 || (StagedSpot != null && !Camp.CheatHolds(a.who.Key) && StagedSpot(a, now, out x, out z, out huntFace)) // #370: a staged moment's own spots (the aisle, the ring, the glass) ride the same path; #695: never over a cheat's use
-                || (LifeSpot != null && !Camp.CheatHolds(a.who.Key) && LifeSpot(a, now, out x, out z, out huntFace))); // #427: a placed-life scene holds them (the dawn drink: stop and watch)
+                || (LifeSpot != null && !Camp.CheatHolds(a.who.Key) && LifeSpot(a, now, out x, out z, out huntFace)) // #427: a placed-life scene holds them (the dawn drink: stop and watch)
+                || (TellerSpot != null && !Camp.Busy(a.who.Key) && TellerSpot(a, now, out x, out z, out huntFace))); // B76: the teller behind the fire, the listeners round it
             if (hunting || tenting) hidden = false;
             else if (!planner.PositionAt(a.who, now, out x, out z) && !planner.Positions.TryGetPosition(a.place, out x, out z)) hidden = true;
             if (hidden && stage == LifeStage.Kid && HideReason != null) HideReason($"{a.who} hidden by Drive: kind {a.kind} place {a.place.kind} moving {a.moving} (kind None, or no position for the plan: #698 diagnosis)");
@@ -797,6 +798,7 @@ namespace AquariumCiv.View
                 else if (style == DollStyle.Mend) (kind, slot) = (PropKind.Pelt, PropSlot.Front);
             }
             if (started) (kind, slot) = (startCue.prop, startCue.slot); // #656/#677: the scene says what they carry
+            if (StagedLook != null && !hunting && !camping && !paired && !playing && !started && !Camp.CheatHolds(a.who.Key)) StagedLook(a, walking, ref style, ref kind, ref slot); // S-ritual
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
             v.HoldInLeft(BerryMotion.BasketInLeft(style) || kind is PropKind.Bowl or PropKind.BowlEmpty); // #361: the right hand picks, the basket rides in the left; #365: so does the meal's bowl
 
@@ -873,6 +875,7 @@ namespace AquariumCiv.View
                 DollMotion.Hunt(ref pose, a.hunt, a.progress, since, stalkNow);
             }
             StagedPose?.Invoke(a, v, ref pose); // #370: a staged moment's one-shot beats (a cheer, a bow, the lift, the ring)
+            if (RitualPose != null && !camping && !Camp.CheatHolds(a.who.Key)) RitualPose(a, walking, d.stride, ref pose); // S-ritual: the ritual's own beats
             LifePose?.Invoke(a, v, ref pose); // #427: a placed-life scene's beats (the kid holding still, the "shh", a point)
             NestPose?.Invoke(a, v, ref pose); // #709: the kids' look and the gatherer's take at the nest (NestView)
             DogPose?.Invoke(a, v, ref pose); // #694 B56.a: the hunter's whistle before and the pat after (CampLife.Dogs)
@@ -1624,6 +1627,14 @@ namespace AquariumCiv.View
         public delegate bool StagedSpotHook(in PersonActivity a, ViewTime now, out float x, out float z, out Vector2? face);
         public delegate void StagedPoseHook(in PersonActivity a, PegDollView view, ref DollPose pose);
         public static StagedSpotHook StagedSpot;
+        /// <summary>S-ritual: a ritual's beat says the move and what is in the hands (View/Moments/StagedMoments.Rituals.cs).</summary>
+        public delegate bool StagedLookHook(in PersonActivity a, bool walking, ref DollStyle style, ref PropKind kind, ref PropSlot slot);
+        public static StagedLookHook StagedLook;
+        /// <summary>B76: the picked teller behind the fire and the listeners' half ring (View/CampLife.Teller.cs).</summary>
+        public static StagedSpotHook TellerSpot;
+        /// <summary>S-ritual: a ritual's beat's pose over the loop (it knows the walk and its phase).</summary>
+        public delegate void RitualPoseHook(in PersonActivity a, bool walking, float stride, ref DollPose pose);
+        public static RitualPoseHook RitualPose;
         public static StagedPoseHook StagedPose;
         /// <summary>#427: the placed-life scenes' own hooks (DeerScenesView: the dawn at the pond), beside the staged moments'.</summary>
         public static StagedSpotHook LifeSpot;

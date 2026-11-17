@@ -92,6 +92,8 @@ namespace AquariumCiv.View
             for (int i = scenes.Count - 1; i >= 0; i--) if (time > scenes[i].End + 0.2f) scenes.RemoveAt(i);
             Index();
             if (sim != null && planner != null) StepProps(acts, time); // #693: the choices' things (every era)
+            if (sim != null && planner != null) StepRituals(acts, time); // S-ritual: the offering basket's look, the table's boards, purple hands, the boat
+            StepTeller(acts); // B76: the Keeper's pick tells tonight's story
             if (sim != null && planner != null && sim.State.era != Era.Camp) StepVillage(acts, time); // #695: the village's and the town's things
             if (sim == null || planner == null || sim.State.era != Era.Camp) { StepPot(acts, time, false); return; }
             StepTree(acts, time); // #692 part 2: the Keeper's tree visits (no fire needed)
@@ -667,6 +669,7 @@ namespace AquariumCiv.View
             DrawProps(root, material, time, groundAt); // #693: the basket tower, the split log, the ladder, the flour
             DrawDogs(root, material, time, groundAt); // #694: the dogs, the visiting wolf, the fetch stick
             DrawVillage(root, material, time, groundAt); // #695: the scarecrow, a home's things, the ladder, the buckets, the grid, the posts
+            DrawRituals(root, material, time, groundAt); // S-ritual: the log heap, the ladder, the board, the small basket, the empty basket carried, the rod on the boat
         }
 
         void FireFx(Transform root, float time, Func<float, float, float> groundAt)
@@ -894,7 +897,7 @@ namespace AquariumCiv.View
         public string Force(CampUse use)
         {
             int before = scenes.Count;
-            string r = IsVillageUse(use) ? ForceVillage(use) : IsDogUse(use) ? ForceDog(use) : IsPropUse(use) ? ForceProp(use) : IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : IsCampUse(use) ? ForceCamp(use) : ForceUse(use);
+            string r = IsRitualUse(use) ? ForceRitual(use) : IsVillageUse(use) ? ForceVillage(use) : IsDogUse(use) ? ForceDog(use) : IsPropUse(use) ? ForceProp(use) : IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : IsCampUse(use) ? ForceCamp(use) : ForceUse(use);
             if (scenes.Count > before) forced = scenes[^1];
             return r;
         }

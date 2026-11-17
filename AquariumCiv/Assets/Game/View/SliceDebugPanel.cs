@@ -542,6 +542,10 @@ namespace AquariumCiv.View
             if (Btn("Barn chores")) last = CampCheats.BarnChores(); // #695 B59.k
             if (Btn("Kids jump in the hay")) last = CampCheats.HayJump(); // #695 B59.l
             EndRow();
+            Row(); // S-ritual B77: the pond family's boat (upside down by the fire)
+            if (Btn("Boat: sort the catch on it")) last = CampCheats.BoatSort(); // B77.a
+            if (Btn("Boat: kids play house")) last = CampCheats.BoatHouse(); // B77.b
+            EndRow();
         }
 
         void OnGUI()

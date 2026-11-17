@@ -6,7 +6,9 @@ using AquariumCiv.Sim;
 namespace AquariumCiv.Life
 {
     /// <summary>#370: who someone is in a staged moment (animation-specs C3).</summary>
-    public enum MomentRole { Spotter, Couple, Officiant, Guest, Parent, Family, Kid, Chief, OldChief, Elder, Leader, Bringer }
+    public enum MomentRole { Spotter, Couple, Officiant, Guest, Parent, Family, Kid, Chief, OldChief, Elder, Leader, Bringer,
+        /// <summary>B73: mends the woodpile's roof outside the log line.</summary>
+        Mender }
 
     /// <summary>#370: what one step of a staged moment shows. The planner plays <see cref="MomentStep.kind"/>; the view lays the
     /// beat's one-shot pose on top (View/Beats/MomentBeats.cs).</summary>
@@ -17,6 +19,26 @@ namespace AquariumCiv.Life
         Stand, LookUp, Point, Run, AisleCheer, WalkIn, Vow, Bless, Join, Ring, Centre, Wave,
         Settle, LiftBaby, Cradle, Cheer, PressHands, WalkThrough, Give, Take, Seat, Speech, Listen, Bow, GoldPop,
         SetDown, TossWind, Toss, Eat, Jump, Clap,
+        // S-ritual (B72-B75, animation-specs "Rituals and the teller"; Life/MomentStagePlan.Rituals.cs). Poses: View/Beats/RitualBeats.cs.
+        /// <summary>B72: the lead hands baskets out from the stack; a taker reaches for one; the lead holds one up.</summary>
+        HandOut, TakeBasket, HoldBasketUp,
+        /// <summary>B72: the line out with empty baskets swinging; picking at a bush; a kid's taste; the lead points on to the next bush.</summary>
+        WalkOut, Pick, PointBush,
+        /// <summary>B72: home in a line with the full basket held in both arms; the tip at the stash; set on the long table and one eaten.</summary>
+        WalkHome, Tip, TableSet,
+        /// <summary>B72: both hands up to the glass, palms out; two kids put their hands side by side and laugh.</summary>
+        ShowHands, KidHands,
+        /// <summary>B73: a log brought and dropped on the heap; the zigzag line; a log passed along; onto the pile; a fumble and the hop back;
+        /// the roof mended; the kids' twig line and the twig kept; the last log set on top; the kids sit on the low logs.</summary>
+        DropLog, PassLog, PileLog, Fumble, HopBack, MendRoof, PassTwig, KeepTwig, LastLog, SitLogs,
+        /// <summary>B74: the new board carried and tapped on; sitting at the long table; the first bowl ladled and given; bowls down the sides;
+        /// budge up; eating; under the table; bowls up; the song down the benches; the oldest's nap on the bench.</summary>
+        CarryBoard, TapBoard, TableSit, Ladle, PassBowl, Budge, TableEat, UnderTable, BowlsUp, SongSway, BenchNap,
+        /// <summary>B75.a: the best basket lifted; the careful walk; the kids' small basket between them; kneel and set down (tip it into the
+        /// basket at the tree); stand still; the look back and the hand that turns the head forward again.</summary>
+        LiftOffering, CarryCareful, KidCarry, KneelSet, Still, LookBack, TurnHead,
+        /// <summary>A short laugh (B73's fumble, B72's hands).</summary>
+        Laugh,
     }
 
     /// <summary>#370: one step of one member: what, when (real seconds from the moment's start), where (box x, z; a straight move
@@ -43,6 +65,12 @@ namespace AquariumCiv.Life
         public int partner;
         /// <summary>The loop this ends (P5): the moment's end beat.</summary>
         public bool endBeat;
+        /// <summary>S-ritual: the line this member says as the step starts (null = none): each beat's line, once.</summary>
+        public string line;
+        /// <summary>S-ritual: what is in the hands (the view's prop).</summary>
+        public StageHold hold;
+        /// <summary>S-ritual: a beat's own number (which log, which bush, which seat; the kid's first walk = 1).</summary>
+        public int arg;
 
         public float Length => Math.Max(1e-4f, t1 - t0);
         public bool Moves => Math.Abs(x1 - x0) + Math.Abs(z1 - z0) > 1e-5f;
@@ -69,6 +97,8 @@ namespace AquariumCiv.Life
         public int key;
         public bool kid;
         public float x, z, walk;
+        /// <summary>S-ritual (B74's eldest): their age in years (0 = not known).</summary>
+        public float age;
         public static MomentPerson Of(int key, bool kid, float x, float z, float walk) => new MomentPerson { key = key, kid = kid, x = x, z = z, walk = walk };
     }
 
@@ -93,6 +123,41 @@ namespace AquariumCiv.Life
         public float centreZ;
         /// <summary>t4-fixes: what hides people standing behind it (tents, buildings): x, z, radius triples in box units; null = none.</summary>
         public float[] blockers;
+        /// <summary>S-ritual (B72-B75): the ritual's own targets, filled by the view (<c>LifePlanner.RitualSpots</c>). None: the festival's
+        /// gathering stands in (the spec's "where a ritual has no target").</summary>
+        public RitualSpots spots;
+    }
+
+    /// <summary>S-ritual: where a ritual plays (box x, z) and how this year's goes. A field with no "has" is not there.</summary>
+    public sealed class RitualSpots
+    {
+        /// <summary><see cref="AquariumCiv.Sim.RitualKind"/>.</summary>
+        public string ritual;
+        /// <summary>B72: berry bushes with berries, x, z pairs, nearest the camp first (at most 6, none past <see cref="MomentStagePlan.BushReach"/> of the fire).</summary>
+        public float[] bushes;
+        /// <summary>B72: the camp's stash pile (the tip); B75: where the best basket is lifted.</summary>
+        public bool hasStash; public float stashX, stashZ;
+        /// <summary>B72: the basket stack the lead hands out from (B54.a).</summary>
+        public bool hasStack; public float stackX, stackZ;
+        /// <summary>B72's village end, B74: the long table, its long axis (unit), its length (u) and this year's boards.</summary>
+        public bool hasTable; public float tableX, tableZ, tableAX, tableAZ, tableLen; public int boards;
+        /// <summary>B74: a board is added this year (every year after the first; the cheat).</summary>
+        public bool addBoard;
+        /// <summary>B72 (the village keeps the feast): the walk ends at the long table.</summary>
+        public bool toTable;
+        /// <summary>B72: a kid's first walk (their key, the parent's key; 0 = none).</summary>
+        public int firstWalk, firstWalkParent;
+        /// <summary>B73: the woodpile, the way its logs face (unit, out of the pile), the chopping spot.</summary>
+        public bool hasPile; public float pileX, pileZ, pileFX, pileFZ;
+        public bool hasChop; public float chopX, chopZ;
+        /// <summary>B73: a passer drops a log this year (1 ritual in 2 by hash; the cheat forces it).</summary>
+        public bool dropLog;
+        /// <summary>B75.a: the visit spot the basket is set down at, the trunk it is for, and whether it is the Keeper's tree (else the tallest tree).</summary>
+        public bool hasTree; public float treeX, treeZ, spotX, spotZ; public bool keeperTree;
+        /// <summary>B75.a: the whole town walks behind the priest (row 228); else the lead, the kids and up to 4 grown-ups.</summary>
+        public bool town;
+        /// <summary>B75.a: the year's ritual kid (0 = none): carries the small basket.</summary>
+        public int ritualKid;
     }
 
     /// <summary>
@@ -114,7 +179,7 @@ namespace AquariumCiv.Life
     /// </list>
     /// All numbers [est], tuned on AnimBench (clips 370-*.json).
     /// </summary>
-    public sealed class MomentStagePlan
+    public sealed partial class MomentStagePlan
     {
         // ---- the numbers (animation-specs C3, B2.e; [est]) ----
         /// <summary>A kid runs to tell at this pace (u/s), about twice the walk.</summary>
@@ -204,7 +269,7 @@ namespace AquariumCiv.Life
                 MomentKind.Festival => plan.Festival(cast),
                 MomentKind.Ruling => plan.Festival(cast), // #422: a gathering at the fire, the ruling notable speaking (its own beats: a view ticket)
                 MomentKind.WhiteWolf => plan.Festival(cast), // #437: the camp gathers to watch the white wolf (B21.d; its own beats: #441)
-                MomentKind.Ritual => plan.Festival(cast), // #721: the gathering at the fire (signed off) until each ritual's own beats are specced and signed off
+                MomentKind.Ritual => plan.Ritual(cast), // S-ritual: each ritual's own plan (B72-B75); the festival's gathering where it has no target
                 _ => plan.Fail("not a staged kind"),
             };
             if (!ok) return null;

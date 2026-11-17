@@ -273,6 +273,13 @@ namespace AquariumCiv.View
         BarnChores,
         /// <summary>B59.l: kids jump in the hay heap by the barn.</summary>
         HayJump,
+        // S-ritual (View/Beats/RitualScenes.cs, View/CampLife.Rituals.cs)
+        /// <summary>B75.b: a kid finds the offering basket empty in spring and runs to the fire with it held up.</summary>
+        OfferingEmpty,
+        /// <summary>B77.a: a fisher sorts the catch sitting on the upside-down boat (work).</summary>
+        BoatSort,
+        /// <summary>B77.b: the kids' house round the boat: a knock, a head pops up, they sit on it (life).</summary>
+        BoatHouse,
     }
 
     /// <summary>#694: what a dog or a visiting wolf does in a <see cref="QuadPart"/> (P0's moves; CampLife.Dogs poses them).</summary>
@@ -387,7 +394,9 @@ namespace AquariumCiv.View
     public enum CampMark { None, WetPatch, RingStone, Twig, Pebble, Topple, Horse, GrassBits, EarFlower, Flatten,
         // #692 part 5 (CampFxKind.Leave; View/CampLife.Camp.cs)
         Toy, Beads, ToySpin, LanternLit, Crown, PurpleMouth, WipeMouth, Gift, DamPool, DamBreak, Boat, SkipSplash, SwingRope, SwingHung,
-        WeedPulled, FishTaken, ReedsFlat, MothClap, StripTouch }
+        WeedPulled, FishTaken, ReedsFlat, MothClap, StripTouch,
+        /// <summary>S-ritual (B72): purple berry dots on both hands, worn until the next meal.</summary>
+        PurpleHands }
 
     /// <summary>Where an effect is: on the ground at a box point (<see cref="CampFx.at"/> x, z; y above the ground), or at a member's hand,
     /// head or held twig's tip (plus <see cref="CampFx.at"/> as a world-up offset in box units).</summary>

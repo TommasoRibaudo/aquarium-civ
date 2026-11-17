@@ -434,7 +434,7 @@ namespace AquariumCiv.View
             if (now.day != campDay) { campDay = now.day; peekedToday.Clear(); }
             for (int i = stripTouches.Count - 1; i >= 0; i--) if (time - stripTouches[i].at > 2f || time < stripTouches[i].at) stripTouches.RemoveAt(i);
             if (meatStrips > 0 && now.day - meatDay >= CampGeo5.StripDays) meatStrips = 0;
-            if (meals != null && meals.Eaters > 0) worn5.RemoveAll(w => w.kind == CampMark.PurpleMouth && w.fadeAt < 0f && ViewHours - (w.until - 24f) > 0.05f); // the next meal wipes it
+            if (meals != null && meals.Eaters > 0) worn5.RemoveAll(w => (w.kind == CampMark.PurpleMouth || w.kind == CampMark.PurpleHands) && w.fadeAt < 0f && ViewHours - (w.until - 24f) > 0.05f); // the next meal wipes it
             if (sim != null && sim.EcologyOn && sim.State.eco.rabbitCatchDay == now.day && meatDay != now.day && Hour > 15f && !OnlyCheats) { meatStrips = 2; meatDay = now.day; } // [est] the day's catch: two strips hang beside the fish
             if (sim != null && sim.EcologyOn && sim.State.eco.deerHuntDay == now.day && sim.State.eco.deerHuntDone > 0 && meatDay != now.day && Hour > 15f && !OnlyCheats) { meatStrips = CampGeo5.MaxStrips; meatDay = now.day; }
             if (swingRope && swingCell >= 0 && LandBox != null && LandBox.layout.eco.At(swingCell) != EcoLayer.Tree) { swingRope = swingHung = false; swingCell = -1; } // the tree is gone: the swing with it
@@ -1224,6 +1224,8 @@ namespace AquariumCiv.View
         /// <summary>#692 p5 retakes: the worn crown's scale (the ring's 0.022 radius to 1.2 x the head's 0.043) and how far up the head it sits
         /// (x the head's radius) [est].</summary>
         public const float CrownOnHead = 2.35f, CrownRise = 0.45f;
+        /// <summary>S-ritual (B72): a purple hand dot drawn at this scale of the purple mouth's (0.015 u → 0.012 u... ×1.6 to read at phone scale) [est].</summary>
+        public const float PurpleHandDot = 1.6f;
         /// <summary>#692 p5 retakes: the weed in the hand drawn at this scale (its 0.024 u read as nothing at phone scale) [est].</summary>
         public const float WeedInHand = 2f;
         /// <summary>#692 p5 retakes: a toy or beads on a tent's pole drawn at this scale [est].</summary>
@@ -1443,6 +1445,17 @@ namespace AquariumCiv.View
                     m.position = head + v.transform.up * (PegDoll.HeadR * CrownRise * v.scale * root.lossyScale.y);
                     m.rotation = v.transform.rotation;
                     m.localScale = Vector3.one * (CrownOnHead * v.scale);
+                }
+                else if (w.kind == CampMark.PurpleHands)
+                {
+                    // S-ritual (B72): a purple dot at each arm's end (0.012 u; the pose carries the end beat, the colour is a bonus)
+                    foreach (var arm in new[] { v.armL, v.armR })
+                    {
+                        var m = Next(MMouth);
+                        m.position = arm.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f));
+                        m.rotation = v.transform.rotation;
+                        m.localScale = Vector3.one * Mathf.Max(0.8f, v.scale) * PurpleHandDot;
+                    }
                 }
                 else
                 {
