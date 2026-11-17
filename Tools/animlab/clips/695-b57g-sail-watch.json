@@ -13,16 +13,16 @@
    "return \"waiting for the village\";",
    "return \"waiting for the village\";",
    "return AquariumCiv.View.PeopleView.DebugSetHour(11.0f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
-   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.SailWatch());"
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.SailWatch() + \" | \" + AquariumCiv.View.PeopleView.Find().Camp.SailSpotNote);"
   ],
   "warm": 0.5,
   "seconds": 9,
   "fps": 30,
   "follow": "camp",
-  "span": 2.1,
-  "closeSpan": 1.15,
+  "span": 1.8,
+  "closeSpan": 0.9,
   "yaw": 28,
-  "pitch": 14,
+  "pitch": 20,
   "lead": 0.5
  }
 }

@@ -423,6 +423,8 @@ namespace AquariumCiv.View
             // bedtime and mealtime end a use: whoever's plan has gone to sleep or to eat leaves the scene (the work share: under 2 %)
             foreach (var a in acts)
                 if ((a.kind == ActivityKind.Sleep || a.kind == ActivityKind.Eat && !OnlyCheats) && byKey.TryGetValue(a.who.Key, out var sc) && IsVillageUse(sc.use)) { int m = sc.IndexOf(a.who.Key); if (m >= 0) { sc.parts[m].Clear(); SleepCut++; } }
+            foreach (var a in acts)
+                if (byKey.TryGetValue(a.who.Key, out var sc3) && IsVillageUse(sc3.use) && sc3 != forced && HeldElsewhere(a)) { int m = sc3.IndexOf(a.who.Key); if (m >= 0) sc3.parts[m].Clear(); }
             Index();
             PeopleView.KeepClear.Clear();
             foreach (var sc2 in scenes)
@@ -513,6 +515,10 @@ namespace AquariumCiv.View
             for (int i = 0; i < cand.Count && r.Count < max; i++) r.Add(cand[i].k);
             return r;
         }
+
+        /// <summary>#695 (b58c): the cheat's scene has them now: a staged moment that starts meanwhile (a town's market watch) doesn't take them out
+        /// of it (they walked back to the moment and the clip saw nobody at the bakery door).</summary>
+        public bool CheatHolds(int key) => forced != null && scenes.Contains(forced) && forced.keys.Contains(key) && forced.TryPart(key, clock, out _, out _);
 
         /// <summary>The first bedtimes are 19.2 h (LifePlanner.Day): no use starts after this.</summary>
         public const float LastStart = 18.2f;
@@ -718,21 +724,25 @@ namespace AquariumCiv.View
             if (kids.Count == 0) return "no kid free ('Two kids join the camp' first)";
             var front = LotDir(mill, 0f, -1f);
             var want = (front + ToCam(mill.Pos)).normalized; if (want.sqrMagnitude < 0.01f) want = front;
-            float rr = mill.era == Era.Town ? 0.52f : 0.46f;
-            // the seats on open ground: never in a field (the crop hides a sitting kid), on a piece or by the glass; the side nearest the
-            // camera's and the sails' first
-            Vector2 dir = want; float best = -9f;
-            for (int k = 0; k < 24; k++)
-            {
-                var d = CampScenes5.Rot(want, k * 15f);
-                var acr = new Vector2(-d.y, d.x);
-                bool ok = true;
-                foreach (var q in new[] { mill.Pos + d * rr - acr * 0.05f, mill.Pos + d * rr + acr * 0.06f })
-                    if (!Terrain.InBox(q.x, q.y, 0.3f) || InAnyField(q, 0.06f) || Blocked(q, 0.05f, mill) || UnderTree(q, 0.05f)) ok = false;
-                float score = Vector2.Dot(d, want);
-                if (ok && score > best) { best = score; dir = d; }
-            }
-            if (best < -1f) return "no open ground by the windmill to sit on";
+            // the seats on open ground 0.3-0.5 u out (never in a field, on a piece, under a tree or by the glass), with nothing standing for 1 u
+            // behind them (where a camera frames the kids with the sails over their heads); the camera's side breaks ties [est]
+            Vector2 dir = want; float best = -9f, rr = 0.4f; SailSpotNote = "";
+            for (int k = 0; k < 36; k++)
+                for (float r0 = 0.3f; r0 <= 0.501f; r0 += 0.1f)
+                {
+                    var d = CampScenes5.Rot(want, k * 10f);
+                    var acr = new Vector2(-d.y, d.x);
+                    bool ok = true;
+                    foreach (var q in new[] { mill.Pos + d * r0 - acr * 0.05f, mill.Pos + d * r0 + acr * 0.06f })
+                        if (!Terrain.InBox(q.x, q.y, 0.3f) || InAnyField(q, 0.06f) || Blocked(q, 0.05f, mill) || UnderTree(q, 0.05f)) ok = false;
+                    if (!ok) continue;
+                    float view = 0f; // how much of the 1 u behind the seats is clear
+                    for (float e = 0.15f; e <= 1.0f; e += 0.1f) { var q = mill.Pos + d * (r0 + e); if (Terrain.InBox(q.x, q.y, 0.1f) && !Blocked(q, 0.06f, mill) && !UnderTree(q, 0.0f)) view += 0.1f; }
+                    float score = view * 3f + Vector2.Dot(d, want) * 0.5f - Mathf.Abs(r0 - 0.4f);
+                    if (score > best) { best = score; dir = d; rr = r0; }
+                }
+            if (best > -9f && best < 2.4f) SailSpotNote = "no spot with a clear view behind: the clearest one";
+            if (best <= -9f) return "no open ground by the windmill to sit on";
             var across = new Vector2(-dir.y, dir.x);
             var seats = new List<Vector2> { mill.Pos + dir * rr - across * 0.05f, mill.Pos + dir * rr + across * 0.06f };
             if (LabYaw.HasValue) LabCamYaw = YawFor(dir); // AnimLab: behind the kids, the sails over their heads
@@ -928,6 +938,22 @@ namespace AquariumCiv.View
             return $"{sim.State.era}: {homes} homes, {wells} wells, {mills} mills, {lumber} lumber mills, {bakeries} bakeries, {L.fields.Count} fields, {L.paths.Count} paths; scarecrows {scarecrows.Count}, grids {grids.Count}; playing: {VillageCast()}";
         }
 
+        /// <summary>Debug: the newest village scene's cast: each doll's view (active, world position, scale) and where it is drawn.</summary>
+        public string VillageDolls()
+        {
+            CampScene s = null; foreach (var x in scenes) if (IsVillageUse(x.use)) s = x;
+            if (s == null) return "no village scene";
+            var sb = new System.Text.StringBuilder($"{s.use} focus {s.focus} t {clock - s.t0:0.0}/{s.Length:0.0}:");
+            foreach (int k in s.keys)
+            {
+                var v = pv.ViewOf(k);
+                s.TryPart(k, clock, out var part, out _);
+                PersonActivity act = default; foreach (var a2 in pv.Activities) if (a2.who.Key == k) act = a2;
+                sb.Append($" [{k} {act.kind}{(act.moving ? "~" : "")} {act.place.kind} tent {act.tent} hunt {act.hunt} held {HeldElsewhere(act)} staged {(PeopleView.StagedSpot != null && PeopleView.StagedSpot(act, now, out _, out _, out _))} life {(PeopleView.LifeSpot != null && PeopleView.LifeSpot(act, now, out _, out _, out _))} start {(PeopleView.StartHook != null && PeopleView.StartHook(act, out _))} view {(v == null ? "null" : $"{v.gameObject.activeInHierarchy} at {v.transform.localPosition} scale {v.scale:0.00} parent {v.transform.parent?.name}")} drawn {At(k)} part {(part == null ? "none" : part.style + " to " + part.pos)}]");
+            }
+            return sb.ToString();
+        }
+
         /// <summary>Debug: every person's stage, activity and whether they are drawn, free or in a scene.</summary>
         public string VillageWho()
         {
@@ -939,6 +965,9 @@ namespace AquariumCiv.View
             sb.Append($" | nearest grown (cheat) {string.Join(",", VPick(pv.Activities, mid, a => IsGrown(a), 4, true))}; kids {string.Join(",", VPick(pv.Activities, mid, a => IsKid(a), 4, true))}");
             return sb.ToString();
         }
+
+        /// <summary>B57.g: why the watchers sit where they do (empty: a clear spot on open ground).</summary>
+        public string SailSpotNote { get; private set; } = "";
 
         /// <summary>Tests: how many of a home's things show now, all homes together.</summary>
         public int HomeThingsShown { get { int n = 0; foreach (var kv in homeExtras) n += kv.Value; return n; } }
@@ -1307,6 +1336,7 @@ namespace AquariumCiv.View
         public static string BarnChores() => Do(CampUse.BarnChores);
         public static string HayJump() => Do(CampUse.HayJump);
         public static string VillageStatus() { var c = Camp; return c == null ? "no PeopleView" : c.VillageStatus(); }
+        public static string VillageDolls() { var c = Camp; return c == null ? "no PeopleView" : c.VillageDolls(); }
         public static string VillageWho() { var c = Camp; return c == null ? "no PeopleView" : c.VillageWho(); }
     }
 }

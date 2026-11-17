@@ -1046,3 +1046,7 @@ Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or
   moment (`tenting`), never at the camp cue; the kids walked back to it. `CampLife.VPick` skips them (`HeldElsewhere`). [verified: probe]
 - **`restart-editor.sh` sat 10 min twice when a `.cs` had been saved during the live batch before it** (the quit waited on the compile).
   Edit code only between batches; restarts between batches took 35-50 s. [verified]
+- **2026-11-17 · b58c: a staged moment took a cheat's cast mid-scene.** The probe (`CampCheats.VillageDolls()`) showed the bakery kids'
+  activity turn to Watch@Fire/Market (`PeopleView.StagedSpot` true) a few seconds after the cheat cast them: PeopleView draws a staged moment
+  over a camp cue, so they walked off to it and the clip saw nobody at the door. A cheat's own scene now wins (`CampLife.CheatHolds`, checked
+  before `StagedSpot` and `LifeSpot` in PeopleView.Drive); a natural village use drops a member a moment takes. [verified: clip]

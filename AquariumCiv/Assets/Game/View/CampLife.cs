@@ -152,7 +152,7 @@ namespace AquariumCiv.View
         Vector2? At(int key) => pv.DrawnAt(key);
 
         /// <summary>The cook seated at the fire (MealDirector's −1 none read as <see cref="Nobody"/>).</summary>
-        int CookKey => meals.CookAtFire == -1 ? Nobody : meals.CookAtFire;
+        int CookKey => meals.CookAtFire;
 
         /// <summary>The free person nearest <paramref name="to"/> within <paramref name="reach"/> who passes <paramref name="ok"/> (<see cref="Nobody"/> none: a crowd member's key is negative).</summary>
         int Nearest(IReadOnlyList<PersonActivity> acts, Vector2 to, float reach, Func<PersonActivity, bool> ok, ICollection<int> not = null, bool free = true)

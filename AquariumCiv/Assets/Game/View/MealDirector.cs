@@ -93,7 +93,7 @@ namespace AquariumCiv.View
         {
             fireEaters.Clear(); seatedKeys.Clear(); seatedPos.Clear(); candidates.Clear();
             HasFire = false;
-            CookAtFire = -1;
+            CookAtFire = VillageScenes.Nobody;
             int eaters = 0, giverKey = -1, kidKey = -1, cookKey = -1;
             for (int i = 0; i < acts.Count; i++)
             {
@@ -168,7 +168,7 @@ namespace AquariumCiv.View
         public IReadOnlyList<int> Sitters => candidates;
         /// <summary>How many eat at the fire now (a meal on), and the cook standing at the pot (−1 none).</summary>
         public int Eaters { get; private set; }
-        public int CookAtFire { get; private set; } = -1;
+        public int CookAtFire { get; private set; } = VillageScenes.Nobody; // #695: no cook (crowd keys are negative)
         /// <summary>B30.b: the dip windows (scene seconds, x from, y to) of the last bowl round, its giver, where the giver dips, and a
         /// counter that moves on with each new round.</summary>
         public readonly List<Vector2> Dips = new List<Vector2>();

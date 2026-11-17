@@ -563,8 +563,8 @@ namespace AquariumCiv.View
             bool started = !hunting && StartHook != null && stage != LifeStage.Baby && !Camp.Busy(a.who.Key) /* #692: a cheat's use takes them from a new-start scene */ && StartHook(a, out startCue);
             if (started) { x = startCue.pos.x; z = startCue.pos.y; huntFace = startCue.face; }
             bool tenting = !hunting && (started || (a.tent != TentPhase.None && TentSpot(a, out x, out z, out huntFace)) // #284: the planned walk to the frame and the lot
-                || (StagedSpot != null && StagedSpot(a, now, out x, out z, out huntFace)) // #370: a staged moment's own spots (the aisle, the ring, the glass) ride the same path
-                || (LifeSpot != null && LifeSpot(a, now, out x, out z, out huntFace))); // #427: a placed-life scene holds them (the dawn drink: stop and watch)
+                || (StagedSpot != null && !Camp.CheatHolds(a.who.Key) && StagedSpot(a, now, out x, out z, out huntFace)) // #370: a staged moment's own spots (the aisle, the ring, the glass) ride the same path; #695: never over a cheat's use
+                || (LifeSpot != null && !Camp.CheatHolds(a.who.Key) && LifeSpot(a, now, out x, out z, out huntFace))); // #427: a placed-life scene holds them (the dawn drink: stop and watch)
             if (hunting || tenting) hidden = false;
             else if (!planner.PositionAt(a.who, now, out x, out z) && !planner.Positions.TryGetPosition(a.place, out x, out z)) hidden = true;
             if (hidden && stage == LifeStage.Kid && HideReason != null) HideReason($"{a.who} hidden by Drive: kind {a.kind} place {a.place.kind} moving {a.moving} (kind None, or no position for the plan: #698 diagnosis)");
