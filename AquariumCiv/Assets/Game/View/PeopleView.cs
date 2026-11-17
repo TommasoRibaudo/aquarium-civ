@@ -320,6 +320,7 @@ namespace AquariumCiv.View
                 blockers.Add((new Vector2(pile.x, pile.z), CampStash.PileExtent + StashBlockMargin)); // #150
                 solids.Add(new Solid(pile.x, pile.z, CampStash.PileExtent));
             }
+            solids.AddRange(ExtraSolids); // #694: a sleeping dog
             var st = sim.Settlement;
             int lots = st != null ? st.Lots.Count : 0;
             if (sim.State.month != lotsMonth || lots != lotsCount)
@@ -871,6 +872,7 @@ namespace AquariumCiv.View
             StagedPose?.Invoke(a, v, ref pose); // #370: a staged moment's one-shot beats (a cheer, a bow, the lift, the ring)
             LifePose?.Invoke(a, v, ref pose); // #427: a placed-life scene's beats (the kid holding still, the "shh", a point)
             NestPose?.Invoke(a, v, ref pose); // #709: the kids' look and the gatherer's take at the nest (NestView)
+            DogPose?.Invoke(a, v, ref pose); // #694 B56.a: the hunter's whistle before and the pat after (CampLife.Dogs)
             if (poking) MealBeats.Poke.Apply(ref pose, pokeSince); // #365 B9.c: up from the sit, the stick into the fire, back down
             if (camping && campPart.pose != null && (!walking || campPart.poseWalking || !campMoves)) campPart.pose(ref pose, campInto, campPart.Len); // #692
             if (toddling) ToddleFollow.ToddlerPose(ref pose, a.who.Key, time); // 2026-11-06: the plop
@@ -1625,6 +1627,10 @@ namespace AquariumCiv.View
         public static StagedPoseHook LifePose;
         /// <summary>#709: the nest's beats (NestView): B71.c the kids' look, B71.d the gatherer's take, laid over the pose after the scenes'.</summary>
         public static StagedPoseHook NestPose;
+        /// <summary>#694 (B56.a): the hunter's whistle and the pat on the dog, laid over a real hunt's poses (CampLife.Dogs).</summary>
+        public static StagedPoseHook DogPose;
+        /// <summary>#694 (B56.e): things people step round this frame (a dog asleep by the fire), filled by CampLife.Dogs.</summary>
+        public static readonly List<Solid> ExtraSolids = new();
 
         /// <summary>#656/#677: what a new-start scene asks of one person this frame: where they stand (box units), what they face, the
         /// pose while they stand still, and what they hold.</summary>

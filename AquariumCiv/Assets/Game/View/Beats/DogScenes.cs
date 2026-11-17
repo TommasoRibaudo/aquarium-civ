@@ -24,6 +24,8 @@ namespace AquariumCiv.View
         public const float SunOut = 0.14f;
         /// <summary>B56.d: the kid's seat on a big dog's back (+0.1 u) and the ride (0.4 u, slowly).</summary>
         public const float RideSeat = 0.1f, RideLen = 0.4f, RideSpeed = 0.07f;
+        /// <summary>B24.b: the kids' race lane (kept short, on the bare earth by the fire) [est].</summary>
+        public const float RaceLen = 0.65f;
         /// <summary>B56.c: the stick's arc (h 0.12, 0.5 s) and how far it flies.</summary>
         public const float FetchH = 0.12f, FetchT = 0.5f, FetchFar = 0.45f;
         /// <summary>B25.b: the bark's hop forward (each of three) and the bark's beat.</summary>
@@ -159,7 +161,7 @@ namespace AquariumCiv.View
 
         // ================================================================== shared people poses
         /// <summary>B56.a: the whistle: a hand to the mouth (x 130), two head jabs.</summary>
-        static void WhistlePose(ref DollPose p, float t, float len)
+        internal static void WhistlePose(ref DollPose p, float t, float len)
         {
             float u = In(t, 0f, 0.2f) * (1f - In(t, len - 0.2f, 0.2f));
             p.armR = Lerp(p.armR, new Vector3(130f, 0f, -18f), u);
@@ -178,7 +180,7 @@ namespace AquariumCiv.View
             JabPose(ref p, t, len);
         }
         /// <summary>A crouch and two pats on the dog (arm x 60).</summary>
-        static void PatPose(ref DollPose p, float t, float len)
+        internal static void PatPose(ref DollPose p, float t, float len)
         {
             CrouchPose(ref p, t, len);
             float pat = Mathf.Max(Bump(t, 0.3f, 0.35f), Bump(t, 0.8f, 0.35f));
@@ -208,7 +210,7 @@ namespace AquariumCiv.View
         {
             float off = slideAt >= 0f ? In(t, slideAt, 0.5f) : 0f;
             float up = In(t, 0f, 0.4f) * (1f - off);
-            Seated(ref p); p.offset.y = Mathf.Lerp(-0.03f, DogGeo.RideSeat - 0.01f, up) + 0.006f * Mathf.Abs(Mathf.Sin(t * 5f)) * up;
+            Seated(ref p); p.offset.y = Mathf.Lerp(-0.03f, DogGeo.RideSeat / PegDoll.KidScale - 0.01f, up) + 0.01f * Mathf.Abs(Mathf.Sin(t * 5f)) * up; // the offset is in the doll's own (adult) units: a kid is 0.68
             p.squash = Mathf.Lerp(1f, 0.8f, up);
             p.armL = Lerp(p.armL, new Vector3(60f, 0f, -10f), up); p.armR = Lerp(p.armR, new Vector3(60f, 0f, 10f), up);
             p.roll += 12f * off;
@@ -386,7 +388,7 @@ namespace AquariumCiv.View
         public static CampScene PupRunAlong(int dog, Vector2 dogAt, IList<int> kids, IList<Vector2> at, Vector2 start, Vector2 along, Vector2 toCam, float t0)
         {
             toCam = Unit(toCam, Vector2.down); along = Unit(along, Across(toCam));
-            var end = start + along * 0.9f;
+            var end = start + along * DogGeo.RaceLen;
             var s = new CampScene(CampUse.PupRunAlong, t0, (start + end) * 0.5f) { dog = dog, holdFocus = true };
             float t = 0f; var ms = new List<int>();
             for (int i = 0; i < kids.Count && i < 2; i++)
@@ -401,13 +403,13 @@ namespace AquariumCiv.View
             float dw = QTime(dogAt, dlane, DogGeo.DogTrot);
             s.Quad(Dog, 0f, Mathf.Max(t, dw), dlane, end, QuadAct.Wag, DogGeo.DogTrot);
             t = Mathf.Max(t, dw) + 0.4f;
-            float leg = 0.9f / KidRun;
+            float leg = DogGeo.RaceLen / KidRun;
             for (int i = 0; i < ms.Count; i++)
             {
                 var lane = start + toCam * (i == 0 ? 0.05f : -0.05f);
                 float sp = KidRun * (i == 0 ? 1f : 0.92f);
                 s.Part(ms[i], Mathf.Max(t - 0.4f, s.parts[ms[i]][0].to), t, lane, end, DollStyle.Stand);
-                Go(s, ms[i], t, leg / (sp / KidRun), lane + along * 0.9f, end, sp, true);
+                Go(s, ms[i], t, leg / (sp / KidRun), lane + along * DogGeo.RaceLen, end, sp, true);
                 Go(s, ms[i], t + leg / (sp / KidRun), leg / (sp / KidRun), lane, start, sp, true);
                 s.Part(ms[i], t + 2f * leg / (sp / KidRun), t + 2f * leg + 2.4f, lane, dlane, DollStyle.Cheer);
             }
@@ -483,7 +485,7 @@ namespace AquariumCiv.View
         public static CampScene DogGuard(int dog, Vector2 dogAt, in WolfDriveOff.Plan plan, Vector2 fire, int grown, Vector2 grownAt, Vector2 toCam, float t0)
         {
             toCam = Unit(toCam, Vector2.down);
-            var s = new CampScene(CampUse.DogGuard, t0, Vector2.Lerp(fire, plan.wolfStop, 0.4f)) { holdFocus = true, dog = dog };
+            var s = new CampScene(CampUse.DogGuard, t0, Vector2.Lerp(fire, plan.wolfStop, 0.6f)) { holdFocus = true, dog = dog };
             float wIn = QTime(plan.wolfStart, plan.wolfStop, DogGeo.WolfTrot);
             s.Quad(Wolf, 0f, wIn, plan.wolfStop, fire, QuadAct.Stand, DogGeo.WolfTrot);
             var guard = fire + plan.dir * Mathf.Max(0.35f, (plan.wolfStop - fire).magnitude * 0.45f);
@@ -540,7 +542,7 @@ namespace AquariumCiv.View
         public static CampScene DriveOff(IList<int> who, IList<Vector2> at, in WolfDriveOff.Plan plan, Vector2 fire, Vector2 toCam, float t0, IList<Vector2> startAt = null)
         {
             toCam = Unit(toCam, Vector2.down);
-            var s = new CampScene(CampUse.WolfDriveOff, t0, Vector2.Lerp(fire, plan.wolfStop, 0.45f)) { holdFocus = true };
+            var s = new CampScene(CampUse.WolfDriveOff, t0, Vector2.Lerp(fire, plan.wolfStop, 0.6f)) { holdFocus = true };
             float wIn = QTime(plan.wolfStart, plan.wolfStop, DogGeo.WolfTrot);
             var ms = new List<int>(); foreach (int k in who) ms.Add(s.Add(k));
             float seatBy = 0f;
@@ -723,8 +725,8 @@ namespace AquariumCiv.View
             toCam = Unit(toCam, Vector2.down); along = Unit(along, Across(toCam));
             var end = spot + along * DogGeo.RideLen;
             var s = new CampScene(CampUse.DogRide, t0, (spot + end) * 0.5f) { holdFocus = true, dog = dog };
-            float dw = QTime(dogAt, spot, DogGeo.DogWalk);
-            s.Quad(Dog, 0f, dw, spot, end, QuadAct.Stand, DogGeo.DogWalk);
+            float dw = QTime(dogAt, spot, DogGeo.DogTrot);
+            s.Quad(Dog, 0f, dw, spot, end, QuadAct.Stand, DogGeo.DogTrot);
             int m = s.Add(small);
             var climb = spot + toCam * 0.06f;
             float kw = WalkTime(smallAt, climb, KidWalk);
@@ -742,7 +744,7 @@ namespace AquariumCiv.View
             if (older >= 0)
             {
                 o = s.Add(older);
-                var beside0 = spot + toCam * 0.09f; var beside1 = end + toCam * 0.09f;
+                var beside0 = spot - toCam * 0.1f; var beside1 = end - toCam * 0.1f; // the far side, so the camera sees the rider
                 float ow = WalkTime(olderAt, beside0, KidWalk);
                 s.Part(o, 0f, Mathf.Max(ow, t), beside0, spot, DollStyle.Stand, null, PropKind.None, KidWalk);
                 s.Part(o, Mathf.Max(ow, t), t + ride, beside1, end, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.armL = Lerp(p.armL, new Vector3(70f, 0f, -20f), In(u, 0f, 0.3f)); }, PropKind.None, DogGeo.RideSpeed).poseWalking = true;
@@ -753,7 +755,7 @@ namespace AquariumCiv.View
             var off = end + toCam * 0.07f;
             var down = s.Part(m, t, t + 1f, off, end + toCam, DollStyle.Sit, (ref DollPose p, float u, float l) => { RidePose(0.4f)(ref p, u + 0.4f, l); }, PropKind.None, 0.1f); down.poseWalking = true; down.carried = true;
             s.Part(m, t + 1f, t + 2.8f, off, end, DollStyle.Laugh);
-            if (o >= 0) s.Part(o, t, t + 2.8f, end + toCam * 0.09f, off, DollStyle.Laugh);
+            if (o >= 0) s.Part(o, t, t + 2.8f, end - toCam * 0.1f, off, DollStyle.Laugh);
             Go(s, m, t + 2.8f, 1f, off + toCam * 0.25f, off + toCam, KidWalk);
             return s;
         }

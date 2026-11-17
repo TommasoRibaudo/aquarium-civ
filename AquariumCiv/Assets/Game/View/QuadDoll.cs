@@ -468,8 +468,10 @@ namespace AquariumCiv.View
                         float hl = l.headLen, r = hl * 0.42f * l.headRound;
                         var face = l.paleFace ? Color.Lerp(l.coat, l.belly, 0.55f) : l.coat;
                         if (l.kind == QuadKind.Dog && l.patch > 0.5f) face = Color.Lerp(face, l.patchCol, 0.85f); // the blaze
-                        if (l.greyMuzzle) face = new Color(0.86f, 0.86f, 0.84f); // #694 B25.c: grey round the muzzle
-                        mb.Ico(new Vector3(0f, r * 0.25f, hl * 0.18f), r, new Vector3(0.9f, 0.9f, 1.05f), l.coat, 0.05f, l.belly);
+                        var grey = new Color(0.72f, 0.72f, 0.70f);
+                        if (l.greyMuzzle) face = grey; // #694 B25.c: the whole snout grey (a flat mid grey, not the blaze's white)
+                        mb.Ico(new Vector3(0f, r * 0.25f, hl * 0.18f), r, new Vector3(0.9f, 0.9f, 1.05f), l.greyMuzzle ? Color.Lerp(l.coat, grey, 0.35f) : l.coat, 0.05f, l.belly);
+                        if (l.greyMuzzle) foreach (int sd in new[] { -1, 1 }) mb.Ico(new Vector3(sd * r * 0.58f, r * 0.43f, hl * 0.27f), r * 0.34f, Vector3.one, grey, 0.02f); // grey round the eyes
                         float ml = hl * 0.38f * l.muzzle;
                         mb.Ico(new Vector3(0f, r * 0.02f, hl * 0.2f + r * 0.6f + ml * 0.5f), Mathf.Max(ml, 0.006f), new Vector3(r * 0.55f / Mathf.Max(ml, 0.006f), r * 0.5f / Mathf.Max(ml, 0.006f), 1f), face, 0.04f);
                         mb.Ico(new Vector3(0f, r * 0.12f, hl * 0.2f + r * 0.6f + ml * 1.0f), r * 0.2f, Vector3.one, new Color(0.07f, 0.06f, 0.05f), 0.02f); // nose

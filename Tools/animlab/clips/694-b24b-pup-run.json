@@ -19,13 +19,13 @@
    "return AquariumCiv.View.CampCheats.Later(3.0f, () => AquariumCiv.View.CampCheats.PupRunAlong());"
   ],
   "warm": 0.5,
-  "seconds": 9,
+  "seconds": 8,
   "fps": 30,
   "follow": "camp",
-  "span": 1.9,
-  "closeSpan": 0.55,
+  "span": 1.8,
+  "closeSpan": 0.95,
   "yaw": 28,
   "pitch": 35,
-  "lead": 2.5
+  "lead": 3.5
  }
 }

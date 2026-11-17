@@ -40,6 +40,13 @@ namespace AquariumCiv.View
         long wolfNight = long.MinValue; int howlsSeen = -1; float howlHoldUntil = -1f;
         readonly List<Vector3> wolfBuf = new();
         readonly Dictionary<int, HuntPhase> huntWas = new();
+        readonly Dictionary<int, float> huntSince = new();
+        readonly Dictionary<int, HuntPhase> huntPh = new();
+        Mesh glowMesh; Transform glowT;
+        readonly List<Vector3> glPos = new(); readonly List<Vector2> gUv0 = new(), gUv1 = new(), gUv2 = new(); readonly List<Color> gCol = new(); readonly List<int> gTri = new();
+        /// <summary>Tests and the readout: frames the visiting wolf's eyes glowed; frames the torch lit the ground toward it.</summary>
+        public int EyeFrames { get; private set; }
+        public int TorchLightFrames { get; private set; }
 
         /// <summary>Tests and the readout: dogs drawn now; frames the visiting wolf broke a hard rule (a person within 0.3 u, inside the tent
         /// ring); its nearest approach to the people driving it off; frames it was drawn; the flushes at the hunt.</summary>
@@ -74,8 +81,12 @@ namespace AquariumCiv.View
             if (stickT != null) Kill(stickT.gameObject);
             stickT = null;
             if (dogHolder != null) Kill(dogHolder.gameObject);
-            dogHolder = null;
+            dogHolder = null; glowT = null;
+            if (glowMesh != null) Kill(glowMesh);
+            glowMesh = null;
             WolfView.LentId = -1;
+            PeopleView.ExtraSolids.Clear();
+            if (PeopleView.DogPose == (PeopleView.StagedPoseHook)HuntPose) PeopleView.DogPose = null;
         }
 
         // ================================================================== who and where
@@ -132,6 +143,25 @@ namespace AquariumCiv.View
             return (a - pot).magnitude >= (b - pot).magnitude ? a : b;
         }
 
+        /// <summary>#694 fix round: a spot <paramref name="r"/> from the fire on the camera's side (within ±75 deg of it), the one with the most room
+        /// from the pot and from everyone drawn (the sitters at the fire hid the sleeping pup).</summary>
+        Vector2 FireSideClear(float r, int skip = 0)
+        {
+            var fire = meals.Fire; var pot = meals.PotHotSpot; var cam = ToCam(fire);
+            Vector2 best = fire + cam * r; float bs = -1f; int n = 0;
+            for (int k = 0; k <= 10; k++)
+            {
+                float deg = (k % 2 == 0 ? 1 : -1) * ((k + 1) / 2) * 15f;
+                var q = fire + Rotate(cam, deg) * r;
+                float room = (q - pot).magnitude - 0.08f;
+                foreach (var pa in pv.Activities) if (At(pa.who.Key) is Vector2 pp) room = Mathf.Min(room, (pp - q).magnitude);
+                foreach (var kv in dogActors) if (kv.Value.placed && n < skip) room = Mathf.Min(room, (kv.Value.pos - q).magnitude);
+                room -= Mathf.Abs(deg) * 0.0006f; // the nearer the camera's side, the better, other things equal
+                if (room > bs) { bs = room; best = q; }
+            }
+            return best;
+        }
+
         float AgeOf(int key) => key > 0 && sim?.FindNotable(key) is Notable n ? n.age : 10f;
 
         static bool RabbitHuntOut(HuntPhase h) => h is HuntPhase.WalkOut or HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.Bolt or HuntPhase.FetchSpear or HuntPhase.PullSpear
@@ -141,6 +171,9 @@ namespace AquariumCiv.View
         void StepDogs(IReadOnlyList<PersonActivity> acts, float time)
         {
             if (sim == null || planner == null || meals == null) return;
+            PeopleView.DogPose = HuntPose; // B56.a on the real hunts
+            foreach (var pa in acts)
+                if (!huntPh.TryGetValue(pa.who.Key, out var hw) || hw != pa.hunt) { huntPh[pa.who.Key] = pa.hunt; huntSince[pa.who.Key] = time; }
             StepDogMoments(time);
             if (OnlyCheats || sim.DogCount == 0 && !sim.WolvesPlaced) return;
             float h = Hour;
@@ -246,7 +279,7 @@ namespace AquariumCiv.View
         string TryPupSleep(IReadOnlyList<PersonActivity> acts, float time, bool force, Dog pup)
         {
             if (!meals.HasFire) return "no fire in the camp";
-            return StartDog(DogScenes.PupSleep(pup.id, DogNow(pup), meals.Fire, ToCam(meals.Fire), force ? 10f : 14f, time, FireSide(DogGeo.EmberSleep, 55f)), CampUse.PupSleep);
+            return StartDog(DogScenes.PupSleep(pup.id, DogNow(pup), meals.Fire, ToCam(meals.Fire), force ? 10f : 14f, time, FireSideClear(DogGeo.EmberSleep)), CampUse.PupSleep);
         }
 
         /// <summary>Where the meat and the fish are: the fish rack when drawn, else the stash, else beside the fire.</summary>
@@ -282,7 +315,7 @@ namespace AquariumCiv.View
             var kids = Pick(acts, at, a => IsKid(a), 2, force);
             if (kids.Count < 2) return "two kids needed ('Two kids join the camp' first)";
             var fire = meals.Fire;
-            var start = fire + ToCam(fire) * 0.65f - CameraAcross() * 0.45f; // in front of the fire, clear of the pot's tripod
+            var start = fire + ToCam(fire) * 0.42f - CameraAcross() * (DogGeo.RaceLen * 0.5f); // the bare earth in front of the fire, inside the frame
             return StartDog(DogScenes.PupRunAlong(pup.id, at, kids, AtAll(kids), start, CameraAcross(), ToCam(start), time), CampUse.PupRunAlong);
         }
 
@@ -329,7 +362,7 @@ namespace AquariumCiv.View
         {
             if (!meals.HasFire) return "no fire in the camp";
             int kid = Kid1(acts, meals.Fire, force);
-            return StartDog(DogScenes.DogFire(dog.id, DogNow(dog), meals.Fire, kid, kid >= 0 ? At(kid).Value : default, ToCam(meals.Fire), time, FireSide(DogGeo.FireSleep, 50f)), CampUse.DogFire);
+            return StartDog(DogScenes.DogFire(dog.id, DogNow(dog), meals.Fire, kid, kid >= 0 ? At(kid).Value : default, ToCam(meals.Fire), time, FireSideClear(DogGeo.FireSleep)), CampUse.DogFire);
         }
 
         string TryDogSun(IReadOnlyList<PersonActivity> acts, float time, bool force, Dog dog)
@@ -500,7 +533,7 @@ namespace AquariumCiv.View
                 dogHolder = new GameObject("Camp dogs") { hideFlags = HideFlags.DontSave }.transform;
                 dogHolder.SetParent(root, false);
                 foreach (var a in dogActors.Values) a.doll?.Destroy();
-                dogActors.Clear(); wolfDoll = null; stickT = null;
+                dogActors.Clear(); wolfDoll = null; stickT = null; glowT = null;
             }
             return dogHolder;
         }
@@ -557,8 +590,11 @@ namespace AquariumCiv.View
             var gone = new List<int>();
             foreach (var kv in dogActors) if (!keep.Contains(kv.Key)) gone.Add(kv.Key);
             foreach (int id in gone) { var a = dogActors[id]; a.doll?.Destroy(); if (a.held != null) Kill(a.held.gameObject); dogActors.Remove(id); }
+            PeopleView.ExtraSolids.Clear(); // B56.e: people step round a dog lying or asleep
+            foreach (var a in dogActors.Values) if (a.placed && !a.moving && a.act is QuadAct.Sleep or QuadAct.Lie or QuadAct.Chew) PeopleView.ExtraSolids.Add(new Solid(a.pos.x, a.pos.y, 0.07f));
             DrawVisitor(holder, material, time, groundAt);
             DrawFetchStick(holder, material, time, groundAt);
+            DrawGlows(holder, time, groundAt);
         }
 
         CampScene SceneOfDog(int id) { CampScene r = null; foreach (var s in scenes) if (s.dog == id) r = s; return r; }
@@ -628,13 +664,19 @@ namespace AquariumCiv.View
                     else { target = SunSpot(d, idx); act = QuadAct.Lie; speed = DogGeo.DogWalk; face = target + CameraAcross(); }
                 }
             }
+            if (st == DogStage.Old) speed = Mathf.Min(speed, DogGeo.DogWalk * 0.7f); // B25.c: the old dog takes its time
+            bool carriedMove = false;
+            // B56.d: while the kid is on its back the dog carries them: it walks where the rider is drawn (the two never drift apart)
+            if (s != null && s.use == CampUse.DogRide && s.Count > 0 && time - s.t0 >= s.a - 0.8f && time - s.t0 < s.b && At(s.keys[0]) is Vector2 rider)
+            { if ((rider - a.pos).magnitude < 0.25f) { var was = a.pos; a.pos = Vector2.MoveTowards(a.pos, rider, 0.3f * dt + 0.002f); if ((a.pos - was).sqrMagnitude > 1e-9f) { face = a.pos + (a.pos - was).normalized; carriedMove = (a.pos - was).magnitude > 0.0004f; } } target = a.pos; RideFrames++; }
             if (!a.placed) { a.pos = target; a.placed = true; a.yaw = 0f; }
             var dv = target - a.pos; float dist = dv.magnitude;
             bool moving = dist > 0.012f;
             if (moving) { a.pos += dv / dist * Mathf.Min(dist, speed * dt); }
+            if (carriedMove) { moving = true; speed = DogGeo.RideSpeed; } // walking under its rider
             if (moving != a.moving || act != a.act) { a.actSince = 0f; a.act = act; a.moving = moving; } else a.actSince += dt;
             a.speed = speed;
-            var lookTo = moving ? dv : face != Vector2.zero ? face - a.pos : Vector2.zero;
+            var lookTo = moving && !carriedMove ? dv : face != Vector2.zero ? face - a.pos : Vector2.zero;
             if (lookTo.sqrMagnitude > 1e-6f) a.yaw = Mathf.MoveTowardsAngle(a.yaw, Mathf.Atan2(lookTo.x, lookTo.y) * Mathf.Rad2Deg, 260f * Mathf.Max(dt, 0.016f));
             var pos = a.pos;
             if (!moving && act == QuadAct.Bark && face != Vector2.zero) pos += Dir2(a.pos, face) * DogGeo.BarkHop * Mathf.Min(3f, a.actSince / DogGeo.BarkEvery + 0.5f) * 0.5f;
@@ -825,15 +867,88 @@ namespace AquariumCiv.View
             if (bad) VisitorRuleBreaks++;
         }
 
+        /// <summary>B56.a on a real rabbit hunt with a grown dog: the hunter whistles (hand to the mouth, two jabs) as they take up the spear, and
+        /// crouches and pats the dog (two pats) as they set off home with the catch [est: the first 1.3 s / 1.6 s of those phases].</summary>
+        void HuntPose(in PersonActivity a, PegDollView view, ref DollPose pose)
+        {
+            if (sim == null || a.hunt == HuntPhase.None || sim.DogsAtHunt == 0 || !huntSince.TryGetValue(a.who.Key, out float t0)) return;
+            float u = clock - t0;
+            if (a.hunt == HuntPhase.TakeSpear && u < 1.3f) DogScenes.WhistlePose(ref pose, u, 1.3f);
+            else if (a.hunt == HuntPhase.CarryBack && u < 1.6f) { DogScenes.PatPose(ref pose, u, 1.6f); PatsSeen++; }
+        }
+        /// <summary>Tests: frames a hunter's pat on the dog was laid over a real hunt.</summary>
+        public int PatsSeen { get; private set; }
+        /// <summary>Tests: frames the dog carried its rider (B56.d).</summary>
+        public int RideFrames { get; private set; }
+
+        // ---- the visiting wolf's eye dots and the torch's light (the Glow shader: kind 1 lamp dots glow from dusk; kind 4 a warm pool on
+        // the ground; kind 7 a wash in front of what stands there). One small mesh rebuilt each frame.
+        void GlowQuad(Vector3 at, float radius, float kind, Vector2 extra, Color c)
+        {
+            int b = glPos.Count;
+            foreach (var cn in new[] { new Vector2(-1f, -1f), new Vector2(1f, -1f), new Vector2(1f, 1f), new Vector2(-1f, 1f) })
+            { glPos.Add(at); gUv0.Add(cn); gUv1.Add(new Vector2(radius, kind)); gUv2.Add(extra); gCol.Add(c); }
+            gTri.Add(b); gTri.Add(b + 2); gTri.Add(b + 1); gTri.Add(b); gTri.Add(b + 3); gTri.Add(b + 2);
+        }
+
+        void DrawGlows(Transform holder, float time, System.Func<float, float, float> groundAt)
+        {
+            glPos.Clear(); gUv0.Clear(); gUv1.Clear(); gUv2.Clear(); gCol.Clear(); gTri.Clear();
+            if (wolfDoll?.go != null && wolfDoll.go.activeInHierarchy && wGrow > 0.5f)
+            {   // B21.b / B55.a: the eye dots (two pale gold glints, 0.01 u) [est]
+                var head = wolfDoll.HeadWorld; var muz = wolfDoll.MuzzleWorld;
+                var fwd = muz - head; fwd.y = 0f; fwd = fwd.sqrMagnitude > 1e-8f ? fwd.normalized : Vector3.forward;
+                var right = Vector3.Cross(Vector3.up, fwd).normalized;
+                var mid = Vector3.Lerp(head, muz, 0.3f) + Vector3.up * 0.008f;
+                foreach (int sd in new[] { -1, 1 }) GlowQuad(holder.InverseTransformPoint(mid + right * (0.012f * sd)), 0.024f, 1f, Vector2.zero, new Color(1f, 0.86f, 0.45f) * 1.6f); // [est] big enough to show at phone scale
+                EyeFrames++;
+            }
+            foreach (var s in scenes)
+            {
+                if (s.use != CampUse.WolfDriveOff) continue;
+                float u = time - s.t0;
+                foreach (var tip in s.tips)
+                {
+                    if (tip.kind != CampTipKind.Ember || u < tip.from || u >= tip.to || tip.member >= s.Count || !(At(s.keys[tip.member]) is Vector2 tp)) continue;
+                    var toW = wolfDoll?.go != null && wolfDoll.go.activeInHierarchy ? wPos - tp : Vector2.zero;
+                    var c = tp + (toW.sqrMagnitude > 1e-4f ? toW.normalized * Mathf.Min(0.35f, toW.magnitude * 0.5f) : Vector2.zero);
+                    float ph = 0.37f;
+                    GlowQuad(new Vector3(c.x, groundAt(c.x, c.y) + 0.004f, c.y), 0.55f, 4f, new Vector2(ph, 1f), new Color(1f, 0.62f, 0.3f) * 0.9f); // the torch's warm pool
+                    if (toW.sqrMagnitude > 1e-4f) GlowQuad(new Vector3(wPos.x, groundAt(wPos.x, wPos.y) + 0.05f, wPos.y), 0.16f, 7f, new Vector2(ph, 0.05f), new Color(1f, 0.6f, 0.3f) * 0.8f); // its light on the wolf
+                    TorchLightFrames++;
+                    break;
+                }
+            }
+            if (glPos.Count == 0) { if (glowT != null) glowT.gameObject.SetActive(false); return; }
+            var mat = LandBox != null ? LandBox.GlowMaterial : null;
+            if (mat == null) return;
+            if (glowT == null)
+            {
+                var go = new GameObject("Wolf eyes and torch light") { hideFlags = HideFlags.DontSave };
+                go.transform.SetParent(holder, false);
+                go.AddComponent<MeshFilter>();
+                var r = go.AddComponent<MeshRenderer>(); r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
+                glowT = go.transform;
+            }
+            if (glowMesh == null) { glowMesh = new Mesh { name = "Dog_Glows", hideFlags = HideFlags.DontSave }; glowMesh.MarkDynamic(); }
+            glowMesh.Clear();
+            glowMesh.SetVertices(glPos); glowMesh.SetUVs(0, gUv0); glowMesh.SetUVs(1, gUv1); glowMesh.SetUVs(2, gUv2); glowMesh.SetColors(gCol); glowMesh.SetTriangles(gTri, 0);
+            glowMesh.bounds = new Bounds(Vector3.zero, Vector3.one * 20f);
+            glowT.GetComponent<MeshFilter>().sharedMesh = glowMesh;
+            glowT.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            glowT.gameObject.SetActive(true);
+        }
+
         /// <summary>The readout: the dogs and what each does.</summary>
         public string DogStatus()
         {
             if (sim == null) return "no sim";
             var sb = new System.Text.StringBuilder($"dogs {sim.DogCount} drawn {DogsDrawn}:");
-            foreach (var d in sim.Dogs) sb.Append($" {d.name} ({sim.DogStageOf(d)}, gen {d.gen}, keeper {d.keeperId}) {DogActOf(d.id)};");
+            foreach (var d in sim.Dogs) sb.Append($" {d.name} ({sim.DogStageOf(d)}, gen {d.gen}, keeper {d.keeperId}) {DogActOf(d.id)} at {(DogAt(d.id) is Vector2 dp ? $"({dp.x:0.00},{dp.y:0.00})" : "-")};");
             if (wolfDoll?.go != null) sb.Append($" visitor at ({wPos.x:0.00},{wPos.y:0.00}) shown {wolfDoll.go.activeSelf} scale {wGrow:0.00} lent {WolfView.LentId};");
             if (meals != null) sb.Append($" fire ({meals.Fire.x:0.00},{meals.Fire.y:0.00});");
             foreach (var sc in scenes) { sb.Append($" scene {sc.use} focus ({sc.focus.x:0.00},{sc.focus.y:0.00}) u {clock - sc.t0:0.0}/{sc.Length:0.0} cast"); foreach (int k in sc.keys) sb.Append(At(k) is Vector2 q ? $" {k}@({q.x:0.00},{q.y:0.00})" : $" {k}@-"); sb.Append(';'); }
+            sb.Append($" lamps {NightLamps.Level:0.00}, eye frames {EyeFrames}, torch light {TorchLightFrames}, pats {PatsSeen};");
             sb.Append($" visitor holds {VisitorHolds} gave way {VisitorGaveWay}, frames {VisitorFrames}, rule breaks {VisitorRuleBreaks}, min to drivers {(VisitorMinToDrivers < 99f ? VisitorMinToDrivers.ToString("0.00") : "-")}, flushes {DogFlushes}");
             return sb.ToString();
         }
