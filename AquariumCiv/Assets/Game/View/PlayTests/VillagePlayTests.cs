@@ -67,11 +67,11 @@ namespace AquariumCiv.View.PlayTests
             yield return Play(pv, CampUse.FenceLean, CampCheats.FenceLean, 12f);
             yield return Play(pv, CampUse.HarvestDance, CampCheats.HarvestDance, 15.5f);
             // the town: the bakery's crust
-            Debug.Log("[695 uses] " + CampCheats.StageVillage(8f, true, 4));
+            Debug.Log("[695 uses] " + CampCheats.StageVillage(10f, true, 4));
             yield return new WaitForSeconds(3f);
             Assert.AreEqual(Era.Town, sim.State.era, "a town");
-            yield return Play(pv, CampUse.CrustWait, CampCheats.CrustWait, 8f);
-            yield return Play(pv, CampUse.WellGossip, CampCheats.WellGossip, 8.5f); // at the town's fountain
+            yield return Play(pv, CampUse.CrustWait, CampCheats.CrustWait, 10f);
+            yield return Play(pv, CampUse.WellGossip, CampCheats.WellGossip, 10.5f); // at the town's fountain
             Debug.Log("[695 uses] misses: " + string.Join(" | ", failed));
             CloseSlice();
             Assert.IsEmpty(failed, string.Join(" | ", failed));

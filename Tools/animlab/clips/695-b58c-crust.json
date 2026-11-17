@@ -8,11 +8,11 @@
   "seed": 4242,
   "ecology": 1,
   "setup": [
-   "AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(8.0f, true, 6);",
+   "AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(10.0f, true, 6);",
    "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
    "return \"waiting for the village\";",
    "return \"waiting for the village\";",
-   "return AquariumCiv.View.PeopleView.DebugSetHour(8.0f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(10.0f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
    "var y = AquariumCiv.View.CampCheats.FrontYaw(AquariumCiv.View.PieceKind.Bakery); AquariumCiv.EditorTools.AnimLabLive.YawOverride = y; return \"yaw \" + y;",
    "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.CrustWait());"
   ],

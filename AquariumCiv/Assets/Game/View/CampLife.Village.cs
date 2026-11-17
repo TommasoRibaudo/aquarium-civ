@@ -190,6 +190,22 @@ namespace AquariumCiv.View
 
         int FieldKey(FieldData f) => f.seed;
 
+        /// <summary>A tree's crown over <paramref name="q"/> (the layout's trees, the living land's young and grown trees within <paramref name="r"/>).</summary>
+        bool UnderTree(Vector2 q, float r)
+        {
+            var L = Layout; if (L == null) return false;
+            foreach (var t in L.trees) if ((t.pos - q).magnitude < r + 0.22f * t.scale) return true;
+            if (L.eco != null && L.eco.on)
+                for (float dx = -r - 0.2f; dx <= r + 0.2f; dx += 0.1f)
+                    for (float dz = -r - 0.2f; dz <= r + 0.2f; dz += 0.1f)
+                    {
+                        if (dx * dx + dz * dz > (r + 0.2f) * (r + 0.2f)) continue;
+                        byte c = L.eco.At(AquariumCiv.Sim.Settle.SiteMap.CellAt(q.x + dx, q.y + dz));
+                        if (c == EcoLayer.Tree || c == EcoLayer.Young) return true;
+                    }
+            return false;
+        }
+
         /// <summary>Inside a field, or within <paramref name="margin"/> of its fence.</summary>
         bool InAnyField(Vector2 q, float margin)
         {
@@ -261,7 +277,7 @@ namespace AquariumCiv.View
                 {
                     var q = p.Pos + side * (Vector2.Dot(side, front) != 0f ? p.d * 0.5f + 0.16f : p.w * 0.5f + 0.16f) + new Vector2(-side.y, side.x) * o;
                     var dir = new Vector2(-side.y, side.x);
-                    if (!Terrain.InBox(q.x, q.y, 0.35f) || Blocked(q, 0.12f, p) || InAnyField(q, 0.1f)) continue;
+                    if (!Terrain.InBox(q.x, q.y, 0.35f) || Blocked(q, 0.12f, p) || InAnyField(q, 0.1f) || UnderTree(q, 0.15f)) continue;
                     bool busy = false;
                     foreach (var a in pv.Activities) if (!IsKid(a) && At(a.who.Key) is Vector2 w && (w - q).magnitude < 0.18f) { busy = true; break; }
                     float score = Vector2.Dot(side, ToCam(p.Pos)) - (busy ? 1.5f : 0f) - Mathf.Abs(o);
@@ -385,7 +401,7 @@ namespace AquariumCiv.View
             }
             // bedtime and mealtime end a use: whoever's plan has gone to sleep or to eat leaves the scene (the work share: under 2 %)
             foreach (var a in acts)
-                if (a.kind is ActivityKind.Sleep or ActivityKind.Eat && byKey.TryGetValue(a.who.Key, out var sc) && IsVillageUse(sc.use)) { int m = sc.IndexOf(a.who.Key); if (m >= 0) { sc.parts[m].Clear(); SleepCut++; } }
+                if ((a.kind == ActivityKind.Sleep || a.kind == ActivityKind.Eat && !OnlyCheats) && byKey.TryGetValue(a.who.Key, out var sc) && IsVillageUse(sc.use)) { int m = sc.IndexOf(a.who.Key); if (m >= 0) { sc.parts[m].Clear(); SleepCut++; } }
             Index();
             PeopleView.KeepClear.Clear();
             foreach (var sc2 in scenes)
@@ -408,8 +424,8 @@ namespace AquariumCiv.View
             }
             // B57.c: the harvest dance, the last harvest day (calendar month 10 [est]), late afternoon
             if (cal == 10 && h >= 15f && h < 17f && Go(CampUse.HarvestDance, 1f, 0) && Tried(CampUse.HarvestDance, TryHarvestDance(acts, time, false))) return;
-            // B58.c: kids at the bakery door in the morning (often)
-            if (town && h >= 7f && h < 9.5f && Go(CampUse.CrustWait, Often, ThingBakery) && Tried(CampUse.CrustWait, TryCrust(acts, time, false))) return;
+            // B58.c: kids at the bakery door in the morning, after breakfast (often)
+            if (town && h >= 9.5f && h < 11f && Go(CampUse.CrustWait, Often, ThingBakery) && Tried(CampUse.CrustWait, TryCrust(acts, time, false))) return;
             // B57.e: gossip at the well in the morning (often)
             if (h >= 7.5f && h < 10.5f && Go(CampUse.WellGossip, Often, ThingWell) && Tried(CampUse.WellGossip, TryGossip(acts, time, false))) return;
             // B57.d (work): a home mended and dressed, about once a season [est: one view day in three]
@@ -612,7 +628,7 @@ namespace AquariumCiv.View
                 for (float dist = r + 0.1f; dist < r + 0.9f; dist += 0.1f)
                 {
                     var q = gOut + CampScenes5.Rot(outN, k * 15f) * dist;
-                    if (!Terrain.InBox(q.x, q.y, r + 0.3f) || Blocked(q, r + 0.05f)) continue;
+                    if (!Terrain.InBox(q.x, q.y, r + 0.3f) || Blocked(q, r + 0.05f) || UnderTree(q, r)) continue;
                     bool inField = false; for (float a2 = 0f; a2 < 360f && !inField; a2 += 45f) inField = InAnyField(q + CampScenes5.Rot(Vector2.right, a2) * r, 0.06f);
                     if (inField || InAnyField(q, 0.06f)) continue;
                     float score = Vector2.Dot((q - c).normalized, ToCam(c)) - dist * 0.3f;
@@ -687,7 +703,7 @@ namespace AquariumCiv.View
                 var acr = new Vector2(-d.y, d.x);
                 bool ok = true;
                 foreach (var q in new[] { mill.Pos + d * rr - acr * 0.05f, mill.Pos + d * rr + acr * 0.06f })
-                    if (!Terrain.InBox(q.x, q.y, 0.3f) || InAnyField(q, 0.06f) || Blocked(q, 0.05f, mill)) ok = false;
+                    if (!Terrain.InBox(q.x, q.y, 0.3f) || InAnyField(q, 0.06f) || Blocked(q, 0.05f, mill) || UnderTree(q, 0.05f)) ok = false;
                 float score = Vector2.Dot(d, want);
                 if (ok && score > best) { best = score; dir = d; }
             }
