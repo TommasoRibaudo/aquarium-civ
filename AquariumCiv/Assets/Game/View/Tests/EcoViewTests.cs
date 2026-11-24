@@ -95,7 +95,7 @@ namespace AquariumCiv.View.Tests
         }
 
         [Test]
-        public void TheFullPondMeetsBothGlassWalls()
+        public void TheFullPondEndsInsideADirtLipAtBothGlassWalls()
         {
             var sim = EcoSim();
             sim.DebugSetTable(sim.EcoFloodLine - 0.005f);
@@ -114,8 +114,11 @@ namespace AquariumCiv.View.Tests
                 // The hollow's water stands in the very corner cell, against both walls.
                 Assert.IsTrue(ec.WaterCell(SiteMap.Index(SiteMap.NX - 1, 0)), "water in the front-right corner cell");
                 var b = box.DebugWaterMesh.bounds;
-                Assert.That(b.max.x, Is.EqualTo(Land.HX + BoxView.WaterFace).Within(0.001f), "the sheet runs to the land's edge at the right");
-                Assert.That(b.min.z, Is.EqualTo(Land.ZMin - BoxView.WaterFace).Within(0.001f), "and at the front");
+                // #701 (the user 2026-11-24, "dirt lip"): the water reaches toward both panes but ends inside the lip, short of the glass
+                Assert.That(b.max.x, Is.GreaterThan(Land.HX - 0.15f), "the pond reaches toward the right pane");
+                Assert.That(b.min.z, Is.LessThan(Land.ZMin + 0.15f), "and toward the front");
+                Assert.That(b.max.x, Is.LessThan(Land.HX - BoxView.LipW * 0.4f), "it ends inside the dirt lip at the right");
+                Assert.That(b.min.z, Is.GreaterThan(Land.ZMin + BoxView.LipW * 0.4f), "and at the front");
                 Assert.That(b.max.x, Is.LessThanOrEqualTo(Land.HX + BoxView.WaterFace + 1e-4f), "never past the land's edge");
                 Assert.That(b.min.z, Is.GreaterThanOrEqualTo(Land.ZMin - BoxView.WaterFace - 1e-4f));
                 // #701 round 2: nothing of the water (sheet or face) is past the land's edge, so it never hangs out over the cut toward the pane.
@@ -124,11 +127,14 @@ namespace AquariumCiv.View.Tests
                     Assert.That(Mathf.Abs(p.x), Is.LessThanOrEqualTo(Land.HX + BoxView.WaterFace + 1e-4f), "no water past the land's edge (x)");
                     Assert.That(p.z, Is.InRange(Land.ZMin - BoxView.WaterFace - 1e-4f, Land.ZMax + BoxView.WaterFace + 1e-4f), "no water past the land's edge (z)");
                 }
-                // A wall of water stands at the glass, from the ground up to the level.
-                var v = box.DebugWaterMesh.vertices;
-                float low = float.MaxValue;
-                foreach (var p in v) if (Mathf.Abs(p.x - (Land.HX + BoxView.WaterFace)) < 1e-4f && p.y < low) low = p.y;
-                Assert.That(low, Is.LessThan(ec.waterY - 0.05f), "water is seen below the level through the side pane");
+                // No wall of water at the glass: every water vertex is at the level (the sheet), none stands below it against a pane.
+                foreach (var p in box.DebugWaterMesh.vertices) Assert.That(p.y, Is.EqualTo(ec.waterY).Within(1e-4f), "no water face against a pane");
+                // The lip: along both panes the drawn ground is above the highest level the pond can reach.
+                for (float t = -2.9f; t < 2.9f; t += 0.1f)
+                {
+                    Assert.That(box.DrawnHeight(Land.HX, Land.ClampZ(t)), Is.GreaterThan(ec.floodY), $"lip at the right pane, z {t:0.0}");
+                    Assert.That(box.DrawnHeight(t, Land.ZMin), Is.GreaterThan(ec.floodY), $"lip at the front pane, x {t:0.0}");
+                }
             }
             finally { Object.DestroyImmediate(go); }
         }
@@ -202,12 +208,12 @@ namespace AquariumCiv.View.Tests
                     box.land = SimLayout.LandFor(sim.TerrainPreset);
                     SimLayout.Fill(box.layout, sim);
                     go.SetActive(true);
-                    // Along both glass walls where the hollow runs: the cut's top edge is the ground, not the old bank's height.
+                    // Along both glass walls where the hollow runs: the cut's top edge is the ground as drawn (with the #701 dirt lip), not the old bank's height.
                     int checkedPts = 0;
                     for (float t = 0.6f; t < 2.9f; t += 0.1f)
                         foreach (var p in new[] { new Vector2(t, Land.ZMin), new Vector2(Land.HX, -2.0f + (t - 0.6f) * 0.8f) })
                         {
-                            float g = box.land.Height(p.x, p.y);
+                            float g = box.DrawnHeight(p.x, p.y);
                             Assert.That(box.DebugCutTop(p), Is.EqualTo(g).Within(1e-4f), $"cut top at {p}");
                             checkedPts++;
                         }

@@ -284,7 +284,7 @@ namespace AquariumCiv.View
         public bool WaterPieceUnder(float x0, float z0, float x1, float z1)
         {
             float lvl = layout.eco.waterY;
-            float hi = Mathf.Max(Mathf.Max(land.Height(x0, z0), land.Height(x0, z1)), Mathf.Max(land.Height(x1, z0), land.Height(x1, z1)));
+            float hi = Mathf.Max(Mathf.Max(DrawnHeight(x0, z0), DrawnHeight(x0, z1)), Mathf.Max(DrawnHeight(x1, z0), DrawnHeight(x1, z1)));
             return hi < lvl - RimMargin;
         }
 
@@ -325,15 +325,15 @@ namespace AquariumCiv.View
                         for (int si = 0; si < Sub; si++)
                         {
                             float x0 = x - h + si * step, x1 = x0 + step, z0 = z - h + sj * step, z1 = z0 + step;
-                            bool eL = i == 0 && si == 0 && land.Height(-HX + 0.001f, (z0 + z1) * 0.5f) < y, eR = i == Site.NX - 1 && si == Sub - 1 && land.Height(HX - 0.001f, (z0 + z1) * 0.5f) < y;
-                            bool eF = j == 0 && sj == 0 && land.Height((x0 + x1) * 0.5f, Land.ZMin + 0.001f) < y, eB = j == Site.NZ - 1 && sj == Sub - 1 && land.Height((x0 + x1) * 0.5f, Land.ZMax - 0.001f) < y;
+                            bool eL = i == 0 && si == 0 && DrawnHeight(-HX + 0.001f, (z0 + z1) * 0.5f) < y, eR = i == Site.NX - 1 && si == Sub - 1 && DrawnHeight(HX - 0.001f, (z0 + z1) * 0.5f) < y;
+                            bool eF = j == 0 && sj == 0 && DrawnHeight((x0 + x1) * 0.5f, Land.ZMin + 0.001f) < y, eB = j == Site.NZ - 1 && sj == Sub - 1 && DrawnHeight((x0 + x1) * 0.5f, Land.ZMax - 0.001f) < y;
                             if (!WaterPieceUnder(x0, z0, x1, z1)) continue; // at the glass too: the piece against the pane still ends inside the bank
                             // At the box's edge the sheet ends on the soil cut's face (4 mm proud), where the ground there is under the water.
                             if (eL) x0 = -HX - WaterFace; if (eR) x1 = HX + WaterFace;
                             if (eF) z0 = Land.ZMin - WaterFace; if (eB) z1 = Land.ZMax + WaterFace;
                             x0 = Mathf.Max(x0, -HX - WaterFace); x1 = Mathf.Min(x1, HX + WaterFace);
                             z0 = Mathf.Max(z0, Land.ZMin - WaterFace); z1 = Mathf.Min(z1, Land.ZMax + WaterFace);
-                            float depth = ec.waterY - land.Height((x0 + x1) * 0.5f, (z0 + z1) * 0.5f);
+                            float depth = ec.waterY - DrawnHeight((x0 + x1) * 0.5f, (z0 + z1) * 0.5f);
                             var col = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01(depth / 0.12f));
                             QuadUp(mb, new Vector3(x0, y, z0), new Vector3(x0, y, z1), new Vector3(x1, y, z1), new Vector3(x1, y, z0), col);
                             // The wall at the glass, seen through the pane: from the ground at the edge up to the level.
@@ -355,7 +355,7 @@ namespace AquariumCiv.View
             bool alongX = outward.x != 0f;
             Vector3 P(Vector2 q, float h) => alongX ? new Vector3(glassAt, h, q.y) : new Vector3(q.x, h, glassAt);
             // The foot sits just under the soil cut's top so no gap shows between the ground and the wall.
-            float ha = land.Height(a.x, a.y) - 0.03f, hb = land.Height(b.x, b.y) - 0.03f;
+            float ha = DrawnHeight(a.x, a.y) - 0.03f, hb = DrawnHeight(b.x, b.y) - 0.03f;
             if (ha >= y && hb >= y) return;
             ha = Mathf.Min(ha, y - 0.01f); hb = Mathf.Min(hb, y - 0.01f);
             var top = Color.Lerp(co.water, Color.white, 0.12f);

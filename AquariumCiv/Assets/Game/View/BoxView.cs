@@ -913,10 +913,29 @@ namespace AquariumCiv.View
 
         float CanalDist(float x, float z) => Sample(canalField, x, z, CanalRange);
 
+        /// <summary>#701 (the user, 2026-11-24: "dirt lip"): along the glass the drawn ground never dips under the pond's highest level (the
+        /// basin's flood line, fixed per land) plus <see cref="LipOver"/>, so water never stands against a pane: the pond always ends inside
+        /// dirt and the panes read the same everywhere. Full within 2 cm of the pane, easing back into the land by <see cref="LipW"/>.
+        /// View only: the sim's terrain and pond are unchanged.</summary>
+        public const float LipOver = 0.012f, LipW = 0.05f;
+
+        public float Lipped(float x, float z, float h)
+        {
+            if (!Eco || layout == null || layout.eco.floodY < -100f) return h;
+            float top = layout.eco.floodY + LipOver;
+            if (h >= top) return h;
+            float d = Mathf.Min(Land.HX - Mathf.Abs(x), Land.GlassGapZ(z));
+            if (d >= LipW) return h;
+            return Mathf.Lerp(h, top, 1f - Land.Smooth(LipW * 0.4f, LipW, d));
+        }
+
+        /// <summary>The land's height as drawn: the sim's terrain with the glass lip (#701).</summary>
+        public float DrawnHeight(float x, float z) => Lipped(x, z, land.Height(x, z));
+
         /// <summary>The terrain's height with canals carved in (the dug channels sit a little below the land).</summary>
         public float GroundHeight(float x, float z)
         {
-            float h = land.Height(x, z);
+            float h = DrawnHeight(x, z);
             float d = CanalDist(x, z);
             return d >= CanalRange ? h : h - 0.045f * (1f - Land.Smooth(0.035f, 0.085f, d));
         }
@@ -924,7 +943,7 @@ namespace AquariumCiv.View
         /// <summary>#274: where people stand: the land, or the deck of a bridge when the point is on one.</summary>
         public float SurfaceHeight(float x, float z)
         {
-            float h = land.Height(x, z);
+            float h = DrawnHeight(x, z);
             var ice = IceView.Instance; // #618: on a frozen pond big enough, people stand on the ice
             if (ice != null && ice.IceTop(x, z, out float iy) && iy > h) return iy;
             if (layout != null)
@@ -1286,7 +1305,7 @@ namespace AquariumCiv.View
 
         float[] Layers(Vector2 p)
         {
-            float top = land.Height(p.x, p.y);
+            float top = DrawnHeight(p.x, p.y); // #701: the cut's top edge takes the glass lip
             float n1 = Land.Noise(p.x * 2.1f + p.y * 1.3f, 3.7f), n2 = Land.Noise(p.x * 1.7f - p.y * 2.2f, 8.1f), n3 = Land.Noise(p.x * 3.1f + p.y, 1.9f);
             return new[] { 0f, 0.18f + 0.06f * n1, 0.46f + 0.08f * n2, Mathf.Max(0.5f, top - 0.08f - 0.04f * n3), Eco ? top : Mathf.Max(top, Land.WaterY) }; // P8 (#297): a living land's cut ends at its own ground, not the old pond's level
         }
