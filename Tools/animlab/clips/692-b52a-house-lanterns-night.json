@@ -1,0 +1,28 @@
+{
+ "name": "692-b52a-house-lanterns-night",
+ "notes": "B52.a at the houses: the village at night with every door lantern lit (each on a small iron arm beside the door).",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(21.0f, false, 6);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return \"waiting for the village\";",
+   "return \"waiting for the village\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(21.0f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
+   "return AquariumCiv.View.CampCheats.HouseLanternsLit();"
+  ],
+  "warm": 0.5,
+  "seconds": 4,
+  "fps": 30,
+  "follow": "camp",
+  "span": 2.2,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 45,
+  "lead": 1.5
+ }
+}

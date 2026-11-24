@@ -1,0 +1,28 @@
+{
+ "name": "692-b52a-house-lanterns",
+ "notes": "B52.a at the houses (2026-11-24: houses only): at dusk a grown-up walks home to home with a burning stick and lights the lantern hung on an iron arm beside each door; they stay lit until dawn.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(18.0f, false, 6);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return \"waiting for the village\";",
+   "return \"waiting for the village\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(18.0f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.LightLanterns());"
+  ],
+  "warm": 0.5,
+  "seconds": 10,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.2,
+  "closeSpan": 0.5,
+  "yaw": 28,
+  "pitch": 42,
+  "lead": 1.5
+ }
+}

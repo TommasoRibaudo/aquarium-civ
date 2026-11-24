@@ -461,12 +461,15 @@ namespace AquariumCiv.View
             if (h >= 17f && h < 19f && Go(CampUse.TentDoorSit, Often, 0) && TryDoorSit(acts, time, false) == null) return;
             // B49.a: the hill at dusk, in summer (often)
             if (season == Season.Summer && h >= 17f && h < 18.2f && Go(CampUse.HillDusk, Often, ThingHill) && TryHillDusk(acts, time, false) == null) return;
-            // B52.b: kids chase moths at a lit lantern, the first summer night hour (sometimes)
-            if (season == Season.Summer && h >= 19f && h < 20f && Go(CampUse.ChaseMoths, Sometimes, 0) && TryMoths(acts, time, false) == null) return;
+            // B52.b: kids chase moths at the fire's light, summer dusk (often). 2026-11-24: 17.5-19 h, before the bedtimes (19.2 h): at 19-20 h the
+            // late-start rule refused nearly every try (a year's census: never)
+            if (season == Season.Summer && h >= 17.5f && h < 18.3f && Go(CampUse.ChaseMoths, Often, 0) && Tried(CampUse.ChaseMoths, TryMoths(acts, time, false))) return;
             // B51: a gift at the stone, the morning of a feast (rare)
             if (h >= 7f && h < 10f && (sim.FestivalOn || sim.CalendarMonth == 9) && Go(CampUse.StoneGift, Rare, ThingStone) && TryGift(acts, time, false) == null) return;
             // B42.a: the racks tended mid-morning (work: often)
             if (h >= 9.5f && h < 11.5f && Go(CampUse.TendRacks, Often, ThingFishRack) && TryTend(acts, time, false) == null) return;
+            // B50.b at dusk (2026-11-24, a year's census: the grown-ups are free from ~17 h): two coming in to the fire meet on the way and talk
+            if (h >= 17f && h < 18.3f && Go(CampUse.PathChat, Often, ThingPath) && Tried(CampUse.PathChat, TryPathChat(acts, time, false))) return;
             if (!day) return;
             // B53.d: the swing is hung once, a free afternoon the first view day the tree stands; then kids swing (play time only)
             if (!swingHung && h >= 13f && Go(CampUse.HangSwing, 1f, ThingSwing) && TryHangSwing(acts, time, false) == null) return;
@@ -503,8 +506,8 @@ namespace AquariumCiv.View
             if (Go(CampUse.FollowStream, Sometimes, ThingStream) && TryStream(acts, time, false) == null) return;
             if (Go(CampUse.BuildDam, VeryRare, ThingStream) && TryDam(acts, time, false) == null) return;
             if (Go(CampUse.HillRoll, Sometimes, ThingHill) && TryHillRoll(acts, time, false) == null) return;
-            if (Go(CampUse.PathRace, Sometimes, ThingPath) && TryPathRace(acts, time, false) == null) return;
-            if (Go(CampUse.PathChat, Often, ThingPath) && TryPathChat(acts, time, false) == null) return;
+            if (Go(CampUse.PathRace, Sometimes, ThingPath) && Tried(CampUse.PathRace, TryPathRace(acts, time, false))) return;
+            if (Go(CampUse.PathChat, Often, ThingPath) && Tried(CampUse.PathChat, TryPathChat(acts, time, false))) return;
             // weeds and flowers: a crown (summer)
             if (season == Season.Summer && Go(CampUse.Crown, Sometimes, 0) && TryCrown(acts, time, false) == null) return;
         }
@@ -922,7 +925,8 @@ namespace AquariumCiv.View
 
         string TryPathRace(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
-            if (!PathNear(meals.Fire, out var a, out var b) && !(force && TrodLine(out a, out b))) return "no straight bit of path near the camp";
+            // 2026-11-24: a camp has no worn path; the trodden way from the fire to the nearest tent is its path (as the clip's)
+            if (!PathNear(meals.Fire, out var a, out var b) && !TrodLine(out a, out b)) return "no straight bit of path near the camp";
             var kids = Pick(acts, a, x => IsKid(x), 3, force);
             if (kids.Count < 2) return $"only {kids.Count} kid(s) free";
             var at = new List<Vector2>(); foreach (int k in kids) at.Add(At(k).Value);
@@ -934,16 +938,26 @@ namespace AquariumCiv.View
 
         string TryPathChat(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
-            if (!PathNear(meals.Fire, out var a, out var b) && !(force && TrodLine(out a, out b))) return "no path near the camp";
+            bool worn = PathNear(meals.Fire, out var a, out var b);
+            if (!worn && !TrodLine(out a, out b)) return "no path near the camp";
             var mid = (a + b) * 0.5f;
             int x = force ? Grown1(acts, a, true) : Nobody;
             if (!force)
             {   // B50.b: two walkers on the path (never on an urgent carry [est]: carrying walkers are left alone)
                 var on = RackSites.PathTest(sim);
+                var la = a; var lb = b;
+                bool OnWay(Vector2 p) => worn ? on != null && on(p.x, p.y) : WolfDriveOff.SegDist(la, lb, p) < 0.15f; // the trodden way: within 0.15 u of it [est]
                 var walkers = new List<int>();
                 foreach (var w in acts)
-                    if (w.moving && IsGrown(w) && w.kind is ActivityKind.Visit or ActivityKind.SitOut or ActivityKind.Chat && !byKey.ContainsKey(w.who.Key) && At(w.who.Key) is Vector2 p && on != null && on(p.x, p.y) && (p - mid).magnitude < 0.8f) walkers.Add(w.who.Key);
-                if (walkers.Count < 2) return "no two walkers on the path";
+                    if (w.moving && IsGrown(w) && w.kind is ActivityKind.Visit or ActivityKind.SitOut or ActivityKind.Chat && !byKey.ContainsKey(w.who.Key) && At(w.who.Key) is Vector2 p && OnWay(p) && (p - mid).magnitude < 0.8f) walkers.Add(w.who.Key);
+                if (walkers.Count < 2)
+                {   // 2026-11-24 (a year's census: two walkers met on it never): two free grown-ups near the way walk onto it, meet and talk
+                    var two = Pick(acts, mid, g => IsGrown(g), 2, false);
+                    if (two.Count < 2) return "no two walkers on the path";
+                    Add(Thing(CampScenes5b.PathChat(two[0], two[1], At(two[0]).Value, At(two[1]).Value, mid, Dir2(a, b), BeatHash.Range(4f, 6f, (int)today, 10, 6971), time), ThingPath));
+                    doneToday.Add(CampUse.PathChat);
+                    return null;
+                }
                 x = walkers[0];
                 Add(Thing(CampScenes5b.PathChat(walkers[0], walkers[1], At(walkers[0]).Value, At(walkers[1]).Value, mid, Dir2(a, b), BeatHash.Range(4f, 6f, (int)today, 10, 6971), time), ThingPath));
                 doneToday.Add(CampUse.PathChat);
@@ -1115,7 +1129,7 @@ namespace AquariumCiv.View
             {
                 case CampUse.TentPeek: return TryPeek(acts, time, true) ?? "a kid peeks out of a tent";
                 case CampUse.TentToy: return TryToy(acts, time, true) ?? "a toy on a tent";
-                case CampUse.TentDoorSit: return TryDoorSit(acts, time, true) ?? "sitting in a tent's door";
+                case CampUse.TentDoorSit: return InTents ? TryDoorSit(acts, time, true) ?? "sitting in a tent's door" : TryHouseDoorSit(acts, time, true) ?? "sitting on a doorstep";
                 case CampUse.CountStash: return TryCountStash(acts, time, true) ?? "kids count the stash";
                 case CampUse.SnackSneak: return TrySneak(acts, time, true) ?? "a snack sneaked at the stash";
                 case CampUse.TendRacks: return TryTend(acts, time, true) ?? "the racks tended";
@@ -1141,7 +1155,7 @@ namespace AquariumCiv.View
                 case CampUse.PathRace: return TryPathRace(acts, time, true) ?? "kids race on the path";
                 case CampUse.PathChat: return TryPathChat(acts, time, true) ?? "a chat on a path";
                 case CampUse.StoneGift: return TryGift(acts, time, true) ?? "a gift at the remembering stone";
-                case CampUse.LightLanterns: return TryLanterns(acts, time, true) ?? "the lanterns lit";
+                case CampUse.LightLanterns: return InTents ? TryLanterns(acts, time, true) ?? "the lanterns lit" : TryHouseLanterns(acts, time, true) ?? "the house lanterns lit";
                 case CampUse.ChaseMoths: return TryMoths(acts, time, true) ?? "kids chase moths";
                 case CampUse.PullWeed: return TryWeed(acts, time, true) ?? "a weed pulled";
                 case CampUse.Crown: return TryCrown(acts, time, true) ?? "a crown made";
@@ -1196,7 +1210,7 @@ namespace AquariumCiv.View
                     }
                     break;
                 case CampMark.ToySpin: if (NearestTent(p, 0.3f, out var t2) && tentThings.TryGetValue(t2.id, out var l2) && l2.Count > 0) l2[^1].spinAt = clock; break;
-                case CampMark.LanternLit: if (NearestTent(p, 0.3f, out var t3)) lit[t3.id] = (now.day, clock); break;
+                case CampMark.LanternLit: if (NearestTent(p, 0.3f, out var t3)) lit[t3.id] = (now.day, clock); else HouseLanternLit(p); break;
                 case CampMark.Gift: gifts.Add((p, Mathf.RoundToInt(f.scale), ViewHours)); if (gifts.Count > 4) gifts.RemoveAt(0); break;
                 case CampMark.DamPool: dams.Add(new Dam { p = p, r = f.scale > 0f ? f.scale : CampGeo5.DamPoolR, at = ViewHours }); if (dams.Count > 2) dams.RemoveAt(0); break;
                 case CampMark.DamBreak: foreach (var d in dams) if ((d.p - p).magnitude < 0.2f && d.brokeAt < 0f) d.brokeAt = clock; break;
@@ -1232,7 +1246,7 @@ namespace AquariumCiv.View
         public const float TentThingScale = 1.4f, BoatScale = 1.4f;
 
         const int MPole = 1, MLantern = 2, MLanternLit = 3, MToy = 4, MBeads = 5, MStrip = 6, MBoat = 7, MCrown = 8, MMouth = 9, MGiftBowl = 10,
-            MPool = 11, MDamStone = 12, MRope = 13, MPlank = 14, MMoth = 15, MFlatStone = 16, MReeds = 17, MReed = 18, MWeed = 19, MCoil = 20, MLeaf = 21, MBough = 22, MBranch = 23;
+            MPool = 11, MDamStone = 12, MRope = 13, MPlank = 14, MMoth = 15, MFlatStone = 16, MReeds = 17, MReed = 18, MWeed = 19, MCoil = 20, MLeaf = 21, MBough = 22, MBranch = 23, MBracket = 24;
 
         /// <summary>#692 p5 retakes: the swing's rope and plank colours, dark enough to read on sand and grass [est].</summary>
         static readonly Color ReedGreen = new Color(0.5f, 0.64f, 0.28f), ReedStraw = new Color(0.8f, 0.72f, 0.42f), ReedHead = new Color(0.42f, 0.27f, 0.15f);
@@ -1244,6 +1258,16 @@ namespace AquariumCiv.View
             var box = LandBox;
             if (box == null || swingCell < 0) return 0.16f;
             lock (box.TreeSpots) return box.TreeSpots.TryGetValue(swingCell, out var v) ? v.r : 0.16f;
+        }
+
+        /// <summary>The house lantern's arm: as far out as the lantern hangs (<see cref="HouseLanternOut"/>).</summary>
+        const float VillageLanternArm = HouseLanternOut;
+
+        /// <summary>A light struck at a house lantern (the round's hit): the nearest home's lantern within 0.1 u is lit.</summary>
+        void HouseLanternLit(Vector2 p)
+        {
+            if (!VillageEra) return;
+            foreach (var home in PiecesOf(PieceKind.Home, p)) { HouseDoor(home, out _, out _, out var lan); if ((lan - p).magnitude < 0.1f) houseLit[home.seed] = now.day; return; }
         }
 
         void DrawCamp(Transform root, Material material, float time, System.Func<float, float, float> groundAt)
@@ -1287,6 +1311,20 @@ namespace AquariumCiv.View
                             m.localScale = Vector3.one * TentThingScale;
                             m.localRotation = Quaternion.Euler(sway, yaw + t.id * 37f, sway * 0.5f);
                         }
+                }
+
+            // ---- B52.a at the houses (2026-11-24): every home's door lantern on its iron arm, lit from the round at dusk to dawn
+            if (VillageEra)
+                foreach (var home in PiecesOf(PieceKind.Home, VillageMiddle()))
+                {
+                    HouseDoor(home, out _, out var outw, out var lan);
+                    var wallAt = lan - outw * HouseLanternOut;
+                    float gy = groundAt(wallAt.x, wallAt.y);
+                    var arm = Next(MBracket);
+                    arm.localPosition = new Vector3(wallAt.x, gy + CampGeo5.PoleH, wallAt.y);
+                    arm.localRotation = Quaternion.LookRotation(new Vector3(outw.x, 0f, outw.y));
+                    var l = Next(HouseLit(home.seed) ? MLanternLit : MLantern);
+                    l.localPosition = new Vector3(lan.x, gy + CampGeo5.PoleH - 0.004f, lan.y);
                 }
 
             // ---- B42: meat strips on the fish rack (on the far face of the bar from the fish [est])
@@ -1511,6 +1549,10 @@ namespace AquariumCiv.View
                 case MPole: // a short pole by the door, a crossbar at the top for the lantern
                     mb.Box(new Vector3(0f, CampGeo5.PoleH * 0.5f, 0f), new Vector3(0.008f, CampGeo5.PoleH, 0.008f), Palette.WoodLight);
                     mb.Box(new Vector3(0f, CampGeo5.PoleH - 0.004f, 0f), new Vector3(0.02f, 0.004f, 0.005f), Palette.Bark);
+                    break;
+                case MBracket: // 2026-11-24: a house lantern's iron arm out of the wall (+z out), the hook down at its end
+                    mb.Box(new Vector3(0f, 0f, VillageLanternArm * 0.5f), new Vector3(0.004f, 0.004f, VillageLanternArm), Palette.Iron);
+                    mb.Box(new Vector3(0f, -0.002f, VillageLanternArm), new Vector3(0.003f, 0.006f, 0.003f), Palette.Iron);
                     break;
                 case MLantern:
                 case MLanternLit: // a small lantern hanging from the bar: a dark cap, a body (glowing when lit), a base

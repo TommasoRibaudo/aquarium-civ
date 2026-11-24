@@ -177,7 +177,7 @@ namespace AquariumCiv.View
         void Add(CampScene s)
         {
             if (s == null) return;
-            if (!forcing && !OnlyCheats && EndsInBedOrMeal(s)) { LateStartsRefused++; return; } // B3 tester fixes
+            if (!forcing && !OnlyCheats && EndsInBedOrMeal(s)) { LateStartsRefused++; Why(s.use, "would run into bedtime or a meal"); return; } // B3 tester fixes
             // a person in two scenes: the new one wins (a cheat); the old one plays on without them
             foreach (int k in s.keys)
                 if (byKey.TryGetValue(k, out var old) && old != s) { int m = old.IndexOf(k); if (m >= 0) old.parts[m].Clear(); }
