@@ -14,6 +14,19 @@ namespace AquariumCiv.View
         static Vector2 Across(Vector2 toCam) => new Vector2(-toCam.y, toCam.x);
 
         /// <summary>The hull's top over the ground (the boat lies upside down, flat; ConsequenceMeshes.KenneyBoat × the prop scale) [est].</summary>
+        /// <summary>2026-11-23 (the user on the boat clip: "they glitch through it and then leave"): onto a seat <paramref name="top"/> high
+        /// from where they stand, walking the last bit to <paramref name="seat"/> while rising (the stump's and the fence's climb).</summary>
+        internal static void ClimbOn(CampScene s, int m, float t, float len, Vector2 seat, Vector2 face, float top, PropKind prop = PropKind.None) =>
+            s.Part(m, t, t + len, seat, face, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lift += top * In(u, 0f, l); }, prop, 0.5f).poseWalking = true;
+
+        /// <summary>Off a seat <paramref name="top"/> high to <paramref name="to"/> (clear of the thing), coming down as they step off, before
+        /// they walk away: never a drop through the thing.</summary>
+        internal static void ClimbOff(CampScene s, int m, float t, float len, Vector2 to, Vector2 face, float top, PropKind prop = PropKind.None) =>
+            s.Part(m, t, t + len, to, face, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lift += top * (1f - In(u, 0f, l)); }, prop, 0.5f).poseWalking = true;
+
+        /// <summary>How far out from the hull's middle line a kid stands beside it: to hide, knock, climb on and off (the hull is ~0.24 u wide, a doll ~0.06: BoatLee presses them at 0.15).</summary>
+        public const float HullStep = 0.17f;
+
         public const float HullTop = 0.12f; // measured: the Kenney hull is ~0.1 mesh u high before the prop's 1.5 scale, a sitter on its end sits a little lower than the keel
         /// <summary>B77.a: the sort's length (SortBasket, as built).</summary>
         public const float SortFor = 4f;
@@ -106,13 +119,14 @@ namespace AquariumCiv.View
             t += 0.7f;
             // to the hull's end and sit on it (+0.04 u), the basket in the left hand, the right sorts
             var end = boat + along * 0.13f + side * 0.02f;
-            s.Part(m, t, t + 0.7f, end, end + side, DollStyle.Stand, null, PropKind.FishBasket, Walk);
+            var step = end + side * HullStep; // 2026-11-23: beside the hull's end, to climb on and off (never through the hull)
+            s.Part(m, t, t + 0.7f, step, end + side, DollStyle.Stand, null, PropKind.FishBasket, Walk);
             CampPoseFn sitHull = (ref DollPose p, float u, float l) => { p.lift += HullTop; };
-            s.Part(m, t + 0.7f, t + 1.1f, end, end + side, DollStyle.Sit, sitHull, PropKind.FishBasket);
+            ClimbOn(s, m, t + 0.7f, 0.4f, end, end + side, HullTop, PropKind.FishBasket);
             t += 1.1f;
             s.Part(m, t, t + SortFor, end, end + side, DollStyle.SortBasket, sitHull, PropKind.FishBasket);
             t += SortFor;
-            s.Part(m, t, t + 0.5f, end, end + side, DollStyle.Stand, null, PropKind.FishBasket);
+            ClimbOff(s, m, t, 0.5f, step, end + side, HullTop, PropKind.FishBasket);
             s.Part(m, t + 0.5f, t + 1.3f, lay, boat, DollStyle.Stand, (ref DollPose p, float u, float l) => { float q = Bump(u, 0f, l); p.armR = Lerp(p.armR, new Vector3(90f, 0f, 8f), q); p.lean += 14f * q; }, PropKind.FishBasket, Walk);
             s.b = t + 1.1f;
             t += 1.3f;
@@ -166,8 +180,8 @@ namespace AquariumCiv.View
             var s = new CampScene(CampUse.BoatHouse, t0, boat) { holdFocus = true };
             var near = Vector2.Dot(toCam, new Vector2(-along.y, along.x)) >= 0f ? new Vector2(-along.y, along.x) : new Vector2(along.y, -along.x);
             int hide = s.Add(kids[0]), knock = s.Add(kids[1]);
-            var behind = boat - near * 0.1f;
-            var front = boat + near * 0.1f;
+            var behind = boat - near * HullStep; // 2026-11-23: beside the hull, not in it (0.1 hid the kid inside the boat)
+            var front = boat + near * HullStep;
             float th = WalkTime(at[0], behind, KidWalk), tk = WalkTime(at[1], front, KidWalk);
             float t = Mathf.Max(th + 0.8f, tk);
             s.Part(hide, 0f, th, behind, boat, DollStyle.Stand, null, PropKind.None, KidRun).run = true;
@@ -188,20 +202,30 @@ namespace AquariumCiv.View
             // they sit on it side by side, swinging (roll ±5° at 1 Hz), 8 s
             const float sitFor = 8f;
             var seatA = boat + along * 0.05f; var seatB = boat - along * 0.05f;
-            s.Part(hide, t, t + 0.8f, seatA, seatA + near, DollStyle.Stand, null, PropKind.None, KidWalk);
-            s.Part(knock, t, t + 0.8f, seatB, seatB + near, DollStyle.Stand, null, PropKind.None, KidWalk);
+            // 2026-11-23: each walks to the hull's side (the hidden one stays on the far side it popped up from), climbs on, sits; at the end
+            // they climb off on the camera side and run: never through the hull
+            var stepA = seatA - near * HullStep; var stepB = seatB + near * HullStep;
+            s.Part(hide, t, t + 0.4f, stepA, seatA + near, DollStyle.Stand, null, PropKind.None, KidWalk);
+            s.Part(knock, t, t + 0.4f, stepB, seatB + near, DollStyle.Stand, null, PropKind.None, KidWalk);
+            ClimbOn(s, hide, t + 0.4f, 0.4f, seatA, seatA + near, HullTop);
+            ClimbOn(s, knock, t + 0.4f, 0.4f, seatB, seatB + near, HullTop);
             CampPoseFn swing(float ph) => (ref DollPose p, float u, float l) => { p.lift += HullTop; p.roll += 5f * Mathf.Sin((u + ph) * Mathf.PI * 2f); };
             s.Part(hide, t + 0.8f, t + 0.8f + sitFor, seatA, seatA + near, DollStyle.Sit, swing(0f));
             s.Part(knock, t + 0.8f, t + 0.8f + sitFor, seatB, seatB + near, DollStyle.Sit, swing(0.35f));
+            float off = t + 0.8f + sitFor;
             if (kids.Count > 2)
             {
                 int third = s.Add(kids[2]);
-                var seatC = boat + along * 0.15f;
-                s.Part(third, 0f, t + 0.8f, seatC, seatC + near, DollStyle.Stand, null, PropKind.None, KidWalk);
-                s.Part(third, t + 0.8f, t + 0.8f + sitFor, seatC, seatC + near, DollStyle.Sit, swing(0.7f));
-                CampScenes5.Go(s, third, t + 0.8f + sitFor, 1f, seatC + near * 0.3f, seatC + near, KidRun, true);
+                var seatC = boat + along * 0.15f; var stepC = seatC + near * HullStep;
+                s.Part(third, 0f, t + 0.4f, stepC, seatC + near, DollStyle.Stand, null, PropKind.None, KidWalk);
+                ClimbOn(s, third, t + 0.4f, 0.4f, seatC, seatC + near, HullTop);
+                s.Part(third, t + 0.8f, off, seatC, seatC + near, DollStyle.Sit, swing(0.7f));
+                ClimbOff(s, third, off, 0.5f, stepC, seatC + near, HullTop);
+                CampScenes5.Go(s, third, off + 0.5f, 1f, seatC + near * 0.3f, seatC + near, KidRun, true);
             }
-            t += 0.8f + sitFor;
+            ClimbOff(s, hide, off, 0.5f, seatA + near * HullStep, seatA + near, HullTop);
+            ClimbOff(s, knock, off, 0.5f, stepB, seatB + near, HullTop);
+            t = off + 0.5f;
             CampScenes5.Go(s, hide, t, 1f, seatA + near * 0.3f + along * 0.1f, seatA + near, KidRun, true);
             CampScenes5.Go(s, knock, t, 1f, seatB + near * 0.3f - along * 0.1f, seatB + near, KidRun, true);
             return s;

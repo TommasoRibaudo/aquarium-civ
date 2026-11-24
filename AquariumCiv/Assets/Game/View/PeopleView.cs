@@ -535,7 +535,7 @@ namespace AquariumCiv.View
             crowd.Clear();
             for (int i = 0; i < acts.Count; i++)
                 if (dolls.TryGetValue(acts[i].who.Key, out var c))
-                    c.crowdIndex = AvoidCrowds && c.placed && !c.wasHidden && !c.pose.hidden ? crowd.Add(acts[i].who.Key, c.drawn.x, c.drawn.y, acts[i].moving, c.heading.x, c.heading.y) : -1;
+                    c.crowdIndex = AvoidCrowds && c.placed && !c.wasHidden && !c.pose.hidden ? crowd.Add(acts[i].who.Key, c.drawn.x, c.drawn.y, PlanWalks(acts[i]), c.heading.x, c.heading.y) : -1;
             crowd.Build();
             for (int i = 0; i < acts.Count; i++)
             {
@@ -775,6 +775,9 @@ namespace AquariumCiv.View
             d.placed = true;
 
             if (d.speed > WalkStarts) d.walking = true; else if (d.speed < WalkStops) d.walking = false;
+            // 2026-11-23 (the stump clip): a use's seated part is a seat, never walking legs: the climb's last speed (still over WalkStops for a
+            // tenth of a second) drew the walk without the seat's lift, so the kid dipped to the ground between climbing up and sitting
+            if (camping && !campPart.poseWalking && campPart.style is DollStyle.Sit or DollStyle.SortBasket or DollStyle.EatMeal) d.walking = false;
             bool walking = d.walking && !rackNow && !laundryNow; // #700: the carry's legs are part of the beat's pose; #705: the side step along the cord too
             var style = DollMotion.StyleOf(a.kind);
             if (style == DollStyle.HangWash && !laundryNow) style = DollStyle.Hang; // #705: no line here (the weaver's cloth at the workshop): the old hanging mime
@@ -1170,15 +1173,21 @@ namespace AquariumCiv.View
         /// <summary>#189: from the planned point to the drawn one: the walker's offset eases toward what the crowd presses (it fades when
         /// nothing does), a point in a solid slides out to its rim, and the doll follows a moment behind at no more than a walking pace, so a
         /// change of side is a walk and a corner a curve (#203).</summary>
+        /// <summary>2026-11-23 (the user on the stump clip: "while up they go down then up again"): the plan walks this person, for the crowd. A
+        /// camp use that holds them (sat on the stump, the boat) is where they are, whatever their own day says: when the plan turned to a walk
+        /// mid-sit, the crowd eased the two kids apart (0.07 u, under Personal), the drawn doll moved, read as walking and dropped off the seat.</summary>
+        bool PlanWalks(in PersonActivity a) => a.moving && !(Camp != null && Camp.Busy(a.who.Key));
+
         void StepDrawn(Doll d, in PersonActivity a, bool jump, bool hidden, Vector2 prev, float inst, float dt)
         {
             // The way the plan walks, settling over a moment: a corner of the route turns the sidestep with it, not in one frame.
-            if (!a.moving || jump || hidden || dt <= 0f) d.heading = Vector2.zero;
+            bool walks = PlanWalks(a);
+            if (!walks || jump || hidden || dt <= 0f) d.heading = Vector2.zero;
             else d.heading = Vector2.Lerp(d.heading, (d.pos - prev) / dt, 1f - Mathf.Exp(-dt * HeadingRate));
             float px = 0f, pz = 0f;
             if (d.crowdIndex >= 0 && !jump && !hidden) crowd.Push(d.crowdIndex, out px, out pz);
             if (jump || hidden) d.offset = Vector2.zero;
-            else if (a.moving) CrowdAvoid.Ease(ref d.offset.x, ref d.offset.y, px, pz, dt);
+            else if (walks) CrowdAvoid.Ease(ref d.offset.x, ref d.offset.y, px, pz, dt);
             else d.offset = Vector2.MoveTowards(d.offset, Vector2.zero, DrawnSlack * dt); // arrived: back onto their spot at a stroll, off whatever the walk brushed
             var wanted = d.pos + d.offset;
             if (Box.land.IsWater(wanted.x, wanted.y)) wanted = d.pos; // eased aside, never into the pond

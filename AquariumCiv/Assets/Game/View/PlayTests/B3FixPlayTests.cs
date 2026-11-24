@@ -148,9 +148,27 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsNotNull(s, "the stump sit started: " + r);
             float best = -1f; int sat = 0;
             float t0 = Time.time;
+            // 2026-11-23 (the user: "they get up, then while up they go down then up again"): every kid's height over the whole scene; once
+            // up on the stump, a kid must not come down before the sit ends
+            var upAt = new Dictionary<int, float>(); var trace = new List<string>(); var lastLine = new Dictionary<int, string>();
+            var dips = new List<string>();
             while (Time.time - t0 < s.Length)
             {
                 yield return null;
+                float st = Time.time - t0;
+                foreach (int k in s.keys)
+                {
+                    var act = pv.Activities.FirstOrDefault(a => a.who.Key == k);
+                    if (pv.TryGetDollFeet(act.who, out var wf))
+                    {
+                        var lf = box.Root.InverseTransformPoint(wf);
+                        float h = lf.y - box.SurfaceHeight(lf.x, lf.z);
+                        string line = $"{pv.DrawnOf(act.who)} {act.kind} use {pv.Camp.UseOf(k)} cued {pv.Camp.Cued(k)} h {(h > 0.05f ? "up" : "down")}";
+                        if (!lastLine.TryGetValue(k, out var was) || was != line) { trace.Add($"{st:0.00}s kid {k}: {line} ({h:0.000})"); lastLine[k] = line; }
+                        if (h > PropGeo.StumpTop - 0.03f && !upAt.ContainsKey(k)) upAt[k] = st;
+                        if (upAt.ContainsKey(k) && h < 0.03f && st < s.Length - 2f) dips.Add($"kid {k} down at {st:0.00} s (up since {upAt[k]:0.00} s): {line}");
+                    }
+                }
                 foreach (int k in s.keys)
                 {
                     var who = pv.Activities.FirstOrDefault(a => a.who.Key == k).who;
@@ -162,7 +180,9 @@ namespace AquariumCiv.View.PlayTests
                 }
             }
             Debug.Log($"[b3 stump] {sat} seated frames, the seat {best:0.000} u up (top {PropGeo.StumpTop:0.000})");
+            Debug.Log("[b3 stump] trace:\n" + string.Join("\n", trace));
             Assert.Greater(sat, 10, "kids sat on the stump");
+            Assert.IsEmpty(dips, "a kid came down off the stump mid-sit: " + string.Join(" | ", dips.Take(4)));
             CloseSlice();
         }
 

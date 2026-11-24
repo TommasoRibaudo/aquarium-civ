@@ -366,11 +366,15 @@ namespace AquariumCiv.View
                 s.Part(f, 0f, w, fs + toCam * 0.06f, stump, DollStyle.Stand, null, PropKind.None, KidWalk);
                 float up = Mathf.Max(w + 0.4f, t + 0.8f);
                 s.Part(f, w, up, fs, fs + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.lift += PropGeo.SeatLift(PropGeo.StumpTop) * In(u, l - 0.4f, 0.4f); }, PropKind.None, 0.2f).poseWalking = true;
-                s.Part(f, up, Mathf.Max(up + 1f, t + sitFor), fs, fs + toCam, DollStyle.Sit, SitOn(PropGeo.StumpTop, 5f, 0.5f));
-                Go(s, f, Mathf.Max(up + 1f, t + sitFor), 1f, fs + toCam * 0.3f - acr * 0.1f, fs + toCam, KidWalk);
+                float fOff = Mathf.Max(up + 1f, t + sitFor);
+                s.Part(f, up, fOff, fs, fs + toCam, DollStyle.Sit, SitOn(PropGeo.StumpTop, 5f, 0.5f));
+                // 2026-11-23 (the user: "they move real quick to the bottom of the stump"): off the stump's edge first, then away
+                RitualScenes.ClimbOff(s, f, fOff, 0.4f, fs + toCam * 0.06f, fs + toCam, PropGeo.SeatLift(PropGeo.StumpTop));
+                Go(s, f, fOff + 0.4f, 1f, fs + toCam * 0.3f - acr * 0.1f, fs + toCam, KidWalk);
             }
             t += sitFor;
-            Go(s, m, t, 1f, seat + toCam * 0.3f + acr * 0.1f, seat + toCam, KidWalk);
+            RitualScenes.ClimbOff(s, m, t, 0.4f, seat + toCam * 0.06f, seat + toCam, PropGeo.SeatLift(PropGeo.StumpTop));
+            Go(s, m, t + 0.4f, 1f, seat + toCam * 0.3f + acr * 0.1f, seat + toCam, KidWalk);
             return s;
         }
 
