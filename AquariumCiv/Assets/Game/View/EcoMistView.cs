@@ -194,7 +194,7 @@ namespace AquariumCiv.View
             if (refreshT >= (cheapStrokes ? StrokeRefreshSeconds : refreshSeconds) && dirty) { refreshT = 0f; dirty = false; box.Refresh(); }
         }
 
-        const float DwellSlop = 0.25f, StrokeRefreshSeconds = 0.35f;
+        const float DwellSlop = 0.25f, StrokeRefreshSeconds = 1f; // #655: one rebuild pass a second while misting (was 0.35 s: a few a second, 4-40 ms each)
 
         void BeginMist()
         {

@@ -247,7 +247,9 @@ namespace AquariumCiv.GameUI
             {
                 verticalScrollerVisibility = ScrollerVisibility.Hidden,
                 horizontalScrollerVisibility = ScrollerVisibility.Hidden,
-                touchScrollBehavior = ScrollView.TouchScrollBehavior.Clamped,
+                // #667: a little give at the ends (iOS-like) instead of a hard stop; low, so a sheet doesn't wobble [est: check on the phone]
+                touchScrollBehavior = ScrollView.TouchScrollBehavior.Elastic,
+                elasticity = Elasticity,
                 scrollDecelerationRate = Deceleration,
             };
             hierarchy.Add(view);
@@ -256,6 +258,11 @@ namespace AquariumCiv.GameUI
             hierarchy.Add(bar);
             RegisterCallback<GeometryChangedEvent>(_ => Snap());
             view.contentContainer.RegisterCallback<GeometryChangedEvent>(_ => Snap());
+            // #667: the fit to whole lines waits while a finger is on the sheet or it still glides (a layout change mid-flick re-fit it)
+            view.RegisterCallback<PointerDownEvent>(_ => fingers++, TrickleDown.TrickleDown);
+            view.RegisterCallback<PointerUpEvent>(_ => fingers = Mathf.Max(0, fingers - 1), TrickleDown.TrickleDown);
+            view.RegisterCallback<PointerCancelEvent>(_ => fingers = Mathf.Max(0, fingers - 1), TrickleDown.TrickleDown);
+            view.verticalScroller.valueChanged += _ => movedAt = Time.unscaledTime;
             view.RegisterCallback<GeometryChangedEvent>(_ => Bar()); // the height just set lands a layout later
             view.verticalScroller.valueChanged += _ => Bar();
             // A slider takes its finger before the view can, or a drag that wanders a little moves the sheet instead of the thumb.
@@ -308,7 +315,29 @@ namespace AquariumCiv.GameUI
         /// <summary>#654: how far either side of a slider's strip a finger in its row still takes the slider (panel px).</summary>
         public const float SliderReach = 24f;
 
+        /// <summary>#667: the ends' give (Unity's default is 0.1).</summary>
+        public const float Elasticity = 0.08f;
+        /// <summary>#667: the sheet is at rest when it hasn't moved for this long (s).</summary>
+        public const float RestAfter = 0.15f;
+        int fingers;
+        float movedAt = -99f;
+        bool snapWaits;
+        /// <summary>#667: a finger is on the sheet or it is still gliding.</summary>
+        public bool Moving => fingers > 0 || Time.unscaledTime - movedAt < RestAfter;
+
         void Snap()
+        {
+            if (Moving)
+            {   // #667: never re-fit mid-drag or mid-glide: once, at rest
+                if (snapWaits) return;
+                snapWaits = true;
+                schedule.Execute(() => { if (Moving) return; snapWaits = false; Fit(); }).Every(100).Until(() => !snapWaits);
+                return;
+            }
+            Fit();
+        }
+
+        void Fit()
         {
             float room = layout.height;
             if (float.IsNaN(room) || room <= 0f || LinePitch <= 0f) return;
