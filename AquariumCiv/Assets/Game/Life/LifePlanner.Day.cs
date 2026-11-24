@@ -184,7 +184,7 @@ namespace AquariumCiv.Life
         Person dayFireKeeper;
         int buildDepth;
 
-        void ClearDays() { PinSleepers(); /* #697/#696: whoever is asleep or on a walk keeps it through any replan: a sim change, a forced season, a water run, Invalidate */ prayerDay = long.MinValue; /* #566 */ runInReady = false; runInCache.Clear(); dayCache.Clear(); blockCache.Clear(); carryPlans.Clear(); fishDutiesDay = long.MinValue; dayInfo.day = long.MinValue; idleDay = long.MinValue; /* #656 */ }
+        void ClearDays() { PinSleepers(); /* #697/#696: whoever is asleep or on a walk keeps it through any replan: a sim change, a forced season, a water run, Invalidate */ prayerDay = long.MinValue; /* #566 */ runInReady = false; runInCache.Clear(); dayCache.Clear(); blockCache.Clear(); carryPlans.Clear(); fishDutiesDay = long.MinValue; dayInfo.day = long.MinValue; idleDay = long.MinValue; /* #656 */ laundryDay = long.MinValue; /* #705 */ }
 
         void EnsureDay(long day)
         {
@@ -970,13 +970,17 @@ namespace AquariumCiv.Life
             return PlaceOf(p.jobBuilding);
         }
 
-        ActivityKind Chore(Person p, DayInfo d, int salt) => WithWood(ChoreIndex(p, d, salt) switch
+        ActivityKind Chore(Person p, DayInfo d, int salt) => Fit(WithWood(ChoreIndex(p, d, salt) switch
         {
             0 => ActivityKind.SweepStep,
             1 => ActivityKind.HangWashing,
             2 => ActivityKind.ChopKindling,
             _ => ActivityKind.SitOut,
-        });
+        }), d);
+
+        /// <summary>#705 (B28.e): no washing on a wet day, in winter, or so late the line would stand past 17:00: the day's chore is the step swept
+        /// (in winter, a sit at the door). Same swap as <see cref="WithWood"/>.</summary>
+        ActivityKind Fit(ActivityKind k, DayInfo d) => k != ActivityKind.HangWashing || Laundry.ChoreFits(d.season, d.weather, bt) ? k : d.season == Season.Winter ? ActivityKind.SitOut : ActivityKind.SweepStep;
 
         /// <summary>#651 (playtest): no kindling to chop before the land has wood (a grown wild wood, the woodcutter's own rule, #285/#573):
         /// that chore turns into sitting out, so nobody swings an axe at nothing.</summary>
@@ -1022,7 +1026,7 @@ namespace AquariumCiv.Life
             dawnHouse.Sort((a, b) => { uint ha = H(a.key, day, 132 + salt), hb = H(b.key, day, 132 + salt); return ha != hb ? ha.CompareTo(hb) : a.key.CompareTo(b.key); });
             int rank = Math.Max(0, dawnHouse.IndexOf(p));
             int first = (int)(H(dawnHouse[0].key, day, 600 + salt) % (uint)DawnChores.Length);
-            return (rank, dawnHouse.Count, WithWood(DawnChores[(first + rank) % DawnChores.Length]));
+            return (rank, dawnHouse.Count, Fit(WithWood(DawnChores[(first + rank) % DawnChores.Length]), d));
         }
 
         /// <summary>#208: the home's morning chore by turns, between <paramref name="from"/> and <paramref name="end"/>: in until this person's
@@ -1034,6 +1038,7 @@ namespace AquariumCiv.Life
             var (rank, count, kind) = DawnTurn(p, d, salt);
             float slot = (end - from) / count;
             float len = Math.Min(0.35f + 0.2f * R(k, day, 130 + salt), Math.Max(0.2f, slot - 0.05f));
+            if (kind == ActivityKind.HangWashing) len = Math.Max(len, Math.Min(Laundry.ChoreHours, Math.Max(0.2f, slot - 0.05f))); // #705: three cloths take 7 s, stretched to 0.7 h inside the home's window
             float until = end;
             if (end - Math.Max(from, bt) - len > 0.05f)
             {

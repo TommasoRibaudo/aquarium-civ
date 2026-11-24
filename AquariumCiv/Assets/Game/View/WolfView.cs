@@ -29,7 +29,7 @@ namespace AquariumCiv.View
         /// <summary>Speeds (box units a second): the trot (the catch-up), a little over the sim's leg trot.</summary>
         public const float TrotSpeed = 0.2f;
         /// <summary>The most wolves drawn (the sim's cap).</summary>
-        public const int Cap = 8;
+        public static int Cap => AquariumCiv.Sim.AnimalBudget.Wolves;
 
         public WolfPack.Field Field { get; } = new WolfPack.Field();
 

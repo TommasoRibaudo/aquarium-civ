@@ -75,7 +75,7 @@ namespace AquariumCiv.Sim.Eco
         public float Light => MathF.Max(t.lightMin, 1f - t.lightGrime * st.grime - t.lightDroplets * st.droplets);
         public bool TooHumid => st.humidity > t.tooHumid;
         public bool TooDry => st.humidity < t.tooDryHumid;
-        static float Frac(int cells) => cells / (float)EcoLand.N;
+        static float Frac(int cells) => cells / (float)EcoLand.TunedCells; // see EcoLand.TunedCells (#658)
         // The step's own counts (taken at the end of the last step; the lab's model reads them mid-step).
         float MeadowFrac => Frac(st.cGrass + st.cTall);
         float BushFrac => Frac(st.cBush);
@@ -439,7 +439,7 @@ namespace AquariumCiv.Sim.Eco
         {
             int bare = 0;
             for (int c = 0; c < EcoLand.N; c++) if (Cv(c) == EcoCover.Bare) bare++;
-            float veg = 1f - Frac(bare);
+            float veg = Terrain.Clamp01(Frac(EcoLand.N - bare)); // green (non-bare) cells against the tuned land, #658
             float eq = t.humidBase + t.humidVeg * veg + t.humidPond * MathF.Min(0.3f, Frac(st.cPond));
             st.humidity += (eq - st.humidity) * t.humidToRoom;
             st.humidity = Terrain.Clamp01(st.humidity);

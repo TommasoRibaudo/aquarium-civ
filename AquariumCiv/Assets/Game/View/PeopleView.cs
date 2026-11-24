@@ -168,6 +168,10 @@ namespace AquariumCiv.View
         readonly Dictionary<int, Lot> lotOfBuilding = new();
         /// <summary>Verify run 2026-11-07: per home building, the side its chopping block stands (<see cref="SlotSpots.Home"/>'s blockSide).</summary>
         readonly Dictionary<int, int> blockSideOf = new();
+        /// <summary>#705: the washing line's place per home building (cached with the lots), and what draws the lines.</summary>
+        readonly Dictionary<int, (bool ok, LaundryAnchor an)> lineAnchorOf = new();
+        readonly LaundryView laundryView = new();
+        public LaundryView Washing => laundryView;
         readonly List<Lot> standingLots = new();
         readonly Dictionary<int, Notable> notables = new();
         readonly HashSet<int> seen = new();
@@ -319,6 +323,7 @@ namespace AquariumCiv.View
                 lotsMonth = sim.State.month; lotsCount = lots;
                 lotOfBuilding.Clear();
                 blockSideOf.Clear();
+                lineAnchorOf.Clear();
                 standingLots.Clear();
                 if (st != null)
                     foreach (var l in st.Lots)
@@ -366,6 +371,101 @@ namespace AquariumCiv.View
             return false;
         }
 
+        // ---------------- #705: the washing line's place ----------------
+
+        /// <summary>Where a home's washing line stands (B28.a): on the Line spot's side of the door, swapped to the other side when a neighbour's roof or
+        /// a path or a thing is in the way, else out in front; never on a path cell. Cached with the lots. A line later at the same home sits further along.</summary>
+        bool LineAnchorFor(Place home, int ordinal, int cloths, out LaundryAnchor an)
+        {
+            an = default;
+            if (!home.IsBuilding) return false;
+            if (!lineAnchorOf.TryGetValue(home.buildingId, out var c))
+            {
+                c = (ComputeLineAnchor(home, out var calc), calc);
+                lineAnchorOf[home.buildingId] = c;
+            }
+            if (!c.ok) return false;
+            an = c.an;
+            if (ordinal > 0) an.centre += an.along * (ordinal * (LaundryLines.Length(cloths) + 0.08f));
+            return true;
+        }
+
+        /// <summary>Tests and the cheat: where this home's washing line stands (false when it has none).</summary>
+        public bool TryGetLineAnchor(Place home, out LaundryAnchor an) => LineAnchorFor(home, 0, Laundry4(), out an);
+        static int Laundry4() => AquariumCiv.Life.Laundry.Capacity;
+
+        bool ComputeLineAnchor(Place home, out LaundryAnchor an)
+        {
+            an = default;
+            if (planner == null || !planner.Positions.TryGetPosition(home, out float hx, out float hz)) return false;
+            var spot = new Vector2(hx, hz);
+            Lot lot = null;
+            Vector2 outDir;
+            if (lotOfBuilding.TryGetValue(home.buildingId, out var l) && !l.open && l.kind != LotKind.Farm && l.kind != LotKind.Pasture && l.kind != LotKind.Orchard)
+            {
+                lot = l;
+                var centre = new Vector2(l.x, l.z);
+                outDir = (spot - centre).sqrMagnitude > 1e-6f ? (spot - centre).normalized : Vector2.down;
+            }
+            else if (planner.FirePoint(out float fx, out float fz) && (spot - new Vector2(fx, fz)).sqrMagnitude > 1e-6f) outDir = (spot - new Vector2(fx, fz)).normalized; // a tent: away from the fire
+            else outDir = Vector2.down;
+            float baseAng = Mathf.Atan2(outDir.y, outDir.x);
+            var side = new Vector2(-outDir.y, outDir.x);
+            int blockSide = lot != null ? BlockSide(lot, spot, baseAng) : 0; // the chopping block's side: the line takes the other
+            bool Fits(Vector2 centreAt, Vector2 w)
+            {
+                for (int k = -2; k <= 2; k++)
+                    for (int e = 0; e < 2; e++)
+                    {
+                        var q = centreAt + w * (k * LaundryLines.Pitch) + outDir * (e * LaundryLines.StandOut);
+                        if (lot != null && UnderEaves(lot, q)) return false;
+                        if (RackSites.PathAt(plannerSim, q.x, q.y)) return false; // #700: never on a path cell
+                        if (Box != null && Box.land != null && Box.land.IsWater(q.x, q.y)) return false;
+                        foreach (var (bp, br) in blockers) if ((q - bp).sqrMagnitude < (br + 0.02f) * (br + 0.02f)) return false;
+                        foreach (var sd in solids) if ((q - new Vector2(sd.x, sd.z)).sqrMagnitude < (sd.r + 0.12f) * (sd.r + 0.12f)) return false;
+                    }
+                return true;
+            }
+            // the Line spot's own side first (SlotSpots.Home: -YardSide x side, flipped with the block), then the other; the cord starts 0.12 u past the spot
+            foreach (int sgn in new[] { -1, 1 })
+            {
+                if (sgn == blockSide) continue; // the block stands there
+                var w = side * sgn;
+                var c0 = spot + outDir * SlotSpots.YardOut + w * (SlotSpots.YardSide + 0.12f);
+                if (Fits(c0, w)) { an = new LaundryAnchor { centre = c0, along = w, outDir = outDir }; return true; }
+            }
+            var front = spot + outDir * SlotSpots.FrontOut;
+            if (Fits(front, side)) { an = new LaundryAnchor { centre = front, along = side, outDir = outDir }; return true; }
+            var fallback = -blockSide == 0 ? -1 : -blockSide;
+            an = new LaundryAnchor { centre = spot + outDir * SlotSpots.YardOut + side * fallback * (SlotSpots.YardSide + 0.12f), along = side * fallback, outDir = outDir };
+            return true;
+        }
+
+        /// <summary>The doll's stand for a hang or a take-in: on the out side of the cord at the cloth she is on, facing it. The line is the planner's one for her chore.</summary>
+        bool LaundryStand(PersonActivity a, out Vector2 at, out Vector2 face, out int cloths)
+        {
+            at = face = default; cloths = 0;
+            var lines = planner.LaundryOn(now.day);
+            for (int i = 0; i < lines.Count; i++)
+            {
+                var l = lines[i];
+                bool mine = a.kind == ActivityKind.HangWashing ? l.home == a.place && Mathf.Abs(l.start - a.start) < 0.02f : l.home == a.place && Mathf.Abs(l.takeAt - a.start) < 0.02f;
+                if (!mine || !LineAnchorFor(l.home, l.ordinal, l.cloths, out var an)) continue;
+                cloths = l.cloths;
+                float since = a.end > a.start ? LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)) : 0f;
+                float along;
+                if (a.kind == ActivityKind.HangWashing)
+                {
+                    along = LaundryBeats.HangAlong(since, l.cloths, dollZoomScale);
+                }
+                else along = LaundryLines.SlotAlong(LaundryBeats.PluckingCloth(since, l.cloths), l.cloths, dollZoomScale);
+                at = an.centre + an.along * along + an.outDir * (LaundryLines.StandOut * dollZoomScale);
+                face = at - an.outDir;
+                return true;
+            }
+            return false;
+        }
+
         // ---------------- dolls ----------------
         void Animate(SimCore sim, float dt)
         {
@@ -390,6 +490,8 @@ namespace AquariumCiv.View
                 CampBedrolls.Bind(plannerSim.State.seed);
                 if (Box != null && Box.Root != null && planner != null && planner.FirePoint(out float cbx, out float cbz)) CampBedrolls.Draw(Box.Root, Box.land, new Vector2(cbx, cbz));
             }
+            if (Box != null && Box.Root != null && planner != null) // #705 (B28): the washing lines, drawn from the planner's day
+                laundryView.Tick(planner.LaundryOn(now.day), now, peopleRoot, Box.SolidMaterial, LineAnchorFor, (lx, lz) => Box.SurfaceHeight(lx, lz), dollZoomScale, poseClock);
             playSpots.Clear();
             // #189: everyone on view where they were drawn last frame, for the walkers to keep clear of (nobody goes round a sleeper they can't see, #203).
             crowd.Clear();
@@ -480,6 +582,17 @@ namespace AquariumCiv.View
                     face = target + (target - from).normalized; // moved round a corner, still looking away from the house
                 }
             }
+            // #700 (B27): a path came over a rack: the crew stand where the plan says (RackMovePlan.Stand), at the beat's own pace
+            RackMovePlan rackPlan = null; RackRole rackRole = RackRole.Lifter; float rackSince = 0f; bool rackNow = false;
+            if (!hidden && !hunting && !tenting && !a.moving && !a.enRoute && a.kind == ActivityKind.MoveRack && planner.TryGetRackRole(a.who, now, out rackPlan, out rackRole, out rackSince))
+            {
+                rackPlan.Stand(rackRole, rackSince, out float rsx, out float rsz, out float rmx, out float rmz, out _);
+                target = new Vector2(rsx, rsz); face = new Vector2(rmx, rmz); rackNow = true; claimed.Add(target);
+            }
+            // #705 (B28): hanging out the washing, or taking it in: she stands at the line, on the out side of the cord at the cloth she is on, facing it
+            bool laundryNow = false; int clothCount = a.count;
+            if (!hidden && !hunting && !tenting && !a.moving && !a.enRoute && a.place.kind == PlaceKind.Home && a.kind is ActivityKind.HangWashing or ActivityKind.TakeInWashing
+                && LaundryStand(a, out var lineAt, out var lineFace, out clothCount)) { target = lineAt; face = lineFace; laundryNow = true; claimed.Add(target); }
             // #365 B9.d: the cook stands at the pot, facing it
             if (!hidden && !hunting && !tenting && !a.moving && !a.enRoute && a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && meals.HasFire) { target = meals.CookSpot(target); face = meals.Pot; }
             // #358: a play group has them: its game says where they stand, what they face and the move (KidPlayDirector).
@@ -551,7 +664,7 @@ namespace AquariumCiv.View
             bool gazing = !a.moving && !a.enRoute && !hidden && !hunting && !tenting && !playing && GazesAtCamera(a.kind, a.place.kind) && CameraPlanePoint(out camPlane);
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
             target.x = Mathf.Clamp(target.x, -Land.HX + rim, Land.HX - rim);
-            target.y = Mathf.Clamp(target.y, -Land.HZ + rim, Land.HZ - rim);
+            target.y = Land.ClampZ(target.y, rim);
 
             // Chase the target: walks are continuous already (the planner's route); taking a slot on arrival glides at a
             // walking pace, never faster than the walk itself. Unseen (indoors) or a clock jump: just be there. A plan that
@@ -587,6 +700,7 @@ namespace AquariumCiv.View
                 // on reaching it. Now the catching up fades as they near it, and they settle into the walk.
                 d.pos = Vector2.MoveTowards(d.pos, goal, (targetSpeed + Mathf.Min(DrawnSlack, CatchLeast + gap * (a.moving ? CatchWalking : CatchArriving))) * dt);
             }
+            if (rackNow && !jump) d.pos = (target - d.pos).sqrMagnitude < 0.12f * 0.12f ? target : Vector2.MoveTowards(d.pos, target, 0.45f * dt); // #700: the carried parts ride on the plan's points, so the crew keep to them
             d.wasHidden = hidden;
             float inst = dt > 0f && d.placed ? (d.pos - prev).magnitude / dt : 0f;
             var drawnWas = d.drawn;
@@ -596,8 +710,9 @@ namespace AquariumCiv.View
             d.placed = true;
 
             if (d.speed > WalkStarts) d.walking = true; else if (d.speed < WalkStops) d.walking = false;
-            bool walking = d.walking;
+            bool walking = d.walking && !rackNow && !laundryNow; // #700: the carry's legs are part of the beat's pose; #705: the side step along the cord too
             var style = DollMotion.StyleOf(a.kind);
+            if (style == DollStyle.HangWash && !laundryNow) style = DollStyle.Hang; // #705: no line here (the weaver's cloth at the workshop): the old hanging mime
             // #362: a crouched creep (0.1 u/s) is faster than the walk threshold, but it is a stalk, not a walk
             bool keepsHunchStyle = hunting && (a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.Bolt or HuntPhase.PullSpear or HuntPhase.PickUp or HuntPhase.HoldUp
                 || DeerBeats.Crouched(a.hunt)); // #426
@@ -702,7 +817,8 @@ namespace AquariumCiv.View
                 if (d.drew != DollStyle.TipBasket) d.tipStart = time;
                 tipSince = since = time - d.tipStart;
             }
-            var pose = playing ? playGame.PoseOf(playIx, time, phase, d.stride, d.speed, out _) : DollMotion.Evaluate(style, phase, style == DollStyle.Chop ? a.pace * (0.9f + 0.2f * Hash01(a.who.Key, 6)) : a.pace /* #573: each chopper has their own tempo, so two at one tree never strike together */, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count, d.stride); // #358
+            var pose = playing ? playGame.PoseOf(playIx, time, phase, d.stride, d.speed, out _) : DollMotion.Evaluate(style, phase, style == DollStyle.Chop ? a.pace * (0.9f + 0.2f * Hash01(a.who.Key, 6)) : a.pace /* #573: each chopper has their own tempo, so two at one tree never strike together */, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, laundryNow ? clothCount : a.count, d.stride); // #358; #705: the line's cloths
+            if (rackNow) RackMoveBeats.Apply(ref pose, rackPlan, rackRole, rackSince, d.stride, holds); // #700 (B27)
             // sign-off 2026-11-14 (2nd run): a bedroll mended by the fire is laid out there for the rest of the session
             if (d.drew == DollStyle.Mend && style != DollStyle.Mend && !jump && planner.FirePoint(out float bfx, out float bfz)) CampBedrolls.Lay(new Vector2(bfx, bfz));
             if (style != d.drew)

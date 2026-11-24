@@ -468,7 +468,7 @@ namespace AquariumCiv.View
             {
                 float t = i * step;
                 var p = o + d * t;
-                bool inside = Mathf.Abs(p.x) <= Land.HX && Mathf.Abs(p.z) <= Land.HZ;
+                bool inside = Mathf.Abs(p.x) <= Land.HX && Land.InZ(p.z);
                 if (inside && p.y <= box.GroundHeight(p.x, p.z))
                 {
                     if (!wasAbove) return false;
@@ -477,7 +477,7 @@ namespace AquariumCiv.View
                     {
                         float m = (lo + hi) * 0.5f;
                         var q = o + d * m;
-                        if (q.y <= box.GroundHeight(Mathf.Clamp(q.x, -Land.HX, Land.HX), Mathf.Clamp(q.z, -Land.HZ, Land.HZ))) hi = m; else lo = m;
+                        if (q.y <= box.GroundHeight(Mathf.Clamp(q.x, -Land.HX, Land.HX), Land.ClampZ(q.z))) hi = m; else lo = m;
                     }
                     var h = o + d * hi;
                     x = h.x; z = h.z;
@@ -608,7 +608,7 @@ namespace AquariumCiv.View
             if (footGo != null) { Destroy(footGo); footGo = null; }
         }
 
-        Vector3 Ground(float x, float z) => new(x, box.GroundHeight(Mathf.Clamp(x, -Land.HX, Land.HX), Mathf.Clamp(z, -Land.HZ, Land.HZ)), z);
+        Vector3 Ground(float x, float z) => new(x, box.GroundHeight(Mathf.Clamp(x, -Land.HX, Land.HX), Land.ClampZ(z)), z);
 
         // ================================================================== the answer: ring, beam
 
@@ -1149,7 +1149,7 @@ namespace AquariumCiv.View
                         float a = Land.Hash3(entry.footprint.seed, i, 1) * Mathf.PI * 2f;
                         float rad = Mathf.Sqrt(Land.Hash3(entry.footprint.seed, i, 2)) * 0.32f * cs;
                         float x = r.x + Mathf.Cos(a) * rad, z = r.z + Mathf.Sin(a) * rad;
-                        float gy = owner.box.GroundHeight(Mathf.Clamp(x, -Land.HX, Land.HX), Mathf.Clamp(z, -Land.HZ, Land.HZ));
+                        float gy = owner.box.GroundHeight(Mathf.Clamp(x, -Land.HX, Land.HX), Land.ClampZ(z));
                         float u = Mathf.Repeat(t * (r.storm ? 2.2f : 1.6f) + Land.Hash3(entry.footprint.seed, i, 3), 1f);
                         float y = Mathf.Lerp(top, gy, u);
                         float len = r.storm ? 0.09f : 0.065f;

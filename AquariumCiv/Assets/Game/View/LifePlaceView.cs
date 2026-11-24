@@ -336,7 +336,7 @@ namespace AquariumCiv.View
                 if (index.TryGetValue(key, out int v)) return v;
                 float x = SiteMap.X0 + i * SiteMap.Cell, z = SiteMap.Z0 + j * SiteMap.Cell;
                 v = verts.Count;
-                verts.Add(new Vector3(x, GroundY(Mathf.Clamp(x, -Land.HX, Land.HX), Mathf.Clamp(z, -Land.HZ, Land.HZ), s), z));
+                verts.Add(new Vector3(x, GroundY(Mathf.Clamp(x, -Land.HX, Land.HX), Land.ClampZ(z), s), z));
                 float a = lit[key];
                 float soft = a * a * (3f - 2f * a);
                 cols.Add(new Color(1f, 1f, 1f, soft)); // smoothstep: a soft rim (the restore)
@@ -413,7 +413,7 @@ namespace AquariumCiv.View
         {
             look ??= new GhostLook(box.transform, "LifeGhost");
             bool water = ghostFor == LifeSpecies.Ducks || ghostFor == LifeSpecies.Fish;
-            float y = GroundY(Mathf.Clamp(c.x, -Land.HX, Land.HX), Mathf.Clamp(c.z, -Land.HZ, Land.HZ), ghostFor) - (water ? 0.008f : 0.012f);
+            float y = GroundY(Mathf.Clamp(c.x, -Land.HX, Land.HX), Land.ClampZ(c.z), ghostFor) - (water ? 0.008f : 0.012f);
             look.Draw(LifeLooks.Ghost(ghostFor, box, false), LifeLooks.Ghost(ghostFor, box, true), new Vector3(c.x, y, c.z), scale, ghostFill, ghostEdge);
         }
 
@@ -476,8 +476,8 @@ namespace AquariumCiv.View
                     float a = i * Mathf.PI * 2f / seg, cs = Mathf.Cos(a), sn = Mathf.Sin(a);
                     float xo = c.x + cs * (rx + width * 0.5f), zo = c.z + sn * (rz + width * 0.5f);
                     float xi = c.x + cs * (rx - width * 0.5f), zi = c.z + sn * (rz - width * 0.5f);
-                    verts.Add(new Vector3(xo, GroundY(Mathf.Clamp(xo, -Land.HX, Land.HX), Mathf.Clamp(zo, -Land.HZ, Land.HZ), s) + 0.004f, zo));
-                    verts.Add(new Vector3(xi, GroundY(Mathf.Clamp(xi, -Land.HX, Land.HX), Mathf.Clamp(zi, -Land.HZ, Land.HZ), s) + 0.004f, zi));
+                    verts.Add(new Vector3(xo, GroundY(Mathf.Clamp(xo, -Land.HX, Land.HX), Land.ClampZ(zo), s) + 0.004f, zo));
+                    verts.Add(new Vector3(xi, GroundY(Mathf.Clamp(xi, -Land.HX, Land.HX), Land.ClampZ(zi), s) + 0.004f, zi));
                     cols.Add(c32); cols.Add(c32);
                     if (i == seg) continue;
                     int o = b + i * 2;
@@ -499,7 +499,7 @@ namespace AquariumCiv.View
                 var cam = Camera.main;
                 if (cam == null || box == null || !GhostShown) return Vector2.zero;
                 var c = Ghost.At;
-                float y = GroundY(Mathf.Clamp(c.x, -Land.HX, Land.HX), Mathf.Clamp(c.z, -Land.HZ, Land.HZ), ghostFor);
+                float y = GroundY(Mathf.Clamp(c.x, -Land.HX, Land.HX), Land.ClampZ(c.z), ghostFor);
                 return cam.WorldToScreenPoint(box.transform.TransformPoint(new Vector3(c.x, y, c.z)));
             }
         }

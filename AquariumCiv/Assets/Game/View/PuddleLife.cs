@@ -104,7 +104,7 @@ namespace AquariumCiv.View
             float cx = AquariumCiv.Sim.Settle.SiteMap.CXc(cell), cz = AquariumCiv.Sim.Settle.SiteMap.CZc(cell);
             // from the nearest edge of the land, 1.2 units off
             var dir = new Vector2(cx, cz).normalized; if (dir.sqrMagnitude < 0.01f) dir = Vector2.right;
-            float sx = Mathf.Clamp(cx + dir.x * 1.2f, -Land.HX + 0.1f, Land.HX - 0.1f), sz = Mathf.Clamp(cz + dir.y * 1.2f, -Land.HZ + 0.1f, Land.HZ - 0.1f);
+            float sx = Mathf.Clamp(cx + dir.x * 1.2f, -Land.HX + 0.1f, Land.HX - 0.1f), sz = Land.ClampZ(cz + dir.y * 1.2f, 0.1f);
             from = new Vector3(sx, 0f, sz);
             to = new Vector3(cx + 0.07f, 0f, cz);
             rabbit.SetActive(true);

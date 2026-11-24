@@ -31,7 +31,7 @@ namespace AquariumCiv.View.Moments
         public float yaw, pitch, zoom;
         public CameraPose(MVec3 target, float yaw, float pitch, float zoom) { this.target = target; this.yaw = yaw; this.pitch = pitch; this.zoom = zoom; }
         /// <summary>BoxCamera's defaults (target (0, 1, 0), yaw 28, pitch 34, zoom 1).</summary>
-        public static CameraPose Default => new(new MVec3(0f, 1f, 0f), 28f, 34f, 1f);
+        public static CameraPose Default => new(new MVec3(0f, 1f, Sim.Settle.Terrain.CZ), 28f, 34f, 1f);
         public override string ToString() => $"{target} yaw {yaw:0.#} pitch {pitch:0.#} zoom {zoom:0.##}";
     }
 

@@ -166,6 +166,7 @@ namespace AquariumCiv.View.PlayTests
             }
             if (pinnedHere && GameClock.Instance != null && Sim != null) { Sim.Unpin(); pinnedHere = false; }
             if (pv != null) pv.timeScale = 1f;
+            CloseLoosePt1b(); // batch 2: the ice cheat, a choice on stage
         }
 
         /// <summary>At the end of the walk: the player's own sound sliders come back (#648 may have set the defaults).</summary>
@@ -902,14 +903,14 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(4);
             // the NightShots.NearGlass671 recipe: wet the ground along the two near panes, then zoom in on the near corner
             var camLocal = box.transform.InverseTransformPoint(Camera.main.transform.position);
-            float nx = Mathf.Clamp(camLocal.x, -Land.HX + 0.5f, Land.HX - 0.5f), nz = Mathf.Clamp(camLocal.z, -Land.HZ + 0.5f, Land.HZ - 0.5f);
+            float nx = Mathf.Clamp(camLocal.x, -Land.HX + 0.5f, Land.HX - 0.5f), nz = Land.ClampZ(camLocal.z, 0.5f);
             for (float t = -1f; t <= 1f; t += 0.5f)
             {
-                EcoDebug.MistBig(nx, nz + t * 1.2f * -Mathf.Sign(nz));
+                EcoDebug.MistBig(nx, nz + t * 1.2f * -Mathf.Sign(nz - Land.CZ));
                 EcoDebug.MistBig(nx + t * 1.6f * -Mathf.Sign(nx), nz);
             }
             yield return Wait(1.5f);
-            nearFocus = World(nx - Mathf.Sign(nx) * 0.7f, nz - Mathf.Sign(nz) * 0.55f); // a little inside the near corner: the wet ground fills the frame down to the glass
+            nearFocus = World(nx - Mathf.Sign(nx) * 0.7f, nz - Mathf.Sign(nz - Land.CZ) * 0.55f); // a little inside the near corner: the wet ground fills the frame down to the glass
             yield return HoldNearGlass();
         }
 

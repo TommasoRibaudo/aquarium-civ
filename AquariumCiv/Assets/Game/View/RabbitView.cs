@@ -444,12 +444,12 @@ namespace AquariumCiv.View
                 for (float r = 0.1f; r <= 0.9f; r += 0.05f)
                 {
                     var p = new Vector2(x, z) + d * r;
-                    if (Mathf.Abs(p.x) > Land.HX - 0.1f || Mathf.Abs(p.y) > Land.HZ - 0.1f) break;
+                    if (Mathf.Abs(p.x) > Land.HX - 0.1f || !Land.InZ(p.y, 0.1f)) break;
                     if (!Field.IsGreenAt(p.x, p.y)) { if (r < best) { best = r; bestAt = new Vector2(x, z) + d * Mathf.Min(0.9f, r + 0.35f); } break; }
                 }
             }
             bestAt.x = Mathf.Clamp(bestAt.x, -Land.HX + 0.1f, Land.HX - 0.1f);
-            bestAt.y = Mathf.Clamp(bestAt.y, -Land.HZ + 0.1f, Land.HZ - 0.1f);
+            bestAt.y = Land.ClampZ(bestAt.y, 0.1f);
             return bestAt;
         }
 

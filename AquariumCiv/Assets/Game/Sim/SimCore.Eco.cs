@@ -258,7 +258,7 @@ namespace AquariumCiv.Sim
         /// <summary>Share of the land that is bare ground right now, 0..1 (the sound's barren bed uses this); 0 when the ecology is off.</summary>
         public float EcoBareShare => EcologyOn ? EcoM.Live().bare / (float)EcoLand.N : 0f;
         /// <summary>Share of the land in grass or tall grass right now.</summary>
-        public float EcoMeadowShare { get { if (!EcologyOn) return 0f; var l = EcoM.Live(); return (l.grass + l.tall) / (float)EcoLand.N; } }
+        public float EcoMeadowShare { get { if (!EcologyOn) return 0f; var l = EcoM.Live(); return (l.grass + l.tall) / (float)EcoLand.TunedCells; } } // read against the tuned land, as the gates do (EcoLand.TunedCells, #658)
         /// <summary>Cells of open water, and of grown trees, right now.</summary>
         public int EcoPondCells => EcologyOn ? EcoM.Live().pond : 0;
         public int EcoGrownTrees => EcologyOn ? EcoM.Live().trees : 0;
@@ -278,7 +278,7 @@ namespace AquariumCiv.Sim
             {
                 if ((EcoCover)e.cover[c] != EcoCover.Tree || c == e.treeCell) continue;
                 float x = Settle.SiteMap.CXc(c), z = Settle.SiteMap.CZc(c);
-                if (Math.Abs(x) > mx || Math.Abs(z) > mz) continue;
+                if (Math.Abs(x) > mx || Math.Abs(z - Settle.Terrain.CZ) > mz) continue;
                 if (kt && Settle.Terrain.Dist(x, z, kx, kz) < cfg.woodsClearRadius) continue;
                 float d = (x - nearX) * (x - nearX) + (z - nearZ) * (z - nearZ);
                 found.Add((d, c));
@@ -404,7 +404,7 @@ namespace AquariumCiv.Sim
                     float x = Settle.SiteMap.CXc(c), z = Settle.SiteMap.CZc(c);
                     var cv = (EcoCover)e.cover[c];
                     if (c == e.treeCell || c == skip || (cv != EcoCover.Bare && cv != EcoCover.Grass && cv != EcoCover.Tall)) continue;
-                    if (g.InBasin(c) || g.yard[c] || Math.Abs(x) > mx || Math.Abs(z) > mz) continue; // (even cells only: the view draws a grown crown per 2 x 2 block, so a tree on an odd cell would stand in the sim and not on screen)
+                    if (g.InBasin(c) || g.yard[c] || Math.Abs(x) > mx || Math.Abs(z - Settle.Terrain.CZ) > mz) continue; // (even cells only: the view draws a grown crown per 2 x 2 block, so a tree on an odd cell would stand in the sim and not on screen)
                     if (evenOnly && ((Settle.SiteMap.I(c) & 1) != 0 || (Settle.SiteMap.J(c) & 1) != 0)) continue;
                     if (from >= 0 && Settle.Terrain.Dist(x, z, Settle.SiteMap.CXc(from), Settle.SiteMap.CZc(from)) < near) continue;
                     float dk = Settle.Terrain.Dist(x, z, kx, kz);

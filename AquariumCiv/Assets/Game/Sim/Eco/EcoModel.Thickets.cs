@@ -119,7 +119,7 @@ namespace AquariumCiv.Sim.Eco
             if (d >= t.thicketFromCamp) return c;
             if (d < 1e-3f) { dx = 1f; dz = 0f; d = 1f; }
             x = land.campX + dx / d * t.thicketFromCamp; z = land.campZ + dz / d * t.thicketFromCamp;
-            x = Math.Clamp(x, -Terrain.HX + 0.3f, Terrain.HX - 0.3f); z = Math.Clamp(z, -Terrain.HZ + 0.3f, Terrain.HZ - 0.3f);
+            x = Math.Clamp(x, -Terrain.HX + 0.3f, Terrain.HX - 0.3f); z = Terrain.ClampZ(z, 0.3f);
             int p = SiteMap.CellAt(x, z);
             return p >= 0 ? p : c;
         }

@@ -227,7 +227,7 @@ namespace AquariumCiv.View
             return found;
         }
 
-        static bool InsideBox(Vector2 p, float margin) => Mathf.Abs(p.x) <= Land.HX - margin && Mathf.Abs(p.y) <= Land.HZ - margin;
+        static bool InsideBox(Vector2 p, float margin) => Mathf.Abs(p.x) <= Land.HX - margin && Land.InZ(p.y, margin);
 
         /// <summary>
         /// Hide and seek's site near a spot: the base (the nearest tent to it within 1.2 u, else the nearest grown tree, else the stash

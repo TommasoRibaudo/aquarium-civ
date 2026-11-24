@@ -41,6 +41,7 @@ namespace AquariumCiv.Life
         {
             double a = yawDegrees * Math.PI / 180.0;
             double dx = -Math.Sin(a), dz = -Math.Cos(a);
+            // a direction only, so the box's centre does not matter
             if (Math.Abs(dz) / Terrain.HZ >= Math.Abs(dx) / Terrain.HX) return dz < 0 ? 0 : 2;
             return dx > 0 ? 1 : 3;
         }

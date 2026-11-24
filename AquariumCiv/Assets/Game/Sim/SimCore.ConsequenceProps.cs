@@ -275,7 +275,7 @@ namespace AquariumCiv.Sim
             {
                 double a = DilemmaRoll(111, salt, p.id) * Math.PI * 2.0;
                 float r = (minR + maxR) * 0.5f + p.id * 0.07f;
-                x = Math.Max(-mx, Math.Min(mx, ax + (float)Math.Cos(a) * r)); z = Math.Max(-mz, Math.Min(mz, az + (float)Math.Sin(a) * r));
+                x = Math.Max(-mx, Math.Min(mx, ax + (float)Math.Cos(a) * r)); z = Terrain.CZ + Math.Max(-mz, Math.Min(mz, az + (float)Math.Sin(a) * r - Terrain.CZ));
                 return;
             }
             const byte block = SiteMap.FCanal | SiteMap.FGreen | SiteMap.FCommons | SiteMap.FYard | SiteMap.FRock;
@@ -286,7 +286,7 @@ namespace AquariumCiv.Sim
                 for (int c = 0; c < SiteMap.N; c++)
                 {
                     float cx = SiteMap.CXc(c), cz = SiteMap.CZc(c);
-                    if (Math.Abs(cx) > mx || Math.Abs(cz) > mz) continue;
+                    if (Math.Abs(cx) > mx || Math.Abs(cz - Terrain.CZ) > mz) continue;
                     float dx = cx - ax, dz = cz - az, d = (float)Math.Sqrt(dx * dx + dz * dz);
                     if (d < lo || d > hi) continue;
                     if (map.pond[c] || map.lot[c] != 0 || map.ring[c] != 0 || (map.flags[c] & block) != 0 || map.Forest(c) || map.Reserved(c)) continue;
@@ -300,7 +300,7 @@ namespace AquariumCiv.Sim
                 }
                 if (best >= 0) { x = SiteMap.CXc(best); z = SiteMap.CZc(best); return; }
             }
-            x = Math.Max(-mx, Math.Min(mx, ax)); z = Math.Max(-mz, Math.Min(mz, az));
+            x = Math.Max(-mx, Math.Min(mx, ax)); z = Terrain.CZ + Math.Max(-mz, Math.Min(mz, az - Terrain.CZ));
         }
 
         /// <summary>Debug: every option of every choice that has a thing leaves it now (one per option, as if each had been taken),

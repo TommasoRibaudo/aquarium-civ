@@ -5,6 +5,7 @@ using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using NUnit.Framework;
 using UnityEngine;
+using Terrain = AquariumCiv.Sim.Settle.Terrain;
 
 namespace AquariumCiv.Life.Tests
 {
@@ -177,7 +178,7 @@ namespace AquariumCiv.Life.Tests
                 Assert.GreaterOrEqual(apart, 0.35f, defId + ": the two choices are clearly apart");
                 foreach (var s in st.sides)
                 {
-                    Assert.LessOrEqual(Math.Abs(s.x), 3f, defId); Assert.LessOrEqual(Math.Abs(s.z), 2.2f, defId);
+                    Assert.LessOrEqual(Math.Abs(s.x), 3f, defId); Assert.IsTrue(Terrain.InZ(s.z, 0f), defId);
                 }
                 switch (v.kind)
                 {

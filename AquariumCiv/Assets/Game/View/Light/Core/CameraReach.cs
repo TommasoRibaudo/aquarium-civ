@@ -4,7 +4,7 @@ namespace AquariumCiv.Lighting
 {
     /// <summary>
     /// #146 camera reach, pure floats so it runs outside Unity. <c>BoxCameraMath</c> and <c>BoxCamera</c> take their limits from here.
-    /// Zoom: smaller = closer. Land half-sizes are passed in (Land.HX = 3, Land.HZ = 2.2).
+    /// Zoom: smaller = closer. Land half-sizes are passed in (Land.HX = 3, Land.HZ = 3, #658); every bound is an OFFSET from the box centre (x = 0, z = Land.CZ), so the caller clamps (z - CZ).
     /// </summary>
     public static class CameraReach
     {

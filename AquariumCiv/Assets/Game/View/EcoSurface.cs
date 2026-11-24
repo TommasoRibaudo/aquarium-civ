@@ -383,7 +383,7 @@ namespace AquariumCiv.View
         void BuildWetFace()
         {
             pos.Clear(); col.Clear(); uv0.Clear(); uv1.Clear(); tri.Clear();
-            float HX = Site.X0 * -1f, HZ = Site.Z0 * -1f;
+            float HX = Site.X0 * -1f, zFront = Site.Z0, zBack = Site.Z0 + Site.NZ * Site.Cell; // #658: the land runs Z0 to Z0 + NZ cells
             const float Off = 0.004f;
             for (int side = 0; side < 4; side++)
             {
@@ -401,9 +401,9 @@ namespace AquariumCiv.View
                         float x, z;
                         switch (side)
                         {
-                            case 0: x = Site.X0 + k * Site.Cell; z = -HZ; break;
+                            case 0: x = Site.X0 + k * Site.Cell; z = zFront; break;
                             case 1: x = HX; z = Site.Z0 + k * Site.Cell; break;
-                            case 2: x = Site.X0 + k * Site.Cell; z = HZ; break;
+                            case 2: x = Site.X0 + k * Site.Cell; z = zBack; break;
                             default: x = -HX; z = Site.Z0 + k * Site.Cell; break;
                         }
                         float w = e == 0 ? w0 : w1;

@@ -41,7 +41,7 @@ namespace AquariumCiv.Tests
                 if (m % 3 == 0 && s.EcologyOn)
                     for (int k = 0; k < 3; k++)
                     {
-                        int cell = (m / 3 * 211 + k * 877 + 301) % 2640;
+                        int cell = (m / 3 * 211 + k * 877 + 301) % EcoLand.N;
                         s.Mist(SiteMap.CXc(cell), SiteMap.CZc(cell), 2f);
                     }
                 s.Step();
@@ -56,7 +56,7 @@ namespace AquariumCiv.Tests
             var t = new TimeLapse(sim);
             var first = t.Frame(0);
             Assert.IsNotNull(first.land, "year 0 has a land record");
-            Assert.AreEqual(2640, first.land.cover.Length);
+            Assert.AreEqual(EcoLand.N, first.land.cover.Length);
             float prev = first.land.GreenShare;
             Assert.Less(prev, 0.02f, "a barren start");
             for (int y = 0; y <= t.MaxYear; y++) Assert.IsNotNull(t.Frame(y).land, "year " + y);

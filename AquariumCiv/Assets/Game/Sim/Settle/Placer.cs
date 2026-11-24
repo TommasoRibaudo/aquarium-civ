@@ -295,7 +295,7 @@ namespace AquariumCiv.Sim.Settle
             const float mx = Terrain.HX - Terrain.GlassMargin, mz = Terrain.HZ - Terrain.GlassMargin;
             var cx = cornerX; var cz = cornerZ;
             SiteMap.Corners(c.x, c.z, c.yaw, c.w, c.d, cx, cz);
-            for (int k = 0; k < 4; k++) if (MathF.Abs(cx[k]) > mx || MathF.Abs(cz[k]) > mz) return "glass";
+            for (int k = 0; k < 4; k++) if (MathF.Abs(cx[k]) > mx || MathF.Abs(cz[k] - Terrain.CZ) > mz) return "glass";
             SiteMap.RectCells(c.x, c.z, c.yaw, c.w, c.d, 0f, cells);
             if (cells.Count == 0) return "tiny";
             float slope = 0f, minWater = 99f;

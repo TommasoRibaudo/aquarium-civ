@@ -96,17 +96,17 @@ namespace AquariumCiv.Tests
             sim.DebugMistBig(sim.EcoGround.campX + 0.9f, sim.EcoGround.campZ);
             Assert.AreEqual(0, sim.EcoRabbitsShown());
             sim.DebugAddRabbits(3);
-            Assert.AreEqual(Math.Min(12, sim.EcoRabbitCount), sim.EcoRabbitsShown());
+            Assert.AreEqual(Math.Min(AnimalBudget.Rabbits, sim.EcoRabbitCount), sim.EcoRabbitsShown());
             sim.DebugAddRabbits(50);
-            Assert.Greater(sim.EcoRabbitCount, 12);
-            Assert.AreEqual(12, sim.EcoRabbitsShown(), "capped for the phone");
+            Assert.Greater(sim.EcoRabbitCount, AnimalBudget.Rabbits);
+            Assert.AreEqual(AnimalBudget.Rabbits, sim.EcoRabbitsShown(), "capped by the #710 budget");
             Assert.AreEqual(5, sim.EcoRabbitsShown(5));
             Assert.AreEqual(0, RabbitHerd.Shown(0.2f));
             Assert.AreEqual(3, RabbitHerd.Shown(2.6f));
             var f = new RabbitHerd.Field();
             Assert.IsTrue(f.Sync(sim.EcoRabbitsShown()));
-            Assert.AreEqual(12, f.Alive.Count);
-            Assert.IsFalse(f.Sync(12));
+            Assert.AreEqual(AnimalBudget.Rabbits, f.Alive.Count);
+            Assert.IsFalse(f.Sync(AnimalBudget.Rabbits));
             f.Sync(4);
             Assert.AreEqual(4, f.Alive.Count);
         }

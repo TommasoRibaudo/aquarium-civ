@@ -40,7 +40,7 @@ namespace AquariumCiv.Sim.Settle
         /// the side panes and the frame, it's lost).</summary>
         public static bool FootprintFree(SiteMap map, float x, float z, float r = Footprint, bool waterOk = false, bool[] avoid = null, float avoidR = Footprint)
         {
-            if (Math.Abs(x) > Terrain.HX - GlassMargin || Math.Abs(z) > Terrain.HZ - GlassMargin) return false;
+            if (Math.Abs(x) > Terrain.HX - GlassMargin || !Terrain.InZ(z, GlassMargin)) return false;
             float reach = Math.Max(r, Clearing + FrontView);
             int n = (int)Math.Ceiling(reach / SiteMap.Cell);
             for (int dj = -n; dj <= n; dj++)

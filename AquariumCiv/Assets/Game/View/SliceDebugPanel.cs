@@ -190,6 +190,9 @@ namespace AquariumCiv.View
             if (Btn("First wild wood now")) last = NewStartView.DebugFirstWildWoodNow();
             if (Btn("Empty the basket")) { var ns = GameClock.Instance != null ? GameClock.Instance.Sim : null; if (ns != null) { ns.DebugEmptyBasket(); last = "the basket is empty: hungry (slower, looking at the sky), nobody harmed"; } }
             EndRow();
+            Row(); // #658: the deeper box (an old 44-row save grows a bare strip at the back)
+            if (Btn("Grow a 44-row box")) last = GameClock.DebugGrowFrom44();
+            EndRow();
             Row();
             if (Btn("Fire: none")) last = NewStartFire(0);
             if (Btn("Fire: grass and twigs")) last = NewStartFire(1);
@@ -283,6 +286,10 @@ namespace AquariumCiv.View
             if (Btn("Fill fish basket")) last = FishRackView.DebugFillBasket();
             if (Btn("Fish on the rack")) last = FishRackView.DebugRack();
             if (Btn("Dried fish to pile")) last = FishRackView.DebugToPile();
+            EndRow();
+            Row(); // #705: the washing line
+            if (Btn("Laundry now")) last = LaundryCheats.LaundryNow();
+            if (Btn("Take in the washing")) last = LaundryCheats.TakeInNow();
             EndRow();
             Row(); // fb4 #566: the feather pole
             if (Btn("Feather pole: pray now")) last = ConsequenceCheats.PrayNow();

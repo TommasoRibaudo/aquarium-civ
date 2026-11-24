@@ -114,8 +114,16 @@ namespace AquariumCiv.View.PlayTests
         static readonly string[] LazyRoots = { "SpeakerRing", "ChatterMarks", "HitFx", "RitualBubbles" };
         /// <summary>Not ours and not a leak: the doll's own, the lazy one-offs, and the answer's consequence prop (#371: the sim places
         /// it when the Keeper answers, it is meant to stay in the box).</summary>
+        /// The work props' pools (#658): a chop log or a fisher's basket is made the first time someone chops or fishes and kept for reuse,
+        /// so on a box where the first chop lands inside the window it is a lazy one-off too, never a leak of the choice scene.
         static bool Counted(MeshRenderer r) => r != null && r.gameObject.scene.IsValid() && r.GetComponentInParent<PegDollView>() == null
-                        && System.Array.IndexOf(LazyRoots, r.transform.root.name) < 0 && !r.name.StartsWith("Consequence_");
+                        && System.Array.IndexOf(LazyRoots, r.transform.root.name) < 0 && !r.name.StartsWith("Consequence_")
+                        && !r.name.StartsWith("ChopLog") && !IsUnder(r.transform, "FishingPieces");
+        static bool IsUnder(Transform t, string name)
+        {
+            for (; t != null; t = t.parent) if (t.name == name) return true;
+            return false;
+        }
         static int Renderers() => Resources.FindObjectsOfTypeAll<MeshRenderer>().Count(Counted);
         static System.Collections.Generic.List<string> RendererNames() => Resources.FindObjectsOfTypeAll<MeshRenderer>()
             .Where(Counted)

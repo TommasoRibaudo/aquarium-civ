@@ -5,6 +5,7 @@ using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using NUnit.Framework;
 using UnityEngine;
+using Terrain = AquariumCiv.Sim.Settle.Terrain;
 
 namespace AquariumCiv.Life.Tests
 {
@@ -180,7 +181,7 @@ namespace AquariumCiv.Life.Tests
             {
                 planner.GlassSide = side;
                 Assert.IsTrue(planner.Positions.TryGetPosition(planner.GlassPlace, out float x, out float z), $"side {side} has a spot");
-                float dWall = side switch { 0 => z + 2.2f, 2 => 2.2f - z, 1 => 3f - x, _ => x + 3f };
+                float dWall = side switch { 0 => z - Terrain.ZMin, 2 => Terrain.ZMax - z, 1 => 3f - x, _ => x + 3f };
                 TestContext.WriteLine($"side {side}: ({x:0.00}, {z:0.00}), {dWall:0.00} from the wall");
                 Assert.That(dWall, Is.InRange(0f, 0.6f), $"side {side}: just inside the wall");
                 Assert.IsTrue(planner.RouteOf(Place.Land(PlaceKind.Hill), planner.GlassPlace, new List<Waypoint>()), "the glass can be walked to");

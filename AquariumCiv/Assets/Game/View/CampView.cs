@@ -290,6 +290,7 @@ namespace AquariumCiv.View
 
         void UpdateFrame(SimCore sim, LifePlanner planner, ViewTime now)
         {
+            if (planner.RackMoveCovers(RackKind.Hide, now)) { HideFrame(); return; } // #700 (B27): the take-down and set-up beat draws it (RackMoveView)
             if (FoundersWait(sim)) { HideFrame(); return; } // #656 (2026-11-14): no rack before the basket and the bundle are set down
             int n = planner.HideFramePoints(now, points);
             bool wanted = n > 0 || sim.HidesTotal > 0 || active.Count > 0 || pending.Count > 0;

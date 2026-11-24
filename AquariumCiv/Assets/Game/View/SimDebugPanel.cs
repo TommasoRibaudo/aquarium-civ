@@ -76,6 +76,15 @@ namespace AquariumCiv.View
             return Done((hide ? "hide rack" : "fish rack") + ": path laid over it (" + n + " cells); it moves at night or when empty");
         }
 
+        /// <summary>#700 (B27): a rack a path covers is taken down by two people now, whatever the hour (the beat). Lay the path first.</summary>
+        public static string DoRackMoveNow()
+        {
+            var e = Need(out _); if (e != null) return e;
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no PeopleView";
+            return Done(pv.Planner.DebugRackMoveNow(pv.Now) ? "two people take the rack down now" : "no rack stands on a path (use 'Path over the fish rack' first), or no camp");
+        }
+
         public static string DoRelic(string id) { var e = Need(out var s); if (e != null) return e; var r = s.DebugGiveRelic(id); return Done(r == null ? "no " + id : "relic " + id); }
         public static string DoLoseSandal() { var e = Need(out var s); if (e != null) return e; return Done(s.DebugLoseSandal() != null ? "sandal lost" : "nobody to lose it"); }
         public static string DoSandalYears() { var e = Need(out var s); if (e != null) return e; return Done(s.DebugSkipSandalYears(20) ? "sandal lost 20 years longer" : "no lost sandal"); }
@@ -126,7 +135,7 @@ namespace AquariumCiv.View
                     return cam.FlyToBuilding(bid) ? "flying to building #" + bid : "no spot for building #" + bid;
                 }
                 case "point": cam.FlyTo(new Vector3(x, 0f, z), 0.6f); return $"flying to ({x:0.0}, {z:0.0})";
-                case "overview": cam.FlyTo(Vector3.zero, 1f); return "flying to the overview";
+                case "overview": cam.FlyTo(new Vector3(0f, 0f, Land.CZ), 1f); return "flying to the overview";
             }
             return "unknown " + what;
         }
@@ -314,7 +323,10 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Path over the fish rack")) last = DoPathOverRack(false);
                 if (GUILayout.Button("Path over the hide rack")) last = DoPathOverRack(true);
                 GUILayout.EndHorizontal();
-                GUILayout.Label("The rack moves at night or when empty; press Bedtime (clock to 20:00) to see it go.");
+                // the beat (B27): two people take the rack down, carry it and set it up; it starts at dusk or in the night block, or now with this button
+                if (GUILayout.Button("Rack moves now (the take-down beat)")) last = DoRackMoveNow();
+                GUILayout.Label(RackMoveView.Instance != null && RackMoveView.Instance.Drawing ? "beat: " + RackMoveView.Instance.Phase : "no beat running");
+                GUILayout.Label("The rack moves at dusk (17:00) or in the night block, or by day when empty; press Bedtime (clock to 20:00) or the button to see it go.");
             }
             // ---- end #700 ----
             // ---- #676: the camp pot's stew kind (from what the camp has) ----

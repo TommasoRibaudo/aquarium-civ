@@ -288,8 +288,8 @@ namespace AquariumCiv.View
                 bool zz = zAxis[i];
                 float w = size.x;
                 masks[i].NoGrimeBelow(u => zz
-                    ? box.GroundHeight(Mathf.Clamp(pos.x, -Land.HX, Land.HX), Mathf.Clamp((u - 0.5f) * w, -Land.HZ, Land.HZ))
-                    : box.GroundHeight(Mathf.Clamp((u - 0.5f) * w, -Land.HX, Land.HX), Mathf.Clamp(pos.z, -Land.HZ, Land.HZ)));
+                    ? box.GroundHeight(Mathf.Clamp(pos.x, -Land.HX, Land.HX), Land.ClampZ(pos.z + (u - 0.5f) * w))
+                    : box.GroundHeight(Mathf.Clamp((u - 0.5f) * w, -Land.HX, Land.HX), Land.ClampZ(pos.z)));
                 textures[i] = new Texture2D(masks[i].width, masks[i].height, TextureFormat.R8, false, true)
                     { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, name = "GrimeMask_" + t.name, hideFlags = HideFlags.DontSave };
                 bytes[i] = new byte[masks[i].Texels];
@@ -315,7 +315,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < cols.Length; i++)
             {
                 var t = cols[i].transform;
-                if (zAxis[i]) halfW = Mathf.Abs(t.localPosition.x); else halfD = Mathf.Abs(t.localPosition.z);
+                if (zAxis[i]) halfW = Mathf.Abs(t.localPosition.x); else halfD = Mathf.Abs(t.localPosition.z - Land.CZ); // #658: half the depth, from the box centre
                 top = t.localPosition.y + t.localScale.y * 0.5f;
             }
             return true;
@@ -374,7 +374,7 @@ namespace AquariumCiv.View
             var outward = zAxis[i] ? new Vector3(Mathf.Sign(t.localPosition.x), 0f, 0f) : new Vector3(0f, 0f, Mathf.Sign(t.localPosition.z));
             if (Vector3.Dot(box.transform.TransformDirection(outward), c.transform.position - cols[i].bounds.center) > 0f) return true;
             var l = box.transform.InverseTransformPoint(world);
-            return l.y >= box.GroundHeight(Mathf.Clamp(l.x, -Land.HX, Land.HX), Mathf.Clamp(l.z, -Land.HZ, Land.HZ)) - 0.005f;
+            return l.y >= box.GroundHeight(Mathf.Clamp(l.x, -Land.HX, Land.HX), Land.ClampZ(l.z)) - 0.005f;
         }
 
         // ---------------- #268: what a finger can reach ----------------
@@ -971,7 +971,7 @@ namespace AquariumCiv.View
             int n = everything ? 36 : 22;
             for (int i = 0; i < n; i++)
             {
-                var p = new Vector3(Random.Range(-Land.HX, Land.HX) * 0.85f, Land.GlassTop * Random.Range(0.35f, 0.9f), Random.Range(-Land.HZ, Land.HZ) * 0.85f);
+                var p = new Vector3(Random.Range(-Land.HX, Land.HX) * 0.85f, Land.GlassTop * Random.Range(0.35f, 0.9f), Land.CZ + Random.Range(-Land.HZ, Land.HZ) * 0.85f);
                 Burst(transform.TransformPoint(p), 1, 0.05f, 0.25f);
             }
             people?.Planner?.React(KeeperGesture.FullClean, people.Now);
