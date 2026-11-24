@@ -97,7 +97,7 @@ namespace AquariumCiv.View.Tests
             var sit = CampScenes6.StumpSit(1, Far, 2, Far2, Spot, ToCam, 6f, 0f);
             Ok(sit);
             var p0 = PoseAt(sit.parts[0].First(p => p.style == DollStyle.Sit), 0.25f);
-            Assert.Greater(p0.offset.y + p0.lift, PropGeo.StumpTop * 0.7f, "up on the stump"); // the seat height is in lift since the 2026-11-23 climb Assert.AreEqual(5f, Mathf.Abs(p0.roll), 0.5f, "swinging, roll 5");
+            Assert.Greater(p0.offset.y, PropGeo.StumpTop * 0.7f, "up on the stump"); Assert.AreEqual(5f, Mathf.Abs(p0.roll), 0.5f, "swinging, roll 5");
             Assert.AreEqual(2, sit.Count, "a friend on the other edge");
         }
 

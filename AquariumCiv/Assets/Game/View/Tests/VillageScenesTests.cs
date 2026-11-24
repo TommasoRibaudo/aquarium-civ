@@ -154,14 +154,14 @@ namespace AquariumCiv.View.Tests
             TimesInOrder(s);
             var sit = s.parts[0].First(p => p.style == DollStyle.Sit);
             Assert.AreEqual(a, sit.pos);
-            Assert.Greater(Pose(sit, 1f, d => d.offset.y + d.lift), 0.04f, "up on the logs"); // the seat height is in lift since the 2026-11-23 climb
+            Assert.Greater(Pose(sit, 1f, d => d.offset.y), 0.04f, "up on the logs");
             Assert.IsTrue(Enumerable.Range(0, 40).Any(i => Pose(sit, i * 0.2f, d => d.armR.x) > 120f), "a drink from the cup");
 
             Vector2 from = new Vector2(0.5f, 0f), to = new Vector2(0.74f, 0.05f);
             var l = VillageScenes.LogBalance(3, new Vector2(0f, -0.5f), from, to, Vector2.down, 0f);
             TimesInOrder(l);
             var walk = l.parts[0].First(p => p.poseWalking && (p.pos - to).magnitude < 1e-3f);
-            Assert.AreEqual(VillageGeo.LogTop, Pose(walk, 0.3f, d => d.offset.y + d.lift), 1e-3f, "on the log's top"); // in lift since the 2026-11-23 climb
+            Assert.AreEqual(VillageGeo.LogTop, Pose(walk, 0.3f, d => d.offset.y), 1e-3f, "on the log's top");
             Assert.AreEqual(90f, Mathf.Abs(Pose(walk, 0f, d => d.armR.z)), 15f, "arms out");
             Assert.IsTrue(l.fx.Any(f => f.kind == CampFxKind.Dust && Mathf.Abs(f.time - l.a) < 1e-3f), "dust at the landing");
         }
@@ -210,7 +210,7 @@ namespace AquariumCiv.View.Tests
             {
                 var sit = l.parts[m].First(p => p.style == DollStyle.Sit);
                 Assert.AreEqual(0.05f, (sit.pos - post).magnitude, 1e-3f, "on the rail");
-                Assert.Greater(Pose(sit, 0.5f, d => d.offset.y + d.lift), VillageGeo.FenceTop * 0.7f, "up on the top rail");
+                Assert.Greater(Pose(sit, 0.5f, d => d.offset.y), VillageGeo.FenceTop * 0.7f, "up on the top rail");
             }
             foreach (var p in l.parts[2]) Assert.LessOrEqual(Vector2.Dot(p.pos - post, Vector2.up), -0.04f, "the grown-up stays outside");
         }

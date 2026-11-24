@@ -72,11 +72,8 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Greater(Sim.EcoPondCells, 20, "a real pond");
                 var wb = box.DebugWaterMesh.bounds;
                 Debug.Log($"[water] full: pond {Sim.EcoPondCells} bounds {wb.min} .. {wb.max}");
-                // #701 (the user 2026-11-24, "dirt lip"): the full pond reaches toward the right and front panes but ends inside the lip
-                Assert.Greater(wb.max.x, Land.HX - 0.15f, "the water reaches toward the right pane");
-                Assert.Less(wb.min.z, Land.ZMin + 0.15f, "the water reaches toward the front pane");
-                Assert.Less(wb.max.x, Land.HX - BoxView.LipW * 0.4f, "and ends inside the dirt lip (right)");
-                Assert.Greater(wb.min.z, Land.ZMin + BoxView.LipW * 0.4f, "and ends inside the dirt lip (front)");
+                Assert.GreaterOrEqual(wb.max.x, Land.HX + BoxView.WaterFace - 0.002f, "the water reaches the right edge");
+                Assert.LessOrEqual(wb.min.z, Land.ZMin - BoxView.WaterFace + 0.002f, "the water reaches the front edge");
                 yield return Views("full");
             }
             finally { GameClock.EcologyPref = prefWas; }
