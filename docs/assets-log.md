@@ -32,6 +32,9 @@ Every third-party pack in the project: where it came from and its license.
 | Keeper's Glass icons, 35 SVG (#108) | Drawn for this project on the Design System board (#107), no third-party source | Ours | `Assets/Game/UI/Resources/GameUI/Icons/` | 2026-10-31 |
 | Bird calls, five short clips (#195) | Made in code (#195), ours: `CareSound.MakeBird` (`proc:bird0..4`), no recording | Ours | no asset file |
 | Sheet shadow, `GlassShadow.png` | Made in code (#107): rounded rect, sigma 33, white with alpha | Ours | `Assets/Game/UI/Resources/GameUI/` | 2026-10-31 |
+| Kenney Watercraft Kit 2.1 | https://kenney.nl/assets/watercraft-kit | CC0 1.0 (License.txt in the pack) | `AquariumCiv/Assets/ThirdParty/Kenney/Watercraft/Resources/KenneyWatercraft/`: `boat-row-small.fbx` and the pack's shared `Textures/colormap.png` only (#714, the pond family's boat; recoloured to the box's timber browns in vertex colours by `ConsequenceMeshes.KenneyBoat`, the texture is not edited) | 2026-11-15 |
+| Kit tool icons, 4 SVG (#668): cloth, mister, tweezers, spade | Drawn for this project in the style of `Icons/life-*.svg` (24 grid, white 2 px stroke), from the kit mock-ups (`docs/design/kit-mockups.html`); no third-party source | Ours | `Assets/Game/UI/Resources/GameUI/Icons/` | 2026-11-15 |
+| Tool face, `ToolFace.png` (#668) | Made for this project (2026-11-15): 16x308 px, a vertical gradient #FBF5EA → paper → #E8D9BC with a light top inset and a darker bottom inset, drawn by a short System.Drawing script from the kit mock-up's CSS | Ours | `Assets/Game/UI/Resources/GameUI/ToolFace.png` | 2026-11-15 |
 
 Credits for the published game: see `CREDITS.md` at the repo root.
 Sound effects (#96): sources downloaded 2026-10-30, licenses checked on each page / in each pack's License.txt; only the
@@ -70,3 +73,11 @@ https://freesound.org/people/Nivatius/sounds/519592/ (a National Park Service re
 `AquariumCiv/Assets/Audio/Resources/Sfx/Eco/wolf_howl.ogg` (4.2 s). The cue `wolf_howl` points at it; `CareSound.MakeHowl` stays in
 code but is no longer played. It is a chorus rather than a single wolf; a single clean howl could replace it later. The shared quadruped
 (P0: `View/QuadDoll.cs`) is built in code: no model pack.
+
+#692 part 5 (2026-11-16, work in progress): **no new asset pack.** Every new camp prop is built in code from primitives
+(`MeshBuilder` boxes, prisms and icospheres in `View/CampLife.Camp.cs` `CampMesh`): a short pole with a small lantern at each tent's door
+(the lantern glows when lit), a small wooden toy and a string of beads that hang on the pole, brown meat strips on the fish rack, a
+folded leaf boat, a crown (a green ring with three flower dots), a purple mouth, a small bowl of berries for the remembering stone, the
+dam's little pool and its stones, the rope swing (two ropes, drawn at least 2 px wide, and a plank), the coiled rope, moth specks, a
+flat skipping stone, an armful of reeds and a single reed, a weed with its root. The swing's creak reuses the Kenney CC0
+`impactWood_light_000` already logged (the `knock_back` cue), pitched down.

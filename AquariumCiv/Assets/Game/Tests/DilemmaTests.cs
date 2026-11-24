@@ -50,8 +50,8 @@ namespace AquariumCiv.Tests
             id = id, kind = DilemmaKind.WhichWay, cast = DilemmaCast.None, question = "The fields, or the woods?",
             options = new[]
             {
-                new DilemmaOptionDef { label = "the fields", hint = "h", lean = SimCore.Lean.Food, favouredBy = favoured ? new[] { "the kind" } : null },
-                new DilemmaOptionDef { label = "the woods", hint = "h", lean = SimCore.Lean.Craft, favouredBy = favoured ? new[] { "the brave" } : null },
+                new DilemmaOptionDef { label = "the fields", hint = "h", custom = "way:fields", favouredBy = favoured ? new[] { "the kind" } : null },
+                new DilemmaOptionDef { label = "the woods", hint = "h", custom = "way:woods", favouredBy = favoured ? new[] { "the brave" } : null },
             },
         };
 
@@ -149,67 +149,6 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void NeverBesideAWishAndAGapFollowsEach()
-        {
-            for (int seed = 1; seed <= 8; seed++)
-            {
-                var sim = NewSim(seed, Cfg(true));
-                sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => StrangersDef("s" + i)).ToArray();
-                for (int m = 0; m < 16 * 12; m++)
-                {
-                    sim.Advance(1.0 / 12);
-                    if (sim.OpenDilemma != null && m % 7 == 0) sim.LetThemDecide(sim.OpenDilemma.id); // #368: answered, not lapsed by the clock
-                    Assert.IsFalse(sim.OpenWish != null && sim.OpenDilemma != null, $"seed {seed} month {sim.State.month}: a wish and a dilemma together");
-                    Assert.LessOrEqual(sim.State.dilemmas.Count(d => d.state == DilemmaState.Open), 1);
-                }
-                Assert.Greater(sim.State.wishes.Count, 0, $"seed {seed}: wishes still come");
-                foreach (var d in sim.State.dilemmas)
-                {
-                    long dEnd = d.endMonth >= 0 ? d.endMonth : sim.State.month;
-                    foreach (var w in sim.State.wishes)
-                    {
-                        long wEnd = w.endMonth >= 0 ? w.endMonth : sim.State.month;
-                        Assert.IsFalse(w.month < dEnd && d.month < wEnd, $"seed {seed}: dilemma {d.id} and wish {w.id} overlap");
-                        if (w.month >= dEnd) // the next wish after a dilemma waits the gap
-                        {
-                            var between = sim.State.wishes.Where(x => x.month >= dEnd && x.month < w.month).Count();
-                            var nextDilemma = sim.State.dilemmas.Where(x => x.month > d.month).Select(x => x.month).DefaultIfEmpty(long.MaxValue).Min();
-                            if (between == 0 && w.month < nextDilemma) Assert.GreaterOrEqual(w.month - dEnd, SimCore.WishGapMonths, $"seed {seed}: wish {w.id} after dilemma {d.id}");
-                        }
-                    }
-                }
-            }
-        }
-
-        [Test]
-        public void ADueDilemmaNeverLapsAnOpenWishButWaitsForItsEnd()
-        {
-            for (int seed = 1; seed <= 12; seed++)
-            {
-                var sim = NewSim(seed, Cfg(true));
-                sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => StrangersDef("s" + i)).ToArray();
-                Years(sim, 1);
-                var w = sim.DebugForceWish();
-                Assert.IsNotNull(w);
-                sim.State.dilemmaNextHours = sim.State.clockHours + sim.Config.StepHours; // due while the wish is open
-                for (int m = 0; m < 20; m++)
-                {
-                    sim.Advance(1.0 / 12);
-                    if (w.state != WishState.Open) { Assert.IsTrue(sim.FindNotable(w.notableId)?.alive != true || sim.State.nudges.Any(), $"seed {seed}: the wish ended without cause"); break; }
-                    Assert.IsNull(sim.OpenDilemma, $"seed {seed}: raised beside the open wish");
-                }
-
-                if (w.state == WishState.Open) { w.state = WishState.Given; w.endMonth = sim.State.month; } // the player gives the gift
-                long ended = w.endMonth;
-                Years(sim, 2);
-                var first = sim.State.dilemmas.FirstOrDefault();
-                Assert.IsNotNull(first, $"seed {seed}");
-                Assert.GreaterOrEqual(first.month - ended, SimCore.DilemmaGapMonths, $"seed {seed}: the gap runs from the wish's end");
-                Assert.IsFalse(sim.State.wishes.Any(x => x.id != w.id && x.month >= ended && x.month < first.month), $"seed {seed}: no new wish jumps the queue");
-            }
-        }
-
-        [Test]
         public void NeverDuringTheFirstRun()
         {
             var sim = NewSim(3, Cfg(true));
@@ -303,29 +242,25 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void AWayDilemmaLeansForThirtySixMonthsAndMovesTheFood()
+        public void AWayDilemmaNeverMovesTheEconomy()
         {
+            // #714 (research 21, user 2026-11-14: the leans go): either answer leaves the same food and wood as the other
             var cfg = Cfg();
             var def = WayDef("way");
-            var withLean = NewSim(7, cfg); withLean.DilemmaCatalog = new[] { def };
-            var without = NewSim(7, cfg); without.DilemmaCatalog = new[] { def };
-            Years(withLean, 1); Years(without, 1);
-            var d = withLean.DebugRaiseDilemma("way");
-            without.DebugRaiseDilemma("way");
-            Assert.IsTrue(withLean.AnswerDilemma(d.id, 0, DilemmaPath.Card)); // the fields: a food lean
-            var lean = withLean.State.dilemmaLeans.Single();
-            Assert.AreEqual((int)SimCore.Lean.Food, lean.lean);
-            Assert.AreEqual(SimCore.NudgeMonths, lean.untilMonth - lean.fromMonth);
-            float before = withLean.State.food, beforeNo = without.State.food;
-            Assert.AreEqual(beforeNo, before, 1e-4f);
-            withLean.Advance(1.0 / 12); without.Advance(1.0 / 12);
-            Assert.Greater(withLean.State.food - before, without.State.food - beforeNo, "the lean moves what gets made");
-            // the same lean expires: after 36 months a month's food matches the box with no lean
-            Years(withLean, 3.2); Years(without, 3.2);
-            float f1 = withLean.State.food, f2 = without.State.food;
-            withLean.Advance(1.0 / 12); without.Advance(1.0 / 12);
-            Assert.Greater(withLean.State.month, lean.untilMonth);
-            Assert.AreEqual(withLean.State.food - f1, without.State.food - f2, 1e-3f * System.Math.Max(1f, f1), "no lean after its 36 months");
+            var fields = NewSim(7, cfg); fields.DilemmaCatalog = new[] { def };
+            var woods = NewSim(7, cfg); woods.DilemmaCatalog = new[] { def };
+            Years(fields, 1); Years(woods, 1);
+            var d = fields.DebugRaiseDilemma("way");
+            var d2 = woods.DebugRaiseDilemma("way");
+            Assert.IsTrue(fields.AnswerDilemma(d.id, 0, DilemmaPath.Card));
+            Assert.IsTrue(woods.AnswerDilemma(d2.id, 1, DilemmaPath.Card));
+            Assert.IsTrue(fields.HasCustom("way:fields")); Assert.IsTrue(woods.HasCustom("way:woods"));
+            for (int m = 0; m < 40; m++)
+            {
+                fields.Step(); woods.Step();
+                Assert.AreEqual(fields.State.food, woods.State.food, 1e-4f, $"month {m}: the same food");
+                Assert.AreEqual(fields.State.wood, woods.State.wood, 1e-4f, $"month {m}: the same wood");
+            }
         }
 
         [Test]
@@ -360,7 +295,7 @@ namespace AquariumCiv.Tests
             options = new[]
             {
                 new DilemmaOptionDef { label = "in", hint = "h", strangers = count },
-                new DilemmaOptionDef { label = "apart", hint = "h", strangers = count, apart = kind, lean = SimCore.Lean.Craft,
+                new DilemmaOptionDef { label = "apart", hint = "h", strangers = count, apart = kind,
                     callbacks = new[] { new DilemmaCallbackDef { id = "c", text = "their fire still burns.", fallback = "their fire is out.", needsApart = true } } },
             },
         };
@@ -564,23 +499,6 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void TheDilemmaCardComesAfterTheEraCardAndNeverWithAWish()
-        {
-            var sim = NewSim(5, Cfg());
-            sim.DilemmaCatalog = new[] { StrangersDef("s") };
-            Years(sim, 2);
-            sim.DebugForceWish();
-            Assert.IsNotNull(sim.OpenWish);
-            var d = sim.DebugRaiseDilemma("s"); // closes the wish
-            Assert.IsNull(sim.OpenWish);
-            sim.DebugForceWish();               // lapses the dilemma
-            Assert.IsNull(sim.OpenDilemma);
-            Assert.AreEqual(DilemmaState.Lapsed, d.state);
-            var stack = sim.ReturnCardsCapped(sim.State.month - 1, 7);
-            Assert.IsFalse(stack.cards.Any(c => c.kind == CardKind.Dilemma) && stack.cards.Any(c => c.kind == CardKind.Wish));
-        }
-
-        [Test]
         public void ViewGivesTheQuestionOptionsHintsAndPeople()
         {
             foreach (var sim in Camps(Cfg(), WhoDef("who"), 2))
@@ -737,7 +655,7 @@ namespace AquariumCiv.Tests
             StringAssert.StartsWith("The people chose ", line.text);
             StringAssert.EndsWith(" themselves.", line.text);
             Assert.IsFalse(line.keeper);
-            Assert.AreEqual(1, sim.State.dilemmaLeans.Count, "the people's pick still leans the box");
+            Assert.IsTrue(sim.HasCustom(d.option == 0 ? "way:fields" : "way:woods"), "the people's pick still sets its custom");
         }
 
         [Test]
@@ -864,7 +782,7 @@ namespace AquariumCiv.Tests
             var labButOff = NewSim(21, new SimConfig { dilemmas = false, dilemmaLab = true });
             Years(plain, 30); Years(labButOff, 30);
             Assert.AreEqual(0, labButOff.State.dilemmas.Count);
-            Assert.AreEqual(0, labButOff.State.dilemmaLeans.Count);
+            Assert.AreEqual(0, labButOff.State.customs.Count);
             Assert.AreEqual(0, labButOff.State.apartGroups.Count);
             Assert.AreEqual(-1, labButOff.State.dilemmaNextHours);
             Assert.AreEqual(0, labButOff.State.visitCount, "no visit is counted with the switch off");
@@ -894,7 +812,6 @@ namespace AquariumCiv.Tests
             _ = new SimCore(new SimConfig(), old); // the constructor makes sure the new lists exist
             Assert.IsNotNull(old.dilemmas);
             Assert.AreEqual(0, old.dilemmas.Count);
-            Assert.IsNotNull(old.dilemmaLeans);
             Assert.IsNotNull(old.customs);
             Assert.AreEqual(1, old.dilemmaNextId);
             Assert.AreEqual(-1, old.dilemmaNextHours);

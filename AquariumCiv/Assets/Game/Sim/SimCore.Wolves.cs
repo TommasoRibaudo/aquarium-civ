@@ -38,22 +38,22 @@ namespace AquariumCiv.Sim
         };
 
         public static readonly DilemmaDef ThiefDef = Def(Thief,
-            "The wolves took meat from the rack again. Chase them off, or leave them the scraps?", "The wolves at the meat rack.",
+            "{who} saw a wolf steal from the rack. Chase it off, or let it eat?", "The wolves at the meat rack.", // #723 [est]: 15 words at most
             "to chase them off", "Thorns round the rack and a torch at night. The wolves keep to the far wood.",
             "to leave them the scraps", "A pile of bones at the camp's edge. One of them may come closer.");
 
         public static readonly DilemmaDef PupDef = Def(Pup,
-            "{child} found a wolf pup alone by the den. Bring it home, or leave it with its mother?", "A lost wolf pup.",
+            "{child} found a lost wolf pup. Bring it home, or leave it for its mother?", "A lost wolf pup.", // #723 [est]
             "to bring it home", "{child} carries it to the fire. It will grow up with the people.",
             "to leave it with its mother", "{child} sets it down, and it runs back to the den.");
 
         public static readonly DilemmaDef KillDef = Def(Kill,
-            "The wolves have killed in the wood, and the ravens are circling. Take their meat, or leave it to them?", "The wolves' kill.",
+            "{who} found the wolves' kill in the wood. Take the meat, or leave it?", "The wolves' kill.", // #723 [est]
             "to take their meat", "The hunters shout them off it. Meat for the camp, and the wolves keep away a while.",
             "to leave it to them", "The hunters walk home. The wolves eat, and grow a little bolder.");
 
         public static readonly DilemmaDef PenDef = Def(Pen,
-            "The wolves circled the duck pen last night. A thorn fence, or let the dogs keep watch?", "Wolves at the duck pen.",
+            "Wolves circled the duck pen last night. A thorn fence, or the dogs on watch?", "Wolves at the duck pen.", // #723 [est]
             "a thorn fence", "A ring of thorny branches round the pen, and a torch at night.",
             "the dogs keeping watch", "A dog sleeps by the pen gate, and barks when the wolves come.");
 
@@ -409,7 +409,17 @@ namespace AquariumCiv.Sim
         void PrepareLife(Dilemma d, DilemmaDef def)
         {
             if (def.smallKind == LifeChoices.Pup) PreparePup(d);
-            else if (def.smallKind == LifeChoices.Kill) { var k = EcoM.OpenKill(); if (k != null) k.asked = true; }
+            else if (def.smallKind == LifeChoices.Kill) { var k = EcoM.OpenKill(); if (k != null) k.asked = true; d.subjectId = WolfWitness(d)?.id ?? -1; }
+            else if (def.smallKind == LifeChoices.Thief) d.subjectId = WolfWitness(d)?.id ?? -1;
+        }
+
+        /// <summary>#714: who saw the wolves at the rack, or found their kill ({who}): a hunter, else any adult, picked by a hash (no dice).</summary>
+        Notable WolfWitness(Dilemma d)
+        {
+            var adults = State.notables.Where(n => n.alive && n.age >= AdultAge).OrderBy(n => n.id).ToList();
+            var hunters = adults.Where(n => n.job == JobType.Hunter).ToList();
+            var pool = hunters.Count > 0 ? hunters : adults;
+            return pool.Count == 0 ? null : pool[(int)(DilemmaRoll(33, d.id, d.month) * pool.Count) % pool.Count];
         }
 
         /// <summary>What the pick does (the Keeper's, "Let them decide", or the people's after three visits).</summary>
@@ -452,6 +462,7 @@ namespace AquariumCiv.Sim
         /// pup and the kill, trusts the dogs; a careful one chases, leaves the pup, leaves the kill, builds the fence), else a hash.</summary>
         int LifeDefaultOption(Dilemma d, DilemmaDef def)
         {
+            if (def.smallKind == LifeChoices.WhiteStag) return WhiteStagPeopleHunt() ? 0 : 1; // #714: the one rule (SimCore.Deer.cs)
             var leader = Alive(SeatOf(LeaderOf(State.era))?.holderId ?? -1) ?? RulingNotable();
             if (leader == null) return (int)(DilemmaRoll(32, d.id, d.month) * 2f) % 2;
             bool bold = Array.IndexOf(LifeChoices.BoldTraits, leader.trait) >= 0;
@@ -461,7 +472,6 @@ namespace AquariumCiv.Sim
                 LifeChoices.Pup => bold ? 0 : 1,
                 LifeChoices.Kill => bold ? 0 : 1,
                 LifeChoices.Pen => bold && GrownDogs > 0 ? 1 : 0,
-                LifeChoices.WhiteStag => Array.IndexOf(LifeChoices.LetBeTraits, leader.trait) >= 0 ? 1 : 0,
                 _ => 0,
             };
         }

@@ -73,6 +73,21 @@ namespace AquariumCiv.Sim.Eco
         /// <summary>#418: the placed thicket's radius (box units) round <see cref="thicketA"/>; 0 = no placed thicket. thicketB is no longer
         /// set (one thicket per box, placed-life spec §5.1): it stays in the save so an old one loads.</summary>
         public float thicketRadius;
+        /// <summary>#728 (landscaping.md 8.2): the berry thickets, in the order they were placed (up to <see cref="EcoTuning.thicketMax"/>). The first is
+        /// the thicket jar's; every further one is an earned bush (#726). <see cref="thicketA"/> / <see cref="thicketRadius"/> stay in step with the
+        /// first, and a save from before the list (one thicket in those two fields) is read as a one-thicket list.</summary>
+        public List<Thicket> thickets = new List<Thicket>();
+        /// <summary>#709 (B71): the one nest, in a bush of a thicket. An old save has none (built = false: no nest yet).</summary>
+        public Nest nest = new Nest();
+
+        /// <summary>#726 (landscaping.md §8.1, decision 2026-11-14): what the Keeper has earned to plant. <see cref="seedsPouch"/> seeds (each
+        /// plants a normal tree seedling, #727) and <see cref="bushesPouch"/> bushes (each plants a small thicket, #728), at most
+        /// <see cref="EcoTuning.landscapePouchCap"/> waiting each. <see cref="seedSteps"/> / <see cref="bushSteps"/> count the civ steps
+        /// already paid out to each counter, <see cref="peakPeople"/> the most people, <see cref="peakKinds"/> the most kinds of building and <see cref="peakTrees"/> the most grown trees the box ever had. A save from before has all zero:
+        /// the first month pays what the civ's size owes, up to the cap.</summary>
+        public int seedsPouch, bushesPouch, seedSteps, bushSteps, peakPeople, peakKinds, peakTrees;
+        /// <summary>#730: the game month the history last said a corner was cleared (-1 never): one line a month, however many plants come out.</summary>
+        public long clearedLineMonth = -1;
 
         /// <summary>#417 the life jar (placed-life spec §2, §9): one entry per <see cref="LifeSpecies"/>, keyed by name so adding a
         /// species never breaks a save. <see cref="jarOn"/> is false in a save from before the jar: the model migrates it once
@@ -163,6 +178,19 @@ namespace AquariumCiv.Sim.Eco
         }
 
         public bool Reached(string key) => milestoneKeys.Contains(key);
+    }
+
+    /// <summary>#728: one berry thicket, a disc round a placed cell (a ragged edge, see EcoModel.Thickets). Saved.</summary>
+    [Serializable]
+    public class Thicket
+    {
+        /// <summary>The site cell it was placed on (its centre).</summary>
+        public int cell = -1;
+        /// <summary>Its disc radius now (box units). #729 lets it shrink as the box holds more thickets.</summary>
+        public float radius;
+        /// <summary>#730: bushes the Keeper plucked out of this thicket: its target is lower by this many (a plucked bush does not grow back; the
+        /// pluck means "make room"). [est: the other choice was a short memory of the cleared cell, then regrowth.]</summary>
+        public int trim;
     }
 
     /// <summary>#437: what became of a wolf kill: the ravens circle it (Open), the wolves ate it, or the people took the meat (choice 6.3).</summary>

@@ -158,6 +158,7 @@ namespace AquariumCiv.View
         void BiteEvents(int key, int k, float from, float to, float left, Fisher st, Vector3 line, Vector3 away)
         {
             float b = FishBeats.BiteAt(key, k);
+            if (from < b && b - FishSchool.HookSeconds <= to) FishView.Instance?.ToHook(line, FishBeats.ContactAt); // #708 (B16.e): a shadow darts to the hook before the bite
             foreach (float at in FishBeats.NibbleRingAt)
                 if (from < b + at && b + at <= to) { NibblesSeen++; Ring(line, away, 0.5f); }
             if (!(from < b + FishBeats.ContactAt && b + FishBeats.ContactAt <= to) || FishBeats.Ending(left)) return;

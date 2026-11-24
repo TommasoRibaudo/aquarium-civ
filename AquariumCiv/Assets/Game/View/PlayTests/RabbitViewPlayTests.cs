@@ -116,8 +116,8 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual(6, rv.Shown, "the pair plus four");
                 EcoDebug.AddRabbits(30);
                 yield return Frames(30);
-                Assert.AreEqual(12, Sim.EcoRabbitsShown(), "capped");
-                Assert.AreEqual(12, rv.Shown, "dolls capped");
+                Assert.AreEqual(AquariumCiv.Sim.Eco.RabbitHerd.DefaultCap, Sim.EcoRabbitsShown(), "capped (the visible-animal budget, #710: 8 on the 6 x 6 land)");
+                Assert.AreEqual(AquariumCiv.Sim.Eco.RabbitHerd.DefaultCap, rv.Shown, "dolls capped");
                 Assert.AreEqual(1, rv.SignsPlayed, "the sign still once");
                 pv.timeScale = 6f;
                 int off = 0, checks = 0;
@@ -128,7 +128,8 @@ namespace AquariumCiv.View.PlayTests
                     yield return null;
                 }
                 pv.timeScale = 1f;
-                Assert.Greater(checks, 1000, "sampled");
+                // sized for 12 dolls (1000 of 400 frames x 12); the animal budget now shows fewer (#710), so the floor scales with it
+                Assert.Greater(checks, 1000 * AquariumCiv.Sim.Eco.RabbitHerd.DefaultCap / 12, "sampled");
                 Assert.AreEqual(0, off, "rabbits only stand on green (one hopping over to a new spot may cross a strip of bare earth)");
                 int wc = rv.Field.WarrenCell;
                 yield return Fly(box, SiteMap.CXc(wc), SiteMap.CZc(wc), 2f);

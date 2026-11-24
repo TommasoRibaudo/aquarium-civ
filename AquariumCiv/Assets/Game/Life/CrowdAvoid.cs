@@ -35,6 +35,10 @@ namespace AquariumCiv.Life
         public const float Personal = 0.11f;
         /// <summary>The fire: nobody stands or walks within this of its middle (the log seats are further out).</summary>
         public const float FireRadius = 0.2f;
+        /// <summary>B3 tester fixes: the fire's solid for walkers and the feet drawn (people slid round its 0.2 rim, and a hop's circle or a
+        /// lean took them to 0.13): nobody's feet come within this of a fire's middle. The fire's ring (0.3) and every use spot (0.3,
+        /// <c>FireClear</c>) are outside it.</summary>
+        public const float FireKeep = 0.27f;
         /// <summary>The most a walker is eased aside from their planned point.</summary>
         public const float MaxOffset = 0.3f;
         /// <summary>Easing a walker's offset: how fast it grows (per second, of the overlap) and fades back when clear.</summary>

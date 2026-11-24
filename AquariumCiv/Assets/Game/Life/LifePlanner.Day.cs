@@ -27,10 +27,9 @@ namespace AquariumCiv.Life
             /// <summary>#109: a stay doing a move's loop where it is (filling the buckets at the well), not a move from wherever
             /// they are to <see cref="place"/> (a layer's carry to the green).</summary>
             public bool still;
-            /// <summary>#92: facing the front glass; walking there carrying <see cref="prop"/> (a staged beat); a count (knocks).</summary>
+            /// <summary>#92: facing the front glass; walking there carrying <see cref="prop"/> (a staged beat). (#718: the knocks' count went with the tap-back.)</summary>
             public bool faces, carries;
             public bool hasPoint; public float mx, mz; // #197: an intercept
-            public int count;
             public bool Moving => ActivityInfo.IsMove(kind) && from != place && !from.IsNone;
         }
 
@@ -47,6 +46,9 @@ namespace AquariumCiv.Life
             public float pace = 1f;
             public readonly List<Scene> scenes = new List<Scene>();
             public Person teller;
+            /// <summary>#717: tonight's teller is the Keeper's pick (<see cref="SimCore.StoryTellerOn"/>), and how they tell it.</summary>
+            public bool tellerPicked;
+            public int tellerManner;
             /// <summary>#92: who visits the glass today (<see cref="PlanGlassVisits"/>).</summary>
             public readonly Dictionary<int, List<Seg>> glass = new Dictionary<int, List<Seg>>();
             /// <summary>#200: the few who may sit out at their door today, and the day that list is for.</summary>
@@ -255,6 +257,13 @@ namespace AquariumCiv.Life
                 foreach (var p in people)
                     if (p.stage == LifeStage.Elder && k-- == 0) { d.teller = p; break; }
             }
+            // #717: the Keeper's pick (or the one "Let them decide" picked) tells the story at the fire this evening; the rule above
+            // picks the teller on every other day.
+            d.tellerPicked = false; d.tellerManner = 0;
+            if (sim.StoryTellerOn(day, out int pickedId, out int manner) && byKey.TryGetValue(pickedId, out var picked) && picked.Grown)
+            {
+                d.teller = picked; d.tellerPicked = true; d.tellerManner = manner;
+            }
             // The camp's night owl: someone keeps the fire.
             dayFireKeeper = null;
             if (era == Era.Camp)
@@ -266,6 +275,8 @@ namespace AquariumCiv.Life
                     int k = (int)(H(3, day, 914) % (uint)adults);
                     foreach (var p in people)
                         if (p.Adult && k-- == 0) { dayFireKeeper = p; break; }
+                    if (d.tellerPicked && dayFireKeeper == d.teller) // #717: tonight's teller tells; the next grown-up keeps the fire
+                        foreach (var p in people) if (p.Adult && p != d.teller) { dayFireKeeper = p; break; }
                 }
             }
             PlanGlassVisits(d); // #92
@@ -525,7 +536,7 @@ namespace AquariumCiv.Life
                 var a = outList[i - 1];
                 var c = outList[i];
                 if (a.kind != c.kind || a.place != c.place || a.from != c.from || a.prop != c.prop || a.partner != c.partner || a.src != c.src ||
-                    a.chronicleId != c.chronicleId || a.copies != c.copies || a.faces != c.faces || a.count != c.count || ActivityInfo.IsMove(a.kind)) continue;
+                    a.chronicleId != c.chronicleId || a.copies != c.copies || a.faces != c.faces || ActivityInfo.IsMove(a.kind)) continue;
                 a.end = c.end;
                 outList[i - 1] = a;
                 outList.RemoveAt(i);
@@ -687,7 +698,7 @@ namespace AquariumCiv.Life
             else
             {
                 At(PlayKind(p, d, 10), 10f, PlayPlace(p, d, 10, near: true), PlayProp(p, d, 10));
-                if (d.teller != null && d.teller != p) At(ActivityKind.ListenStory, 11f, gather, Prop.None, Ref(d.teller));
+                if (d.teller != null && d.teller != p && d.teller.stage == LifeStage.Elder) At(ActivityKind.ListenStory, 11f, gather, Prop.None, Ref(d.teller));
                 var snack = KidBerryPlace(p, d);
                 if (!snack.IsNone) At(ActivityKind.Eat, 12f, snack, Prop.None); // P8 #288: a few berries straight from the bush
                 else At(PlayKind(p, d, 11), 12f, PlayPlace(p, d, 11, near: false), PlayProp(p, d, 11));
@@ -735,7 +746,8 @@ namespace AquariumCiv.Life
             }
             if (R(k, day, 56) < 0.45f) { At(ActivityKind.Play, home, p.home, Prop.Ball, default, TripType.Home); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #197: some play at their own door
             At(ActivityKind.Play, 18.3f, gather, Prop.Ball, default, TripType.HomeToGreen);
-            if (d.teller != null && d.teller != p) At(ActivityKind.ListenStory, Math.Min(home, 19.1f), gather, Prop.None, Ref(d.teller));
+            if (d.tellerPicked && d.teller != p) ListenToTheTeller(d, Math.Max(home, TellEnd(d) + 0.05f)); // #717: the whole telling, the kids at the front
+            else if (d.teller != null && d.teller != p) At(ActivityKind.ListenStory, Math.Min(home, 19.1f), gather, Prop.None, Ref(d.teller));
             At(ActivityKind.Play, home, gather);
             At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
         }
@@ -803,7 +815,7 @@ namespace AquariumCiv.Life
             else At(ActivityKind.SitOut, 9f, ElderSitPlace(p, d, 0), Prop.Stick); // tester run 1 #3: ElderSitPlace is the gather outside the camp
             bool minds = R(k, day, 5) < 0.4f;
             At(minds ? ActivityKind.MindBabies : ActivityKind.SitOut, 10f, minds ? p.home : ElderSitPlace(p, d, 1));
-            if (d.teller == p) At(ActivityKind.StoryTell, 11f, gather);
+            if (d.teller == p && !d.tellerPicked) At(ActivityKind.StoryTell, 11f, gather);
             else At(ActivityKind.SitOut, 11f, ElderSitPlace(p, d, 2), Prop.Stool);
             if (p.hints.sitWithOldChance > 0f && R(k, day, 6) < p.hints.sitWithOldChance) At(ActivityKind.SitWithOld, 12f, gather);
             else At(ActivityKind.SitOut, 12f, ElderSitPlace(p, d, 3));
@@ -813,8 +825,10 @@ namespace AquariumCiv.Life
             else At(ActivityKind.SitOut, 17f, ElderSitPlace(p, d, 4), Prop.Stool);
             float home = 19.4f + R(k, day, 2) * 0.4f - box.homeEarlyHours - p.hints.homeEarlyHours;
             if (StyleOf(p, d) != EveningStyle.Gather) { At(d.supper == SupperPick.Baskets ? ActivityKind.Eat : ActivityKind.SitOut, home, p.home, d.supper == SupperPick.Baskets ? Prop.Basket : Prop.Stool, default, TripType.Home); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #197, #589
-            At(ActivityKind.SitOut, 18.3f, gather, Prop.Stool, default, TripType.HomeToGreen);
-            At(d.supper == SupperPick.Pot ? ActivityKind.Eat : d.teller == p ? ActivityKind.StoryTell : ActivityKind.SitOut, Math.Min(home, 19.1f), gather);
+            At(ActivityKind.SitOut, TellFrom, gather, Prop.Stool, default, TripType.HomeToGreen);
+            if (d.tellerPicked && d.teller == p) { At(ActivityKind.StoryTell, TellerUntil(d), gather); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #717
+            if (d.tellerPicked) ListenToTheTeller(d, Math.Max(home, TellEnd(d) + 0.05f));
+            else At(d.supper == SupperPick.Pot ? ActivityKind.Eat : d.teller == p ? ActivityKind.StoryTell : ActivityKind.SitOut, Math.Min(home, 19.1f), gather);
             At(ActivityKind.SitOut, home, gather);
             At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
         }
@@ -1164,6 +1178,17 @@ namespace AquariumCiv.Life
             if (box.sweeperExtraBlocks >= 2 && p.job == JobType.Sweeper && !d.rest) At(ActivityKind.Sweep, 17.5f, gather, Prop.Broom);
             if (style != EveningStyle.Gather) { OtherEvening(p, d, style, home); return; }
             if (!CampEveningRole(p, d)) At(ActivityKind.SitOut, 17.6f, gather, Prop.None, default, TripType.HomeToGreen); // tester run 1 #3: the fire's roles
+            if (d.tellerPicked)
+            {
+                // #717: tonight's story, told by the Keeper's pick. The teller stands at the fire; the rest listen to the end (a short one
+                // ends on a laugh), then the evening goes on.
+                At(ActivityKind.SitOut, TellFrom, gather);
+                if (d.teller == p) At(ActivityKind.StoryTell, TellerUntil(d), gather);
+                else ListenToTheTeller(d, TellEnd(d) + (d.tellerManner == SmallChoices.MannerShort ? LaughHours : 0f));
+                At(ActivityKind.Chat, home, gather);
+                At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
+                return;
+            }
             bool pot = d.supper == SupperPick.Pot;
             At(pot ? ActivityKind.Eat : leader != null && leader != p ? ActivityKind.Listen : ActivityKind.Chat, pot ? 18.6f : 18.3f, gather, Prop.None, pot ? default : Ref(leader)); // #589: the big pot, bowls round the fire
             ActivityKind free;
@@ -1184,6 +1209,7 @@ namespace AquariumCiv.Life
         /// pairs and couples sit together; single friends court (rules 7, 8).</summary>
         void Relationships(Person p, DayInfo d, List<Seg> list)
         {
+            if (d.tellerPicked) return; // #717: tonight everyone at the fire listens to the Keeper's pick
             if (EveningBusy(p)) return;
             if (d.supper == SupperPick.Pot || (d.supper == SupperPick.Baskets && StyleOf(p, d) != EveningStyle.Gather)) return; // #589: everyone eats together / the family eats at home
             var f = p.friend;
@@ -1204,6 +1230,24 @@ namespace AquariumCiv.Life
             // (home, back to the green and home again in 0.05 h rushed at 7x, #109).
             float sitUntil = EndOfEvening(p, d) - 0.05f;
             if (sit != null && sitUntil >= 19.15f && StyleOf(p, d) == EveningStyle.Gather) Put(list, Mk(ActivityKind.SitTogether, 19.1f, sitUntil, gather, Prop.None, ActivitySource.Schedule, sit.who), d);
+        }
+
+        // ---------------------------------------------------------------- #717: tonight's story, told by the Keeper's pick
+
+        /// <summary>#717: the telling starts as the evening gathers (view hours). Slow, with all the voices, it ends late; short, it is over
+        /// quickly and the listeners laugh [est; the manners' own gestures wait for the user's spec sign-off].</summary>
+        public const float TellFrom = 18.3f, TellSlowUntil = 19.7f, TellShortUntil = 18.85f, LaughHours = 0.15f;
+
+        static float TellEnd(DayInfo d) => d.tellerManner == SmallChoices.MannerShort ? TellShortUntil : TellSlowUntil;
+        /// <summary>B76.b: the teller stays at the fire through the laugh (the mock-serious end beat, then laughs too).</summary>
+        static float TellerUntil(DayInfo d) => TellEnd(d) + (d.tellerManner == SmallChoices.MannerShort ? LaughHours : 0f);
+
+        /// <summary>#717: listen to the picked teller until the story ends (a short one: a laugh at the end), until <paramref name="until"/>.</summary>
+        void ListenToTheTeller(DayInfo d, float until)
+        {
+            float end = Math.Min(until, TellEnd(d));
+            At(ActivityKind.ListenStory, end, gather, Prop.None, Ref(d.teller));
+            if (d.tellerManner == SmallChoices.MannerShort) At(ActivityKind.LaughPoint, Math.Min(until, end + LaughHours), gather);
         }
 
         float EndOfEvening(Person p, DayInfo d)
@@ -1252,6 +1296,7 @@ namespace AquariumCiv.Life
 
         EveningStyle StyleOf(Person p, DayInfo d)
         {
+            if (d.tellerPicked && d.teller == p) return EveningStyle.Gather; // #717: the Keeper's pick tells the story at the fire
             // #589: supper played out. One big pot: everyone sits down at the fire. A basket each: families eat at home, and only the leader
             // and a few (about one in eight, by the pair's roll) linger at the fire.
             if (d.supper != SupperPick.None && p.Grown && !EveningBusy(p))

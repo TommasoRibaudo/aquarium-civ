@@ -16,7 +16,8 @@ namespace AquariumCiv.Sim
     /// <summary>
     /// One option of a dilemma: what the player reads (label, one-line hint in the people's voice, no numbers) and what choosing it does.
     /// Text may use {a} and {b} (the two people's first names) and {place} (the settlement's name).
-    /// Effects (all optional, any mix): <see cref="takesRole"/>, <see cref="lean"/>, <see cref="ties"/>, <see cref="custom"/>, <see cref="strangers"/>.
+    /// Effects (all optional, any mix): <see cref="takesRole"/>, <see cref="ties"/>, <see cref="custom"/>, <see cref="strangers"/>. No option
+    /// changes the economy (research 21, user 2026-11-14: the leans are gone).
     /// <see cref="callbacks"/>: what comes back years later because this option was taken (P7 rule 4; at least one per option).
     /// </summary>
     public sealed class DilemmaOptionDef
@@ -26,7 +27,6 @@ namespace AquariumCiv.Sim
         public string hint = "";            // one line, the people's voice: "Ada will run it her way, and Bo won't like it."
         public string done = "";            // the Keeper's chronicle line when answered; empty = a plain line from the label
         public bool takesRole;              // this option's person takes the def's role (bypasses the succession roll); a holder steps aside if the def allows
-        public SimCore.Lean? lean;          // a Lean for SimCore.NudgeMonths (36) game months
         public DilemmaTies ties;            // the unchosen person: a rival chance or grace, by trait
         public string custom = "";          // a stored custom ("burial:stone"), see SimCore.HasCustom
         public int strangers;               // a family of this many adults joins (0 = none)
@@ -36,6 +36,8 @@ namespace AquariumCiv.Sim
         public DilemmaCallbackDef[] callbacks;  // storylets that fire 4-15 years after this option was taken (answered or lapsed); null = none
         public string prop = "";            // #371: the thing this option leaves in the box (ConsequenceKind), within a game year; "" = none
         public PropAnchor propAt;           // where it goes (the person's home, the option's building, the fire, the edge, the pond)
+        public string prop2 = "";           // 2026-11-16: a second thing the option leaves beside the first (the pond family's goat pen by their boat); "" = none
+        public PropAnchor prop2At;          // where the second thing goes
         public string propBuilding = "";    // PropAnchor.Building: the building type to stand by when the option has no building of its own (else buildingType)
         public string[] favouredBy;         // traits (NameData.Traits) that tilt a lapse toward this option, when the role-holder has one
         public string icon = "";            // t4-fixes: the option's own mark on its tag in the box (a GlassIcon name); "" = none (a person option shows a person)
@@ -57,6 +59,7 @@ namespace AquariumCiv.Sim
         public string needsBuilding;        // building types that must stand ("a|b" = either); null = none
         public string needsCustom;          // a custom (SimCore.HasCustom) that must be set; null = none
         public bool needsApart;             // the dilemma's apart group (#231) must have someone alive
+        public string needsProp;            // 2026-11-16: a thing the option left (ConsequenceKind) must stand in the box; null = none. The callback is about that thing
         public string text = "";
         public string fallback = "";        // told when a condition fails; empty = drop the callback quietly
         public float salience = 0.7f;
@@ -74,6 +77,9 @@ namespace AquariumCiv.Sim
         public DilemmaKind kind;
         public Era minEra = Era.Camp, maxEra = Era.Town;
         public bool landWords;              // #578: the words say where (the woods, the meadow or the pond: {land}, {camp}), set when it is raised from the land
+        public bool needsWildWood;          // #714: on a living land, only once a wild tree has given wood (the woodpile it asks about exists)
+        public bool namesStrangers;         // #714: the ask names the strangers ({t1}, {t2}), named when it is raised; they are the ones who join or live apart
+        public bool namesYoung;             // #714: the ask names two young people ({y1}, {y2}) who just came of age; the answer sends both
         public bool needsDeath;             // #380: the def's words assume a loss ("the ones we lose"): only once someone in this box has died
         public string needs;                // building types that must stand ("a|b" = either), null = none (as the roles' table)
         public DilemmaCast cast;
@@ -99,7 +105,7 @@ namespace AquariumCiv.Sim
     /// <summary>
     /// The eight dilemmas of P7 (#222): four in the camp, four in the village, two of each kind (who, which way, tradition, strangers).
     /// The full text, for review in one place: docs/design/results/P7.md, "Dilemmas". Both options are good: a different history,
-    /// never a better economy (a lean builds a different thing, food or wood, not more). Hints say what changes, never how much.
+    /// never a different economy (research 21: no leans). Hints say what changes, never how much. Style: docs/design/writing-events.md.
     /// The people's words (questions, hints, labels) never say "glass", "tank" or "box" (chronicle-and-history Choice 10, §5.1): they
     /// say what their era believes (camp: the sky wall; village: the Keeper's window). The narrator may say "a far-away tank". Callback texts are told after
     /// "Because the Keeper chose X, " (or "Because the people chose X, "), so they read on from a comma; labels read after "chose".
@@ -107,8 +113,8 @@ namespace AquariumCiv.Sim
     public static class DilemmaDefs
     {
         static DilemmaCallbackDef Cb(string id, string text, string fallback = "", bool aliveA = false, bool aliveB = false, string needsBuilding = null,
-            int minYears = 4, int maxYears = 15, bool needsApart = false) =>
-            new DilemmaCallbackDef { id = id, text = text, fallback = fallback, aliveA = aliveA, aliveB = aliveB, needsBuilding = needsBuilding, minYears = minYears, maxYears = maxYears, needsApart = needsApart };
+            int minYears = 4, int maxYears = 15, bool needsApart = false, string needsProp = null) =>
+            new DilemmaCallbackDef { id = id, text = text, fallback = fallback, aliveA = aliveA, aliveB = aliveB, needsBuilding = needsBuilding, minYears = minYears, maxYears = maxYears, needsApart = needsApart, needsProp = needsProp };
 
         // ---------- camp ----------
 
@@ -176,10 +182,11 @@ namespace AquariumCiv.Sim
             },
         };
 
-        /// <summary>Which way: before the snow, the baskets (a food lean) or the woodpile (a wood lean).</summary>
+        /// <summary>Which way: before the snow, the baskets or the woodpile (a custom and a prop; no lean, #714). On a living land it waits
+        /// for the first wild wood.</summary>
         static readonly DilemmaDef CampWinter = new DilemmaDef
         {
-            id = "camp_winter", kind = DilemmaKind.WhichWay, minEra = Era.Camp, maxEra = Era.Camp, needs = BuildingType.Lumbermill,
+            id = "camp_winter", kind = DilemmaKind.WhichWay, minEra = Era.Camp, maxEra = Era.Camp, needs = BuildingType.Lumbermill, needsWildWood = true,
             question = "Before the snow: fill the baskets, or the woodpile?",
             askedBy = new Dictionary<string, string>
             {
@@ -193,28 +200,28 @@ namespace AquariumCiv.Sim
             {
                 new DilemmaOptionDef
                 {
-                    icon = "gift", touch = "baskets first", label = "the baskets", hint = "Full bellies all winter, and a thinner woodpile.",
+                    icon = "gift", touch = "baskets first", label = "the baskets", hint = "Every autumn, everyone goes berrying together.", // #721 [est]
                     done = "The Keeper chose the baskets, and everyone went berrying.",
-                    lean = SimCore.Lean.Food, custom = "winter:baskets", buildingType = BuildingType.Farm,
+                    custom = "winter:baskets", buildingType = BuildingType.Farm,
                     prop = ConsequenceKind.Baskets, propAt = PropAnchor.Building,
                     favouredBy = new[] { "the kind", "the gardener", "the lazy", "the dreamer", "the singer" },
                     callbacks = new[]
                     {
-                        Cb("winter_baskets_berrying", "{place} still goes berrying every autumn, all together, and nobody comes home with clean fingers."),
+                        // #721: the berrying walk itself plays every autumn (SimCore.Rituals.cs), so the callback is what it leaves
                         Cb("winter_baskets_names", "the children of {place} know every berry bush by name. Some of the names are rude.", minYears: 6),
                     },
                 },
                 new DilemmaOptionDef
                 {
-                    icon = "tree", touch = "wood first", label = "the woodpile", hint = "Warm huts and new building, and a plainer winter table.",
+                    icon = "tree", touch = "wood first", label = "the woodpile", hint = "Every autumn, everyone stacks the woodpile before the snow.", // #721 [est]
                     done = "The Keeper chose the woodpile. The axes rang till the first snow.",
-                    lean = SimCore.Lean.Craft, custom = "winter:wood", buildingType = BuildingType.Lumbermill,
+                    custom = "winter:wood", buildingType = BuildingType.Lumbermill,
                     prop = ConsequenceKind.WoodpileRoof, propAt = PropAnchor.Building,
                     favouredBy = new[] { "the tinkerer", "the brave", "the stubborn", "the clever", "the worrier" },
                     callbacks = new[]
                     {
                         Cb("winter_wood_roof", "{place}'s woodpile grew so tall it got a little roof of its own."),
-                        Cb("winter_wood_leaks", "the roofs of {place} have never once leaked. People knock on them to show visitors.", minYears: 6),
+                        Cb("winter_wood_old_roof", "the woodpile at {place} has a roof older than most of the people.", minYears: 6), // #721 [est]
                     },
                 },
             },
@@ -266,27 +273,27 @@ namespace AquariumCiv.Sim
             },
         };
 
-        /// <summary>Strangers: lost travellers who wandered in from a far-away tank. Two join (a couple), or they camp apart in the far
-        /// woods (#231: an apart group the player can see) and leave their axe trick behind (a wood lean).</summary>
+        /// <summary>Strangers: lost travellers who wandered in from a far-away tank, named in the ask ({t1}, {t2}; #714). Two join (a
+        /// couple), or they keep a camp of their own for good (#231: an apart group the player can see; #714: they never join).</summary>
         static readonly DilemmaDef CampTravellers = new DilemmaDef
         {
             id = "camp_travellers", kind = DilemmaKind.Strangers, minEra = Era.Camp, maxEra = Era.Camp,
-            landWords = true,
-            question = "Lost travellers at the edge of {land}. Can they stay?",
+            landWords = true, namesStrangers = true,
+            question = "{t1} and {t2} are lost near {land}. Can they stay?",
             askedBy = new Dictionary<string, string>
             {
-                ["the kind"] = "Two lost travellers, cold and hungry. Can they stay?",
-                ["the worrier"] = "Strangers! Two of them. Probably fine? Can they stay?",
-                ["the gossip"] = "Travellers! From past the sky wall, they say. Can they stay?",
-                ["the brave"] = "I found two travellers by {land}. Can they stay?",
-                ["the grump"] = "Two more mouths at the edge of {land}. Can they stay?",
+                ["the kind"] = "{t1} and {t2} are cold and hungry. Can they stay?",
+                ["the worrier"] = "Strangers! {t1} and {t2}. Probably fine? Can they stay?",
+                ["the gossip"] = "{t1} and {t2}? From across {land}, they say. Stay?", // round 2: from inside the box (closed world)
+                ["the brave"] = "I found {t1} and {t2} by {land}. Can they stay?",
+                ["the grump"] = "{t1} and {t2}. Two more mouths. Can they stay?",
             },
             options = new[]
             {
                 new DilemmaOptionDef
                 {
                     icon = "hand", touch = "take them in", label = "a place by the fire", hint = "Two new faces round the fire, and new ways of doing things.",
-                    done = "The Keeper let the travellers from a far-away tank stay. They slept by the fire and never left.",
+                    done = "The Keeper let {t1} and {t2} stay. They slept by the fire and never left.",
                     strangers = 2, custom = "travellers:stayed",
                     prop = ConsequenceKind.StewPot, propAt = PropAnchor.Fire,
                     favouredBy = new[] { "the kind", "the singer", "the gossip", "the dreamer", "the joker", "the loud" },
@@ -298,14 +305,14 @@ namespace AquariumCiv.Sim
                 },
                 new DilemmaOptionDef
                 {
-                    icon = "pin", touch = "camp apart", label = "full packs", hint = "They camp {camp} with their axe trick, and join us later.",
-                    done = "The Keeper sent the travellers from a far-away tank to camp {camp}, with full packs.",
-                    lean = SimCore.Lean.Craft, custom = "travellers:sent", strangers = 2, apart = ApartKind.WoodsCamp, joins = true,
+                    icon = "pin", touch = "camp apart", label = "a camp of their own", hint = "They keep their own fire {camp}. We'll see it at night.",
+                    done = "The Keeper sent {t1} and {t2} to camp {camp}, with full packs.",
+                    custom = "travellers:sent", strangers = 2, apart = ApartKind.WoodsCamp,
                     prop = ConsequenceKind.AxeStump, propAt = PropAnchor.Edge,
                     favouredBy = new[] { "the grump", "the worrier", "the stubborn", "the clever", "the tinkerer", "the lazy" },
                     callbacks = new[]
                     {
-                        Cb("travellers_notch", "every axe in {place} still has the travellers' little notch in the handle. Nobody knows why it helps. It helps."),
+                        Cb("travellers_notch", "{t1} still walks over some mornings to borrow a coal for their fire.", needsApart: true),
                         Cb("travellers_wave", "the travellers still live wild {camp}. Some evenings you can see their fire, and all of {place} waves at it.",
                             "the travellers' old camp {camp} is grass again, but {place} still waves at the spot some evenings.", needsApart: true, minYears: 6),
                     },
@@ -337,10 +344,10 @@ namespace AquariumCiv.Sim
                 ["the kind"] = "{p} will see that nobody goes without, and talk to everyone.",
                 ["the loud"] = "{p} will hold meetings you can hear from the pond.",
                 ["the clever"] = "{p} will settle every quarrel with a clever new rule.",
-                ["the lazy"] = "{p} will keep the meetings short and the benches comfy.",
+                ["the lazy"] = "{p} will keep the meetings short and the fire warm.",
                 ["the brave"] = "{p} will stand up for {place} first and ask after.",
                 ["the gossip"] = "{p} will know what everyone wants before they say it.",
-                ["the gardener"] = "{p} will put flowers by every bench and tidy the fields.",
+                ["the gardener"] = "{p} will put flowers by every door and tidy the fields.",
                 ["the grump"] = "{p} will grumble at everyone fairly, and get things done.",
                 ["the singer"] = "{p} will open every meeting with a song. A long one.",
                 ["the tinkerer"] = "{p} will mend everything in {place}, starting with the well.",
@@ -358,7 +365,7 @@ namespace AquariumCiv.Sim
                     callbacks = new[]
                     {
                         Cb("headman_a_meetings", "the meetings by the well still go {a}'s way, and they still start late.",
-                            "{place} still holds its meetings the way {a} did, and they still start late.", aliveA: true),
+                            "{place} still holds its meetings {a}'s way, and they still start late.", aliveA: true, needsBuilding: BuildingType.Well),
                         Cb("headman_a_back", "{b} sits at the back of every meeting with folded arms, and has the best ideas there.", aliveB: true, minYears: 5),
                     },
                 },
@@ -371,54 +378,55 @@ namespace AquariumCiv.Sim
                     callbacks = new[]
                     {
                         Cb("headman_b_meetings", "the meetings by the well still go {b}'s way, and they still start late.",
-                            "{place} still holds its meetings the way {b} did, and they still start late.", aliveB: true),
+                            "{place} still holds its meetings {b}'s way, and they still start late.", aliveB: true, needsBuilding: BuildingType.Well),
                         Cb("headman_b_back", "{a} sits at the back of every meeting with folded arms, and has the best ideas there.", aliveA: true, minYears: 5),
                     },
                 },
             },
         };
 
-        /// <summary>Which way: the miller and the roofers both want the young ones' hands this year (a food lean or a wood lean).</summary>
+        /// <summary>Which way: the miller and the roofers both want two young people who just came of age ({y1}, {y2}; #714). A custom
+        /// and a prop; no lean.</summary>
         static readonly DilemmaDef VillageSpring = new DilemmaDef
         {
-            id = "village_spring", kind = DilemmaKind.WhichWay, minEra = Era.Village, maxEra = Era.Village, needs = BuildingType.Windmill,
-            question = "Miller or roofers: who gets the young ones this year?",
+            id = "village_spring", kind = DilemmaKind.WhichWay, minEra = Era.Village, maxEra = Era.Village, needs = BuildingType.Windmill, namesYoung = true,
+            question = "{y1} and {y2} can work now. The mill, or the roofs?",
             askedBy = new Dictionary<string, string>
             {
-                ["the gardener"] = "The miller and the roofers both want the young ones. Who?",
+                ["the gardener"] = "The miller and the roofers both want {y1} and {y2}. Who?",
                 ["the tinkerer"] = "Miller or roofers? I made a ladder for either. Who?",
-                ["the worrier"] = "Roofs leaking, grain ripe. Who gets the young ones?",
+                ["the worrier"] = "Roofs leaking, grain ripe. Where do {y1} and {y2} go?",
                 ["the loud"] = "MILLER OR ROOFERS? Sorry. Who gets the young ones?",
                 ["the lazy"] = "Everyone wants the young ones but me. Miller or roofers?",
-                ["the grump"] = "The miller's shouting and the roofers are shouting. Who?",
+                ["the grump"] = "The miller wants {y1} and {y2}. So do the roofers. Well?",
             },
             options = new[]
             {
                 new DilemmaOptionDef
                 {
-                    icon = "gift", touch = "to the miller", label = "the miller", hint = "Full sacks and fresh bread, and the roofs drip a while longer.",
-                    done = "The Keeper sent the young ones to the miller. The mill sang all summer.",
-                    lean = SimCore.Lean.Food, custom = "spring:miller", buildingType = BuildingType.Windmill,
+                    icon = "gift", touch = "to the miller", label = "the miller", hint = "{y1} and {y2} learn the mill. The roofs drip a while longer.",
+                    done = "The Keeper sent {y1} and {y2} to the miller. The mill turned all summer.",
+                    custom = "spring:miller", buildingType = BuildingType.Windmill,
                     prop = ConsequenceKind.FlourSacks, propAt = PropAnchor.Building,
                     favouredBy = new[] { "the gardener", "the kind", "the singer", "the lazy", "the worrier" },
                     callbacks = new[]
                     {
-                        Cb("spring_grain_mill", "the miller still calls them \"my young ones\", though they're all grown and one has a beard.",
+                        Cb("spring_grain_mill", "the miller still calls {y1} and {y2} \"my young ones\". One of them has a beard now.",
                             "{place} still bakes the best bread anyone remembers, and says so to everyone.", needsBuilding: BuildingType.Windmill),
                         Cb("spring_grain_flour", "{place} had so much flour one autumn that the children had a flour fight. There was no winner.", minYears: 5),
                     },
                 },
                 new DilemmaOptionDef
                 {
-                    icon = "hill", touch = "to the roofers", label = "the roofers", hint = "Dry roofs and new rafters, and the bread a little thin.",
-                    done = "The Keeper sent the young ones up the ladders. Sawdust got into everything, including the soup.",
-                    lean = SimCore.Lean.Craft, custom = "spring:roofers", buildingType = BuildingType.Hut,
+                    icon = "hill", touch = "to the roofers", label = "the roofers", hint = "{y1} and {y2} go up the ladders. The bread runs a little thin.",
+                    done = "The Keeper sent {y1} and {y2} up the ladders. Sawdust got into the soup.",
+                    custom = "spring:roofers", buildingType = BuildingType.Hut,
                     prop = ConsequenceKind.RoofBird, propAt = PropAnchor.Building,
                     favouredBy = new[] { "the tinkerer", "the clever", "the stubborn", "the brave", "the loud" },
                     callbacks = new[]
                     {
                         Cb("spring_timber_birds", "every roof the young ones mended that year has a little carved bird on the ridge. Now every new roof gets one."),
-                        Cb("spring_timber_squirrels", "the young roofers of that year still climb up to watch the sunset. Nobody can get them down for supper.", minYears: 5),
+                        Cb("spring_timber_sunset", "{y1} and {y2} still climb onto the roofs they mended to watch the sun go down.", minYears: 5),
                     },
                 },
             },
@@ -441,36 +449,37 @@ namespace AquariumCiv.Sim
             {
                 new DilemmaOptionDef
                 {
-                    icon = "star", touch = "a feast", label = "a feast", hint = "Long tables with everyone at them, and the Keeper watching.",
+                    icon = "star", touch = "a feast", label = "a feast", hint = "One long table every autumn, and a seat for everyone.", // #721 [est]
                     done = "The Keeper chose a feast. The tables ran the length of {place}.",
                     custom = "harvest:feast",
                     prop = ConsequenceKind.LongTable, propAt = PropAnchor.Fire,
                     favouredBy = new[] { "the loud", "the joker", "the singer", "the gossip", "the lazy" },
                     callbacks = new[]
                     {
-                        Cb("harvest_feast_days", "the harvest feast at {place} lasts three days now. Nobody remembers agreeing to the third."),
+                        Cb("harvest_feast_seats", "the harvest table at {place} has {seats} seats now, one for every year since the first feast."), // #721 [est]
                         Cb("harvest_feast_table", "the tavern keeps one long table just for the harvest feast, and nobody may eat at it the rest of the year.",
                             needsBuilding: BuildingType.Tavern, minYears: 5),
                     },
                 },
                 new DilemmaOptionDef
                 {
-                    icon = "hill", touch = "an offering", label = "an offering", hint = "The best basket left on the hill for the Keeper, and quiet thanks.",
-                    done = "The Keeper chose an offering. The best basket went up the hill, very carefully.",
+                    icon = "hill", touch = "an offering", label = "an offering", hint = "The best basket, left at the Keeper's tree every autumn.", // #721 [est]
+                    done = "The Keeper chose an offering. The best basket went to the Keeper's tree, very carefully.", // #721 [est]
                     custom = "harvest:offering",
                     prop = ConsequenceKind.OfferingBasket, propAt = PropAnchor.Edge,
                     favouredBy = new[] { "the kind", "the dreamer", "the worrier", "the gardener", "the stubborn" },
                     callbacks = new[]
                     {
-                        Cb("harvest_offering_basket", "the best basket goes up the hill every autumn, and every spring it's empty. The birds aren't saying."),
-                        Cb("harvest_offering_crumb", "the children of {place} leave a crumb on the sill for the Keeper after every meal. Just in case.", minYears: 5),
+                        Cb("harvest_offering_basket", "the best basket goes to the Keeper's tree every autumn, and every spring it's empty. The birds aren't saying."), // #721 [est]: no hill
+                        Cb("harvest_offering_small", "the children of {place} carry a small basket of their own behind the big one.", minYears: 5), // #721 [est]
                     },
                 },
             },
         };
 
         /// <summary>Strangers: a family who wandered in from a far-away tank, camped across the pond. Three join, or they keep a hut on
-        /// the far shore (#231: an apart group) and trade their catch (a food lean).</summary>
+        /// the far shore (#231: an apart group) and trade their catch. No lean (#714); "a home here" brings their boat and, since 2026-11-16 ("Bring a pen
+        /// back"), a little goat pen with one goat beside it.</summary>
         static readonly DilemmaDef VillageHillFamily = new DilemmaDef
         {
             id = "village_hill_family", kind = DilemmaKind.Strangers, minEra = Era.Village, maxEra = Era.Village,
@@ -482,33 +491,35 @@ namespace AquariumCiv.Sim
                 ["the joker"] = "A family across the pond. Here, or near enough to wave?",
                 ["the loud"] = "A FAMILY! Across the pond! Where do they live?",
                 ["the gossip"] = "I've met the pond family already. Here, or there?",
-                ["the dreamer"] = "They came from behind the Keeper's window! Here, or there?",
+                ["the dreamer"] = "The pond family! I dreamt of them. Here, or there?", // round 2: nobody comes from outside the box
             },
             options = new[]
             {
                 new DilemmaOptionDef
                 {
                     icon = "hill", touch = "a home here", label = "a home here", hint = "New neighbours at the next hearth, and new names in {place}.",
-                    done = "The Keeper gave the family from a far-away tank a home here. They moved in with a goat.",
+                    done = "The Keeper gave the pond family a home here. They pulled their boat up by the fire and penned their goat beside it.",
                     strangers = 3, custom = "pond:joined",
-                    prop = ConsequenceKind.GoatFence, propAt = PropAnchor.Fire,
+                    prop = ConsequenceKind.ShoreBoat, propAt = PropAnchor.Fire,
+                    prop2 = ConsequenceKind.GoatPen, prop2At = PropAnchor.Fire, // 2026-11-16 "Bring a pen back"
                     favouredBy = new[] { "the kind", "the gossip", "the singer", "the loud", "the joker" },
                     callbacks = new[]
                     {
                         Cb("hill_joined_songs", "the pond family still sing their shore songs at supper. Half of {place} knows the words now."),
-                        Cb("hill_joined_goat", "the pond family's goat has eaten its way through every garden in {place}. It is much loved anyway.", minYears: 5),
+                        Cb("hill_joined_boat", "the pond family's old boat lies upside down by the fire. The children use it as a house.", minYears: 5),
+                        Cb("hill_joined_goat", "the pond family's goat has chewed the pen's corner again.", minYears: 2, needsProp: ConsequenceKind.GoatPen), // 2026-11-16
                     },
                 },
                 new DilemmaOptionDef
                 {
                     icon = "drop", touch = "their own shore", label = "a home across the pond", hint = "They'll keep their own shore, and trade us their catch.",
                     done = "The Keeper left the family from a far-away tank on their shore. They waved, and sent fish.",
-                    lean = SimCore.Lean.Food, custom = "pond:neighbours", strangers = 3, apart = ApartKind.ShoreHut,
+                    custom = "pond:neighbours", strangers = 3, apart = ApartKind.ShoreHut,
                     prop = ConsequenceKind.FishCrate, propAt = PropAnchor.Pond,
                     favouredBy = new[] { "the grump", "the worrier", "the stubborn", "the gardener", "the lazy" },
                     callbacks = new[]
                     {
-                        Cb("hill_neighbours_eggs", "the family across the pond still rows over every spring with fish. Far too many fish.",
+                        Cb("hill_neighbours_fish", "the family across the pond still rows over every spring with fish. Far too many fish.",
                             "the hut across the pond stands empty now, but {place} still leaves a fish on its step each spring.", needsApart: true),
                         Cb("hill_neighbours_path", "there's a path worn round the pond now, from {place} to the neighbours and back. Nobody built it. Everyone walked it.", minYears: 6),
                     },

@@ -186,7 +186,8 @@ def make_live(clip_path, out_dir):
     focus = live.get("focus", [0.0, 0.0])
     spec = {"clip": name, "outDir": os.path.abspath(out_dir), "warm": float(live.get("warm", 1)), "seconds": seconds, "fps": fps,
             "follow": live.get("follow", ""), "fx": focus[0], "fz": focus[1], "span": float(live.get("span", 1.5)),
-            "closeSpan": float(live.get("closeSpan", 0.6)), "yaw": float(live.get("yaw", 28)), "pitch": float(live.get("pitch", 34))}
+            "closeSpan": float(live.get("closeSpan", 0.6)), "yaw": float(live.get("yaw", 28)), "pitch": float(live.get("pitch", 34)),
+            "lead": float(live.get("lead", -1))}  # #692 p5 retakes: warm on until the camp use is this many s before its hit
     os.makedirs(out_dir, exist_ok=True)
     lab = {"format": "animlab-live/1", "clip": name, "request": os.path.abspath(clip_path), "issue": str(head.get("issue", "")),
            "branch": str(head.get("branch", "")), "commit": str(head.get("commit", "")), "fps": fps, "frames": int(round(seconds * fps)) + 1}

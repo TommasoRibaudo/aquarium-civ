@@ -1,0 +1,26 @@
+{
+ "name": "692-b32d-quiet",
+ "notes": "B32.d: after a death (the box remembers its dead on the tree): the mourner walks alone from the fire, head down; the fire turns to watch; looks up; a hand on the bark (the glow comes up); sits against the trunk, a leaf on the shoulder; ties the charm on tiptoe; looks up; walks back and is met with a hug. (The view clock is paused at dusk for the clip: a fresh camp pitches its tents and goes to bed in the next hour.)",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(19.1f, 2);",
+   "return AquariumCiv.View.CampCheats.GrowTree();",
+   "return AquariumCiv.View.ConsequenceCheats.RememberOnTree();",
+   "return AquariumCiv.View.DayLightDriver.DebugPauseClock(true);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TreeQuiet());"
+  ],
+  "warm": 0.5,
+  "seconds": 40,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.8,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

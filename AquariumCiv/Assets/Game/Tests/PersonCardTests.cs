@@ -240,7 +240,6 @@ namespace AquariumCiv.Tests
                     Assert.IsNotNull(c.memorial);
                     Assert.AreEqual(SimCore.YearNo(n.diedMonth), c.memorial.diedYear);
                     Assert.AreEqual((int)n.age, c.memorial.ageAtDeath);
-                    Assert.IsNull(c.wish);
                     Assert.IsNull(c.role, "no role held now");
                     Assert.IsFalse(c.bestStories.Any(s => s.kind == "death" && s.entryId == sim.State.chronicle.LastOrDefault(e => e.kind == "death" && e.notableId == n.id)?.id));
                     Assert.IsTrue(c.memorial.rememberedBy.All(t => t.otherAlive));
@@ -253,16 +252,9 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void WishRelicAndQuoteOnTheCard()
+        public void RelicAndQuoteOnTheCard()
         {
-            var sim = Grown(3, 8);
-            var w = sim.DebugForceWish();
-            Assume.That(w != null);
-            var c = sim.PersonCardOf(w.notableId);
-            Assert.AreEqual(w, c.wish);
-            Assert.IsFalse(string.IsNullOrEmpty(c.wishText));
-            foreach (var other in sim.State.notables.Where(n => n.id != w.notableId)) Assert.IsNull(sim.PersonCardOf(other.id).wish);
-
+            var sim = Grown(3, 8); // #718: no wish on the card any more
             var r = sim.DebugGiveRelic(RelicId.KeeperDoll);
             Assume.That(r != null && r.ownerId >= 0);
             Assert.IsTrue(sim.PersonCardOf(r.ownerId).relics.Any(x => x.id == RelicId.KeeperDoll && x.owner && !string.IsNullOrEmpty(x.label)));

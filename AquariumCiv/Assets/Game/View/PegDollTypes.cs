@@ -27,7 +27,11 @@ namespace AquariumCiv.View
         Tinder, Branch, FoodBasket, StickBundle,
         // sign-off 2026-11-14 (ChoreBeats): the flat scraper stone held in both hands at the hide rack; a hide spread on the ground to
         // mend (a bedroll), in front of someone seated
-        Scraper, Pelt }
+        Scraper, Pelt,
+        // #692 (B29.d, B31.a): a torn piece of roast meat; a single feather for the pole
+        MeatPiece, Feather,
+        // the user's review of #692 part 1 (B30.b): the bowl before the ladle fills it (Bowl is a bowl of stew now)
+        BowlEmpty }
 
     /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
     /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>

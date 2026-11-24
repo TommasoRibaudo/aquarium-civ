@@ -1,0 +1,26 @@
+{
+ "name": "692-b38b-deer-creep",
+ "notes": "B38.b: three kids crouch-creep in a line toward the deer, freeze when one lifts its head, creep on; at 0.6 u a giggle or a twig: the deer look up and bolt; the kids jump up and run after them, stop, arms drop, one shrugs, they all laugh; walking back, a grown-up shakes the head at them.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 3);",
+   "return AquariumCiv.View.CampCheats.AnimalsReady();",
+   "return AquariumCiv.View.CampCheats.AnimalsReady();",
+   "AquariumCiv.View.PeopleView.DebugSetHour(11.0f); return AquariumCiv.View.CampCheats.AnimalsReady();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.DeerCreep());"
+  ],
+  "warm": 0.5,
+  "seconds": 26,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 1.3,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

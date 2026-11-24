@@ -248,14 +248,6 @@ namespace AquariumCiv.View.PlayTests
             Sv.CancelTool();
             yield return Frames(4);
 
-            var w = Sim.DebugForceWish(K.Grove);
-            Assert.IsNotNull(w);
-            Assert.IsTrue(Sv.ArmWish(w.id));
-            yield return Frames(6);
-            yield return Cap("3.4-shapingmode-wish-armed", Sv.WishArmed && Shown(ui.Q("shaping-wish-spot")), ui.Q<Label>("shaping-banner").text);
-            Sv.CancelWish();
-            yield return Frames(4);
-
             Assert.IsTrue(Sv.ArmTool(K.Rain));
             yield return Frames(3);
             yield return TapAt(Sv.ScreenOf(x, z));
@@ -349,7 +341,6 @@ namespace AquariumCiv.View.PlayTests
             bool noShowMe = false;
             string log = "";
             Sim.State.shapingCharges = Sim.ShapingMaxCharges;
-            var wish = Sim.DebugForceWish(K.Rain);
             Sim.DebugGiveRelic(RelicId.All[0]);
             Sim.ForceEraReady();
             for (int round = 0; round < 6; round++)
@@ -367,7 +358,7 @@ namespace AquariumCiv.View.PlayTests
                     log += f.kind + (f.card != null && f.card.paysOffTeaser ? "+payoff" : "") + (f.teaserLine.Length > 0 ? "+teaser" : "") + (f.endLine.Length > 0 ? "+end" : "") + (f.canShowMe ? "" : "+noshow") + " ";
                     string name = f.kind switch
                     {
-                        CardKind.Wish => "3.3-stack-wish", CardKind.EraReady => "3.3-stack-era", CardKind.Keeper => "3.3-stack-keeper",
+                        CardKind.EraReady => "3.3-stack-era", CardKind.Keeper => "3.3-stack-keeper",
                         CardKind.Relic => "3.3-stack-relic", CardKind.Legend => "3.3-stack-legend", _ => null,
                     };
                     if (name != null && seen.Add(name)) { yield return Frames(3); yield return Cap(name, true, f.headline); }
@@ -380,7 +371,6 @@ namespace AquariumCiv.View.PlayTests
                 }
                 Model.SkipAll();
                 yield return Frames(6);
-                if (round == 1 && wish != null && wish.state == WishState.Open) { Sim.State.shapingCharges = 0; }
                 string t = Sim.DebugOpenTeaser();
                 log += $"· teaser {t} · ";
                 SimLayoutSource.DebugSkipYears(6f);

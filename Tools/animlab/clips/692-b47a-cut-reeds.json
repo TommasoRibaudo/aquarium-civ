@@ -1,0 +1,27 @@
+{
+ "name": "692-b47a-cut-reeds",
+ "notes": "B47.a: a weaver wades in at the reeds, grabs a bunch and cuts it low (the tuft flattens), carries an armful of pale stalks to the tent and weaves.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(9.0f, 2);",
+   "return AquariumCiv.View.CampCheats.PondReady();",
+   "return AquariumCiv.View.CampCheats.PondReady();",
+   "return AquariumCiv.View.CampCheats.ReedsReady();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.CutReeds());"
+  ],
+  "warm": 0.5,
+  "seconds": 7,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 38,
+  "lead": 2.0
+ }
+}

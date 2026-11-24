@@ -738,8 +738,6 @@ namespace AquariumCiv.View
             var recall = RecallPromptView.Instance;
             if (recall != null && recall.IsOpen) return true; // the prompt would stick out over the sheet on a short phone
             if (PulseQuestionView.Instance != null && PulseQuestionView.Instance.IsOpen) return true; // #636
-            var tool = ShapingView.Instance;
-            if (tool != null && tool.WishArmed) return true; // its banner and Cancel too
             var tl = TimeLapseView.Find();
             if (tl != null && tl.Active) return true;
             var sm = ShowMeDirector.Instance;

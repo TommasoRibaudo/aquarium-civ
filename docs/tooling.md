@@ -905,5 +905,156 @@ Unity empties `<project>/Temp` when the Editor quits, so `restart-editor.sh` (or
 
 - **2026-11-15 · #658 view half (Sonnet worker).** [verified] The land is not centred on z = 0: every pan bound in CameraGlass / CameraReach / BoxCameraMath / CameraRail is an OFFSET from the centre (x = 0, z = Land.CZ), so callers clamp (z - CZ); tests that built a camera target at z = 0 start off-centre now. `DeepBoxShots` (Explicit, PlayTests) shoots the new box, the camp frame, a grown 44-row box (debug panel "Grow a 44-row box" = `GameClock.DebugGrowFrom44`), the back glass, the mountain and the shelf to Temp/agent/658/. A baseline for a PlayTest failure without a second Editor: `git checkout <base> -- AquariumCiv/Assets Tools`, recompile, run, then `git checkout HEAD -- AquariumCiv/Assets Tools` (the branch never changes).
 
+- **2026-11-15 · #668 depth in UI Toolkit (the bottom bar).** [verified] UI Toolkit has no box-shadow or gradient. What worked: the
+  button's own background and border cleared, then child layers in order (a 9-sliced `GlassShadow.png` past the edges, a darker
+  "lip" offset 3 pt down, a face with `ToolFace.png` stretched, then a `Label` for the word). A button's own text draws *under* its
+  children, so with layers the text must be a child label (`GameHud.Tool` / `SetWord`); keep `button.text` for tests and draw it
+  clear. `-unity-slice-scale` needs a unit (`0.4px`), a bare `0.4` is dropped with a warning. A ring on a layered button goes on the
+  face layer (`.kg-tool--on > .kg-tool-face`), not on the button. Background images are clipped by `border-radius`.
+
+### 2026-11-15 · #708/#709 view: AnimLab follows for things, timed cheats, and three traps
+- **AnimLab live follows for things, not dolls.** `"follow"` now also takes `"fish"` (FishView's school centre, aimed at the water),
+  `"glass"` (the side fish on the pond's wall, the camera aimed at their height: pair it with `"pitch": 8` for a look through the
+  front pane), `"nest"` (NestView's nest) and `"fishgrab"` (the kids at the pond's edge, B39.c). `"play"` averages every kid at play in
+  the box, so with more than one group the camera wanders: use a game's own follow. Clips: scratchpad requests of the #708/#709 run.
+- **A cheat that must happen on camera:** setup steps have ~2 s of game between them and before `Begin`, so a beat started by the last
+  step is over before frame 0 (the fly-off was gone). Schedule it instead: `NestView.DebugLater("lay"|"hatch"|"flyoff", 3.5f)` fires in
+  game time, which the recording's `captureDeltaTime` steps.
+- **All live clips of one `animlab.sh live` share one play session:** state carries over (a nest built by one clip stands in the next,
+  so the 0.6/0.8/1 growth only shows in a fresh session). Render a clip that needs a fresh box on its own call.
+- **Trap: the view's season is the view day's, not the sim's.** `EcoDebug.SkipSeasons` moves the sim month; kids' play at the water asks
+  `LifeClock.SeasonOf(pv.Now.day)`, which only follows at the next midnight. Set the hour to 23.97, let the game run, then set the day's
+  hour (tests: `FishNestPlayTests.ToSeason`). `EcoDebug.WaterBreaksNow` itself passes seasons: make the water before choosing the season.
+- **Trap: a fresh living land has five grown-ups and no kids**, and skipping years doesn't grow it (pop stays 5). `SimCore.DebugAddKids(n)`
+  (panel: "Two kids join the camp") adds children for the kids' beats.
+- **Trap: the box's solid material culls back faces.** `LifeLooks.FishShape`'s body is wound downward (the arrival's transparent shadow
+  material draws both sides); with `box.SolidMaterial` only the tail showed. Its `FishPart.Body`/`Tail` pieces are now two-sided.
+
+### 2026-11-15 · #692 camp uses: AnimLab live clips of a cheat-started scene
+- **A cheat started by the last setup step is half over at frame 0** (each step leaves ~2 s of game before `Begin`). `CampCheats.Later(2f, () => CampCheats.X())` runs it in game time instead; `CampCheats.StageCamp(hour, kids)` stages a lived-in camp (no `EcoDebug.Table`: a new pond sends everyone to look at it and the scene holds them) and sets `CampLife.OnlyCheats`, so no natural use (a pot lifted off, a sniff) crowds the clip. Follow `"camp"` = the newest forced scene's lead actor. Requests: `Tools/animlab/clips/692-*.json`, one per `animlab.sh live` call (fresh box each).
+- **Trap: a person held by a new-start scene (`PeopleView.StartHook`) or a placed-life scene (`LifeSpot`) ignores every other cue.** A cheat's use now takes them from a new-start scene; natural uses never borrow anyone those hooks hold.
+- **Debug a scene's cast** with a setup step `return AquariumCiv.View.PeopleView.Find().Camp.DebugCues();` (each member's activity, part and drawn spot).
+- **2026-11-15 · The pt1b Editor ran out of memory after ~6 fresh AnimLab live sessions** (`Could not allocate memory: System out of memory!`, a "Fatal Error!" dialog with only Quit; the Editor process held 23 GB private). **Cause:** `AnimLabLive.Shoot` made a new readback `Texture2D` every frame (its two cameras alternate 480x360 and 360x360, so the size check never matched) and never destroyed the old one: two textures (~2.2 MB) a frame, found with `Resources.FindObjectsOfTypeAll<Texture2D>()` grouped by size and hideFlags (271 + 271 DontSave after a 9 s clip). **Fix:** one readback per size. After the fix a live clip leaves ~12 textures (2 MB). [verified]
+- **2026-11-15 · A "save scene" dialog the user had to answer, and Safe Mode from a test file.** [verified] (1) `restart-editor.sh` quit with `EditorSceneManager.SaveOpenScenes()`; after a live AnimLab run was stopped mid-way the open scene was AnimLabLive's untitled empty one, so the call opened Save-As (the user saved `Assets/temp file.unity`; `_Recovery/` came from the earlier out-of-memory crash). It now saves only dirty scenes that have a path, then `EditorApplication.Exit(0)`. Don't commit either file. (2) Writing a new `.cs` while a live batch runs gets it compiled at the next play-mode exit: a compile error there drops the Editor into Safe Mode, where the Pipeline is gone (`unity pipeline list`: serverReachable false). After fixing the file, Safe Mode only recompiles when the Editor window gets focus: `(New-Object -ComObject WScript.Shell).AppActivate(<pid>)` triggered the refresh. Compile new test files offline first (`Tools/offline-csc.py ... AquariumCiv.View.PlayTests`) and add them between batches.
+- **2026-11-15 · #692 part 1 clip review: three traps in camp-use clips.** [verified] (1) **A huge red blob in a clip was the kids' ball**: a kid borrowed by a camp scene stays the holder in its ball game, so `KidPlayDirector.DrawBalls` kept the ball at its hands, sized by `MinBallRadius` for the close camera (doll-sized). The ball now hides while its holder is `Camp.Busy`. Find a stray object with a probe: enter play with `AnimLabLive.EnterPlay/Load`, run the setup, then list active renderers by name and bounds from `script eval`. (2) **A "splash" at a kid in a fire scene** was `PeopleView.WorkHit` resolving the doll's hit against its *plan's* place (a kid playing at a puddle: droplets): a doll in a camp scene no longer fires WorkHit (the scene fires its own effects). (3) **A cheat that aims at the pot used its cold spot**: `meals.Pot` is `PotAt ?? hot`, and on the cheat's frame `PotAt` still held the cold spot, so the kid stopped 0.15 u short: cheats use `meals.PotHotSpot` and clear `PotAt`. Also: after a forced scene ends, `CampLife.FocusNow` keeps the last focus (the AnimLab camera wandered off), and `CampScene.holdFocus` keeps it on the thing (the pole, the pot). Each `animlab.sh live` clip here took 30-45 s; restarting every 3 clips cost ~1 min.
+- **2026-11-15 · #692 part 2 (the Keeper's tree visits): live-clip traps.** [verified] (1) **`sim.DebugTreeStage(4)` + `box.Rebuild()` drew the tree 17 s late**: Rebuild uses the layout the box already has; `EcoDebug.TreeStage(4)` refreshes it through `SimLayoutSource` (`CampCheats.GrowTree` uses it). (2) **The kids' ball showed as a big red block** in AnimLab clips: `KidPlayDirector.MinBallRadius` sizes it for `Camera.main` (the game's far camera), not AnimLab's close one. Set `AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f` in a clip's first setup step, beside `HitFx.MinPixels`. (3) **A fresh camp pitches its tents and goes to bed in the dusk hour** (Hammer@Home with `a.tent` set, then Sleep), and a person in a tent phase ignores camp cues: a long dusk clip (B32.d's 30 s) pauses the view clock (`DayLightDriver.DebugPauseClock(true)` as the last setup step before the cheat; the pose clock still runs). (4) **The doll's armR swings out on the side counter-clockwise of its heading seen from above** (a hand meant for the trunk went out the other way); B32.b and B32.e use that. (5) A cheat's result line is in the Editor log as `[CampLife] later: ...` (grep it to see who was cast).
+- **2026-11-16 · #692 parts 2-3 and the splash fix: live-clip traps.** [verified] (1) **`FishView.DebugShadows()` said "0 fish on the pond" right after a season skip** (the eco fish exist; the school's view is built a moment later): call it again in a later setup step (708-kid-edge's request now has two extra `DebugShadows` steps). (2) **A doll's `lean` tips it forward**: lean +90 lies face down with the head toward where it faces; lying on the back is lean −90 (`Lie` style is face down too). A log roll is `roll = 90` (on the side) with `lean` turning about the body's length, since `tilt = Euler(-lean, 0, roll)` applies the roll first. (3) **AnimLab clips show dark discs with white middles near kids**: those are `Ring` puffs from the kids' own puddle play (`StageCamp`'s mist makes puddles), not a camp use; probe with `HitFx.Instance.LastKind` from `script eval` in play mode. (4) `AnimLabLive.EnterPlay` fails with "Could not find a part of the path ...prev-scene.txt" after a restart wiped `Temp/agent/animlab`: `mkdir -p` it first. (5) The B32.d/e shot tests skipped when no grown-up was free at dusk; the tree cheats now stage the nearest grown-up drawn (`CampLife.StageGrown`) and say each grown-up's state when none is.
+- **2026-11-16 · #692 p3 readability pass: AnimLab puffs were sized for the far game camera.** [verified] (1) **The "big black discs" in AnimLab clips** were puffs whose outline (`perPx * 1.5`), pixel floors and ring line were computed from `Camera.main` (the game's default view, ~0.008 u a pixel at 1179x2556): in AnimLab's close camera a 2-px outline is a fat dark ring, a steam blob turns into a grey disc over a kid. `HitFx.DrawCamera` (null = `Camera.main`) and `HitFx.Instance.Redraw()` now let `AnimLabLive.Shoot` rebuild the puffs for its own camera before each render. Most dark discs near grown-ups in camp clips are **work-hit Dust** (`HitFx.OnWorkHit` from `PeopleView.Drive`), not rings: find a puff's caller with a temporary `Debug.Log(System.Environment.StackTrace)` in `HitFx.Spawn`, then grep the Editor log. (2) **Probe a live clip without recording:** `bash Tools/animlab/probe.sh <request> <lines.txt>` = `AnimLabLive.EnterPlay/Load`, the request's setup steps, then C# probe lines (`WAIT n` between) such as `Camp.DebugCues()` + `Camp.LandMarks()`; that showed B34.b's actors walking 1.1 u to a far boulder for the stones (the clip saw only them standing by the tree). (3) **Camp uses on a sapling** now pick one clear of the glass and of every grown crown (`CampLife.ClearOfGlass`, `InView`); "Land: a wild tree and saplings" plants three such saplings (`EcoDebug.SaplingsWhere`) when the beside-the-Keeper's-tree ones are all under its crown. (4) A live render while you `unity recompile` (or save a `.cs` that compiles at the play-mode exit) loses the next clip of the batch ("the Editor is not ready"): edit code only between batches.
+
+### 2026-11-16 · Batch 3 tester fixes: a harness's own frame, and reading a hitch in the Profiler from a play test
+- **A "HITCH" in a tester log can be the tester's script.** The batch 3 tester's ~1 s frame "on the first seed tap" (12 of 12) did not
+  reproduce with the game's own path (kit tile, real touch, first run played, 3 visits): the tap frame is 10-15 ms. The long frame sat
+  between the script's in-hand shot and its tap, where its helper searched the screen for a seed spot; a 40 px scan of
+  `EcoMistView.GroundPoint` + `TreeCellFor` alone costs ~230 ms. Before chasing a hitch, time the same step through the game's own path
+  (`Batch3TesterFixesPlayTests.TheFirstSeedTapHasNoLongFrame`). The tester's harness logs to the Editor log with a `[b3]` prefix (its
+  class and line are in the stack under each line), even after its files are gone.
+- **[untested: no long frame came to read] Profile a long frame from inside a play test** (no window needed): `UnityEditorInternal.ProfilerDriver.enabled = true;
+  Profiler.enabled = true;`, then on a slow frame read `ProfilerDriver.GetHierarchyFrameDataView(ProfilerDriver.lastFrameIndex - k, 0,
+  ViewModes.MergeSamplesWithTheSameName, HierarchyFrameDataView.columnTotalTime, false)` and walk `GetItemChildren` for items over N ms.
+- **Find who leaned the camera:** a temporary `Debug.Log(System.Environment.StackTrace)` in `BoxCamera.LeanIn` named the callers
+  (NewStartView's first logs and arrival, LifeArrivalView); the camera's state per 2 s (`Leaning`, `GlideArmed`, `Gliding`, `IsFlying`,
+  `CampFrameView.Status()`) showed the glide being cancelled by `LifePlaceView.FrameGround`'s `FlyTo`.
+
+### 2026-11-16 · Batch 3 leftovers: a probe's shot frame reads as a doll pop, and a random world under a pixel test
+- **A "doll pop" right after a shot is the shot's own frame.** `Batch3CheatPassShots` measured each doll's step per frame against
+  0.12 u. The frame after `Shot()` takes 120-220 ms (the capture), so a walk (0.8-0.95 u/s) or a kid's run steps 0.10-0.17 u in it with no
+  snap. Every step over 0.1 u in two full passes sat on that frame (t = shot + 0.12 s). The probe now logs each step over 0.1 u
+  (`[b3pop]`: who, ms, u/s, activity) and counts a pop only past 1.1 u/s (the fastest a doll is drawn), and only between two frames the
+  doll was out in both (back from a tent or into view is logged as "back in view"). `PeopleView.StepWatch` (a static hook, null in play)
+  reports a drawn step over `StepWatchOver` with PeopleView's own dt and why (jump, snapAll, inTent, play, pair, camp).
+- **Find a dark blob in a shot:** `HitFx.Instance.DebugLive()` lists the live puffs (kind, where, age, scale, ground) at the shot
+  (`[b3fx]`). The pole-dare's "dark ring in the grass" was a hoe's Dust (a grown-up at the garden), 0.06-0.09 s old: four young blobs
+  with a near-black outline (`SoilRim`) over the pop flash's near-black band, not a Ring puff.
+- **A pixel test on a new world needs a pinned seed.** CarePlayTests' glass test made a new world with a random seed, and the grime
+  pattern follows the seed (`GlassMask` weights): the one spot it measured read 74, 40 and 33 on the same code. Pin
+  `GameClock.DebugNextSeed` before the scene loads (reset it in `finally`) and measure where the pattern is dirtiest, not at one fixed point.
+
+### 2026-11-16 · #692 parts 4-5 clips: four live-clip traps
+- **A cheat's herd or pond far off the camp's frame.** `EcoDebug.Table(0.3f)` (`CampCheats.PondReady`) floods ~420 cells, and its
+  edge cells near the camp may all sit in front of the glass margin: searches that demand `ClearOfGlass` (2.4 u from the front pane)
+  found "no pond". Rank such spots instead (clear of the glass first, else the nearest inside the box: `CampLife.PondEdge`, `BankNear`).
+  The deer cheats hold the herd grazing behind the camp as the camera sees it (`DeerView.DebugGrazeAt`, calm: no alert from people)
+  so watchers stand side by side across the screen; beside the camp they stacked along the view, one hiding the others.
+- **Anything drawn on a pond uses its own surface** (`box.layout.eco.waterY`), never `Land.WaterY`: after a raised table the rings,
+  the leaf boat and the skipping stone drew under the water.
+- **Width floors in pixels must be computed for the camera that renders.** The swing's ropes took a 2 px floor from `Camera.main`
+  (the far game camera): in AnimLab's close camera they became a pale wall. Cap such floors in box units too.
+- **A fresh StageCamp raises its tent during the first ~15 s**: tent clips (peek, toy, door, lanterns, moths) add eight no-op setup
+  steps (`return "waiting for the tent to stand";`) so the tent stands at frame 0. Tree clips under a grown crown use `"pitch": 16`
+  (the 38° close camera sat inside the crown). Watch for the fish rack popping out of view in rack clips (FishRackView, not fixed).
+- `Tools/animlab.sh live` took ~45-70 s a clip here; 3 clips then `restart-editor.sh` (~40 s) kept the Editor healthy for 60 clips.
+
+### 2026-11-16 · #692 p5 retakes: AnimLab clips that missed their own use
+- **A cheat's walk ate the clip.** Forced camp uses pick the nearest free doll, often 1.5 u off: the walk is capped at 9 s, so B45.a's throw
+  came after its 9 s clip ended (no rings). Live requests now take `"lead": s` (AnimLabLive, prep.py): warming goes on (unrecorded, at most
+  30 s more) until the camp use playing now is that many seconds before its hit (`CampScene.a`, `CampLife.UntilA`), and the camera snaps onto
+  it. The cheat must start during the warm-up: the driver sleeps ~2 s after every setup step, so a `Later(2.0f, ...)` fired before
+  recording began; the retakes use `Later(4.0f, ...)`. A use with no `a` (B44.b, B45.c) needs one set, else the lead is met at once.
+- **Dusk clips were shot in daylight:** `DayLightDriver` holds the light at 11 h while `FirstRunView.Active` (AnimLab's load did not end it).
+  Add a step `FirstRunView.DebugSkipAll()` after `StageCamp`, then `PeopleView.DebugSetHour(h)` again; `DayLightDriver.Status()` must not say
+  "held at day for the first run".
+- **Probing CampLife's drawn marks:** `FindObjectsByType<MeshFilter>(Include)` returned none of the "Camp part 5 mark" objects
+  (DontSave); `Resources.FindObjectsOfTypeAll<MeshFilter>()` finds them. A doll's pose offset has forward = −z.
+- **The name stone in a camp box** (B51): `DilemmaCheats.Toggle(true)`, `Raise("camp_remember")` (it kills the oldest if nobody has died),
+  `AnswerOnCard(0)` (the stone).
+- **FishRackView pop:** "Fish on the rack" sends someone to take the fish down, and the rack hid ("not wanted") between the last fish off and
+  the pile; it now stays once it has stood (`ThingSince("rack")`). `FishRackView.HideWhy` says why it is hidden. For clips that need the fish to
+  stay use `CampCheats.FishStay()`.
+
+### 2026-11-16 · #693 choice props: worktree runs of run-tests.sh, and every thing in one camp box
+- **`Tools/run-tests.sh` waits on `F:\GameDev`'s Editor by default** (`PROJ` defaults to `F:/GameDev/AquariumCiv`): from a worktree Editor it
+  sat in its 300 s ready wait with no output. Pass `PROJ=F:/GameDev-wt/<dir>/AquariumCiv EDITOR_LOG=<its log>` (as for `restart-editor.sh`).
+  [verified]
+- **Every choice's thing in a camp box for a clip:** `CampCheats.EveryThing()` (= `ConsequenceCheats.PlaceEvery`) stands one thing per
+  option, village ones too (they fall back to the fire's ring or the edge), so the village props' uses can be shot without a village. Some
+  kinds stand twice (two stew pots, baskets, staffs, pegs); the #693 cheats take the first drawn. The axe stump stands at the edge (2+ u
+  out): its clips need a `lead`. [verified]
+
+### 2026-11-16 · #694 dogs and wolves: night clips and the visiting wolf
+- **A fresh `StageCamp` at 19.4-20.2 h has no grown-up free at the fire** (they pitch tents and go to bed): "two grown-ups needed by the fire"
+  in the `[CampLife] later:` line, and the clip showed only the dog. Night clips now stage at 18.8 h + `DebugPauseClock(true)`, and the
+  wolf cheats walk any drawn grown-up (`StageGrown`) and kid to the fire first. [verified]
+- **A planned wolf point can be correct and still off every frame**: the drive-off planner first stopped the wolf at the camp's edge
+  + 0.85 (2.6 u from the fire in a spread camp). Find it with `bash Tools/animlab/probe.sh <request> <lines>` and
+  `CampCheats.DogStatus()` (the visitor's spot, each scene's focus and cast) plus `GameObject.Find("Visiting wolf")` renderer bounds.
+  The wolf now stops at the first clear point past the firelight's edge. Even in frame, a grey wolf at dusk does not show at phone
+  scale: the spec's eye glints need a glowing material (the Stylized solid is lit only by the fire). [verified: probe]
+- `Tools/animlab.sh live` reads a request's JSON when the batch queues it, but a `.cs` edited mid-batch is compiled at the next play
+  exit/restart: edit code only between batches (as 2026-11-16 above). Old AnimLab logs rotate at each `restart-editor.sh`: read a clip's
+  `[CampLife] later:` line before the next restart. [verified]
+
+### 2026-11-16 · #695 village uses: a lived-in village for clips, and the crowd's key -1
+- **A living-land village does not grow by skipping years.** `ForceNextEra` + `SimLayoutSource.DebugSkipYears(60)` left one home and a
+  well (pop 5-12: wood comes only from grown wild trees and births need food). `CampCheats.StageVillage(hour, town, kids)` ("Jump: a village
+  box" / "Jump: a town box") feeds the sim between short skips (`State.population` 26, `wood` 2000, `food` 200, five 3-year skips): 8 homes,
+  the well, the windmill, the lumber mill, 4 fenced fields, barns, market, tavern, church; the town adds the workshop and stalls and
+  `DebugBuild("Bakery")` (its 20 slots fill before the bakery comes by itself). It ends the era's festival year. [verified]
+- **`CampLife.Nearest` returns -1 for "nobody", but -1 is a person: the crowd's first member** (crowd keys are -1, -2, ...). In a village
+  most grown-ups are the crowd, so every cheat said "no grown-up free" while -1 stood there (the camp code has the same blind spot for the
+  crowd). The village picks with its own list (`CampLife.VPick`, `VillageScenes.Nobody` = int.MinValue). [verified: probe]
+- **What a living-land box can never have:** no smithy, kiln, potter, pasture, beekeeper's meadow, timber yard, watermill, orchard, jetty,
+  quarry or dyer (they answer the Keeper's shaping gifts, `Settlement.KindFor`), and no bridges (they stand where a path crosses a dug
+  channel). Check `GameHud.KitTool` before planning a use at one of them.
+- Writing a `.cs` while `Tools/animlab/probe.sh` runs recompiles under it: the next probe's setup ran in a camp ("not a village"). [verified]
+- **Village clips: the uses played on the game camera's side, AnimLab filmed from another.** `CampLife.ToCam` reads `Camera.main`
+  (the game camera); AnimLab's own camera has the request's yaw. A request now sets `AquariumCiv.View.CampLife.LabYaw = <its yaw>f` in its
+  first setup step, and `CampCheats.FrontYaw(PieceKind.X)` + `AnimLabLive.YawOverride` turn the camera to a building's door (the bakery).
+  A village is full of roofs: the well's roof hides its camera side from above (gossip stands at its sides; pebble clips use pitch 55),
+  a house in front hides the well from a low camera, and a kid sitting in a field is lost in the crop (seats are now searched off fields).
+  [verified]
+- **A cheat that casts someone a staged moment holds (`PeopleView.StagedSpot`, `LifeSpot`) gets nothing:** PeopleView draws them at the
+  moment (`tenting`), never at the camp cue; the kids walked back to it. `CampLife.VPick` skips them (`HeldElsewhere`). [verified: probe]
+- **`restart-editor.sh` sat 10 min twice when a `.cs` had been saved during the live batch before it** (the quit waited on the compile).
+  Edit code only between batches; restarts between batches took 35-50 s. [verified]
+- **2026-11-17 · b58c: a staged moment took a cheat's cast mid-scene.** The probe (`CampCheats.VillageDolls()`) showed the bakery kids'
+  activity turn to Watch@Fire/Market (`PeopleView.StagedSpot` true) a few seconds after the cheat cast them: PeopleView draws a staged moment
+  over a camp cue, so they walked off to it and the clip saw nobody at the door. A cheat's own scene now wins (`CampLife.CheatHolds`, checked
+  before `StagedSpot` and `LifeSpot` in PeopleView.Drive); a natural village use drops a member a moment takes. [verified: clip]
+- **2026-11-17 · Tester batch 3 (pt1b) notes.** [verified] (1) A worktree branch that is checked out in another worktree (here `p9/batch3` in `F:\GameDev-wt\batch3`) can't be switched to in pt1b: `git switch --detach p9/batch3` gives the same code. (2) A per-frame "watch" in a throwaway `PlayTestBase` subclass (doll feet from `TryGetDollFeet`, box-local via `box.Root.InverseTransformPoint`, fire = `box.layout.pieces` of kind Fire, props = renderer bounds of `ConsequencePropsView.Instance.Standing`, wolves = `WolfView.Instance.WorldPositions`) finds clipping and fire hits that the cheat tests don't; `CrowdAvoid.KeepOut` leaves people exactly on the 0.20 rim, so count "in the fire" below ~0.18. (3) `CampCheats.StageCamp` boxes on seed 4242 have no deer: a deer-count check needs `CampCheats.DeerWatch()` first (it places 3). (4) Game view 1179x2556 through `OpenSlice(1179, 2556)` as before; Editor frame rate there was ~45-110 fps in a camp and ~12 fps in a staged village.
+
+### 2026-11-23 · `animlab.sh render` says "queue empty" for live clips
+Batch-3 clips (`Tools/animlab/clips/69x-*`, `714-*`, `721-*`) carry a `"live"` section, and `render` skips those (`grep -L '"live"'`), so a queue of them only prints "queue empty". Use `bash Tools/animlab.sh live`: it renders them all in one play-mode session through their cheats (six clips ~5 min). [verified]
+
+- **2026-11-24 · Tester B3 seat pass: checking "nobody walks through a thing".** [verified] Per frame, take every doll's `TryGetDollFeet` point into the prop's own space (`ConsequencePropsView.Instance.Standing[id].InverseTransformPoint`) and test it against the prop's mesh bounds (all child `MeshFilter.sharedMesh.bounds` corners in that space): inner 70 % of the footprint and below half the height = inside it. Log each scene member's box-local spot every 0.5 s too; that showed which planned spot sat inside the hull. One-frame "jumps" over ~0.12 u lined up with `ScreenCapture` frames (a shot stalls a frame): don't count them without a picture. Contact sheets of many 1080x1920 shots: `python -I sheet.py` with PIL (centre crop + tile) instead of opening each shot. Edit-mode `Mesh` count grows ~40 per play run from `DontSave` runtime meshes (Camp_PropUse_*, Camp_StewPot, Prop_*) built again after each domain reload; that is Editor accumulation, not a scene leftover.
 ## 2026-11-15: close-issue.sh needed python, which this shell lacks
 `Tools/close-issue.sh` parsed board JSON with `python`, which is not on PATH in the agent shell, so cards could silently stay out of Done. It now uses `gh --jq` only. The board had drifted (61 open issues missing, 82 without status); fixed in one pass, see workflow.md section 2.

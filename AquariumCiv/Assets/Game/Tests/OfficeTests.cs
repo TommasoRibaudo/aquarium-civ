@@ -116,7 +116,10 @@ namespace AquariumCiv.Tests
                     }
                 }
                 TestContext.WriteLine($"{trait}: {string.Join(", ", counts[trait].Select(kv => $"{kv.Key} {kv.Value}"))}");
-                Assert.GreaterOrEqual(counts[trait].Values.Sum(), 5, $"{trait}: a chief's term over 3 × 45 years");
+                // #716: a line names only what the box has. A camp has no weathervane or cart (the tinkerer's lines wait for the
+                // village and the town), and no Keeper's tree with the ecology off (the dreamer keeps only the map).
+                int least = trait == "the tinkerer" ? 0 : trait == "the dreamer" ? 1 : 5;
+                Assert.GreaterOrEqual(counts[trait].Values.Sum(), least, $"{trait}: a chief's term over 3 × 45 years");
                 CollectionAssert.IsSubsetOf(counts[trait].Keys.ToList(), SimCore.TermKindsOf(trait).ToList(), trait);
             }
             // The user's examples: the cheerful leader feasts and sings, the stern one keeps it tidy, the quarrelsome rows.
@@ -160,18 +163,23 @@ namespace AquariumCiv.Tests
         {
             var (sim, chief) = CampWithChief(4, "the worrier");
             uint story = sim.State.storyRng.state, rng = sim.State.rng.state, econ = sim.State.econRng.state;
-            var e = sim.Chronicle("storm", "A great storm rattled the glass.", 0.5f);
-            Assert.AreEqual($"A great storm rattled the glass. {chief.FullName} the chief had them all counted in before the first gust.", e.text);
+            // #715/#716: the storm and lost codas went with their stories; the festival's stay
+            chief.trait = "the singer";
+            var e = sim.Chronicle("festival", "Ada threw a feast.", 0.5f);
+            Assert.AreEqual($"Ada threw a feast. {chief.FullName} the chief sang until the stars came out.", e.text);
             Assert.AreEqual((story, rng, econ), (sim.State.storyRng.state, sim.State.rng.state, sim.State.econRng.state), "no dice");
-            Assert.AreEqual("Fog filled the glass for a week.", sim.Chronicle("fog", "Fog filled the glass for a week.", 0.4f).text, "no coda for fog");
+            Assert.AreEqual("A great storm rattled the glass.", sim.Chronicle("storm", "A great storm rattled the glass.", 0.5f).text, "no coda for a dropped kind");
 
-            chief.trait = "the brave";
+            chief.trait = "the joker";
             var other = sim.State.notables.First(n => n.alive && n != chief);
-            StringAssert.Contains("led the search party", sim.Chronicle("lost", "X got lost.", 0.6f, other.id).text);
-            Assert.AreEqual("X got lost.", sim.Chronicle("lost", "X got lost.", 0.6f, chief.id).text, "not about the holder themself");
+            var race = sim.Chronicle("festival", "X threw a feast.", 0.6f, other.id).text;
+            StringAssert.Contains("organised a race, and ", race);
+            StringAssert.DoesNotContain("sack race", race);
+            StringAssert.DoesNotContain("{", race);
+            Assert.AreEqual("X threw a feast.", sim.Chronicle("festival", "X threw a feast.", 0.6f, chief.id).text, "not about the holder themself");
 
             sim.TermFlavourOn = false;
-            Assert.AreEqual("X got lost.", sim.Chronicle("lost", "X got lost.", 0.6f, other.id).text, "the switch turns it off");
+            Assert.AreEqual("X threw a feast.", sim.Chronicle("festival", "X threw a feast.", 0.6f, other.id).text, "the switch turns it off");
         }
 
         [Test]

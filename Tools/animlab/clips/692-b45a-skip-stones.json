@@ -1,0 +1,26 @@
+{
+ "name": "692-b45a-skip-stones",
+ "notes": "B45.a: someone picks a flat stone, stands side-on to the pond and whips it low: three skips (a ring each, closer together) and a cheer. (A second press: a kid's stone goes plop.)",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.PondReady();",
+   "return AquariumCiv.View.CampCheats.PondReady();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.SkipStones());"
+  ],
+  "warm": 0.5,
+  "seconds": 6,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 38,
+  "lead": 2.5
+ }
+}

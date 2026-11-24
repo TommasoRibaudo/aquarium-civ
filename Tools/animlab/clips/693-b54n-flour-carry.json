@@ -1,0 +1,28 @@
+{
+ "name": "693-b54n-flour-carry",
+ "notes": "B54.n: a sack of flour carried on the shoulder from the heap to a door, set down with a white puff.",
+ "animlab": {
+  "issue": 693
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 4);",
+   "return AquariumCiv.View.CampCheats.OnlyThing(\"flour_sacks\");",
+   "return \"waiting for the things\";",
+   "return \"waiting for the things\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11.0f);",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.FlourCarry());"
+  ],
+  "warm": 0.5,
+  "seconds": 9,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.9,
+  "yaw": 28,
+  "pitch": 55,
+  "lead": 6.0
+ }
+}

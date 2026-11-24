@@ -22,7 +22,9 @@ namespace AquariumCiv.View
 
         /// <summary>The hint while the ghost waits for its second tap (#516: the life slot's wording, naming what goes down).</summary>
         public const string TapAgainHint = "Tap again to plant the seed here.";
-        public const string NotThere = "Not there: the seed can't grow in the hollow or the water.";
+        public const string NotThere = "Not there. A seed can't grow in the hollow or in water."; // #668 kit-words §5
+        /// <summary>#727: an earned seed needs open ground: not the camp, the water, a thicket or the Keeper's tree.</summary>
+        public const string NotThereEarned = "Not there: a seed needs open ground, away from the camp, the water and the bushes.";
 
         [Tooltip("A press that wanders further than this (share of screen height) is a drag, not a tap.")] public float slop = 0.02f;
         [Tooltip("A tap this near the ghost's middle (box units) plants it.")] public float ghostReach = 0.28f;
@@ -35,7 +37,7 @@ namespace AquariumCiv.View
         GhostLook look;
         readonly KitPress press = new();
         int tappedCell = -1;
-        static Mesh fillMesh, edgeMesh;
+        static readonly Mesh[] ghostMeshes = new Mesh[4];
 
         /// <summary>The ghost is up, at <see cref="GhostCell"/> (the cell the tree would take).</summary>
         public bool GhostShown => ghost != null && ghost.Shown;
@@ -76,6 +78,8 @@ namespace AquariumCiv.View
             hud ??= GameHud.Instance;
             bool holding = sim != null && sim.EcologyOn && box != null && hud != null && hud.Hand == GameHud.KitTool.Seed;
             if (!holding) { HideGhost(); press.Reset(); return; }
+            // tester batch 3 (the first-tap freeze): the ghost's meshes are built when the seed is taken, not on the tap that shows it
+            if (!GhostShown) { bool earned = !sim.CanPlantTree; GhostMesh(false, earned); GhostMesh(true, earned); }
             DrawGhost();
             int n = KitPress.ReadPointer(out var pos);
             if (press.Tap(n, pos, slop, out var at)) TapAt(sim, at); // two fingers (a pan, a pinch) never plant: the camera's
@@ -86,7 +90,7 @@ namespace AquariumCiv.View
         {
             var mist = EcoMistView.Instance;
             if (mist == null || !mist.GroundPoint(screen, out var at)) { Last = "off the land: put back"; hud?.SetHand(GameHud.KitTool.None); return; }
-            if (!sim.CanPlantTree) { Last = "no seed"; hud?.SetHand(GameHud.KitTool.None); return; }
+            if (!sim.CanPlantAnySeed) { Last = "no seed"; hud?.SetHand(GameHud.KitTool.None); return; } // #727: the Keeper's tree, or an earned seed
             Ghost.reach = ghostReach;
             if (Ghost.OnGhost(at) && sim.TreeCellFor(Ghost.At.x, Ghost.At.z) == Ghost.Cell) { Plant(sim); return; }
             int cell = sim.TreeCellFor(at.x, at.z);
@@ -95,12 +99,12 @@ namespace AquariumCiv.View
                 Refusals++;
                 Last = "refused";
                 Ghost.Wobble();
-                hud?.Toast(NotThere, 3f);
+                hud?.Toast(sim.CanPlantTree ? NotThere : NotThereEarned, 3f);
                 return;
             }
             bool moved = GhostShown;
             tappedCell = SiteMap.CellAt(at.x, at.z);
-            Ghost.Show(cell, new Vector3(SiteMap.CXc(cell), 0f, SiteMap.CZc(cell)), hud, GameHud.SeedHint);
+            Ghost.Show(cell, new Vector3(SiteMap.CXc(cell), 0f, SiteMap.CZc(cell)), hud, hud != null ? hud.SeedHintShown : GameHud.SeedHint);
             Last = moved ? $"ghost moved to {cell}" : $"ghost at {cell}";
         }
 
@@ -110,14 +114,16 @@ namespace AquariumCiv.View
             float x = SiteMap.CXc(cell), z = SiteMap.CZc(cell);
             // #378: a press by the glass lands a little way in from it (the ghost showed where); say so, the seed never jumps silently
             bool shifted = tappedCell >= 0 && tappedCell != cell;
-            if (!sim.PlantTree(x, z)) { Last = "refused"; hud?.Toast(NotThere, 3f); return; }
+            bool keepers = sim.CanPlantTree; // the first seed is the Keeper's tree; after it, an earned seed (#727)
+            if (!sim.PlantTree(x, z)) { Last = "refused"; hud?.Toast(keepers ? NotThere : NotThereEarned, 3f); return; }
             Plantings++;
             Last = $"planted at ({x:0.00}, {z:0.00})";
             HideGhost();
             box.Refresh();
             GameClock.Instance?.Save();
             hud?.SetHand(GameHud.KitTool.None);
-            hud?.Toast(shifted ? "The seed went in a little way from the glass, where a tree has room. Mist it, and keep its weeds back." : "The seed is in the ground. Mist it, and keep its weeds back.", 4f);
+            if (!keepers) hud?.Toast(sim.SeedsInPouch > 0 ? $"The seed is in the ground. It will grow into a tree. {sim.SeedsInPouch} more in the life jar." : "The seed is in the ground. It will grow into a tree.", 4f);
+            else hud?.Toast(shifted ? "The seed went in a little way from the glass, where a tree has room. Mist it, and keep its weeds back." : "The seed is in the ground. Mist it, and keep its weeds back.", 4f);
             var pv = PeopleView.Find();
             if (pv != null && pv.Planner != null) pv.Planner.ReactAt(AquariumCiv.Life.KeeperGesture.Rain, pv.Now, x, z, 1.4f);
         }
@@ -138,24 +144,39 @@ namespace AquariumCiv.View
             look ??= new GhostLook(box.transform, "SeedGhost");
             // #609: the ghost's mound lies on the slope like the planted one
             KeeperTreeKit.PadFit(box.land, Mathf.Clamp(c.x, -Land.HX, Land.HX), Land.ClampZ(c.z), out var tilt, out var lift);
-            look.Draw(GhostMesh(false), GhostMesh(true), new Vector3(c.x, y + lift, c.z), ghostScale * Ghost.Breath() * Ghost.Pop(), ghostFill, ghostEdge, tilt);
+            var simNow = Sim; bool earned = simNow != null && !simNow.CanPlantTree;
+            look.Draw(GhostMesh(false, earned), GhostMesh(true, earned), new Vector3(c.x, y + lift, c.z), ghostScale * Ghost.Breath() * Ghost.Pop(), ghostFill, ghostEdge, tilt);
         }
 
         /// <summary>The Keeper's tree at stage 0 (the seed in its mound, its stones and moss), its own colours washed pale (#516,
-        /// <see cref="GhostLook.Pale"/>); <paramref name="edge"/>: a little larger, in white, for the darker outline behind.</summary>
-        static Mesh GhostMesh(bool edge)
+        /// <see cref="GhostLook.Pale"/>); <paramref name="edge"/>: a little larger, in white, for the darker outline behind.
+        /// #668 (the landscaping polish): an earned seed (#727) grows an ordinary young tree, so its ghost is a small sapling, never the
+        /// Keeper's mound.</summary>
+        static Mesh GhostMesh(bool edge, bool earned)
         {
-            var m = edge ? edgeMesh : fillMesh;
-            if (m != null) return m;
+            int k = (edge ? 1 : 0) + (earned ? 2 : 0);
+            if (ghostMeshes[k] != null) return ghostMeshes[k];
             var mb = new MeshBuilder(518) { jitter = 0f };
             if (edge) mb.M = Matrix4x4.Scale(new Vector3(1.12f, 1.25f, 1.12f));
-            KeeperTreeKit.Build(mb, Vector3.zero, 0, 0, LandColors.River);
+            if (earned) EarnedSapling(mb);
+            else KeeperTreeKit.Build(mb, Vector3.zero, 0, 0, LandColors.River);
             mb.M = Matrix4x4.identity;
             if (edge) GhostLook.Flat(mb); else GhostLook.Pale(mb);
-            m = mb.ToMesh(edge ? "SeedGhost_edge" : "SeedGhost");
+            var m = mb.ToMesh(edge ? "SeedGhost_edge" : "SeedGhost");
             m.hideFlags = HideFlags.DontSave;
-            if (edge) edgeMesh = m; else fillMesh = m;
-            return m;
+            return ghostMeshes[k] = m;
+        }
+
+        /// <summary>The earned seed's ghost: a young sapling on a little ring of turned earth (the shape the tweezers' pop and the spade use).</summary>
+        static void EarnedSapling(MeshBuilder mb)
+        {
+            var at = mb.M;
+            mb.Prism(Vector3.zero, 0.05f, 0.042f, 0.012f, 9, Palette.Bark);                       // the turned earth
+            mb.M = at * Matrix4x4.Scale(Vector3.one * 1.5f);
+            mb.Prism(Vector3.zero, 0.012f, 0.008f, 0.13f, 5, Palette.Bark);
+            mb.Ico(new Vector3(0f, 0.15f, 0f), 0.06f, new Vector3(1f, 1.15f, 1f), Palette.LeafB, 0.2f);
+            mb.Ico(new Vector3(0.02f, 0.2f, 0.01f), 0.04f, Vector3.one, Palette.LeafC, 0.2f);
+            mb.M = at;
         }
 
         /// <summary>The screen point of a site cell's middle on the land (tests and the debug panel).</summary>

@@ -34,7 +34,9 @@ namespace AquariumCiv.View
     }
 
     /// <summary>What a cover is (where the hiders crouch, where the seeker counts).</summary>
-    public enum CoverKind { Bush, Tree, Tent, Pile }
+    public enum CoverKind { Bush, Tree, Tent, Pile,
+        /// <summary>#692 part 5 (B47.c): a reed bed at the pond's edge (they crouch at its edge; the reeds sway).</summary>
+        Reeds }
 
     public struct PlayCover
     {
@@ -459,7 +461,7 @@ namespace AquariumCiv.View
             Beat.Step(BeatPhase.Settle, 0.2f, Ease.Smooth, PoseKey.Base));
 
         /// <summary>A strike: the stick up (x 130), down (Snap) onto the other's stick (the Contact), the jolt back, settle.</summary>
-        static readonly Beat Strike = new Beat(
+        public static readonly Beat Strike = new Beat(
             Beat.Step(BeatPhase.Antic, 0.25f, Ease.Out, PoseKey.Hold.ArmR(135f, 0f, 12f).Lean(-8f).Squash(1.04f).Extend(true)),
             Beat.Step(BeatPhase.Act, 0.1f, Ease.Snap, PoseKey.Hold.ArmR(88f, 0f, 4f).Lean(14f).Squash(0.94f)), // level: the sticks meet at chest height
             Beat.Step(BeatPhase.Contact, Beat.MinContact, Ease.Linear, PoseKey.Hold),
@@ -467,7 +469,7 @@ namespace AquariumCiv.View
             Beat.Step(BeatPhase.Settle, 0.4f, Ease.Smooth, PoseKey.Base.Extend(true)));
 
         /// <summary>The block: the stick across (x 100, turned in), braced; at the cross a jolt back; settle.</summary>
-        static readonly Beat Block = new Beat(
+        public static readonly Beat Block = new Beat(
             Beat.Step(BeatPhase.Antic, 0.2f, Ease.Out, PoseKey.Hold.ArmR(100f, 0f, -25f).Lean(-6f).Squash(0.94f).Extend(true)),
             Beat.Step(BeatPhase.Hold, 0.2f, Ease.Linear, PoseKey.Hold),
             Beat.Step(BeatPhase.Follow, 0.12f, Ease.Out, PoseKey.Hold.Offset(0f, 0f, 0.04f).Lean(-12f).Squash(0.9f)),
@@ -792,7 +794,9 @@ namespace AquariumCiv.View
     public sealed class HideSeekGame : KidGame
     {
         public const float CountFor = 4f, Run = 0.45f, SeekWalk = 0.38f, Find = 0.12f, PointFor = 0.75f, Turn = 0.4f, CheerFor = 1.1f,
-            BaseGap = 0.08f, HideGap = 0.06f, PeekFor = 0.5f, Reach = 1f;
+            BaseGap = 0.08f, HideGap = 0.06f, PeekFor = 0.5f, Reach = 1f,
+            /// <summary>#692 part 5 (B43.a): how far inside a bush's edge a hider crouches; the peek's sway is this big (of the dive's).</summary>
+            BushIn = 0.08f, PeekSway = 0.5f;
 
         static readonly Beat Point = new Beat(
             Beat.Step(BeatPhase.Act, 0.15f, Ease.Snap, PoseKey.Hold.ArmR(92f, 0f, 8f).Lean(10f).Offset(0f, 0.045f, 0f)),
@@ -891,7 +895,9 @@ namespace AquariumCiv.View
                     var away = c.pos - baseC.pos;
                     if (away.sqrMagnitude < 1e-6f) away = new Vector2(1f, 0f);
                     away = away.normalized;
-                    s.hide[i] = c.pos + away * (c.r + HideGap);
+                    // #692 part 5 (B43.a): in a bush the hider crouches 0.08 u inside its edge (the bush is cover, the sway gives them away); in the
+                    // reeds (B47.c) at the reed bed's edge
+                    s.hide[i] = c.kind == CoverKind.Bush ? c.pos + away * Mathf.Max(0.02f, c.r - BushIn) : c.kind == CoverKind.Reeds ? c.pos + away * 0.02f : c.pos + away * (c.r + HideGap);
                     var side = new Vector2(-away.y, away.x) * (BeatHash.U01(seed, j * 13 + i, 38) < 0.5f ? 1f : -1f);
                     s.way[i] = c.pos + side * (c.r + 0.1f);
                     s.find[i] = s.hide[i] + side * Find;
@@ -1093,11 +1099,15 @@ namespace AquariumCiv.View
                     if (i == s.seeker) continue;
                     // The bush rustles as a kid dives in behind it, and again as it pops up.
                     var c = CoverAt(s.hide[i]);
-                    if (c.kind != CoverKind.Bush && c.kind != CoverKind.Tree) continue;
-                    var kind = c.kind == CoverKind.Bush ? PlayFxKind.BushShake : PlayFxKind.TreeShake;
+                    if (c.kind != CoverKind.Bush && c.kind != CoverKind.Tree && c.kind != CoverKind.Reeds) continue;
+                    var kind = c.kind == CoverKind.Bush ? PlayFxKind.BushShake : c.kind == CoverKind.Reeds ? PlayFxKind.Grass : PlayFxKind.TreeShake;
                     var away = (c.pos - baseC.pos).normalized;
                     foreach (float at in new[] { s.arrive[i], s.foundAt[i] })
-                        if (at > a && at <= b) into.Add(new PlayFx { kind = kind, at = t0 + at, pos = new Vector3(c.pos.x, 0f, c.pos.y), aim = new Vector3(away.x, 0f, away.y), by = i, on = -1, scale = 1f });
+                        if (at > a && at <= b) into.Add(new PlayFx { kind = kind, at = t0 + at, pos = new Vector3(c.pos.x, c.kind == CoverKind.Reeds ? 0.05f : 0f, c.pos.y), aim = new Vector3(away.x, 0f, away.y), by = i, on = -1, scale = c.kind == CoverKind.Reeds ? 0.5f : 1f });
+                    // #692 part 5 (B43.a): a peek half-way through the wait: the bush sways a little (the seeker spots the sway)
+                    float peek = (s.arrive[i] + s.foundAt[i]) * 0.5f;
+                    if (c.kind == CoverKind.Bush && s.foundAt[i] - s.arrive[i] > 1.2f && peek > a && peek <= b)
+                        into.Add(new PlayFx { kind = PlayFxKind.BushShake, at = t0 + peek, pos = new Vector3(c.pos.x, 0f, c.pos.y), aim = new Vector3(away.x, 0f, away.y), by = i, on = -1, scale = PeekSway });
                 }
             }
         }

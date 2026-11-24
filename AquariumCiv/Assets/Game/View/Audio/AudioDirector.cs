@@ -61,6 +61,9 @@ namespace AquariumCiv.View
         /// <summary>Era-moment cues played, in order (cue ids; tests).</summary>
         public readonly List<string> MomentLog = new();
         public float MusicDuck => ducker.Gain;
+        /// <summary>#692 (B32.d): the ambience's level under a scene (1 none; the quiet visit after a death sets 0.7). Eased at 0.4 a second.</summary>
+        public static float SceneDip = 1f;
+        float sceneDip = 1f;
         public AudioSettings Settings => settings;
         public AmbienceLevels AmbienceTarget => ambTarget;
         public float AmbienceLevel(int layer) => fader.Level(layer);
@@ -358,6 +361,8 @@ namespace AquariumCiv.View
             if (!ambSnapped) { fader.Snap(target); ambSnapped = true; } else fader.Tick(dt, target);
 
             float bus = Gain(SoundBus.Ambience);
+            sceneDip = Mathf.MoveTowards(sceneDip, Mathf.Clamp01(SceneDip), dt * 0.4f); // #692 B32.d: the hush under a quiet visit, eased in and out
+            bus *= sceneDip;
             for (int i = 0; i < amb.Length; i++)
             {
                 var src = amb[i];
@@ -517,6 +522,14 @@ namespace AquariumCiv.View
             birdSource.volume = birdVolume * Gain(SoundBus.Ambience);
             birdSource.Play();
             BirdCallsPlayed++;
+        }
+
+        /// <summary>#709 (B71): the nest's bird chirps (it lands, it scolds): one of the bird calls, pitched up a little, not too loud.</summary>
+        public static void NestChirp(int n, float pitch = 1.15f)
+        {
+            var a = Instance;
+            if (a == null || a.birdClips == null || a.birdClips.Length == 0 || a.birdClips[0] == null) return;
+            a.PlayBird(new BirdCall { clip = ((n % a.birdClips.Length) + a.birdClips.Length) % a.birdClips.Length, volume = 0.7f, pitch = pitch, pan = 0f }, 1f);
         }
 
         /// <summary>Debug (#195): one of the five calls now, at full day level.</summary>

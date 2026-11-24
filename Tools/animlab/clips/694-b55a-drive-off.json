@@ -1,0 +1,33 @@
+{
+ "name": "694-b55a-drive-off",
+ "notes": "B55.a: at night a wolf stands at the camp's edge; one grown-up points and shouts, another takes a burning stick from the fire; they walk 0.3 u toward it waving the torch and their arms; it backs off and trots away; the torch goes back in the fire.",
+ "animlab": {
+  "issue": 694
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(18.8f, 4);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(18.9f) + \" | \" + AquariumCiv.View.CampCheats.DogStatus();",
+   "return \"waiting for the dark\";",
+   "return \"waiting for the dark\";",
+   "return AquariumCiv.View.DayLightDriver.DebugPauseClock(true);",
+   "return AquariumCiv.View.CampCheats.Later(3.0f, () => AquariumCiv.View.CampCheats.DriveOff());"
+  ],
+  "warm": 0.5,
+  "seconds": 15,
+  "fps": 30,
+  "follow": "camp",
+  "span": 2.4,
+  "closeSpan": 1.4,
+  "yaw": 28,
+  "pitch": 35,
+  "lead": 6.0
+ }
+}

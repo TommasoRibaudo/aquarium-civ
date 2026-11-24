@@ -315,15 +315,16 @@ namespace AquariumCiv.View.PlayTests
                 int made = sim.DebugCreepForestEdge(4);
                 box.Refresh();
                 yield return Frames(10);
-                int cell = Enumerable.Range(0, EcoLand.N).FirstOrDefault(c => (e.cover[c] == (byte)EcoCover.Seedling || e.cover[c] == (byte)EcoCover.Young) && c != e.treeCell && sim.EcoCanPluckSapling(c) && OnScreen(ScreenOf(AquariumCiv.Sim.Settle.SiteMap.CXc(c), AquariumCiv.Sim.Settle.SiteMap.CZc(c))));
-                if (made > 0 && sim.EcoCanPluckSapling(cell))
+                int cell = Enumerable.Range(0, EcoLand.N).FirstOrDefault(c => (e.cover[c] == (byte)EcoCover.Seedling || e.cover[c] == (byte)EcoCover.Young) && c != e.treeCell && sim.EcoCanLandscape(c) && OnScreen(ScreenOf(AquariumCiv.Sim.Settle.SiteMap.CXc(c), AquariumCiv.Sim.Settle.SiteMap.CZc(c))));
+                if (made > 0 && sim.EcoCanLandscape(cell))
                 {
+                    // #730: the tweezers no longer take saplings (the landscaping tool does)
                     var before = e.cover[cell];
                     yield return TapAt(ScreenOf(AquariumCiv.Sim.Settle.SiteMap.CXc(cell), AquariumCiv.Sim.Settle.SiteMap.CZc(cell)));
-                    Assert.AreNotEqual(before, e.cover[cell], "the sapling came out (last pluck: " + care.LastPluck + ")");
-                    Assert.AreEqual("sapling", care.LastPluck);
+                    Assert.AreEqual(before, e.cover[cell], "the tweezers leave the sapling (last pluck: " + care.LastPluck + ")");
+                    Assert.AreNotEqual("sapling", care.LastPluck);
                 }
-                else Miss($"a pluckable sapling on screen (crept {made})");
+                else Miss($"a sapling on screen (crept {made})");
                 yield return Shot("f2_06_after_tweezers");
                 Debug.Log($"[f2] 2c plucks {care.Plucks}, last {care.LastPluck}, overgrowth {og0:0.00} -> {sim.State.overgrowth:0.00}, vine {vines0} -> {sim.EcoVine.Count}");
                 yield return PutDownTool(hud);

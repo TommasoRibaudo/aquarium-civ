@@ -87,10 +87,10 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Kit opens the kit");
             Assert.IsTrue(hud.LifeSlotShown, "the life slot shows");
             yield return Shot("p9-slot-3-kit");
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
-            yield return new WaitForSecondsRealtime(0.5f);
-            // #570: the shut jars stand in the chooser beside the one ready jar, so it opens; the thicket's icon takes it in hand
-            Assert.IsTrue(hud.LifeRowOpen, "one ready jar and shut ones: the chooser opens");
+            // #668 (mock-up A): the jar's contents are tiles in the kit's Ready shelf, beside the shut ones: no jar to open first
+            Assert.IsTrue(hud.LifeRowOpen, "the Ready and Still to come shelves show");
+            Assert.AreEqual("kit-ready", hud.Root.Q("kit-life-thicket")?.parent?.name, "the thicket's tile sits in Ready");
+            Assert.AreEqual(GameHud.ReadyLine(LifeSpecies.Thicket), hud.LifeNoteText.Split('\n')[0], "the note says what to do with it");
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-thicket"));
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.AreEqual(GameHud.KitTool.Life, hud.Hand, "the thicket in hand");
@@ -99,6 +99,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsFalse(hud.LifeDotShown, "no dot on the Kit button while the jar is in hand");
             // #516 (playtest #510): the button says what it does, it doesn't read as "confirm"
             Assert.AreEqual(GameHud.PutAway, hud.Root.Q<Button>("hud-clean").text, "the Kit button puts the jar away");
+            Assert.AreEqual("The bushes · " + GameHud.PutAway, hud.KitWord, "#661: the bar shows what is in hand");
             Assert.GreaterOrEqual(hud.Root.Q("hud-clean").worldBound.height / hud.Root.worldBound.height * 852f, 44f, "44 pt or more");
 
             // the glow
@@ -182,9 +183,7 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return new WaitForSecondsRealtime(0.6f);
             Assert.AreEqual(GameHud.Kit, hud.OpenSheet);
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
-            yield return new WaitForSecondsRealtime(0.5f);
-            Assert.IsTrue(hud.LifeRowOpen, "two or more ready jars: the chooser row opens");
+            Assert.IsTrue(hud.LifeRowOpen, "two or more ready jars: the Ready shelf shows them");
             Assert.AreEqual(GameHud.KitTool.None, hud.Hand, "nothing in hand yet");
             foreach (var s in ready) Assert.IsNotNull(hud.Root.Q("kit-life-" + s.ToString().ToLowerInvariant()), "an icon for " + s);
             yield return Shot("p9-slot-7-row");
@@ -231,21 +230,34 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return new WaitForSecondsRealtime(0.6f);
             Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Kit opens the kit");
-            Assert.IsTrue(Shown(hud.Root.Q("kit-life")), "the Life slot is there with every jar shut");
+            Assert.IsTrue(Shown(hud.Root.Q("kit-shut")), "the Still to come shelf is there with every jar shut");
             yield return Shot("p570-1-kit");
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
-            yield return new WaitForSecondsRealtime(0.5f);
-            Assert.IsTrue(hud.LifeRowOpen, "the chooser opens on the shut jars");
+            Assert.IsTrue(hud.LifeRowOpen, "the shelves show the shut jars");
+            if (!Sim.CanPlantAnySeed) Assert.IsFalse(Shown(hud.Root.Q("kit-ready")), "nothing under Ready");
             foreach (var s in shut)
             {
-                var icon = hud.Root.Q("kit-life-locked-" + s.ToString().ToLowerInvariant());
-                Assert.IsNotNull(icon, "a greyed icon for " + s);
-                Assert.IsTrue(icon.ClassListContains("kit-life-choice--locked"), s + " is greyed");
-                Assert.Less(icon.resolvedStyle.opacity, 0.9f, s + " reads as shut");
+                var icon = hud.Root.Q<KitTile>("kit-life-locked-" + s.ToString().ToLowerInvariant());
+                Assert.IsNotNull(icon, "a shut tile for " + s);
+                // #662: shut is the spec's unavailable look, never a fade: the lock, the timber edge, full-strength words
+                Assert.IsTrue(icon.ClassListContains(KitTile.ShutClass), s + " wears the shut look");
+                Assert.AreEqual("kit-shut", icon.parent.name, s + " sits under Still to come");
+                Assert.AreEqual(1f, icon.resolvedStyle.opacity, 0.001f, s + " is never faded");
+                Assert.AreEqual(DisplayStyle.Flex, icon.Q(className: "kit-tile-lock").resolvedStyle.display, s + " carries the lock");
+                Assert.AreEqual(GameHud.ShortNeed(s, Sim), icon.Line, s + " says its need without a tap");
+                Assert.IsNotEmpty(icon.Line);
             }
             Assert.IsNull(hud.Root.Q("kit-life-thicket"), "no live icon for a shut jar");
-            Assert.AreEqual(LifeSpecies.Thicket, hud.LockedPick, "the first shut jar is picked");
-            StringAssert.StartsWith(Sim.JarNeed(LifeSpecies.Thicket), hud.LifeNoteText, "the note says what it waits for");
+            if (Sim.CanPlantAnySeed)
+            {
+                // #668: the seed is ready, so the one note says what to do with it; a shut jar's need comes with a tap
+                Assert.IsNull(hud.LockedPick, "nothing picked while the seed waits");
+                StringAssert.StartsWith("The seed grows the box's one tree", hud.LifeNoteText, "the note speaks of the seed");
+            }
+            else
+            {
+                Assert.AreEqual(LifeSpecies.Thicket, hud.LockedPick, "nothing ready: the first shut jar is picked");
+                StringAssert.StartsWith(Sim.JarNeed(LifeSpecies.Thicket), hud.LifeNoteText, "the note says what it waits for");
+            }
             Assert.IsEmpty(Sim.VillageWaitsLine, "a fresh box: no waits-for list before the camp (2026-11-14: only later upgrades get one)");
             StringAssert.DoesNotContain("waits for:", hud.LifeNoteText);
             yield return Shot("p570-2-chooser");
@@ -271,11 +283,51 @@ namespace AquariumCiv.View.PlayTests
             var live = hud.Root.Q("kit-life-thicket");
             Assert.IsNotNull(live, "the thicket's live icon");
             Assert.IsNull(hud.Root.Q("kit-life-locked-thicket"), "and no greyed one");
-            var row = hud.Root.Q("kit-life-row");
-            Assert.AreEqual("kit-life-thicket", row.ElementAt(0).name, "the ready jar comes first");
-            Assert.IsTrue(row.ElementAt(1).ClassListContains("kit-life-choice--locked"), "the shut ones after");
+            Assert.AreEqual("kit-ready", live.parent.name, "the ready jar is under Ready");
+            var firstShut = hud.Root.Q("kit-shut").ElementAt(0);
+            Assert.IsTrue(firstShut.ClassListContains(KitTile.ShutClass), "the shut ones under Still to come");
+            Assert.Less(live.worldBound.yMax, firstShut.worldBound.yMin, "Ready comes first, Still to come after");
             yield return Shot("p570-4-ready");
             AssertNoErrors("shut jars");
+        }
+
+        /// <summary>#660 (a new thing went unnoticed): a jar that opens says so once in a toast, the Kit reads "Kit ·" with a pulsing dot
+        /// while it waits, and the Kit wiggles once each visit (not once ever). In the kit its tile wears New until the kit is closed.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator JarOpens_OneToast_KitDotPulses_WiggleEachVisit()
+        {
+            yield return LivingMeadow();
+            var hud = GameHud.Instance;
+            yield return Frames(10);
+            int toasts0 = hud.ReadyToasts, wiggles0 = hud.LifeWiggles;
+            Assert.IsTrue(Sim.DebugJarReady(LifeSpecies.Thicket), "the thicket's jar opens");
+            yield return Until(() => hud.ReadyToasts > toasts0, 3f);
+            Assert.AreEqual(toasts0 + 1, hud.ReadyToasts, "one toast");
+            yield return Until(() => GameUiPanel.Toasts.Current == GameHud.ReadyToast(LifeSpecies.Thicket), 6f);
+            Assert.AreEqual("The bushes are ready in your kit.", GameUiPanel.Toasts.Current, "it says what is ready, and where");
+            Assert.AreEqual(wiggles0 + 1, hud.LifeWiggles, "the Kit wiggles");
+            Assert.IsTrue(hud.LifeDotShown, "a dot on the Kit");
+            Assert.AreEqual("Kit ·", hud.KitWord, "a dot that reads");
+            Assert.IsTrue(hud.KitDotPulsing, "and it pulses");
+            yield return Shot("660-kit-waits");
+            yield return Frames(60);
+            Assert.AreEqual(toasts0 + 1, hud.ReadyToasts, "the toast only once");
+            Assert.AreEqual(wiggles0 + 1, hud.LifeWiggles, "one wiggle this visit");
+            hud.DebugNewVisit();
+            yield return Frames(5);
+            Assert.AreEqual(wiggles0 + 2, hud.LifeWiggles, "a new visit, the jar still waits: one more wiggle");
+            Assert.AreEqual(toasts0 + 1, hud.ReadyToasts, "but no second toast");
+            // the kit: the tile wears New until the kit closes
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
+            yield return new WaitForSecondsRealtime(0.6f);
+            Assert.IsTrue(hud.KitTileNamed("kit-life-thicket").New, "New on the ready tile");
+            hud.CloseSheet();
+            yield return Frames(3);
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
+            yield return new WaitForSecondsRealtime(0.6f);
+            Assert.IsFalse(hud.KitTileNamed("kit-life-thicket").New, "seen once: no New");
+            hud.CloseSheet();
+            AssertNoErrors("#660");
         }
 
         [UnityTest, Timeout(600000)]
@@ -287,31 +339,32 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(10);
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return new WaitForSecondsRealtime(0.6f);
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
-            yield return new WaitForSecondsRealtime(0.5f);
             Assert.IsTrue(hud.LifeRowOpen);
             var panel = hud.Root.panel.visualTree.worldBound;
-            foreach (var name in new[] { "kit-life" }) // the chooser stands in for the note and the other tools while it is open
-            {
-                var r = hud.Root.Q(name).worldBound;
-                Assert.IsTrue(r.xMin >= panel.xMin - 0.5f && r.xMax <= panel.xMax + 0.5f, $"{name} fits the screen's width ({r})");
-                Assert.GreaterOrEqual(r.height + 32f, GameUiPanel.MinTarget - 0.5f, $"{name} is a full touch target (with its 16-unit reach)");
-            }
-            var row = hud.Root.Q("kit-life-row");
             var head = hud.Root.Q("kit-scrim").Q(className: "kg-sheet-head");
-            Assert.Greater(row.worldBound.yMin, head.worldBound.yMax - 0.5f, $"the chooser sits under the title ({row.worldBound} vs {head.worldBound})");
-            foreach (var c in row.Children())
+            var note = hud.Root.Q("kit-life-note").worldBound;
+            // #668: every tile (tools, ready, shut) fits the width, is a full touch target, sits under the title and over the note
+            var tiles = hud.Root.Q("kit-shelf").Query<KitTile>().ToList();
+            Assert.GreaterOrEqual(tiles.Count, 4 + 6, "the four tools and every jar");
+            foreach (var c in tiles)
             {
-                Assert.IsTrue(c.worldBound.xMax <= panel.xMax + 0.5f, $"{c.name} fits ({c.worldBound})");
-                Assert.GreaterOrEqual(c.worldBound.height + 32f, GameUiPanel.MinTarget - 0.5f, $"{c.name} is a full touch target (with its reach)");
-                Assert.Less(c.worldBound.yMax, hud.Root.Q("kit-life").worldBound.yMin, $"{c.name} sits in one row above the slot");
+                var r = c.worldBound;
+                Assert.IsTrue(r.xMin >= panel.xMin - 0.5f && r.xMax <= panel.xMax + 0.5f, $"{c.name} fits the screen's width ({r})");
+                Assert.GreaterOrEqual(r.height + 32f, GameUiPanel.MinTarget - 0.5f, $"{c.name} is a full touch target (with its reach)");
+                Assert.Greater(r.yMin, head.worldBound.yMax - 0.5f, $"{c.name} sits under the title");
+                Assert.LessOrEqual(r.yMax, note.yMin + 0.5f, $"{c.name} sits over the note");
             }
+            // the landscaping polish: the four tools are one row, never two
+            float y0 = hud.Root.Q("kit-cloth").worldBound.yMin;
+            foreach (var n in new[] { "kit-mister", "kit-tweezers", "kit-landscape" })
+                Assert.AreEqual(y0, hud.Root.Q(n).worldBound.yMin, 0.5f, n + " is in the tools' one row");
+            Assert.LessOrEqual(note.yMax, panel.yMax + 0.5f, "the note is on screen");
             yield return Shot("p9-slot-9-small-phone-row");
             AssertNoErrors("small phone");
         }
 
-        /// <summary>Tester 2026-11-08: at 1640x2360 the chooser row ran 26 px into the kit's title and onto the Life slot. At every
-        /// phone and tablet size the row sits wholly under the title and over the slot. Shots: p9-slot-row-WxH.png.</summary>
+        /// <summary>Tester 2026-11-08: at 1640x2360 the chooser row ran 26 px into the kit's title and onto the Life slot. #668: at every
+        /// phone and tablet size every tile sits wholly under the title and over the note. Shots: p9-slot-row-WxH.png.</summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator EverySize_ChooserRowClearsTitleAndSlot()
         {
@@ -325,16 +378,14 @@ namespace AquariumCiv.View.PlayTests
                 yield return Frames(15);
                 if (hud.OpenSheet != GameHud.Kit) { yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean")); yield return new WaitForSecondsRealtime(0.6f); }
                 Assert.AreEqual(GameHud.Kit, hud.OpenSheet, $"{w}x{h}: the kit is open");
-                if (!hud.LifeRowOpen) { yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life")); yield return new WaitForSecondsRealtime(0.6f); }
-                Assert.IsTrue(hud.LifeRowOpen, $"{w}x{h}: the row is open");
-                var row = hud.Root.Q("kit-life-row");
-                var slot = hud.Root.Q("kit-life").worldBound;
+                Assert.IsTrue(hud.LifeRowOpen, $"{w}x{h}: the shelves show");
+                var note = hud.Root.Q("kit-life-note").worldBound;
                 var title = hud.Root.Q("kit-scrim").Q(className: "kg-sheet-head").worldBound;
-                foreach (var c in row.Children())
+                foreach (var c in hud.Root.Q("kit-shelf").Query<KitTile>().ToList())
                 {
                     var r = c.worldBound;
                     Assert.GreaterOrEqual(r.yMin, title.yMax - 0.5f, $"{w}x{h}: {c.name} clears the title ({r} vs {title})");
-                    Assert.LessOrEqual(r.yMax, slot.yMin + 0.5f, $"{w}x{h}: {c.name} clears the Life slot ({r} vs {slot})");
+                    Assert.LessOrEqual(r.yMax, note.yMin + 0.5f, $"{w}x{h}: {c.name} clears the note ({r} vs {note})");
                 }
                 yield return Shot($"p9-slot-row-{w}x{h}");
             }

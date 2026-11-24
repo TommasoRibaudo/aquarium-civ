@@ -43,6 +43,7 @@ namespace AquariumCiv.View
             if (rabbitsOk && HerdNear(planner, viewNow, at).HasValue) s |= PlaySites.Rabbits;
             if (real.kind == PlaceKind.Pond && IceSite(planner, at, out _)) s |= PlaySites.Ice; // #618
             if (IsWaterPlace(real.kind) && WaterSite(planner, real, at, out _)) s |= PlaySites.Water;
+            if (real.kind == PlaceKind.Pond && (s & PlaySites.Water) != 0 && FishToCatch(viewNow)) s |= PlaySites.Fish; // #708 (B39.c)
             if (!roomy) return s;
             if (snow) s |= PlaySites.Snow;
             if (NearestTree(at, WoodsReach, null, out _, out _)) s |= PlaySites.Tree;
@@ -59,6 +60,8 @@ namespace AquariumCiv.View
             {
                 case PlayGame.Splash:
                     return WaterSite(planner, real, centre, out var w) ? w : null;
+                case PlayGame.FishGrab: // #708 (B39.c): the pond's own edge only (no fish in a puddle)
+                    return real.kind == PlaceKind.Pond && WaterSite(planner, real, centre, out var fw) ? fw : null;
                 case PlayGame.IceSlide:
                 {
                     if (!IceSite(planner, centre, out var ice)) return null;
@@ -120,6 +123,16 @@ namespace AquariumCiv.View
                 dir.Normalize();
                 var edge = start;
                 for (int i = 0; i < 200 && Wet(edge); i++) edge += dir * 0.02f;
+                // #708 p3 (the user's review: the kid knelt on dry sand, the splash missed the pond): the sheet is drawn only where a whole
+                // piece lies under the level by the rim margin, so the shallow cells by the bank show sand. Kneel at the drawn sheet's edge:
+                // from the drawn point nearest the kids, walk out toward them until the sheet ends.
+                if (eco != null && box != null && NearestDrawnWater(box, eco, at, out var drawn))
+                {
+                    var d2 = at - drawn;
+                    if (d2.sqrMagnitude > 1e-6f) dir = d2.normalized;
+                    edge = drawn;
+                    for (int i = 0; i < 400 && box.WaterDrawnAt(edge.x, edge.y); i++) edge += dir * 0.01f;
+                }
                 site = new PlaySite { water = true, edge = edge, toLand = dir };
                 return true;
             }
@@ -150,6 +163,28 @@ namespace AquariumCiv.View
         {
             if (land.Height(x, z) >= level) return false;
             return eco == null || eco.WaterCell(AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z));
+        }
+
+        /// <summary>#708 p3: the centre of the cell (or one of its 3 x 3 sheet pieces) nearest <paramref name="at"/> where the pond's sheet is drawn.</summary>
+        static bool NearestDrawnWater(BoxView box, EcoLayer eco, Vector2 at, out Vector2 point)
+        {
+            point = default;
+            float best = float.MaxValue;
+            const float step = AquariumCiv.Sim.Settle.SiteMap.Cell / 3f;
+            for (int c = 0; c < AquariumCiv.Sim.Settle.SiteMap.N; c++)
+            {
+                if (!eco.NearWater(c)) continue;
+                float cx = AquariumCiv.Sim.Settle.SiteMap.CXc(c), cz = AquariumCiv.Sim.Settle.SiteMap.CZc(c);
+                for (int j = -1; j <= 1; j++)
+                    for (int i = -1; i <= 1; i++)
+                    {
+                        var p = new Vector2(cx + i * step, cz + j * step);
+                        float d = (p - at).sqrMagnitude;
+                        if (d >= best || !box.WaterDrawnAt(p.x, p.y)) continue;
+                        best = d; point = p;
+                    }
+            }
+            return best < float.MaxValue;
         }
 
         /// <summary>#630: the centre of the eco pond's water cell nearest <paramref name="at"/> (false: no cell holds water).</summary>
@@ -262,6 +297,28 @@ namespace AquariumCiv.View
                 var eco = box.layout.eco;
                 lock (box.BushSpots) foreach (var kv in box.BushSpots) if (!eco.on || eco.At(kv.Key) == EcoLayer.Bush) Add(new PlayCover(new Vector2(kv.Value.pos.x, kv.Value.pos.z), kv.Value.r, CoverKind.Bush));
                 lock (box.TreeSpots) foreach (var kv in box.TreeSpots) if (eco.At(kv.Key) == EcoLayer.Tree) Add(new PlayCover(new Vector2(kv.Value.pos.x, kv.Value.pos.z), 0.04f, CoverKind.Tree));
+                // #692 part 5 (B47.c): the reeds join the cover near the pond (they stand in the shallows, so the water test is skipped): the three
+                // reed cells nearest the base, at least 0.25 u apart
+                if (eco.on)
+                {
+                    var reeds = new List<(float d, Vector2 p)>();
+                    for (int c = 0; c < SiteMap.N; c++)
+                    {
+                        if (eco.At(c) != EcoLayer.Reeds) continue;
+                        var rp = new Vector2(SiteMap.CXc(c), SiteMap.CZc(c));
+                        float d = (rp - site.home.pos).magnitude;
+                        if (d <= HideSeekGame.Reach + 0.05f && InsideBox(rp, 0.2f)) reeds.Add((d, rp));
+                    }
+                    reeds.Sort((x, y) => x.d.CompareTo(y.d));
+                    int kept = 0;
+                    foreach (var r in reeds)
+                    {
+                        if (kept >= 3) break;
+                        bool close = false; foreach (var c in site.covers) if (c.kind == CoverKind.Reeds && (c.pos - r.p).magnitude < 0.25f) close = true;
+                        if (close) continue;
+                        site.covers.Add(new PlayCover(r.p, 0.05f, CoverKind.Reeds)); kept++;
+                    }
+                }
             }
             return site;
         }
@@ -396,6 +453,14 @@ namespace AquariumCiv.View
                     }
                     return LifeClock.SeasonOf(pv.Now.day) == Season.Winter ? "winter: no splashing" : "no water: no pond yet and no puddle ('Puddles now' first)";
                 }
+                case PlayGame.FishGrab: // #708 (B39.c): at the pond's edge, with fish shown in it
+                {
+                    var pond = Place.Land(PlaceKind.Pond);
+                    if (FishView.Instance == null || FishView.Instance.Wanted == 0) return "no fish in the pond ('Fish: the shadows' first)";
+                    if (!WaterSite(planner, pond, spot, out site)) return LifeClock.SeasonOf(pv.Now.day) == Season.Winter ? "winter: nobody reaches into the water" : "no pond water";
+                    place = pond; centre = site.edge;
+                    break;
+                }
                 case PlayGame.IceSlide:
                     if (!IceSite(planner, spot, out site)) return IceView.Instance != null && IceView.Instance.Frozen ? "the ice is not whole yet, or the pond is too small to go on" : "no ice: the pond isn't frozen ('Ice: on' first)";
                     place = Place.Land(PlaceKind.Pond); centre = site.slideA; spot = site.slideA;
@@ -412,7 +477,7 @@ namespace AquariumCiv.View
                     centre = Vector2.Lerp(site.home.pos, spot, 0.5f);
                     break;
             }
-            int want = game switch { PlayGame.IceSlide => 3, PlayGame.Woods => 2, PlayGame.HideSeek => site != null ? Mathf.Min(4, 1 + site.covers.Count) : 3, PlayGame.Splash => 2, _ => 3 };
+            int want = game switch { PlayGame.IceSlide => 3, PlayGame.Woods => 2, PlayGame.HideSeek => site != null ? Mathf.Min(4, 1 + site.covers.Count) : 3, PlayGame.Splash => 2, PlayGame.FishGrab => 2, _ => 3 };
             var who = new List<int>();
             while (who.Count < want)
             {
@@ -420,7 +485,7 @@ namespace AquariumCiv.View
                 if (k < 0) break;
                 who.Add(k);
             }
-            int least = game == PlayGame.HideSeek ? 3 : 2;
+            int least = game == PlayGame.HideSeek ? 3 : game == PlayGame.FishGrab ? 1 : 2;
             if (who.Count < least) return $"only {who.Count} kids on view for {game}";
             foreach (int k in who) if (byKey.TryGetValue(k, out var gi)) { int ix = groups.IndexOf(gi.g); if (ix >= 0) Remove(ix); }
             var g = new Group
@@ -430,6 +495,22 @@ namespace AquariumCiv.View
             };
             Add(g);
             return $"{game}: {who.Count} kids for {ForcedSeconds:0} s";
+        }
+
+        /// <summary>#708 (B39.c): the kids try for a fish by hand in summer, once fish are placed and shown.</summary>
+        static bool FishToCatch(ViewTime viewNow) => FishView.Instance != null && FishView.Instance.Wanted > 0 && LifeClock.SeasonOf(viewNow.day) == Season.Summer;
+
+        /// <summary>#708 (B39.c): where the first group trying for a fish kneels (the AnimLab follow, tests). False: nobody is.</summary>
+        public bool FishGrabSpot(out Vector2 at)
+        {
+            foreach (var g in groups) if (g.game is FishGrabGame fg) { at = fg.Site.edge; return true; }
+            at = default; return false;
+        }
+
+        /// <summary>#708 (B39.c): the hands at the edge the fish come to now (FishView).</summary>
+        public void FishLures(float time, List<Vector2> into)
+        {
+            foreach (var g in groups) if (g.game is FishGrabGame fg) fg.Lures(time, into);
         }
     }
 }

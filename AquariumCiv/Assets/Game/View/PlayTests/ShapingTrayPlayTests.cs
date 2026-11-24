@@ -15,8 +15,7 @@ using K = AquariumCiv.Sim.SimCore.NudgeKind;
 namespace AquariumCiv.View.PlayTests
 {
     /// <summary>#84: the shaping tray by touch on the real Slice scene at 1179 x 2556. Open it from the HUD, pick a tool, place it with
-    /// one finger (a charge is spent), no charge says why, Cancel costs nothing, two fingers don't place, Take back refunds, and a
-    /// wish's Give places at the moved spot. Screenshots go to Temp/agent (84_*).</summary>
+    /// one finger (a charge is spent), no charge says why, Cancel costs nothing, two fingers don't place, Take back refunds. (#718: the wish's Give is gone.) Screenshots go to Temp/agent (84_*).</summary>
     public class ShapingTrayPlayTests : PlayTestBase
     {
         const int Seed = 7531;
@@ -413,13 +412,6 @@ namespace AquariumCiv.View.PlayTests
             Sv.CancelTool();
             yield return Frames(4);
 
-            var wish = Sim.DebugForceWish(K.Grove);
-            Assert.IsTrue(Sv.ArmWish(wish.id));
-            yield return Pause();
-            yield return Shot(tag + "wish");
-            Sv.CancelWish();
-            yield return Frames(4);
-
             Sim.State.shapingCharges = 3f;
             Assert.IsTrue(Sv.ArmTool(K.Rain));
             var (x, z) = Spot(1.3f, 0.6f, false);
@@ -453,33 +445,6 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return new WaitForSecondsRealtime(0.4f);
             yield return Frames(4);
-        }
-
-        [UnityTest, Timeout(300000)]
-        public IEnumerator AWishesGiveMovedFirstPlacesAtTheMovedSpot()
-        {
-            yield return Start();
-            var w = Sim.DebugForceWish(K.Grove);
-            Assert.IsNotNull(w);
-            Assert.IsTrue(Sv.ArmWish(w.id));
-            yield return Frames(4);
-            Assert.IsTrue(Shown(Ui.Q("shaping-wish-spot")), "the Here pin");
-            var (x, z) = Spot(-1.3f, 0.6f);
-            if (Mathf.Abs(x - w.x) < 0.5f && Mathf.Abs(z - w.z) < 0.5f) (x, z) = Spot(1.3f, -0.6f);
-            var from = Sv.ScreenOf(w.x, w.z);
-            var to = Sv.ScreenOf(x, z);
-            yield return Drag(new[] { from, to }, 25f);
-            yield return Frames(4);
-            Assert.AreEqual(x, Sv.Tray.PendingX, 0.5f, "the spot followed the finger");
-            Assert.AreEqual(WishState.Open, w.state, "moving spends nothing");
-            yield return Shot("84_wish_moved");
-            yield return TapAt(to);
-            yield return Frames(6);
-            var n = Sim.State.nudges.Find(q => q.kind == K.Grove);
-            Assert.IsNotNull(n, Sv.LastResult);
-            Assert.AreEqual(x, n.x, 0.6f, "placed at the moved spot");
-            Assert.AreEqual(w.notableId, n.creditNotableId, "credited to the wisher");
-            AssertNoErrors("wish");
         }
     }
 }

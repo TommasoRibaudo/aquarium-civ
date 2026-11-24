@@ -10,7 +10,7 @@ namespace AquariumCiv.View
         Saw, Lift, Talk, Argue, Speech, Haggle, Wave, Cheer, Point, LookUp, Hop, Mourn, Swim, Bell, Bless, Reach, Stretch,
         Hang, Look,
         // #92: at the glass and in the relic moments
-        LookUpWary, PressHands, WaveSmall, Flinch, Peek, HopBack, Laugh, Measure, Knock, Write, Peer, Freeze, Bow, PoseBig,
+        LookUpWary, PressHands, WaveSmall, Flinch, Peek, HopBack, Laugh, Measure, Knock, Write, Freeze, Bow, PoseBig,
         Lopsided, Taste, HoldUp,
         // P8 #266: stamping in a puddle
         Stomp,
@@ -34,6 +34,8 @@ namespace AquariumCiv.View
         RackMove,
         // #705 (B28, View/Beats/LaundryBeats.cs): hanging out the washing, taking it in
         HangWash, TakeInWash,
+        // B76 (View/Beats/TellerBeats.cs): the Keeper's pick telling tonight's story (the pose is laid over by TellerBeats; the unpicked teller keeps Speech)
+        Tell,
     }
 
     /// <summary>
@@ -46,6 +48,9 @@ namespace AquariumCiv.View
     {
         /// <summary>Offset of the feet in the doll's own frame (x right, y up, z back), adult units (scaled by the doll).</summary>
         public Vector3 offset;
+        /// <summary>B3 tester fixes: a lift onto a seat in box units, NOT scaled by the doll (a kid's 0.68 scale sank kids into the stump: a
+        /// seat's height is the thing's, whoever sits on it).</summary>
+        public float lift;
         public float yaw, lean, roll, squash;
         public Vector3 armL, armR;
         public bool extend, hidden, lying;
@@ -115,10 +120,8 @@ namespace AquariumCiv.View
             ActivityKind.HopBack => DollStyle.HopBack,
             ActivityKind.LaughPoint => DollStyle.Laugh,
             ActivityKind.Measure => DollStyle.Measure,
-            ActivityKind.TapBack => DollStyle.Knock,
             ActivityKind.WriteDown => DollStyle.Write,
-            ActivityKind.LookThroughLens => DollStyle.Peer,
-            ActivityKind.TurnLens or ActivityKind.Poke or ActivityKind.Give => DollStyle.Point,
+            ActivityKind.Poke or ActivityKind.Give => DollStyle.Point,
             ActivityKind.Freeze => DollStyle.Freeze,
             ActivityKind.Bow => DollStyle.Bow,
             ActivityKind.CopyPose => DollStyle.PoseBig,
@@ -646,16 +649,6 @@ namespace AquariumCiv.View
                     p.armL = new Vector3(70f, 0, -6f);
                     p.armR = new Vector3(65f + w * 6f, w * 10f, 6f);
                     p.lean = 14f;
-                    break;
-                }
-
-                case DollStyle.Peer:
-                {
-                    // Look through the lens, lean back startled, then laugh (the queue's turn, 1.5).
-                    float u = Mathf.Clamp01(progress);
-                    if (u < 0.5f) { p.lean = 16f; p.armL = new Vector3(70f, 0, -8f); p.armR = new Vector3(70f, 0, 8f); }
-                    else if (u < 0.7f) { p.lean = -16f; p.offset.z = 0.03f; p.armL = new Vector3(60f, 0, -40f); p.armR = new Vector3(60f, 0, 40f); }
-                    else { float w = Mathf.Abs(Mathf.Sin(t * 9f)); p.offset.y = w * 0.012f; p.lean = -6f; p.armL = new Vector3(20f, 0, -30f); p.armR = new Vector3(20f, 0, 30f); p.roll = Mathf.Sin(t * 9f) * 3f; }
                     break;
                 }
 

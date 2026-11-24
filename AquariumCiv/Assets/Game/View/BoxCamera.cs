@@ -313,9 +313,23 @@ namespace AquariumCiv.View
         /// the camera waits <see cref="GlideBack.Hold"/> s and glides to where it is now. Chained fly-ins keep the first place to come back to.</summary>
         public void ReturnAfterFlight()
         {
-            if (!glide.Armed) { glideTarget = target; glideZoom = zoom; glideYaw = yaw; glidePitch = pitch; }
+            // tester batch 3: mid-flight (the camp frame easing in on a return) the way home is where the flight is going, not the half-way pose
+            // a lean starting now would find (it glided back to the last visit's steep angle)
+            if (!glide.Armed && IsFlying) { glideTarget = flyTo; glideZoom = flyZoomTo; glideYaw = targetYaw; glidePitch = targetPitch; }
+            else if (!glide.Armed) { glideTarget = target; glideZoom = zoom; glideYaw = yaw; glidePitch = pitch; }
             glide.Remember(glideTarget.x, glideTarget.z, glideZoom, glideYaw, glidePitch);
             glideNext = true;
+        }
+
+        /// <summary>Tester batch 3: a return (the camp frame) while a lean or a glide still holds the camera: the glide goes home to this pose
+        /// instead of the one it remembered from the last visit, so the return still lands on the camp frame once the lean lets go. False
+        /// when no glide is armed (the caller then eases there itself).</summary>
+        public bool SetGlideHome(Vector3 worldTarget, float yawAt, float pitchAt, float zoomAt)
+        {
+            if (!glide.Armed) return false;
+            glideTarget = worldTarget; glideZoom = zoomAt; glideYaw = Mathf.Clamp(yawAt, minYaw, maxYaw); glidePitch = pitchAt;
+            glide.Remember(glideTarget.x, glideTarget.z, glideZoom, glideYaw, glidePitch);
+            return true;
         }
 
         /// <summary>Something is using the view the flight went to: its card is up, a moment plays, camera mode. The wait restarts when that ends.</summary>
@@ -324,6 +338,8 @@ namespace AquariumCiv.View
             if (LeanHeld()) return true;
             var hud = AquariumCiv.GameUI.GameHud.Instance;
             if (IsFollowing || (hud != null && (hud.CameraMode || hud.CleanMode || hud.SheetOpen))) return true;
+            // tester batch 3: a placing tool in hand (the next group, a seed, a bush) is still working in this view: home once it is put down
+            if (hud != null && (hud.Hand == AquariumCiv.GameUI.GameHud.KitTool.Life || hud.Hand == AquariumCiv.GameUI.GameHud.KitTool.Bush || hud.Hand == AquariumCiv.GameUI.GameHud.KitTool.Seed)) return true;
             var card = PersonCardView.Instance;
             if (card != null && (card.AnyOpen || card.BuildingOpen)) return true;
             var show = ShowMeDirector.Instance;

@@ -36,7 +36,12 @@ namespace AquariumCiv.Sim.Settle
         /// <summary>#418: the placed thicket's area (placed-life spec §5.1), set by <see cref="Settlement.SyncEco"/>: treated like water by
         /// every planner (no tent, hut, field, pen, yard, commons or path; the people may still walk in to pick). Null when there is none.</summary>
         public bool[] reserved;
-        public bool Reserved(int c) => reserved != null && reserved[c];
+        /// <summary>B3 tester fixes: the ground under a choice's thing and its margin (<see cref="ConsequenceFootprint"/>), set by
+        /// <see cref="Settlement.MarkProps"/> before any lot is laid: reserved like the thicket, so no lot, field, yard or path covers a thing.</summary>
+        public bool[] propBlock;
+        public bool Reserved(int c) => reserved != null && reserved[c] || propBlock != null && propBlock[c];
+        /// <summary>The thicket alone (the things' own placing keeps them apart by their footprints, not by this).</summary>
+        public bool ThicketReserved(int c) => reserved != null && reserved[c];
 
         public byte[] flags => st.flags;
         public byte[] tier => st.tier;

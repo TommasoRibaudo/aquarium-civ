@@ -1,0 +1,28 @@
+{
+ "name": "693-b54f-name-trace",
+ "notes": "B54.f: a kid runs a finger along the names twice, rubs the stone with a sleeve; a grown-up nods.",
+ "animlab": {
+  "issue": 693
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 4);",
+   "return AquariumCiv.View.CampCheats.OnlyThing(\"name_stone\");",
+   "return \"waiting for the things\";",
+   "return \"waiting for the things\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11.0f);",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.NameTrace());"
+  ],
+  "warm": 0.5,
+  "seconds": 7,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 30,
+  "lead": 0.5
+ }
+}

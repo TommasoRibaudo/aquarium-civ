@@ -184,7 +184,7 @@ namespace AquariumCiv.Sim
             foreach (var s in gone)
                 Chronicle("life_left_" + s.ToString().ToLowerInvariant(), s == LifeSpecies.Ducks
                     ? "The ducks had no water left to swim on. One morning they were gone, and only a few feathers lay in the dry hollow."
-                    : "The water was gone from the hollow, and the fish with it. The children looked for them in the mud.", 0.6f);
+                    : "The water was gone from the hollow, and the fish with it. Everyone looked for them in the dry hollow.", 0.6f);
         }
 
         // ---------- debug (the panel's "Life jar" block; CLAUDE.md "debug panel stays current") ----------
@@ -196,6 +196,14 @@ namespace AquariumCiv.Sim
             int n = 0;
             foreach (var s in LifeJar.All) { var j = EcoM.Jar(s); if (j.State == JarState.Ready) { j.state = (int)JarState.Locked; n++; } }
             return n;
+        }
+
+        /// <summary>Debug (#668 kit states): one shut jar opens now (one group ready). False when it isn't shut.</summary>
+        public bool DebugJarReady(LifeSpecies s)
+        {
+            if (!EcologyOn || !EcoM.DebugReadyOne(s, State.month)) return false;
+            EcoTell();
+            return true;
         }
 
         /// <summary>Debug ("ready every species"): every shut jar opens now, whatever the land says. How many opened.</summary>

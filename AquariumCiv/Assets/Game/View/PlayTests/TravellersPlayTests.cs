@@ -39,8 +39,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsNotNull(d, "camp_travellers held");
             Debug.Log("[Travellers] " + Sim.QuestionOf(d) + " -> " + DilemmaCheats.AnswerOnCard(1));
             var g = Sim.ApartOf(d);
-            Assert.IsNotNull(g, "full packs keeps them apart");
-            Assert.IsTrue(g.joins, "the travellers join at the village");
+            Assert.IsNotNull(g, "a camp of their own keeps them apart");
+            Assert.IsFalse(g.joins, "#714: a camp of their own, for good");
             var m = CardStackView.Instance.Model;
             if (m.Mode == CardStackMode.Open) m.Close();
             Cam.GoHome(0.01f, true);

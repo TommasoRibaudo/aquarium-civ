@@ -57,7 +57,7 @@ namespace AquariumCiv.View
         /// <summary>Where along the cord (from its middle, toward the far stake) cloth <paramref name="j"/> hangs.</summary>
         public static float SlotAlong(int j, int cloths, float scale = 1f) => Laundry.SlotAlong(j, cloths, scale);
 
-        public static Color ColourOf(int seed, int j) => ClothColours[(int)((uint)(seed * 2654435761u >> 8) + (uint)j) % ClothColours.Length];
+        public static Color ColourOf(int seed, int j) => ClothColours[(int)(((((uint)seed * 2654435761u) >> 8) + (uint)j) % (uint)ClothColours.Length)]; // a negative int index threw for half the seeds
 
         /// <summary>Which cloth is the small one, a kid's shirt: one per line, hashed.</summary>
         public static int SmallOne(int seed, int cloths) => cloths < 3 ? -1 : (int)((uint)(seed * 40503u >> 4) % (uint)cloths);

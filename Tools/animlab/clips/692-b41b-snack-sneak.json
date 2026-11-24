@@ -1,0 +1,23 @@
+{
+ "name": "692-b41b-snack-sneak",
+ "notes": "B41.b: a kid sidles up to the stash looking left and right and sneaks a berry to the mouth; the grown-up there turns and points, the kid freezes, gulps it and runs, and is caught by the arm; the grown-up laughs and rubs the kid's head.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.SnackSneak());"
+  ],
+  "warm": 0.5,
+  "seconds": 14,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.5,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

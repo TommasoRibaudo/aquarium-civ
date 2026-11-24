@@ -58,7 +58,7 @@ namespace AquariumCiv.Sim.Eco
                 int centre = BiggestOldThicket();
                 if (centre >= 0)
                 {
-                    st.thicketA = centre; st.thicketB = -1; st.thicketRadius = t.thicketRadius; // #418: one thicket; the bushes outside it never spread
+                    st.thickets = new List<Thicket> { new Thicket { cell = centre, radius = t.thicketRadius } }; SyncFirstThicket(); // #418: one thicket; the bushes outside it never spread
                     long m = st.MonthOf(EcoMilestones.FirstBush);
                     MarkPlaced(Jar(LifeSpecies.Thicket), centre, m < 0 ? 0 : m);
                 }
@@ -303,7 +303,7 @@ namespace AquariumCiv.Sim.Eco
             switch (s)
             {
                 case LifeSpecies.Thicket:
-                    return MeadowOk(cv) && FromFire(cell) >= t.bushCampMargin && ThicketDiscClear(cell, settled);
+                    return ThicketRefusal(cell, settled) == null;
                 case LifeSpecies.Rabbits:
                     return MeadowOk(cv) && FromFire(cell) >= t.bushCampMargin && !land.yard[cell] && !InThicketReach(cell)
                         && !(settled?.Invoke(cell) ?? false);
@@ -324,9 +324,33 @@ namespace AquariumCiv.Sim.Eco
         /// its ragged edge's widest reach plus <see cref="EcoTuning.rabbitThicketMargin"/> is off their ground.</summary>
         public bool InThicketReach(int cell)
         {
-            if (st.thicketA < 0 || st.thicketRadius <= 0f) return false;
-            float R = st.thicketRadius * (1f + t.thicketEdge * 0.5f) + t.rabbitThicketMargin;
-            return Terrain.Dist(SiteMap.CXc(cell), SiteMap.CZc(cell), SiteMap.CXc(st.thicketA), SiteMap.CZc(st.thicketA)) < R;
+            foreach (var th in Ts)
+            {
+                if (th.radius <= 0f) continue;
+                float R = ReachOf(th) + t.rabbitThicketMargin; // #728: every thicket, not one
+                if (Terrain.Dist(SiteMap.CXc(cell), SiteMap.CZc(cell), SiteMap.CXc(th.cell), SiteMap.CZc(th.cell)) < R) return true;
+            }
+            return false;
+        }
+
+        /// <summary>#728: why a thicket can't go on this cell, in the people's plain words, or null when it can (the ground, whatever the jar or
+        /// the pouch says). A new thicket needs open meadow off the fire's ring, its whole area on dry land clear of the settlement, no
+        /// other thicket's area within reach (<see cref="ThicketDiscClear"/>), and room for it (at most <see cref="EcoTuning.thicketMax"/>).</summary>
+        public string ThicketRefusal(int cell, Func<int, bool> settled = null)
+        {
+            if (cell < 0 || cell >= EcoLand.N) return "Not here";
+            var ts = Ts;
+            float rNew = ThicketRadiusFor(ts.Count + 1);
+            foreach (var th in ts) // first: a press inside a thicket is "already a thicket", not "needs meadow" (its heart is bush)
+            {
+                float d = Terrain.Dist(SiteMap.CXc(cell), SiteMap.CZc(cell), SiteMap.CXc(th.cell), SiteMap.CZc(th.cell));
+                if (d < ReachOf(th) + rNew * (1f + t.thicketEdge * 0.5f)) return "Already a thicket here";
+            }
+            if (!MeadowOk(Cv(cell))) return "Bushes need open meadow";
+            if (FromFire(cell) < t.bushCampMargin) return "Too near the fire";
+            if (ts.Count >= t.thicketMax) return $"The box holds {t.thicketMax} thickets";
+            if (!ThicketDiscClear(cell, rNew, settled)) return "No room: water, the hollow or houses are in the way";
+            return null;
         }
 
         /// <summary>#519: open water the Keeper can see: a pond cell (the water step sets them under the pond's level, EcoModel.cs Water). The view draws its water sheet at
@@ -357,9 +381,9 @@ namespace AquariumCiv.Sim.Eco
 
         /// <summary>The thicket's whole area round <paramref name="centre"/> is on the land (inside the glass), dry (no hollow, no
         /// pond) and clear of the settlement (spec §5.1).</summary>
-        bool ThicketDiscClear(int centre, Func<int, bool> settled)
+        bool ThicketDiscClear(int centre, float radius, Func<int, bool> settled)
         {
-            float R = t.thicketRadius * (1f + t.thicketEdge * 0.5f) + 1e-4f; // the ragged edge's widest reach
+            float R = radius * (1f + t.thicketEdge * 0.5f) + 1e-4f; // the ragged edge's widest reach
             float cx = SiteMap.CXc(centre), cz = SiteMap.CZc(centre);
             if (MathF.Abs(cx) > Terrain.HX - R || !Terrain.InZ(cz, R)) return false;
             int reach = (int)MathF.Ceiling(R / SiteMap.Cell);
@@ -412,7 +436,7 @@ namespace AquariumCiv.Sim.Eco
         {
             switch (s)
             {
-                case LifeSpecies.Thicket: FoundThicket(cell, month); break; // #418
+                case LifeSpecies.Thicket: FoundThicket(cell, month); break; // #418 (the first thicket; the earned ones are PlaceEarnedBush, #728)
                 case LifeSpecies.Rabbits: FoundRabbits(cell, month, restock); break; // #419
                 case LifeSpecies.Deer: FoundDeer(cell, restock); break; // #420
                 case LifeSpecies.Ducks: FoundDucks(cell, restock); break; // #421
@@ -437,6 +461,15 @@ namespace AquariumCiv.Sim.Eco
         }
 
         // ---------------------------------------------------------------- debug
+        /// <summary>Debug (#668 kit states): one shut jar opens now, whatever the land says. False when it isn't shut.</summary>
+        public bool DebugReadyOne(LifeSpecies s, long month)
+        {
+            var j = Jar(s);
+            if (j.State != JarState.Locked) return false;
+            Open(j, s, month);
+            return true;
+        }
+
         /// <summary>Debug ("ready every species"): every shut jar opens now, whatever the land says (the wolves too, though nothing
         /// can be placed for them before #437). How many opened.</summary>
         public int DebugReadyAll(long month)

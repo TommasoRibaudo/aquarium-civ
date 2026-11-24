@@ -85,7 +85,7 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log($"[fb10] ready jars: {string.Join(",", ready)}; wolf den cells glow on take");
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return new WaitForSecondsRealtime(0.6f);
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+            // #668: no jar to open first: the tiles are on the kit's shelves
             yield return new WaitForSecondsRealtime(0.6f);
             Assert.IsTrue(hud.LifeRowOpen, "#643: the chooser opens, a single ready jar too");
             Assert.AreEqual(GameHud.KitTool.None, hud.Hand, "nothing in hand before the pick");

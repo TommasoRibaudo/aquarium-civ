@@ -352,13 +352,24 @@ namespace AquariumCiv.View
             Leave(p, Vector3.up * 0.45f * Mathf.Max(0.4f, p.baseScale.y * 0.5f));
         }
 
-        /// <summary>#311: a wild sapling came out of the ground at a box-local point: its ghost pops up and fades while the land rebuilds without it.</summary>
-        public void PopSapling(Vector3 local)
+        /// <summary>#311: a wild sapling came out of the ground at a box-local point: its ghost pops up and fades while the land rebuilds without it.
+        /// #730: the landscaping tool's pop too; <paramref name="bush"/> pops a low round bush instead, <paramref name="size"/> scales it (a young tree, 1.6).</summary>
+        public void PopSapling(Vector3 local, bool bush = false, float size = 1f)
         {
             var mb = new MeshBuilder(local.GetHashCode()) { jitter = 0.01f };
-            mb.Prism(Vector3.zero, 0.012f, 0.008f, 0.13f, 5, Palette.Bark);
-            mb.Ico(new Vector3(0f, 0.15f, 0f), 0.06f, new Vector3(1f, 1.15f, 1f), Palette.LeafB, 0.2f);
-            mb.Ico(new Vector3(0.02f, 0.2f, 0.01f), 0.04f, Vector3.one, Palette.LeafC, 0.2f);
+            if (bush)
+            {
+                mb.Ico(new Vector3(0f, 0.045f, 0f), 0.07f, new Vector3(1.2f, 0.85f, 1.2f), Palette.LeafA, 0.2f);
+                mb.Ico(new Vector3(0.04f, 0.07f, 0.02f), 0.045f, Vector3.one, Palette.LeafB, 0.2f);
+            }
+            else
+            {
+                mb.M = Matrix4x4.Scale(Vector3.one * size);
+                mb.Prism(Vector3.zero, 0.012f, 0.008f, 0.13f, 5, Palette.Bark);
+                mb.Ico(new Vector3(0f, 0.15f, 0f), 0.06f, new Vector3(1f, 1.15f, 1f), Palette.LeafB, 0.2f);
+                mb.Ico(new Vector3(0.02f, 0.2f, 0.01f), 0.04f, Vector3.one, Palette.LeafC, 0.2f);
+                mb.M = Matrix4x4.identity;
+            }
             var p = MakePiece(true, Mathf.Abs(local.GetHashCode()), "PluckedSapling", mb.ToMesh("CareSapling"), Kind.Weed, 1f);
             p.t.localPosition = local;
             p.t.localScale = Vector3.one;

@@ -7,7 +7,7 @@
   "camera": { "view": "default", "focus": [0.0, -0.04], "span": 0.85 },
   "sheet": { "from": 0.2, "to": 7.8, "frames": 24, "columns": 6 },
   "expect": { "neighbourRadius": 0.3, "reactSeconds": 0.2 },
-  "knownGaps": ["react", "arcs", "hitNear", "endBeat", "hold", "P1", "P2", "P5", "P8", "neighbours"],
+  "knownGaps": ["react", "arcs", "hitNear", "endBeat", "neighbours"],
   "objects": [
     { "id": "line", "kind": "line", "pos": [0.0, 0.0, 0.0], "yaw": 0, "state": { "start": -8.2, "chore": 7.2, "stay": 6.0, "cloths": 4, "taken": 0, "fadeAt": 5.0, "seed": 5 } }
   ],

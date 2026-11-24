@@ -1,0 +1,31 @@
+{
+ "name": "721-log-line",
+ "notes": "B73: the log line: logs brought to a heap, the zigzag line passes them hand to hand onto the woodpile, the roof mended on the ladder, the kids pass twigs (one keeps the big one), a dropped log (\"Mind your toes.\"), the last log and the clap.",
+ "animlab": {
+  "issue": "S-ritual"
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.CampLife.FocusKey = 0; AquariumCiv.View.EveningTalkView.AutoStart = false; AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(10.0f, 4);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "var pv = AquariumCiv.View.PeopleView.Find(); if (pv != null && pv.Planner != null) pv.Planner.ForcedWeather = AquariumCiv.Life.Weather.Clear; return \"clear weather\";",
+   "return AquariumCiv.View.ConsequenceCheats.PlaceEvery();",
+   "return AquariumCiv.Game.GameClock.Instance.Sim.DebugAddKids(3, 22f) + \" grown-ups joined\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(10f);",
+   "return AquariumCiv.View.CampCheats.Later(1.5f, () => AquariumCiv.View.StagedMoments.DebugLogLineDrop());"
+  ],
+  "warm": 0.5,
+  "seconds": 50,
+  "fps": 30,
+  "follow": "camp",
+  "span": 2.2,
+  "closeSpan": 1.2,
+  "yaw": 28,
+  "pitch": 50
+ }
+}

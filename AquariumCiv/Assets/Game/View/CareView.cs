@@ -190,6 +190,7 @@ namespace AquariumCiv.View
             hud?.WithdrawToast(AquariumCiv.Sim.CleanHint.Text); // Clean was tapped: the line asking for that is done, and the wipe hint needs the lane
             if (!on)
             {
+                reach = null; reachPending = false;
                 hud?.WithdrawToast(NothingToClean); // waiting or on screen: it no longer applies
                 hud?.WithdrawToast(WipeHint); hud?.WithdrawToast(WipeHintLand);
                 Cancel();
@@ -197,7 +198,62 @@ namespace AquariumCiv.View
             }
             var sim = Sim;
             if (sim != null && sim.State.firstRun.active) return; // the ghost finger is saying this, and one message at a time
+            reach = null; reachPending = true; // measured at the cloth's first stroke, once the kit has closed and the view is settled
             hud?.Toast(sim != null && (sim.EcologyOn ? sim.State.grime : sim.MessLevel) <= 0.0005f ? NothingToClean : sim != null && sim.EcologyOn ? WipeHintLand : WipeHint, 5f);
+        }
+
+        // ---------------- tester batch 3: the cloth wipes what it can reach ----------------
+        /// <summary>Cloth uses that measured the glass in reach (at their first stroke; tests).</summary>
+        public int ReachClears { get; private set; }
+        /// <summary>The share of the glass's grime out of reach when the cloth was last taken (tests).</summary>
+        public float LastUnreachableShare { get; private set; }
+        /// <summary>The glass in reach is wiped clean below this share of the grime it had: the box is clean.</summary>
+        public const float ReachSpotless = 0.06f;
+        bool[][] reach;
+        bool reachPending;
+        double reachGrime0;
+        float reachSim0;
+
+        double ReachGrime()
+        {
+            double s = 0;
+            for (int i = 0; i < masks.Length && i < reach.Length; i++) s += masks[i].sum - masks[i].GrimeOutside(reach[i]);
+            return s;
+        }
+
+        /// <summary>The share of the screen, clear of the UI, with wipeable glass under it (a coarse grid; tests).</summary>
+        public float GlassInView()
+        {
+            var c = Cam;
+            if (c == null || masks.Length == 0) return 0f;
+            int on = 0, all = 0;
+            for (int yi = 0; yi < 14; yi++)
+            for (int xi = 0; xi < 8; xi++)
+            {
+                var p = new Vector2((xi + 0.5f) / 8f * Screen.width, (yi + 0.5f) / 14f * Screen.height);
+                if (UiInput.Over(p)) continue;
+                all++;
+                if (GlassHit(c.ScreenPointToRay(p), out _, out _, out _)) on++;
+            }
+            return all == 0 ? 0f : on / (float)all;
+        }
+
+        /// <summary>The sim's grime is the mean over every pane, but from one view a finger reaches part of the glass (from the camp frame,
+        /// about a quarter: the front pane's lower half and a strip of the back one). So seven fast strokes over all the glass on screen at
+        /// grime 0.72 took off 0.08 (tester batch 3). The cloth's first stroke now notes the glass in reach from here, and while the cloth is in
+        /// hand the sim's grime follows that glass: wiping what the player sees cleans the box, and that glass wiped clear is a clean box.</summary>
+        void KeepToTheReach(SimCore sim)
+        {
+            reach = null; reachGrime0 = 0;
+            if (sim == null || sim.State.grime <= 0.0005f || masks.Length == 0) return;
+            reach = Reach();
+            double all = 0;
+            foreach (var m in masks) all += m.sum;
+            reachGrime0 = ReachGrime();
+            reachSim0 = sim.State.grime;
+            LastUnreachableShare = all <= 1e-6 ? 0f : 1f - (float)(reachGrime0 / all);
+            ReachClears++;
+            if (reachGrime0 <= 1e-6) reach = null; // nothing in reach: the old rule
         }
 
         // ---------------- the camera gate ----------------
@@ -263,6 +319,7 @@ namespace AquariumCiv.View
             var root = box.Root;
             if (root == null || root == boundRoot) return;
             boundRoot = root;
+            reach = null; // the panes are new: the cloth's reach is measured again when it is next taken
             foreach (var t in textures) if (t != null) Destroy(t);
             if (noise == null)
             {
@@ -323,32 +380,6 @@ namespace AquariumCiv.View
 
         /// <summary>A pane's transform (tests).</summary>
         public Transform PaneOf(int i) => cols[i].transform;
-
-        /// <summary>#147: grime the sim counts for a crumb's smudge. Small: the mark itself is drawn on the one pane.</summary>
-        public const float CrumbGrime = 0.01f;
-        /// <summary>The last smudge: its pane (-1 = none yet), its uv and its radius, world units (tests).</summary>
-        public int LastSmudgePane { get; private set; } = -1;
-        public Vector2 LastSmudgeUv { get; private set; }
-        public float LastSmudgeRadius { get; private set; }
-
-        /// <summary>#147: the Sky Crumb hit a wall at <paramref name="boxPoint"/> (box space): a smudge on that pane, real grime the Keeper wipes off like any other.</summary>
-        public void Smudge(CrumbWall wall, Vector3 boxPoint, float radiusUv, float strength)
-        {
-            var sim = Sim;
-            for (int i = 0; i < cols.Length; i++)
-            {
-                var p = cols[i].transform.localPosition;
-                bool it = wall switch { CrumbWall.Left => zAxis[i] && p.x < 0f, CrumbWall.Right => zAxis[i] && p.x > 0f, _ => !zAxis[i] && p.z > 0f };
-                if (!it) continue;
-                var uv = Uv(i, box.transform.TransformPoint(boxPoint));
-                uv = new Vector2(Mathf.Clamp01(uv.x), Mathf.Clamp01(uv.y));
-                float r = radiusUv * masks[i].size.x;
-                masks[i].Smudge(uv, r, strength);
-                LastSmudgePane = i; LastSmudgeUv = uv; LastSmudgeRadius = r;
-                if (sim != null) { sim.AddMess(CrumbGrime, 0f); synced = sim.State.grime; } // no Grow: this grime is drawn here
-                return;
-            }
-        }
 
         /// <summary>The sim's grime is the source over time: it grows the masks unevenly, or fades them when something else
         /// (debug, clean all) took grime away. Wipes go the other way (the masks lead, the sim follows).</summary>
@@ -587,7 +618,7 @@ namespace AquariumCiv.View
 
         // ---------------- #311: the tweezers ----------------
         public const string ClothIsForGlass = "The cloth is for the glass. Take the tweezers from your Kit for weeds.";
-        public const string TweezersHintOnMess = "Take the tweezers from your Kit to pluck weeds.";
+        public const string TweezersHintOnMess = "Take the tweezers from your Kit to pull weeds."; // #668 kit-words §5
         float clothHintAt = -99f;
 
         void TellClothIsForGlass()
@@ -605,11 +636,11 @@ namespace AquariumCiv.View
             return m != null && m.GroundPoint(screen, out at);
         }
 
-        /// <summary>How far from the finger (box units) a sapling still counts as touched.</summary>
+        /// <summary>How far from the finger (box units) a sapling still counts as touched (#730: the landscaping tool's reach now).</summary>
         public const float SaplingReach = 0.16f;
         /// <summary>Plucks that happened this session (tests and the debug panel).</summary>
         public int Plucks { get; private set; }
-        /// <summary>What the last pluck took: "weed", "treeweed", "vine", "sapling" or "" (tests).</summary>
+        /// <summary>What the last pluck took: "weed", "treeweed", "vine" or "" (tests). ("sapling" was the tweezers' until #730.)</summary>
         public string LastPluck { get; private set; } = "";
         bool tweezing, tweezeTried;
         float lastPluckAt = -9f, tweezeT;
@@ -632,8 +663,9 @@ namespace AquariumCiv.View
             if (PluckAt(sim, pos)) lastPluckAt = Time.unscaledTime;
         }
 
-        /// <summary>Plucks whatever overgrows under a screen point: a weed patch, a tuft round the tree or a cell of vine (what is drawn there), else the wild
-        /// sapling nearest to the land point there. Never the Keeper's tree, a grown tree or the heart of a wood (the sim decides). True if something came out.</summary>
+        /// <summary>Plucks whatever overgrows under a screen point: a weed patch, a tuft round the tree or a cell of vine (what is drawn there). #730: the
+        /// tweezers no longer take seedlings and young trees; the landscaping tool does (SimCore.EcoLandscapePluck; its kit wiring is the Editor pass:
+        /// the hover ghost, the pop through <c>props.PopSapling</c>, <see cref="SaplingReach"/>). True if something came out.</summary>
         public bool PluckAt(SimCore sim, Vector2 screenPos)
         {
             var c = Cam;
@@ -641,34 +673,7 @@ namespace AquariumCiv.View
             var piece = props.PickUnder(c, screenPos, TapReachPixels * 1.2f);
             // #375 (playtest #347): the tweezers reach through the glass, grimy or not. BehindDirtyGlass is the cloth's rule (Classify); here it dropped
             // every weed, tuft and vine seen through a fogged patch, so a pluck only worked on clean glass.
-            bool onLand = LandPoint(screenPos, out var at);
-            if (piece != null && onLand)
-            {
-                // A wild sapling nearer the finger than the drawn piece wins (a weed patch's reach must not hide the sapling you tapped).
-                int near = sim.EcoNearestSapling(at.x, at.z, SaplingReach);
-                if (near >= 0)
-                {
-                    var sw = box.transform.TransformPoint(new Vector3(Sim_X(near), box.GroundHeight(Sim_X(near), Sim_Z(near)), Sim_Z(near)));
-                    var ss = c.WorldToScreenPoint(sw);
-                    var ps = c.WorldToScreenPoint(piece.Center);
-                    if (Vector2.Distance(screenPos, ss) < Vector2.Distance(screenPos, ps)) piece = null;
-                }
-            }
-            if (piece != null) return PluckPiece(sim, piece);
-            if (onLand)
-            {
-                int cell = sim.EcoPluckSapling(at.x, at.z, SaplingReach);
-                if (cell >= 0)
-                {
-                    var local = new Vector3(Sim_X(cell), 0f, Sim_Z(cell));
-                    local.y = box.GroundHeight(local.x, local.z);
-                    props.PopSapling(local);
-                    box.Refresh();
-                    Plucked("sapling", local, 0.9f);
-                    return true;
-                }
-            }
-            return false;
+            return piece != null && PluckPiece(sim, piece);
         }
 
         static float Sim_X(int cell) => AquariumCiv.Sim.Settle.SiteMap.CXc(cell);
@@ -794,6 +799,7 @@ namespace AquariumCiv.View
             }
             else if (kind == Stroke.Wipe)
             {
+                if (reachPending) { reachPending = false; KeepToTheReach(Sim); }
                 strokeRemoved = 0f;
                 strokeStart = Time.unscaledTime;
                 startCue = true; // played when the stroke first touches a pane (#301: it may start off the glass)
@@ -834,9 +840,20 @@ namespace AquariumCiv.View
             strokeRemoved += share;
             if (share > 0f)
             {
-                // the sim's grime follows the masks in proportion
-                float after = CareMath.WeightedMean(masks);
-                sim.CleanGrime(sim.State.grime - sim.State.grime * after / (after + share));
+                if (reach != null && reachGrime0 > 1e-6)
+                {
+                    // tester batch 3: the sim's grime follows the glass in reach (KeepToTheReach), and that glass wiped clear is a clean box
+                    float k = Mathf.Clamp01((float)(ReachGrime() / reachGrime0));
+                    float want = reachSim0 * k;
+                    if (want < sim.State.grime) sim.CleanGrime(sim.State.grime - want);
+                    if (k < ReachSpotless) { foreach (var m in masks) m.Clear(); if (sim.State.grime > 0f) sim.CleanGrime(sim.State.grime); }
+                }
+                else
+                {
+                    // the sim's grime follows the masks in proportion
+                    float after = CareMath.WeightedMean(masks);
+                    sim.CleanGrime(sim.State.grime - sim.State.grime * after / (after + share));
+                }
                 synced = sim.State.grime;
             }
             if (CareMath.WeightedMean(masks) < CareMath.SpotlessMean && (CareMath.WeightedMean(masks) > 0f || sim.State.grime > 0f))

@@ -28,7 +28,26 @@ namespace AquariumCiv.View
 
         public bool HasFire { get; private set; }
         public Vector2 Fire { get; private set; }
-        public Vector2 Pot => Fire + PotOffset;
+        /// <summary>The pot's middle now: on its cooking stones beside the fire, or where #692 (B30) has it (cold and set out, carried).</summary>
+        public Vector2 Pot => PotAt ?? PotHotSpot;
+        /// <summary>#692 (B30): the pot's cooking spot (on the fire's stones) and its cold spot (on three stones 0.15 u further out).</summary>
+        public Vector2 PotHotSpot => BigPotAt ?? Fire + PotOffset;
+        /// <summary>#693 (B54.h): on a "one big pot" night the supper is cooked and ladled at the big stew pot the travellers' choice left
+        /// (CampLife sets it): the camp's own pot is not drawn, and every B30 beat plays at this spot.</summary>
+        public Vector2? BigPotAt;
+        public Vector2 PotColdSpot => CampScenes1.ColdPot(Fire, PotOffset);
+
+        // ---- #692 (B30): the pot's day, set each frame by CampLife before DrawPot
+        /// <summary>Where the pot stands (null: its cooking spot).</summary>
+        public Vector2? PotAt;
+        /// <summary>How high it is carried (box units over the ground).</summary>
+        public float PotLift;
+        /// <summary>On the fire and simmering: steam and bubbles (B30.e: none while cold).</summary>
+        public bool PotHot = true;
+        /// <summary>What is in it: 0 empty (a dark disc), 1 water, 2 the stew.</summary>
+        public int PotContent = 2;
+        /// <summary>The bowls stacked beside the cold pot (B30.e).</summary>
+        public bool BowlStack;
 
         readonly Dictionary<int, float> servedAt = new Dictionary<int, float>();
         readonly HashSet<int> fireEaters = new HashSet<int>();
@@ -74,6 +93,7 @@ namespace AquariumCiv.View
         {
             fireEaters.Clear(); seatedKeys.Clear(); seatedPos.Clear(); candidates.Clear();
             HasFire = false;
+            CookAtFire = VillageScenes.Nobody;
             int eaters = 0, giverKey = -1, kidKey = -1, cookKey = -1;
             for (int i = 0; i < acts.Count; i++)
             {
@@ -82,6 +102,7 @@ namespace AquariumCiv.View
                 if (!HasFire && placeAt(a.place) is Vector2 f) { Fire = f; fireSeed = a.place.buildingId + 365; HasFire = true; }
                 int key = a.who.Key;
                 bool seated = !a.moving && !a.enRoute;
+                if (seated && a.kind == ActivityKind.Cook) CookAtFire = key; // #692 (B30)
                 if (a.kind == ActivityKind.Eat)
                 {
                     eaters++; fireEaters.Add(key);
@@ -92,6 +113,7 @@ namespace AquariumCiv.View
                 }
                 else if (seated && Pokers.Contains(a.kind) && stageOf(a.who) is LifeStage.Adult or LifeStage.Elder) candidates.Add(key);
             }
+            Eaters = eaters;
             if (!HasFire) { passed = pending = false; return; }
             candidates.Sort();
 
@@ -110,7 +132,12 @@ namespace AquariumCiv.View
 
                         servedAt.Clear();
                         var takers = new List<int>(seatedKeys); var tpos = new List<Vector2>(seatedPos);
-                        var events = MealStage.Pass(fireSeed ^ (int)(time * 10f), time + 0.3f, giverKey, Pot, Fire, Pot, takers, tpos, servedAt);
+                        Dips.Clear(); // #692 (B30.b): a dip at the pot before each hand-over
+                        DipStand = PotHotSpot + (PotHotSpot - Fire).normalized * CampLife.DipStandOff; /* #692 review: right at the pot to dip */ DipGiver = giverKey; DipVersion++;
+                        int gi = seatedKeys.IndexOf(giverKey);
+                        float toStand = gi >= 0 ? (seatedPos[gi] - DipStand).magnitude / PairStage.GiverPace : 0f;
+                        var events = MealStage.Pass(fireSeed ^ (int)(time * 10f), time + 0.3f + toStand, giverKey, DipStand, Fire, Pot, takers, tpos, servedAt, Dips, PropKind.Bowl, CampScenes1.DipSeconds);
+                        if (Dips.Count > 0) Dips[0] = new Vector2(time + 0.3f, Dips[0].y);
                         foreach (var e in events) PairStage.Add(e);
                         passed = true; pending = false;
                     }
@@ -135,6 +162,23 @@ namespace AquariumCiv.View
                 }
             }
         }
+
+        // ---- #692: what the camp uses read
+        /// <summary>The grown-ups sitting at the fire, not eating (sorted keys): the pokers, the warm hands, the spit's turner.</summary>
+        public IReadOnlyList<int> Sitters => candidates;
+        /// <summary>How many eat at the fire now (a meal on), and the cook standing at the pot (−1 none).</summary>
+        public int Eaters { get; private set; }
+        public int CookAtFire { get; private set; } = VillageScenes.Nobody; // #695: no cook (crowd keys are negative)
+        /// <summary>B30.b: the dip windows (scene seconds, x from, y to) of the last bowl round, its giver, where the giver dips, and a
+        /// counter that moves on with each new round.</summary>
+        public readonly List<Vector2> Dips = new List<Vector2>();
+        public int DipGiver = -1, DipVersion;
+        public Vector2 DipStand;
+        /// <summary>The doll is in a poke now (another use leaves them be).</summary>
+        public bool PokingNow(int key) => key == pokeKey;
+
+        /// <summary>#692: nobody at the fire this frame, but the camp's fire burns: the pot and the uses still know where it is.</summary>
+        public void FireAt(Vector2 at) { if (HasFire) return; Fire = at; HasFire = true; fireSeed = 365; }
 
         bool forcePoke;
         /// <summary>The debug cheat: the next <see cref="Step"/> that finds a grown-up sitting at the fire makes it poke at once (a big one).</summary>
@@ -176,7 +220,7 @@ namespace AquariumCiv.View
         /// simmers: a slow wisp of steam (more in <paramref name="winter"/>) and a few bubbles that swell and pop on the stew.</summary>
         public void DrawPot(Transform parent, Material material, bool show, Func<float, float, float> heightAt, bool winter = false, StewKind stew = StewKind.Berries)
         {
-            show &= HasFire;
+            show &= HasFire && BigPotAt == null; // #693 (B54.h): the big pot is the pot tonight
             if (!show) { if (potGo != null) potGo.SetActive(false); return; }
             if (potGo == null)
             {
@@ -197,21 +241,153 @@ namespace AquariumCiv.View
                 }
             }
             Stew = stew;   // #676: the look follows what the camp has
-            potFilter.sharedMesh = PotMeshFor(stew);
+            potFilter.sharedMesh = PotContent == 2 ? PotMeshFor(stew) : PotContent == 1 ? (waterPot ??= BuildPot(WaterLook)) : (emptyPot ??= BuildPot(EmptyLook)); // #692 (B30)
             var bm = BubbleMeshFor(stew);
             for (int i = 0; i < bubbleFilters.Length; i++) bubbleFilters[i].sharedMesh = bm;
             var p = Pot;
-            potGo.transform.localPosition = new Vector3(p.x, heightAt(p.x, p.y), p.y);
+            potGo.transform.localPosition = new Vector3(p.x, heightAt(p.x, p.y) + PotLift, p.y);
             potGo.SetActive(true);
+            bool simmer = PotHot && PotContent == 2; // #692 (B30.e): cold and set out: no steam, no bubbles
             float t = Time.time;
             for (int i = 0; i < bubbles.Length; i++)
             {
                 float k = BubbleAt(t, i, out Vector3 at);
                 bubbles[i].localPosition = at;
                 bubbles[i].localScale = new Vector3(k, k * 0.8f, k);
+                bubbles[i].gameObject.SetActive(simmer);
             }
-            DrawSteam(winter);
+            if (simmer) DrawSteam(winter);
+            else if (steamGo != null) steamGo.SetActive(false);
+            DrawBurst();
+            DrawLadleAndBowls(material, heightAt);
         }
+
+        // ---------------------------------------------------------------- the user's review of #692 part 1: a swell of steam you can read
+        /// <summary>A puff of steam in a face (B30.c), a sniff (B30.d), a ladle's dip (B30.b): the pot's own soft steam swells for
+        /// <see cref="BurstSeconds"/>: <see cref="BurstPuffs"/> bigger white wisps rising faster and fading (the HitFx steam puff read as a flat grey disc).</summary>
+        public const int BurstPuffs = 7;
+        public const float BurstSeconds = 1.8f, BurstPeriod = 1.3f, BurstRise = 0.24f, BurstSizeTo = 0.05f, BurstAlpha = 0.6f;
+        float burstAt = -99f, burstScale = 1f;
+        GameObject burstGo; Material burstMat; Mesh burstMesh;
+
+        public void SteamBurst(float scale = 1f) { burstAt = Time.time; burstScale = Mathf.Clamp(scale, 0.3f, 1.5f); }
+        /// <summary>Tests: a burst is drawn now.</summary>
+        public bool BurstShown => burstGo != null && burstGo.activeInHierarchy;
+
+        void DrawBurst()
+        {
+            float k = (Time.time - burstAt) / BurstSeconds;
+            if (k < 0f || k >= 1f) { if (burstGo != null) burstGo.SetActive(false); return; }
+            if (burstGo == null)
+            {
+                var sh = Shader.Find("AquariumCiv/View/FireSmoke");
+                if (sh == null) return;
+                burstMat = new Material(sh) { name = "Camp_StewSteamBurst", hideFlags = HideFlags.DontSave };
+                burstMat.SetFloat("_Rise", BurstRise);
+                burstMat.SetFloat("_SizeFrom", SteamSizeFrom * 1.6f);
+                burstMat.SetFloat("_SizeTo", BurstSizeTo);
+                burstMat.SetFloat("_Drift", SteamDrift * 1.4f);
+                burstMat.SetFloat("_NightFade", 0.2f);
+                var verts = new List<Vector3>(); var cols = new List<Color>(); var corner = new List<Vector2>(); var data = new List<Vector2>(); var tris = new List<int>();
+                var col = MeshBuilder.Linear(new Color(1f, 1f, 0.98f));
+                Vector2[] corners = { new(-1f, -1f), new(-1f, 1f), new(1f, 1f), new(1f, -1f) };
+                for (int i = 0; i < BurstPuffs; i++)
+                {
+                    var at = SteamStart(i, BurstPuffs, out float phase);
+                    int o = verts.Count;
+                    foreach (var c in corners) { verts.Add(at); cols.Add(col); corner.Add(c); data.Add(new Vector2(phase, BurstPeriod)); }
+                    tris.AddRange(new[] { o, o + 1, o + 2, o, o + 2, o + 3 });
+                }
+                burstMesh = new Mesh { name = "Camp_StewSteamBurst", hideFlags = HideFlags.DontSave };
+                burstMesh.SetVertices(verts); burstMesh.SetColors(cols); burstMesh.SetUVs(0, corner); burstMesh.SetUVs(1, data); burstMesh.SetTriangles(tris, 0);
+                burstMesh.bounds = new Bounds(new Vector3(0f, PotTop + BurstRise * 0.5f, 0f), new Vector3(0.4f, BurstRise + 0.15f, 0.4f));
+                burstGo = new GameObject("Stew steam burst") { hideFlags = HideFlags.DontSave };
+                burstGo.transform.SetParent(potGo.transform, false);
+                burstGo.AddComponent<MeshFilter>().sharedMesh = burstMesh;
+                var r = burstGo.AddComponent<MeshRenderer>();
+                r.sharedMaterial = burstMat; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
+            }
+            // swells in fast, holds, fades out over the last half
+            float a = Mathf.Clamp01(k / 0.14f) * (1f - Mathf.Clamp01((k - 0.5f) / 0.5f));
+            burstMat.SetFloat("_Alpha", BurstAlpha * burstScale * a);
+            burstGo.SetActive(true);
+        }
+
+        // ---------------------------------------------------------------- the user's review of #692 part 1 (B30.b): the ladle in the giver's hand
+        bool ladleHeld;
+        /// <summary>This frame the ladle is in a hand: its foot (the scoop) at <paramref name="footWorld"/>, turned <paramref name="rotWorld"/>. Call after
+        /// <see cref="DrawPot"/> on every frame it is held; the next DrawPot puts it back in the pot.</summary>
+        public void HoldLadle(Vector3 footWorld, Quaternion rotWorld)
+        {
+            if (ladleGo == null) return;
+            ladleGo.transform.SetPositionAndRotation(footWorld, rotWorld);
+            ladleHeld = true;
+        }
+        /// <summary>Tests: the ladle was put in a hand since the last check.</summary>
+        public bool TakeLadleHeld() { bool h = ladleHeld; ladleHeld = false; return h; }
+
+        // ---------------------------------------------------------------- #692 (B30.b, B30.e): the ladle and the stacked bowls
+        Mesh waterPot, emptyPot, ladleMesh, stackMesh;
+        GameObject ladleGo, stackGo;
+
+        /// <summary>The ladle belongs to the pot (Hard in code 8: one prop per doll): it stands in the stew while it cooks and leans against the
+        /// cold pot. The bowls are stacked beside the cold pot after supper.</summary>
+        void DrawLadleAndBowls(Material material, Func<float, float, float> heightAt)
+        {
+            if (ladleGo == null)
+            {
+                ladleMesh = BuildLadle(); stackMesh = BuildStack();
+                ladleGo = Child("Pot ladle", ladleMesh, material, potGo.transform);
+                stackGo = Child("Stacked bowls", stackMesh, material, potGo.transform.parent);
+            }
+            bool inStew = PotHot && PotContent > 0;
+            ladleGo.transform.localPosition = inStew ? new Vector3(0.012f, 0.085f, -0.008f) : new Vector3(0.056f, 0.0f, -0.03f);
+            ladleGo.transform.localRotation = inStew ? Quaternion.Euler(-12f, 0f, -14f) : Quaternion.Euler(-24f, 30f, -26f);
+            ladleGo.SetActive(true);
+            stackGo.SetActive(BowlStack && !PotHot);
+            if (BowlStack)
+            {
+                var d = PotOffset.normalized; var side = new Vector2(-d.y, d.x);
+                var q = PotColdSpot + d * 0.1f + side * 0.06f;
+                stackGo.transform.localPosition = new Vector3(q.x, heightAt(q.x, q.y), q.y);
+            }
+        }
+
+        /// <summary>#692: the ladle drawn now (tests).</summary>
+        public bool LadleShown => ladleGo != null && ladleGo.activeInHierarchy;
+        public bool StackShown => stackGo != null && stackGo.activeInHierarchy;
+
+        static GameObject Child(string name, Mesh mesh, Material material, Transform parent)
+        {
+            var go = new GameObject(name) { hideFlags = HideFlags.DontSave };
+            go.transform.SetParent(parent, false);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var r = go.AddComponent<MeshRenderer>(); r.sharedMaterial = material; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            return go;
+        }
+
+        /// <summary>B30.b: a ladle of dark wood, 0.09 u: a handle and a small bowl at its foot (the foot at the origin).</summary>
+        static Mesh BuildLadle()
+        {
+            var mb = new MeshBuilder(3653);
+            var wood = new Color(0.30f, 0.20f, 0.12f);
+            mb.Box(new Vector3(0f, 0.05f, 0f), new Vector3(0.008f, 0.09f, 0.008f), wood);
+            mb.Prism(new Vector3(0f, 0f, 0f), 0.008f, 0.016f, 0.012f, 7, wood, topCol: new Color(0.22f, 0.14f, 0.08f));
+            var m = mb.ToMesh("Camp_Ladle"); m.hideFlags = HideFlags.DontSave; return m;
+        }
+
+        /// <summary>B30.e: four bowls stacked, each a little crooked.</summary>
+        static Mesh BuildStack()
+        {
+            var mb = new MeshBuilder(3654);
+            for (int i = 0; i < 4; i++)
+                mb.Prism(new Vector3(0.002f * (i % 2), i * 0.011f, -0.002f * (i % 3)), 0.018f, 0.034f, 0.013f, 8, Palette.Terracotta, topCol: new Color(0.62f, 0.38f, 0.20f));
+            var m = mb.ToMesh("Camp_BowlStack"); m.hideFlags = HideFlags.DontSave; return m;
+        }
+
+        /// <summary>#692 (B30.e): the cold, empty pot's inside (a flat dark disc under the rim), and the water before the food goes in (B30.a).</summary>
+        static readonly StewLook EmptyLook = new StewLook { mid = new Color(0.09f, 0.07f, 0.06f), edge = new Color(0.07f, 0.05f, 0.05f), bubble = Color.black, bits = new Color[0] };
+        static readonly StewLook WaterLook = new StewLook { mid = new Color(0.42f, 0.55f, 0.62f), edge = new Color(0.30f, 0.40f, 0.46f), bubble = Color.white, bits = new Color[0] };
 
         // ---------------------------------------------------------------- #676 (tester): steam that reads as steam
         /// <summary>#676: the soft puffs over the stew (more in winter). Each rises <see cref="SteamRise"/> over <see cref="SteamPeriod"/> s,
@@ -303,6 +479,9 @@ namespace AquariumCiv.View
         public void Destroy()
         {
             if (potGo != null) UnityEngine.Object.Destroy(potGo);
+            if (stackGo != null) UnityEngine.Object.Destroy(stackGo);
+            foreach (var m in new[] { waterPot, emptyPot, ladleMesh, stackMesh }) if (m != null) UnityEngine.Object.Destroy(m);
+            waterPot = emptyPot = ladleMesh = stackMesh = null; ladleGo = stackGo = null;
             for (int i = 0; i < StewKindCount; i++)
             {
                 if (potMeshes[i] != null) UnityEngine.Object.Destroy(potMeshes[i]);

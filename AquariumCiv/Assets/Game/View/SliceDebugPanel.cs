@@ -72,6 +72,12 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Supper: baskets")) last = DebugSupper(AquariumCiv.Sim.SupperPick.Baskets);
             GUILayout.EndHorizontal();
             // ---- end #588 / #589
+            // ---- #717: tonight's story, told by the Keeper's pick (the choice itself: DilemmaCheats "Small: who tells the story")
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Story tonight: slow")) last = DebugStoryTonight(0);
+            if (GUILayout.Button("Story tonight: short")) last = DebugStoryTonight(1);
+            GUILayout.EndHorizontal();
+            // ---- end #717
             var rig = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
             if (rig == null) return;
             GUILayout.BeginHorizontal();
@@ -105,6 +111,21 @@ namespace AquariumCiv.View
             if (sim == null) return "no sim";
             sim.DebugSupper(pick);
             return (pick == AquariumCiv.Sim.SupperPick.Pot ? "one big pot" : "a basket each") + ": " + PeopleView.DebugSetHour(17.6f);
+        }
+
+        /// <summary>#717: the story choice raised and answered now (0: slow, with all the voices; 1: short, for a laugh), then the evening:
+        /// the picked teller tells it at the fire.</summary>
+        public static string DebugStoryTonight(int option)
+        {
+            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
+            if (sim == null) return "no sim";
+            if (sim.DebugTellStoryTonight(option) == null) return "fewer than two adults";
+            // S-ritual (clip 717-teller-short): tonight is the VIEW's day. The view day turns at midnight and the sim's month mid-day, so after
+            // a month tick the sim's month is a day ahead and StoryTellerOn(view day) was false: nobody told the story.
+            var pvT = PeopleView.Find();
+            if (pvT != null) sim.State.storyTellerMonth = pvT.Now.day;
+            pvT?.Planner?.Invalidate();
+            return $"{sim.FindNotable(sim.State.storyTellerId)?.name} tells it {(option == 0 ? "slow" : "short")}: " + PeopleView.DebugSetHour(18.2f);
         }
 
         /// <summary>#274: digs a canal across the path nearest the green; a bridge is drawn where they cross.</summary>
@@ -180,6 +201,13 @@ namespace AquariumCiv.View
             EndRow();
             Row(); // #364
             if (Btn("Fish bite now")) last = FishingView.DebugBiteNow();
+            EndRow();
+            Row(); // #708 (B70): the fish seen from above and through the glass; B39.c the kids' try by hand
+            if (Btn("Fish: the shadows")) last = FishView.DebugShadows();
+            if (Btn("Fish: show them at the glass")) last = FishView.DebugGlass();
+            if (Btn("Fish: startle")) last = FishView.DebugStartle();
+            if (Btn("Kids try to catch a fish by hand")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.FishGrab);
+            if (Btn("Two kids join the camp")) { var gc = AquariumCiv.Game.GameClock.Instance; last = gc == null ? "no box" : $"{gc.Sim.DebugAddKids(2)} kids came"; }
             EndRow();
             Row(); // #361
             if (Btn("Pickers to the nearest bush now")) last = BerryPickView.DebugPickersToBush();
@@ -293,6 +321,235 @@ namespace AquariumCiv.View
             EndRow();
             Row(); // fb4 #566: the feather pole
             if (Btn("Feather pole: pray now")) last = ConsequenceCheats.PrayNow();
+            EndRow();
+            // #692 people and things, part 1: the fire, the stew pot, the feather pole
+            Row(); // #692
+            if (Btn("Winter fire: warm hands")) last = CampCheats.WarmHands(); // #692 B29.a
+            if (Btn("Kids poke the fire")) last = CampCheats.KidPoke(); // #692 B29.b
+            if (Btn("Berry on a stick")) last = CampCheats.BerryStick(); // #692 B29.c
+            EndRow();
+            Row(); // #692
+            if (Btn("Roast on the spit (rabbit)")) last = CampCheats.Spit(false); // #692 B29.d
+            if (Btn("Roast on the spit (deer)")) last = CampCheats.Spit(true); // #692 B29.d
+            EndRow();
+            Row(); // #692
+            if (Btn("Pot: fill it now")) last = CampCheats.PotFill(); // #692 B30.a
+            if (Btn("Pot: scrape and lift off")) last = CampCheats.PotOff(); // #692 B30.e
+            if (Btn("Pot: cold / cooking")) last = CampCheats.PotToggle(); // #692 B30.e
+            EndRow();
+            Row(); // #692
+            if (Btn("Kids peek in the pot")) last = CampCheats.PotPeek(); // #692 B30.c
+            if (Btn("Someone sniffs the pot")) last = CampCheats.PotSniff(); // #692 B30.d
+            if (Btn("Bowl round: ladle")) last = CampCheats.Ladle(); // #692 B30.b (with "Meal now" at supper)
+            EndRow();
+            Row(); // #692
+            if (Btn("Feather: newborn")) last = CampCheats.TieFeather(AquariumCiv.Sim.PoleFeatherKind.Newborn); // #692 B31.a
+            if (Btn("Feather: marriage")) last = CampCheats.TieFeather(AquariumCiv.Sim.PoleFeatherKind.Marriage); // #692 B31.a
+            if (Btn("Feather: village")) last = CampCheats.TieFeather(AquariumCiv.Sim.PoleFeatherKind.Village); // #692 B31.a
+            if (Btn("Kids dare at the feather pole")) last = CampCheats.PoleDare(); // #692 B31.b
+            EndRow();
+            // #692 part 2: the Keeper's tree visits (each grows the tree first if it must)
+            Row(); // #692
+            if (Btn("Keeper's tree: sit under it")) last = CampCheats.TreeSit(); // #692 B32.a
+            if (Btn("Keeper's tree: touch the bark")) last = CampCheats.TreeTouch(); // #692 B32.b
+            if (Btn("Kids circle the Keeper's tree")) last = CampCheats.TreeCircle(); // #692 B32.c
+            EndRow();
+            Row(); // #692
+            if (Btn("Keeper's tree: quiet visit (after a death)")) last = CampCheats.TreeQuiet(); // #692 B32.d
+            if (Btn("Keeper's tree: newlyweds' visit")) last = CampCheats.TreeWed(); // #692 B32.e
+            EndRow();
+            Row(); // #692
+            if (Btn("Keeper's tree: newborn visit")) last = CampCheats.TreeNewborn(); // #692 B32.f
+            if (Btn("Keeper's tree: the old one sits there")) last = CampCheats.TreeOld(); // #692 B32.g
+            if (Btn("Keeper's tree: the eldest tells the kids")) last = CampCheats.TreeTell(); // #692 B32.h
+            EndRow();
+            // #692 part 3: grass, saplings, rocks, fallen branches ("Land: a wild tree and saplings" first for B34 and B36)
+            Row(); // #692
+            if (Btn("Kids roll in the grass")) last = CampCheats.GrassRoll(); // #692 B33.a
+            if (Btn("Lie back in the grass")) last = CampCheats.LieBack(); // #692 B33.b
+            if (Btn("Pick flowers")) last = CampCheats.PickFlowers(); // #692 B33.c
+            if (Btn("Grass whistle")) last = CampCheats.GrassWhistle(); // #692 B33.d
+            EndRow();
+            Row(); // #692
+            if (Btn("Land: a wild tree and saplings")) last = CampCheats.LandReady(); // #692 part 3
+            if (Btn("Water a sapling")) last = CampCheats.WaterSapling(); // #692 B34.a
+            if (Btn("Ring a sapling with stones")) last = CampCheats.RingSapling(); // #692 B34.b
+            if (Btn("A kid plants a twig")) last = CampCheats.PlantTwig(); // #692 B34.c
+            EndRow();
+            Row(); // #692
+            if (Btn("Sit on a rock / kid on the rock")) last = CampCheats.SitRock(); // #692 B35.a
+            if (Btn("Stack pebbles")) last = CampCheats.StackPebbles(); // #692 B35.b (alternates: stands / topples)
+            if (Btn("Kids sword fight with sticks")) last = CampCheats.StickFight(); // #692 B36.a
+            if (Btn("Stick horse")) last = CampCheats.StickHorse(); // #692 B36.b
+            EndRow();
+            // #692 part 4: animals (each places its animals first if the box has none; B39.c is "Kids try to catch a fish by hand" above)
+            Row(); // #692
+            if (Btn("Kids catch a frog")) last = CampCheats.FrogCatch(); // #692 B37 (alternates: caught / it gets away)
+            if (Btn("Watch the deer")) last = CampCheats.DeerWatch(); // #692 B38.a
+            if (Btn("Kids creep up on the deer")) last = CampCheats.DeerCreep(); // #692 B38.b
+            EndRow();
+            Row(); // #692
+            if (Btn("A kid holds a rabbit kit")) last = CampCheats.KitHold(); // #692 B39.a
+            if (Btn("Kids feed the ducks")) last = CampCheats.FeedDucks(); // #692 B15.d (B39.b)
+            EndRow();
+            // #692 part 5: the rest of the camp (each finds its thing; "Land: a wild tree and saplings" first for B44 and B53.d)
+            Row(); // #692
+            if (Btn("Kids peek out of the tents")) last = CampCheats.TentPeek(); // #692 B40.a
+            if (Btn("Hang a toy on a tent")) last = CampCheats.TentToy(); // #692 B40.b
+            if (Btn("Sit in the tent doors (dusk)")) last = CampCheats.TentDoorSit(); // #692 B40.c
+            if (Btn("Kids count the stash")) last = CampCheats.CountStash(); // #692 B41.a
+            if (Btn("Snack sneak at the stash")) last = CampCheats.SnackSneak(); // #692 B41.b
+            EndRow();
+            Row(); // #692
+            if (Btn("Tend the racks now")) last = CampCheats.TendRacks(); // #692 B42.a
+            if (Btn("Hang meat on the rack")) last = CampCheats.HangMeat(); // #692 B42.a
+            if (Btn("Fish on the rack (they stay)")) last = CampCheats.FishStay(); // #692 B42 retakes
+            if (Btn("Kids run under the hide rack")) last = CampCheats.DuckUnderHides(); // #692 B42.b
+            if (Btn("Kids count the fish")) last = CampCheats.CountFish(); // #692 B42.c
+            if (Btn("A kid sneaks a fish")) last = CampCheats.SneakFish(); // #692 B42.d
+            EndRow();
+            Row(); // #692
+            if (Btn("Peek at rabbits from the thicket")) last = CampCheats.ThicketPeek(); // #692 B43.b
+            if (Btn("Berry kid now")) last = CampCheats.BerryKid(); // #692 B43.c (B17.a's purple mouth)
+            if (Btn("Kid climbs a tree")) last = CampCheats.ClimbTree(); // #692 B44.a
+            if (Btn("Nap under a tree")) last = CampCheats.TreeNap(); // #692 B44.b
+            if (Btn("Chat leaning on a tree")) last = CampCheats.TrunkLean(); // #692 B44.c
+            EndRow();
+            Row(); // #692
+            if (Btn("Skip stones")) last = CampCheats.SkipStones(); // #692 B45.a (alternates: three skips / a kid's plop)
+            if (Btn("Leaf boat")) last = CampCheats.LeafBoat(); // #692 B45.b
+            if (Btn("Feet in the water")) last = CampCheats.FeetInWater(); // #692 B45.c
+            if (Btn("Kids look in a puddle")) last = CampCheats.PuddleLook(); // #692 B46.a
+            if (Btn("Kids race the puddles")) last = CampCheats.PuddleRace(); // #692 B46.b ("Puddles now" first)
+            EndRow();
+            Row(); // #692
+            if (Btn("Cut reeds")) last = CampCheats.CutReeds(); // #692 B47.a
+            if (Btn("Reed whistle")) last = CampCheats.ReedWhistle(); // #692 B47.b
+            if (Btn("Kids follow the stream")) last = CampCheats.FollowStream(); // #692 B48.a
+            if (Btn("Kids build a dam")) last = CampCheats.BuildDam(); // #692 B48.b
+            EndRow();
+            Row(); // #692
+            if (Btn("Sit on the hill at dusk")) last = CampCheats.HillDusk(); // #692 B49.a
+            if (Btn("Kids roll down the hill")) last = CampCheats.HillRoll(); // #692 B49.b
+            if (Btn("Kids race on the path")) last = CampCheats.PathRace(); // #692 B50.a
+            if (Btn("Chat on a path")) last = CampCheats.PathChat(); // #692 B50.b
+            if (Btn("A gift at the remembering stone")) last = CampCheats.StoneGift(); // #692 B51
+            EndRow();
+            Row(); // #692
+            if (Btn("Light the lanterns now")) last = CampCheats.LightLanterns(); // #692 B52.a
+            if (Btn("Kids chase moths")) last = CampCheats.ChaseMoths(); // #692 B52.b
+            if (Btn("Pull a weed in the camp")) last = CampCheats.PullWeed(); // #692 B53.a
+            if (Btn("Kids make a crown")) last = CampCheats.Crown(); // #692 B53.c
+            if (Btn("Hang the swing")) last = CampCheats.HangSwing(); // #692 B53.d
+            if (Btn("Kids on the swing")) last = CampCheats.Swing(); // #692 B53.d (hangs it first if none)
+            EndRow();
+            // #693 the choice props, a work use and a life use each ("#693: every choice's thing" first: one of each stands in the box)
+            Row(); // #693
+            if (Btn("#693: every choice's thing")) last = CampCheats.EveryThing(); // #693
+            if (Btn("Baskets: take and bring back")) last = CampCheats.BasketTake(); // #693 B54.a
+            if (Btn("Woodpile: stack / fetch")) last = CampCheats.WoodStack(); // #693 B54.c (alternates)
+            if (Btn("Rain at the woodpile")) last = CampCheats.WoodShelter(); // #693 B54.d (alternates: rain / kids sit on the logs)
+            EndRow();
+            Row(); // #693
+            if (Btn("Name stone: cut a name")) last = CampCheats.NameCut(); // #693 B54.e
+            if (Btn("Kids trace the names")) last = CampCheats.NameTrace(); // #693 B54.f
+            if (Btn("Kids flick the charms")) last = CampCheats.CharmFlick(); // #693 B54.g
+            if (Btn("Big pot: the together supper")) last = CampCheats.BigPot(); // #693 B54.h (then "Bowl round: ladle")
+            if (Btn("Kids drum on the pot")) last = CampCheats.PotDrum(); // #693 B54.i
+            EndRow();
+            Row(); // #693
+            if (Btn("Split wood at the stump")) last = CampCheats.StumpSplit(); // #693 B54.j
+            if (Btn("Kid sits on the stump")) last = CampCheats.StumpSit(); // #693 B54.k
+            if (Btn("Headman takes the staff")) last = CampCheats.StaffWalk(); // #693 B54.l
+            if (Btn("Kids play headman")) last = CampCheats.StaffPlay(); // #693 B54.m
+            if (Btn("Carry flour")) last = CampCheats.FlourCarry(); // #693 B54.n
+            if (Btn("Flour fight")) last = CampCheats.FlourFight(); // #693 B54.o
+            EndRow();
+            Row(); // #693
+            if (Btn("Storm: straighten the roof bird")) last = CampCheats.BirdStraighten(); // #693 B54.p
+            if (Btn("Kids fly under the bird")) last = CampCheats.BirdFly(); // #693 B54.q
+            if (Btn("Long table meal now")) last = CampCheats.TableMeal(); // #693 B54.r
+            if (Btn("Kids under the long table")) last = CampCheats.TableUnder(); // #693 B54.s
+            if (Btn("Fill the offering basket")) last = CampCheats.OfferingFill(); // #693 B54.t
+            if (Btn("Kids wait by the offering")) last = CampCheats.OfferingWait(); // #693 B54.u
+            if (Btn("Kids wait, then the Keeper knocks")) last = CampCheats.OfferingWaitKnock(); // #693 B54.u (the knock)
+            EndRow();
+            Row(); // #693
+            if (Btn("Fish crate to the rack")) last = CampCheats.CrateFish(); // #693 B54.x
+            if (Btn("Kids wave across the pond")) last = CampCheats.CrateWave(); // #693 B54.y
+            if (Btn("Re-carve the name post")) last = CampCheats.PostCarve(); // #693 B54.z (notes: the carved name post)
+            if (Btn("Kids measure their height")) last = CampCheats.PostMeasure(); // #693 B54.zz (notes)
+            EndRow();
+            Row(); // #693 goat pen (2026-11-16 "Bring a pen back")
+            if (Btn("Goat pen with its goat")) last = CampCheats.GoatPen(); // stands every choice's thing, the pen and its goat among them
+            if (Btn("Goat: gnaw the corner")) last = CampCheats.GoatNibble();
+            if (Btn("Mend the goat pen")) last = CampCheats.PenMend(); // #693 B54.v
+            if (Btn("Kids at the goat pen")) last = CampCheats.PenRails(); // #693 B54.w
+            if (Btn("Kid pets the goat")) last = CampCheats.PenPet(); // B58.d at the pen
+            EndRow();
+            // #694 dogs and wolves in the people's day (B24.b, B25, B55, B56); "Pup now" / "Grown dog now" first. "Lost pup now" is in the sim panel.
+            Row(); // #694
+            if (Btn("Pup now")) last = CampCheats.PupNow(); // #694
+            if (Btn("Grown dog now")) last = CampCheats.GrownDogNow(); // #694
+            if (Btn("Big dog now")) last = CampCheats.BigDogNow(); // #694 (gen 3: big enough to ride)
+            if (Btn("Old dog now")) last = CampCheats.OldDogNow(); // #694 B25.c (grey muzzle)
+            if (Btn("Dogs: status")) last = CampCheats.DogStatus(); // #694
+            EndRow();
+            Row(); // #694 the pup at the fire (B24.b)
+            if (Btn("Pup: chew a hide")) last = CampCheats.PupChew(); // #694 B24.b
+            if (Btn("Pup: play with the kids")) last = CampCheats.PupPlay(); // #694 B24.b
+            if (Btn("Pup: sleep by the embers")) last = CampCheats.PupSleep(); // #694 B24.b
+            if (Btn("Pup: steal a fish")) last = CampCheats.PupSteal(); // #694 B24.b
+            if (Btn("Pup: shooed off the meat")) last = CampCheats.PupShoo(); // #694 B24.b
+            if (Btn("Pup: run along in a game")) last = CampCheats.PupRunAlong(); // #694 B24.b
+            EndRow();
+            Row(); // #694 the grown dog (B25, B56)
+            if (Btn("Dog: hunt now")) last = CampCheats.DogHunt(); // #694 B25.a + B56.a
+            if (Btn("Wolves come near (guard)")) last = CampCheats.DogGuard(); // #694 B25.b + B56.b
+            if (Btn("Dog: fetch")) last = CampCheats.DogFetch(); // #694 B56.c
+            if (Btn("Dog: a kid rides")) last = CampCheats.DogRide(); // #694 B56.d
+            if (Btn("Dog by the fire")) last = CampCheats.DogFire(); // #694 B56.e
+            if (Btn("Dog: lie in the sun")) last = CampCheats.DogSun(); // #694 B25
+            EndRow();
+            Row(); // #694 the people and the wolves (B55)
+            if (Btn("Wolves come near: drive them off")) last = CampCheats.DriveOff(); // #694 B55.a
+            if (Btn("Wolves in view: hold the kids close")) last = CampCheats.KidsClose(); // #694 B55.b
+            EndRow();
+            // #695 the village and the town (B57, B58.c/f/g/j/k); "Jump: a village box" / "Jump: a town box" first
+            Row(); // #695
+            if (Btn("Jump: a village box")) last = CampCheats.StageVillage(10f, false, 4, false); // #695
+            if (Btn("Jump: a town box")) last = CampCheats.StageVillage(8f, true, 4, false); // #695 (a bakery stands)
+            if (Btn("Village: status")) last = CampCheats.VillageStatus(); // #695
+            EndRow();
+            Row(); // #695 fields, homes, the well (B57.a-f)
+            if (Btn("Kids run in the fields")) last = CampCheats.FieldTag(); // #695 B57.a
+            if (Btn("Make a scarecrow")) last = CampCheats.Scarecrow(); // #695 B57.b
+            if (Btn("Harvest dance")) last = CampCheats.HarvestDance(); // #695 B57.c
+            if (Btn("Mend and dress a home")) last = CampCheats.HomeMend(); // #695 B57.d
+            if (Btn("Gossip at the well")) last = CampCheats.WellGossip(); // #695 B57.e
+            if (Btn("Kid drops a pebble down the well")) last = CampCheats.WellPebble(); // #695 B57.f
+            EndRow();
+            Row(); // #695 the windmill, the lumber mill (B57.g-j)
+            if (Btn("Kids watch the sails")) last = CampCheats.SailWatch(); // #695 B57.g
+            if (Btn("Kids race the sails' shadow")) last = CampCheats.SailShadow(); // #695 B57.h
+            if (Btn("Break on the log pile")) last = CampCheats.LogPileSit(); // #695 B57.i
+            if (Btn("Kid balances on a log")) last = CampCheats.LogBalance(); // #695 B57.j
+            EndRow();
+            Row(); // #695 the bakery, streets, fences (B58.c/f/g/j/k)
+            if (Btn("Kids wait for a crust")) last = CampCheats.CrustWait(); // #695 B58.c (a town)
+            if (Btn("Kids play hopscotch")) last = CampCheats.Hopscotch(); // #695 B58.f
+            if (Btn("Stop to talk in a street")) last = CampCheats.StreetChat(); // #695 B58.g
+            if (Btn("Fix a fence")) last = CampCheats.FenceFix(); // #695 B58.j
+            if (Btn("Kids on the fence")) last = CampCheats.FenceLean(); // #695 B58.k
+            EndRow();
+            Row(); // #695 B59 outbuildings (the jetty, orchard, quarry, dyer and watermill can't stand in a living-land box)
+            if (Btn("Barn chores")) last = CampCheats.BarnChores(); // #695 B59.k
+            if (Btn("Kids jump in the hay")) last = CampCheats.HayJump(); // #695 B59.l
+            EndRow();
+            Row(); // S-ritual B77: the pond family's boat (upside down by the fire)
+            if (Btn("Boat: sort the catch on it")) last = CampCheats.BoatSort(); // B77.a
+            if (Btn("Boat: kids play house")) last = CampCheats.BoatHouse(); // B77.b
+            if (Btn("Boat: kids shelter in the rain")) last = CampCheats.BoatRain(); // B77.b in rain
             EndRow();
         }
 
@@ -424,11 +681,11 @@ namespace AquariumCiv.View
             if (Btn("Long sitting")) last = EveningTalkView.DebugLongSitting();
             EndRow();
             Row();
-            foreach (var kind in new[] { AquariumCiv.Sim.ThreadSource.Era, AquariumCiv.Sim.ThreadSource.Seat, AquariumCiv.Sim.ThreadSource.Couple, AquariumCiv.Sim.ThreadSource.Gift })
+            foreach (var kind in new[] { AquariumCiv.Sim.ThreadSource.Era, AquariumCiv.Sim.ThreadSource.Seat, AquariumCiv.Sim.ThreadSource.Couple }) // #718: no gift teaser
                 if (Btn(kind)) { last = EveningTalkView.DebugTeaser(kind); DebugDock.Active = DebugDock.None; }
             EndRow();
             Row();
-            foreach (var kind in new[] { AquariumCiv.Sim.ThreadSource.Rivalry, AquariumCiv.Sim.ThreadSource.Office, AquariumCiv.Sim.ThreadSource.Slice })
+            foreach (var kind in new[] { AquariumCiv.Sim.ThreadSource.Rivalry, AquariumCiv.Sim.ThreadSource.Office }) // #715: no slice-of-life teaser
                 if (Btn(kind)) { last = EveningTalkView.DebugTeaser(kind); DebugDock.Active = DebugDock.None; }
             EndRow();
             // The small book (#80): earn every page, open it.
@@ -436,7 +693,7 @@ namespace AquariumCiv.View
             if (Btn("Earn every book page")) last = BookView.DebugEarnAll();
             if (Btn("Open book")) { last = BookView.DebugOpen(); DebugDock.Active = DebugDock.None; }
             EndRow();
-            // What the town wants (#181), the said list (#120), a wish granted (#191), a baby (#192), a gathering (#190).
+            // What the town wants (#181), the said list (#120), a baby (#192), a gathering (#190).
             Row();
             foreach (AquariumCiv.View.ShowMe.WantCase want in System.Enum.GetValues(typeof(AquariumCiv.View.ShowMe.WantCase)))
                 if (Btn(want.ToString())) last = ShowMeDirector.DebugWant(want);
@@ -451,10 +708,6 @@ namespace AquariumCiv.View
             if (Btn("Stalls")) last = StallProps.DebugStock();
             if (Btn("Keeper Doll")) last = GlassVoice.DebugPlayMoment(AquariumCiv.Sim.RelicId.KeeperDoll);
             if (Btn("Start a ritual now")) last = GlassVoice.DebugStartRitual();
-            if (Btn("Drop crumb")) last = GlassVoice.DebugDropCrumb();
-            if (Btn("Crumb eaten")) last = GlassVoice.DebugCrumbEaten();
-            if (Btn("Grant a wish")) last = WishPayoffView.DebugGrant();
-            if (Btn("Gift glow")) last = WishPayoffView.DebugGlow();
             if (Btn("Baby")) last = PeopleView.DebugBaby();
             if (Btn("Bicker")) last = PeopleView.DebugRunIn(true);
             if (Btn("Chat")) last = PeopleView.DebugRunIn(false);

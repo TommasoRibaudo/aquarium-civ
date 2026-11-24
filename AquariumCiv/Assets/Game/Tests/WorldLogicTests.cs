@@ -112,22 +112,6 @@ namespace AquariumCiv.Tests
         }
 
         // ---------- #147: the label ----------
-        [Test]
-        public void TheCrumbsShelfTextNamesTheRealShaping()
-        {
-            var sim = Aged(9, 3, false);
-            var r = new Relic { id = RelicId.SkyCrumb, foundMonth = 1, cause = SimCore.NudgeKind.Herd };
-            sim.State.relics.Add(r);
-            string herd = sim.RelicLabel(RelicId.SkyCrumb);
-            StringAssert.Contains("sent the herd", herd);
-            StringAssert.DoesNotContain("made the trees", herd);
-            r.cause = SimCore.NudgeKind.Rain;
-            StringAssert.Contains("made rain", sim.RelicLabel(RelicId.SkyCrumb));
-            r.cause = "";
-            StringAssert.Contains("shaped the land", sim.RelicLabel(RelicId.SkyCrumb)); // old saves and carried crumbs
-            StringAssert.Contains("fed us", sim.RelicLabel(RelicId.SkyCrumb));           // what it did for the people
-        }
-
         // ---------- #154 ----------
         [Test]
         public void StallsFillWithStockAndAnEmptyStockIsBare()

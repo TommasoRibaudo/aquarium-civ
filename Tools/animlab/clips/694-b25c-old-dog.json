@@ -1,0 +1,31 @@
+{
+ "name": "694-b25c-old-dog",
+ "notes": "B25.c: the old dog (grey over the whole snout and round the eyes) walks slowly to the fire and lies down by it.",
+ "animlab": {
+  "issue": 694
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 4);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return AquariumCiv.View.CampCheats.OldDogNow();",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11.1f) + \" | \" + AquariumCiv.View.CampCheats.DogStatus();",
+   "return AquariumCiv.View.CampCheats.Later(3.0f, () => AquariumCiv.View.CampCheats.DogFire());"
+  ],
+  "warm": 0.5,
+  "seconds": 8,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.4,
+  "yaw": 28,
+  "pitch": 35,
+  "lead": 4.0
+ }
+}

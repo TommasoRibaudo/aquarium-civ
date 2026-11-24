@@ -37,8 +37,11 @@ namespace AquariumCiv.View
         }
 
         static readonly Color SparkRim = new(0.35f, 0.08f, 0.03f), WoodRim = new(0.25f, 0.14f, 0.06f),
-            WaterRim = new(0.05f, 0.22f, 0.45f), GrassRim = new(0.12f, 0.28f, 0.05f), LeafRim = new(0.35f, 0.2f, 0.03f), SoilRim = new(0.2f, 0.12f, 0.06f), SandRim = new(0.95f, 0.85f, 0.65f),
-            SparkRimSand = new(0.22f, 0.04f, 0.02f), WaterRimSand = new(0.02f, 0.12f, 0.34f); // t2-polish: deeper outlines on sand
+            WaterRim = new(0.05f, 0.22f, 0.45f), GrassRim = new(0.12f, 0.28f, 0.05f), LeafRim = new(0.35f, 0.2f, 0.03f), SoilRim = new(0.2f, 0.12f, 0.06f),
+            // batch 3 leftovers [est]: the pale dust on soil (a hoe's stroke in the grass at the camp frame) drew its 1.4x outline near black, so
+            // its 3-4 young blobs read as a dark ring for half a second; a mid brown still edges the cream fill without the black
+            DustRimSoil = new(0.46f, 0.34f, 0.22f), SandRim = new(0.95f, 0.85f, 0.65f),
+            SparkRimSand = new(0.22f, 0.04f, 0.02f), WaterRimSand = new(0.02f, 0.12f, 0.34f), RingRim = new(0.5f, 0.68f, 0.85f); // t2-polish: deeper outlines on sand
 
         /// <summary>The fill and rim (sRGB) for a kind of bit on a ground. False = keep the palette's own colour (it already reads).</summary>
         public static bool Pick(PuffColour c, PuffGround g, out Color fill, out Color rim)
@@ -52,12 +55,13 @@ namespace AquariumCiv.View
                     fill = g == PuffGround.Sand ? new Color(0.4f, 0.25f, 0.12f) : new Color(0.85f, 0.62f, 0.35f); rim = g == PuffGround.Sand ? SandRim : WoodRim; return true; // batch 5: a dark chip on sand gets a pale rim (dark on dark was 0.12 apart)
                 case PuffColour.DrySoil: case PuffColour.WetSoil: case PuffColour.Mud:
                     if (g == PuffGround.Grass) return false;
-                    fill = g == PuffGround.Sand ? new Color(0.5f, 0.36f, 0.22f) : new Color(0.92f, 0.85f, 0.7f); rim = SoilRim; return true;
+                    fill = g == PuffGround.Sand ? new Color(0.5f, 0.36f, 0.22f) : new Color(0.92f, 0.85f, 0.7f); rim = g == PuffGround.Sand ? SoilRim : DustRimSoil; return true;
                 case PuffColour.Ember: fill = new Color(1f, 0.6f, 0.15f); rim = g == PuffGround.Sand ? SparkRimSand : SparkRim; return true; // batch 5: 0.18 off grass (was 0.148)
                 case PuffColour.SparkYellow: fill = new Color(1f, 0.88f, 0.2f); rim = g == PuffGround.Sand ? SparkRimSand : SparkRim; return true;
                 case PuffColour.Gold: fill = new Color(1f, 0.8f, 0.1f); rim = SparkRim; return true;
                 case PuffColour.Water: fill = g == PuffGround.Sand ? new Color(0.78f, 0.92f, 1f) : new Color(0.88f, 0.96f, 1f); rim = g == PuffGround.Sand ? WaterRimSand : WaterRim; return true; // t2-polish: bluer on sand
-                case PuffColour.RingWater: fill = new Color(0.95f, 1f, 1f); rim = WaterRim; return true;
+                case PuffColour.RingWater: fill = new Color(0.95f, 1f, 1f); rim = RingRim; return true; // #692 p3: a pale ring; its band is HitFxMath.RingBand (the rim is not drawn for rings)
+                case PuffColour.RingMud: fill = new Color(0.93f, 0.95f, 0.92f); rim = RingRim; return true; // #692 p3: a puddle's ring is pale too, never brown-black
                 case PuffColour.Grass:
                     fill = g == PuffGround.Sand ? new Color(0.55f, 0.8f, 0.2f) : new Color(0.85f, 0.95f, 0.4f); rim = GrassRim; return true;
                 case PuffColour.Leaf:
@@ -70,10 +74,14 @@ namespace AquariumCiv.View
         /// <summary>t2-polish (batch 5 puffs on sand): the smallest a bit draws, as a share of HitFx.MinPixels. Droplets and sparks are
         /// thin shapes (a teardrop 0.6 wide, a diamond) that read as specks at the camp frame: they keep 1.6x, on sand 2x (pale on pale);
         /// a dust blob's floor is its radius (0.5x); the rest 1x.</summary>
+        public const float DropFloor = 0.6f;
+        /// <summary>A droplet's size (box units at scale 1): the user 2026-11-15 cut it to a third.</summary>
+        public const float DropSize = 0.0055f;
         public static float MinPixelsScale(PuffShape s, PuffGround g) => s switch
         {
             PuffShape.Blob => 0.5f,
-            PuffShape.Drop or PuffShape.Diamond or PuffShape.Star => g == PuffGround.Sand ? 2f : 1.6f,
+            PuffShape.Drop => DropFloor, // the user 2026-11-15: small droplets, no bigger floor (it made every drop a blob at the camp frame)
+            PuffShape.Diamond or PuffShape.Star => g == PuffGround.Sand ? 2f : 1.6f,
             _ => 1f,
         };
 
@@ -86,6 +94,13 @@ namespace AquariumCiv.View
         public const float PopSeconds = 0.12f;
         /// <summary>The pop ring's radius as a share of its full size at <paramref name="since"/> seconds (grows fast, 0 once over).</summary>
         public static float PopRadius01(float since) => since < 0f || since >= PopSeconds ? 0f : Mathf.Lerp(0.55f, 1f, since / PopSeconds);
+
+        /// <summary>Batch 3 leftovers (the tester's dark ring in the grass, the pole-dare shot): the band under the white pop flash was near
+        /// black (0.15, 0.15, 0.2) and 1.5x the flash's line, so a hoe's dust at the camp frame drew a thick black ring for three frames.
+        /// Now a soft mid tone, a little deeper on sand (where the white needs it), and only just wider than the flash [est].</summary>
+        public static Color PopBand(PuffGround g) => g == PuffGround.Sand ? new Color(0.42f, 0.36f, 0.28f) : new Color(0.56f, 0.53f, 0.47f);
+        /// <summary>The band's line as a share of the white flash's (was 1.5).</summary>
+        public const float PopBandLine = 1.15f;
     }
 
     /// <summary>What a spawn may change (all optional; default = the table's numbers).</summary>
@@ -150,7 +165,7 @@ namespace AquariumCiv.View
             PuffKind.Chips => new Row { minBits = 5, maxBits = 7, life = 0.7f, gravity = 3.0f, shrinkFrom = ShrinkFrom },
             PuffKind.Dust => new Row { minBits = 3, maxBits = 4, life = 0.45f, gravity = 0f, shrinkFrom = ShrinkFrom },
             PuffKind.Sparks => new Row { minBits = 5, maxBits = 5, life = 0.35f, gravity = 2.0f, shrinkFrom = ShrinkFrom },
-            PuffKind.Droplets => new Row { minBits = 4, maxBits = 10, life = 0.4f, gravity = 4.0f, shrinkFrom = ShrinkFrom },
+            PuffKind.Droplets => new Row { minBits = 2, maxBits = 4, life = 0.3f, gravity = 4.0f, shrinkFrom = ShrinkFrom }, // the user 2026-11-15: a much smaller splash, fewer drops
             PuffKind.Ring => new Row { minBits = 2, maxBits = 2, life = 0.8f, gravity = 0f, shrinkFrom = ShrinkFrom },
             PuffKind.Grass => new Row { minBits = 4, maxBits = 4, life = 0.4f, gravity = 2.5f, shrinkFrom = ShrinkFrom },
             PuffKind.Leaves => new Row { minBits = 1, maxBits = 3, life = 1.2f, gravity = 0f, shrinkFrom = ShrinkFrom },
@@ -255,7 +270,8 @@ namespace AquariumCiv.View
                     }
                     case PuffKind.Droplets:
                     {
-                        // 0.7–1.1 u/s, cone 35° about up, or aimed at a point (reached in 0.3 s); teardrops 0.016 stretched x1.6 along the velocity.
+                        // The user 2026-11-15 ("the splash is too big and its drops are too big"): 2-4 drops, 0.35-0.55 u/s (a short reach), cone 30°
+                        // about up, or aimed at a point (reached in 0.3 s); teardrops 0.0055 (a third of the old 0.016) stretched x1.6 along the velocity.
                         if (o.hasAim)
                         {
                             const float T = 0.3f;
@@ -266,25 +282,26 @@ namespace AquariumCiv.View
                         else
                         {
                             float yaw = Rng(seed, i, 2, 0f, 360f) * Mathf.Deg2Rad;
-                            float cone = Rng(seed, i, 3, 0f, 35f) * Mathf.Deg2Rad;
-                            float sp = Rng(seed, i, 4, 0.7f, 1.1f) * scale;
+                            float cone = Rng(seed, i, 3, 0f, 30f) * Mathf.Deg2Rad;
+                            float sp = Rng(seed, i, 4, 0.35f, 0.55f) * scale;
                             b.v0 = new Vector3(Mathf.Sin(cone) * Mathf.Sin(yaw), Mathf.Cos(cone), Mathf.Sin(cone) * Mathf.Cos(yaw)) * sp;
                         }
                         b.shape = PuffShape.Drop;
-                        b.size = 0.016f * scale; b.stretch = 1.6f;
+                        b.size = PuffContrast.DropSize * scale; b.stretch = 1.6f;
                         b.colour = o.mud ? PuffColour.Mud : PuffColour.Water;
                         b.lands = true;
                         break;
                     }
                     case PuffKind.Ring:
                     {
-                        // 1–2 flat rings on the water: r 0.03 -> 0.20 (Out), line 0.012 -> 0.004, the 2nd 0.15 s later at 0.7x. Needs no velocity.
+                        // 1–2 flat rings on the water: r 0.03 -> 0.12 (Out), line 0.006 -> 0.002, the 2nd 0.15 s later at 0.7x. Needs no velocity.
+                        // #692 p3 (the user's review: big black discs): a modest ring, r 0.20 -> 0.12, the line halved.
                         float k = i == 0 ? 1f : 0.7f;
                         b.p0 = new Vector3(origin.x, groundY + 0.002f * scale, origin.z);
                         b.v0 = Vector3.zero; b.gravity = 0f;
                         b.shape = PuffShape.Ring;
-                        b.size = 0.03f * scale * k; b.endSize = 0.20f * scale * k;
-                        b.line0 = 0.012f * scale * k; b.line1 = 0.004f * scale * k;
+                        b.size = 0.03f * scale * k; b.endSize = RingEnd * scale * k;
+                        b.line0 = 0.006f * scale * k; b.line1 = 0.002f * scale * k;
                         b.delay = i == 0 ? 0f : 0.15f;
                         b.roll0 = 0f;
                         b.colour = o.mud ? PuffColour.RingMud : PuffColour.RingWater;
@@ -424,7 +441,21 @@ namespace AquariumCiv.View
             return b.shape == PuffShape.Ring ? s : s * Shrink(age, b.life);
         }
 
-        /// <summary>A ring's line width now (u): 0.012 -> 0.004 over its life, gone at the end.</summary>
+        /// <summary>#692 p3: a ring's end radius at scale 1 (u).</summary>
+        public const float RingEnd = 0.12f;
+
+        /// <summary>#692 p3: the line a ring draws with: its own width, at least 1.5 px while it lives, never more than a quarter of the radius
+        /// (so it never closes into a disc).</summary>
+        public static float RingDrawLine(float line, float radius, float perPx, float shrink)
+        {
+            float l = Mathf.Max(line, perPx * 1.5f * shrink);
+            return Mathf.Min(l, radius * 0.25f);
+        }
+
+        /// <summary>#692 p3: the soft band beside a ring: its own pale colour a little bluer, never dark (at least 0.7 of the fill).</summary>
+        public static Color RingBand(Color fill) => new Color(fill.r * 0.72f, fill.g * 0.86f, fill.b * 0.95f, 1f);
+
+        /// <summary>A ring's line width now (u): 0.006 -> 0.002 over its life, gone at the end.</summary>
         public static float Line(in PuffBit b, float age)
         {
             if (age < 0f || age >= b.life) return 0f;

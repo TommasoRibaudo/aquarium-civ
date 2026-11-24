@@ -10,10 +10,15 @@ namespace AquariumCiv.Sim
         public const string SkyCrumb = SimCore.GlassRelic.SkyCrumb, FestivalMask = "festival_mask", KeeperDoll = SimCore.GlassRelic.KeeperDoll,
             LeftSandal = "left_sandal", Lens = SimCore.GlassRelic.Lens;
 
-        public static readonly string[] All = { SkyCrumb, FestivalMask, KeeperDoll, LeftSandal, Lens };
+        /// <summary>#718 (user 2026-11-14: shaping-only text is deleted): three relics. The Sky Crumb and the Lens came only from
+        /// shaping (a living land never shapes); an old save that holds one keeps it in the book with its saved label (<see cref="Legacy"/>).</summary>
+        public static readonly string[] All = { FestivalMask, KeeperDoll, LeftSandal };
 
-        /// <summary>Box 2 pre-ticks these at the era moment (Choice 6 ★): one per stage.</summary>
-        public static readonly string[] DefaultCarried = { SkyCrumb, KeeperDoll, Lens };
+        /// <summary>#718: relics no new box makes; an old save's stay readable.</summary>
+        public static readonly string[] Legacy = { SkyCrumb, Lens };
+
+        /// <summary>Box 2 pre-ticks these at the era moment (Choice 6 ★).</summary>
+        public static readonly string[] DefaultCarried = { KeeperDoll };
     }
 
     /// <summary>One relic of this box. Kept on <see cref="SimState.relics"/>. The Left Sandal is seeded (lost) long before it
@@ -128,7 +133,7 @@ namespace AquariumCiv.Sim
         /// <summary>Raised when a relic is made or found (the view plays its moment).</summary>
         public event Action<Relic> RelicFound;
 
-        const string FlagLampInTown = "lamp-town", FlagTapBack = "tapback";
+
 
         // ---------- queries ----------
         public Relic FindRelic(string id) => State.relics?.FirstOrDefault(r => r.id == id);
@@ -155,34 +160,21 @@ namespace AquariumCiv.Sim
         /// <summary>How often the Keeper did this (an action of <see cref="KeeperAction"/> or a NudgeKind).</summary>
         public int KeeperActionsDone(string action) => State.keeperActions?.FirstOrDefault(a => a.action == action)?.count ?? 0;
 
-        /// <summary>The prop the Keeper Doll would hold now: what the Keeper did most of the five (cloth for wipes, watering
-        /// can, sapling, spade, lantern). Ties go to the earlier of the five; nothing yet = the cloth.</summary>
-        public string DollProp
-        {
-            get
-            {
-                string best = KeeperAction.Wipe;
-                int most = -1;
-                foreach (var a in KeeperAction.WithProp)
-                {
-                    int c = KeeperActionsDone(a);
-                    if (c > most) { most = c; best = a; }
-                }
-                return KeeperAction.PropOf(best);
-            }
-        }
+        /// <summary>The prop the Keeper Doll holds: #718, always the cloth (the shaping props, rain, grove, channel and lamp, are gone).</summary>
+        public string DollProp => KeeperAction.PropOf(KeeperAction.Wipe);
 
         /// <summary>The label in the people's voice (§1; {0} = the Sandal's owner).</summary>
         public string RelicLabel(string id)
         {
             switch (id)
             {
-                case RelicId.SkyCrumb: return $"Sky Bread. Fell when the Bright One {KeeperDid(FindRelic(id)?.cause)}. It fed us all winter. Delicious.";
                 case RelicId.FestivalMask: return "The Sky's Face. Worn at the first village dance. Smiles on one side; the other side was still drying.";
                 case RelicId.KeeperDoll: return "The Keeper. Hands: very large. Eye: always open.";
                 case RelicId.LeftSandal:
-                    return $"The Left Sandal of {Named(FindRelic(id)?.ownerId ?? -1)}. Lost to the stream, found by the Keeper. The right one was never seen again.";
-                case RelicId.Lens: return "The Great Eye-Glass. Through it: a room, a lamp, and something with whiskers.";
+                    return $"The Left Sandal of {Named(FindRelic(id)?.ownerId ?? -1)}. Lost in the mud, found by the Keeper. The right one was never seen again.";
+                // #718: an old save that holds one keeps its label in the book; no new box makes these
+                case RelicId.SkyCrumb: return "Sky Bread. It fed us all winter. Delicious.";
+                case RelicId.Lens: return "The Great Eye-Glass.";
             }
             return "";
         }
@@ -192,25 +184,15 @@ namespace AquariumCiv.Sim
         {
             switch (id)
             {
-                case RelicId.SkyCrumb: return "The old ones say something fell from the sky once…";
                 case RelicId.FestivalMask: return "When the camp becomes a village, there will be dancing.";
                 case RelicId.KeeperDoll: return "Someone should make a likeness of the one who watches.";
                 case RelicId.LeftSandal:
                     var s = FindRelic(id);
                     return s == null ? "Every family has a story about something lost." : $"{Named(s.ownerId)} still talks about that sandal.";
-                case RelicId.Lens: return "If only we could see further than the wall.";
             }
             return "";
         }
 
-        // ---------- the era tag on trait lines (§4) ----------
-        /// <summary>The first era a trait line may be told in: the four that know too much are town-only (stage 3); every
-        /// other line, the stand-ins included, from the camp. (The stand-ins are only told before the town.)</summary>
-        public static Era TraitLineEra(string line) => TownOnlyLines.ContainsKey(line) ? Era.Town : Era.Camp;
-
-        /// <summary>Every trait line with its era tag, and its stand-in before the town where it has one.</summary>
-        public static IEnumerable<(string trait, string line, Era era, string standIn)> TraitLines() =>
-            TraitStories.SelectMany(kv => kv.Value.lines.Select(l => (kv.Key, l, TraitLineEra(l), TownOnlyLines.TryGetValue(l, out var s) ? s : null)));
 
         // ---------- hooks from the rest of the sim ----------
         /// <summary>A Keeper's action (SimCore.cs: wipe, prune; Nudges: every shaping). Counted for the doll.</summary>
@@ -225,19 +207,11 @@ namespace AquariumCiv.Sim
             a.lastMonth = State.month;
         }
 
-        /// <summary>After every shaping (SimCore.Nudges.cs): count it; the Sky Crumb falls with the second; the Lamp in the
-        /// town readies the Lens; after 10 town years any town shaping makes it.</summary>
+        /// <summary>After every shaping (SimCore.Nudges.cs): count it. #718: no shaping makes a relic any more (the Sky Crumb and the Lens are gone).</summary>
         void RelicsOnShaping(Nudge n)
         {
             if (!RelicsOn || n == null) return;
             CountKeeperAction(n.kind, false);
-            if (State.boxIndex == 0 && !HasRelic(RelicId.SkyCrumb) && (State.nudges.Count >= 2 || State.era > Era.Camp)) MakeSkyCrumb(n);
-            if (State.era == Era.Town && !HasRelic(RelicId.Lens))
-            {
-                if (n.kind == NudgeKind.Lamp && !State.storyFlags.Contains(FlagLampInTown)) State.storyFlags.Add(FlagLampInTown);
-                if (State.storyFlags.Contains(FlagLampInTown) && Scholars.Count > 0) MakeLens(n, "lamp");
-                else if (YearsInEra >= Config.lensFallbackYears) MakeLens(n, "fallback");
-            }
         }
 
         /// <summary>The player pruned (SimCore.cs). Some overgrowth must have been cut: weeds never make more finds.</summary>
@@ -272,9 +246,17 @@ namespace AquariumCiv.Sim
         /// tell it; a town tells it only if no earlier "lost" story came (so it is never missable).</summary>
         string SandalLossLine(Notable n)
         {
-            if (!RelicsOn || n == null || FindRelic(RelicId.LeftSandal) != null) return null;
-            return $"{n.FullName} lost a sandal crossing the stream. {n.FullName} has walked a little lopsided, with great dignity, ever since.";
+            if (!SandalLossDue || n == null) return null;
+            return $"{n.FullName} lost a sandal {SandalWhere}. {n.FullName} has walked a little lopsided, with great dignity, ever since.";
         }
+
+        /// <summary>#715: the box's one "lost" story, the Left Sandal's, is still to be told. Read from the chronicle only (not the
+        /// relics switch), so the story stream draws the same with the relics on or off.</summary>
+        bool SandalLossDue => Told("lost") == 0 && FindRelic(RelicId.LeftSandal) == null;
+
+        /// <summary>#715 [est]: where the sandal went, in the land's own words at the source (a living land has no stream; the
+        /// pond only once it holds water).</summary>
+        string SandalWhere => !EcologyOn ? "crossing the stream" : OpenWater ? "in the mud at the pond's edge" : "in the dry hollow";
 
         /// <summary>The Sandal's loss was told: seed the relic (owner, spot) to be found ≥ 20 years later.</summary>
         void SandalLost(Notable n, ChronicleEntry e)
@@ -300,8 +282,7 @@ namespace AquariumCiv.Sim
                     else { s.dollDue = false; MakeDoll(); }
                 }
             }
-            if (CatchingUp) return; // (the Lens's trigger is a standing condition: it fires on the first live step by itself)
-            if (s.era == Era.Town && !HasRelic(RelicId.Lens) && s.storyFlags.Contains(FlagLampInTown) && Scholars.Count > 0) MakeLens(null, "lamp");
+            if (CatchingUp) return;
             QuoteKeeperEntries();
         }
 
@@ -321,9 +302,8 @@ namespace AquariumCiv.Sim
                 var e = c[i];
                 if (!e.keeper || !string.IsNullOrEmpty(e.quote)) continue;
                 var n = State.nudges.FirstOrDefault(x => x.credited && x.answerMonth == e.month && x.buildingId == e.buildingId);
-                string moment = n?.kind == NudgeKind.Rain ? PeopleMoment.Rain : n?.kind == NudgeKind.Lamp ? PeopleMoment.Lamp : null;
-                var q = moment == null ? null : Quote(moment);
-                if (q != null && !c.Any(x => x.quote == q.text)) SetQuote(e, q); // each line once on a card; the view says it again live
+                // #718: the rain and Lamp quotes were shaping-only lines (bank 19, 20, 32): deleted
+                _ = e;
             }
         }
 
@@ -347,34 +327,6 @@ namespace AquariumCiv.Sim
             return r;
         }
 
-        static string KeeperDid(string kind) => kind switch
-        {
-            NudgeKind.Rain => "made rain",
-            NudgeKind.Grove => "planted the grove",
-            NudgeKind.Herd => "sent the herd",
-            NudgeKind.Channel => "dug the channel",
-            NudgeKind.Lamp => "hung the lamp",
-            NudgeKind.Spring => "opened the spring",
-            NudgeKind.Outcrop => "raised the rock",
-            NudgeKind.DyeMeadow => "sowed the dye flowers",
-            _ => "shaped the land",
-        };
-
-        Relic MakeSkyCrumb(Nudge n)
-        {
-            var r = NewRelic(RelicId.SkyCrumb);
-            var taster = Living(HolderOf(LeaderOf(State.era))) ?? WithTrait("the brave") ?? FirstAdult();
-            r.ownerId = r.holderId = taster?.id ?? -1;
-            r.cause = n?.kind ?? "";
-            if (n != null) { r.x = n.x; r.z = n.z; }
-            var fire = FirstOf(BuildingType.Camp);
-            r.buildingId = fire?.id ?? -1; // the last piece rests on a flat stone by the fire
-            var e = RelicLine("relic",
-                $"A piece of bread the size of a hut fell from the sky the year the Keeper {KeeperDid(r.cause)}. {Named(r.ownerId)} tasted it first. The {EraNoun(State.era)} ate well all winter.",
-                0.9f, r.ownerId, r.buildingId);
-            SetQuote(e, Line(9, -1));
-            return Found(r, e);
-        }
 
         Relic MakeMask()
         {
@@ -407,22 +359,6 @@ namespace AquariumCiv.Sim
             return Found(r, e);
         }
 
-        Relic MakeLens(Nudge n, string cause)
-        {
-            var r = NewRelic(RelicId.Lens);
-            var scholar = Scholars.FirstOrDefault() ?? FirstAdult();
-            r.ownerId = r.holderId = scholar?.id ?? -1;
-            r.cause = cause;
-            var lamp = State.nudges.LastOrDefault(x => x.kind == NudgeKind.Lamp) ?? n;
-            if (lamp != null) { r.x = lamp.x; r.z = lamp.z; }
-            else SpotAt(r, FirstOf(BuildingType.Church) ?? FirstOf(BuildingType.Camp));
-            bool light = State.storyFlags.Contains(FlagLampInTown);
-            var e = RelicLine("relic",
-                $"{Named(r.ownerId)} ground a lens from the clearest glass in {Place} and pointed it at {(light ? "the Keeper's light" : "the wall")}. They have not slept since.",
-                0.9f, r.ownerId, r.buildingId);
-            SetQuote(e, Line(33, r.ownerId));
-            return Found(r, e);
-        }
 
         void FindSandal(Relic s)
         {
@@ -511,47 +447,38 @@ namespace AquariumCiv.Sim
 
         /// <summary>The people's lines about the glass (relics-and-glass-voice.md §5), by stage and half. Quotes never say
         /// glass before the Lens; the narrator's card lines may.</summary>
+        // #718: lines 9, 10, 13, 19, 20, 32, 33, 34 and 39 needed the Sky Crumb, the rain and Lamp gifts, the Lens or the tap-back: deleted
         public static readonly BankLine[] LineBank =
         {
             Q(1, 1, 'E', "crowd", PeopleMoment.Wipe, "Not too close. Nobody knows what the sky does when it's poked."),
             Q(2, 1, 'E', "kid", PeopleMoment.Finger, "It's pointing at me! Is it pointing at me?"),
-            Q(3, 1, 'E', "chief", PeopleMoment.Glass, "Nobody touches the edge of the sky. Not you, Pip. Especially not you."),
+            Q(3, 1, 'E', "chief", PeopleMoment.Glass, "Nobody touches the edge of the sky. Not you, {kid}. Especially not you."), // #719 [est]: a living child, else not said
             C(4, 1, 'E', "the worrier", PeopleMoment.Any, "{0} moved the tents back from the edge of the sky. Just a little. Just in case."),
             Q(5, 1, 'E', "crowd", PeopleMoment.Tap, "The sky knocked!"),
             C(6, 1, 'E', "the brave", PeopleMoment.Any, "{0} walked right up to the edge of the sky and touched it. It was cold. {0} is a hero now."),
             Q(7, 1, 'E', "crowd", PeopleMoment.Return, "It's back. Wave, so it knows we're friendly."),
             Q(8, 1, 'E', "elder", PeopleMoment.Away, "The Bright One sleeps. Keep the fire low and the children quiet."),
-            Q(9, 1, 'L', "crowd", PeopleMoment.Crumb, "If the sky drops bread, what else is up there?"),
-            Q(10, 1, 'L', "kid", PeopleMoment.Glass, "Everyone look up. Maybe it'll drop another one."),
             C(11, 1, 'L', "the gossip", PeopleMoment.Any, "{0} swears the Bright One sneezed last spring. Half the camp believes it."),
             C(12, 1, 'L', "the dreamer", PeopleMoment.Any, "{0} dreamt they climbed to the edge of the sky and knocked. Something knocked back."),
-            Q(13, 1, 'L', "chief", PeopleMoment.Evening, "Save the last of the sky bread. One day we'll need to remember it was real."),
             Q(14, 0, '-', "leader", PeopleMoment.Festival, "Dance facing the sky tonight. Let it see us."),
             Q(15, 2, 'E', "kid", PeopleMoment.Finger, "Catch the finger! It went that way!"),
             Q(16, 2, 'E', "crowd", PeopleMoment.Return, "Everyone to the window! The Keeper's looking in."),
-            Q(17, 2, 'E', "priest", PeopleMoment.Glass, "Hats off at the window. Not you, goat."),
+            Q(17, 2, 'E', "priest", PeopleMoment.Glass, "Hats off at the window. Yes, you too."), // #719 [est]
             Q(18, 2, 'E', "headman", PeopleMoment.Evening, "We'll put the new field where the Keeper can see it."),
-            Q(19, 2, 'E', "crowd", PeopleMoment.Rain, "Keeper's rain on the east field. Told you the Keeper liked it."),
-            Q(20, 2, 'E', "farmer", PeopleMoment.Lamp, "The Keeper's light is on the barley. Go and stand in it, it's lovely."),
             C(21, 2, 'E', "the grump", PeopleMoment.Any, "{0} says the Keeper looks in at all hours and it isn't polite. {0} combed their hair anyway."),
             Q(22, 2, 'L', "kid", PeopleMoment.Glass, "I waved and the Keeper waved back. They did, I saw it."),
             Q(23, 2, 'L', "crowd", PeopleMoment.Doll, "The doll's eye is open. That means the Keeper's is too."),
             Q(24, 2, 'L', "kid", PeopleMoment.Play, "Hide! See if the Keeper finds us."),
             C(25, 2, 'L', "the gossip", PeopleMoment.Any, "{0} says the Keeper hums while working. Nobody can prove otherwise."),
             C(26, 2, 'L', "the dreamer", PeopleMoment.Evening, "{0} sat at the window all evening, practising a wink for the Keeper."),
-            Q(27, 2, 'L', "kid", PeopleMoment.Away, "We played Keeper all week. Pip was the hand."),
+            Q(27, 2, 'L', "kid", PeopleMoment.Away, "We played Keeper all week. {kid} was the hand."), // #719 [est]: a living child, else not said
             Q(28, 0, '-', "owner", PeopleMoment.Found, "Lost something? Ask the window."),
             Q(29, 3, 'E', "scholar", PeopleMoment.Glass, "The wall is not sky. It is a thing. Things can be measured."),
             Q(30, 3, 'E', "priest", PeopleMoment.Evening, "The scholars want to measure the Keeper. The priest wants them to ask first."),
             Q(31, 3, 'E', "merchant", PeopleMoment.Any, "If there's a room out there, there's a market out there."),
-            Q(32, 3, 'E', "captain", PeopleMoment.Lamp, "Lanterns lit from the Keeper's light. The night round can start."),
-            Q(33, 3, 'L', "lens maker", PeopleMoment.Lens, "It's glass. Very thick, very clean, very old. I'd like a word with whoever cleans it."),
-            Q(34, 3, 'L', "scholar", PeopleMoment.LensLook, "A lamp out there, and a chair, and something with whiskers."),
             C(35, 3, 'L', "the clever", PeopleMoment.Any, "{0} invented a mirror for signalling the Keeper."),
             C(36, 3, 'L', "the clever", PeopleMoment.Any, "{0} worked out how to tell the time from the glass's shadow."),
             C(37, 3, 'L', "the dreamer", PeopleMoment.Any, "{0} dreamt of a city beyond the glass and drew a map of it."),
-            C(38, 3, 'L', "the gossip", PeopleMoment.Any, "{0} spread a rumour that the Keeper has a cat. It caused quite a stir."),
-            C(39, 3, 'L', "scholar", PeopleMoment.TapBack, "The Keeper knocked {1} times. {0} knocked {1} times back and wrote it down."),
             Q(40, 3, 'L', "priest", PeopleMoment.Any, "The scholars say the Keeper is just very large. I've been saying that for years."),
             Q(41, 3, 'L', "scholar", PeopleMoment.Away, "The room's been dark. We lit a candle in our window, in case the Keeper's looking for the way back."),
             Q(42, 3, 'L', "the dreamer", PeopleMoment.Evening, "The Keeper's room has a window too. So who keeps the Keeper?"),
@@ -565,8 +492,15 @@ namespace AquariumCiv.Sim
         {
             int stage = BeliefStage;
             bool later = BeliefHalfNow == BeliefHalf.Later;
-            return LineBank.Where(l => (!quotesOnly || l.quote) && (l.stage == 0 || (l.stage == stage && (l.half != 'L' || later))));
+            bool kid = BankKid() != null; // #719: a line that names a child is said only when there is one
+            return LineBank.Where(l => (!quotesOnly || l.quote) && (l.stage == 0 || (l.stage == stage && (l.half != 'L' || later)))
+                                       && (kid || !l.text.Contains("{kid}")));
         }
+
+        /// <summary>#719: the child a bank line names ("Not you, {kid}"): the youngest living child of 4 or more (as the "kid" speaker
+        /// picks), not the speaker; null when there is none.</summary>
+        Notable BankKid(int notSpeaker = -1) => State.notables.Where(x => x.alive && x.age < AdultAge && x.age >= 4f && x.id != notSpeaker)
+            .OrderBy(x => x.age).ThenBy(x => x.id).FirstOrDefault();
 
         /// <summary>
         /// A quote for a moment (§5 "When"; <see cref="PeopleMoment"/>) in the people's words for their stage and half, and who
@@ -590,7 +524,8 @@ namespace AquariumCiv.Sim
         }
 
         PeopleQuote Say(BankLine l, int speakerId) =>
-            new PeopleQuote { lineNo = l.no, speakerId = speakerId, text = l.text.Replace("{0}", speakerId >= 0 ? Named(speakerId) : "Someone") };
+            new PeopleQuote { lineNo = l.no, speakerId = speakerId, text = l.text.Replace("{0}", speakerId >= 0 ? Named(speakerId) : "Someone")
+                .Replace("{kid}", (BankKid(speakerId) ?? BankKid())?.name ?? "the little one") };
 
         static void SetQuote(ChronicleEntry e, PeopleQuote q)
         {
@@ -633,53 +568,7 @@ namespace AquariumCiv.Sim
             return true;
         }
 
-        // ---------- the tap-back (Choice 9 ★) ----------
-        static readonly string[] Counts = { "no", "once", "twice", "three", "four", "five", "six", "seven", "eight", "nine", "ten" };
-
-        /// <summary>
-        /// The Keeper tapped the glass <paramref name="taps"/> times. In stage 3's later half (the Lens is up) a scholar taps
-        /// back the same number of times: returns their id (the view plays it), or -1. The first tap-back makes a card.
-        /// </summary>
-        public int KeeperTapped(int taps) => TapBack(taps, false);
-
-        int TapBack(int taps, bool force)
-        {
-            var c = Candidates(taps, force);
-            if (c.Count == 0) return -1;
-            CreditTapBack(c[0], taps);
-            return c[0];
-        }
-
-        List<int> Candidates(int taps, bool force)
-        {
-            var list = new List<int>();
-            if (!RelicsOn || taps <= 0) return list;
-            if (!force && (BeliefStage < 3 || BeliefHalfNow != BeliefHalf.Later)) return list;
-            list.AddRange(Scholars.Select(n => n.id));
-            if (list.Count == 0 && force && FirstAdult() is Notable a) list.Add(a.id);
-            return list;
-        }
-
-        /// <summary>Who could tap back after the Keeper's <paramref name="taps"/> taps (the scholars, in order), with no side
-        /// effects: the view stages one (<c>LifePlanner.AnswerKnock</c>) and credits it with <see cref="CreditTapBack"/> only
-        /// when it really plays. Empty before stage 3's later half.</summary>
-        public List<int> TapBackCandidates(int taps) => Candidates(taps, false);
-
-        /// <summary>A tap-back played: the first one makes the chronicle card (tester batch 2: never before it is seen).</summary>
-        public void CreditTapBack(int scholarId, int taps)
-        {
-            var scholar = FindNotable(scholarId);
-            if (scholar == null || taps <= 0) return;
-            if (!State.storyFlags.Contains(FlagTapBack))
-            {
-                State.storyFlags.Add(FlagTapBack);
-                string n = taps < Counts.Length ? Counts[taps] : taps.ToString();
-                string text = taps == 1 ? $"The Keeper knocked once. {scholar.FullName} knocked once back and wrote it down."
-                    : taps == 2 ? $"The Keeper knocked twice. {scholar.FullName} knocked twice back and wrote it down."
-                    : LineBank.First(l => l.no == 39).text.Replace("{0}", scholar.FullName).Replace("{1}", n);
-                RelicLine("tapback", text, 0.6f, scholar.id, -1);
-            }
-        }
+        // #718 (the user, 2026-11-14: the text only shaping makes is deleted): the tap-back (Choice 9) is gone with the Lens.
 
         // ---------- the era moment's pick ----------
         /// <summary>Carry a found relic to the next box (the era moment's pick of 3; #86's CompleteBox calls this). False if
@@ -731,10 +620,8 @@ namespace AquariumCiv.Sim
             {
                 switch (id)
                 {
-                    case RelicId.SkyCrumb: return MakeSkyCrumb(State.nudges.LastOrDefault());
                     case RelicId.FestivalMask: return MakeMask();
-                    case RelicId.KeeperDoll: return MakeDoll();
-                    case RelicId.Lens: return MakeLens(null, "debug");
+                    case RelicId.KeeperDoll: return MakeDoll(); // #718: the Sky Crumb and the Lens are gone (null)
                     case RelicId.LeftSandal:
                         var s = FindRelic(id) ?? DebugLoseSandal();
                         if (s == null) return null;
@@ -753,7 +640,7 @@ namespace AquariumCiv.Sim
             if (existing != null) return existing;
             var n = State.notables.Where(x => x.alive && x.age >= AdultAge).OrderByDescending(x => x.age).ThenBy(x => x.id).FirstOrDefault();
             if (n == null) return null;
-            var e = RelicLine("lost", $"{n.FullName} lost a sandal crossing the stream. {n.FullName} has walked a little lopsided, with great dignity, ever since.", 0.6f, n.id, -1);
+            var e = RelicLine("lost", $"{n.FullName} lost a sandal {SandalWhere}. {n.FullName} has walked a little lopsided, with great dignity, ever since.", 0.6f, n.id, -1);
             SandalLost(n, e);
             return FindRelic(RelicId.LeftSandal);
         }
@@ -777,8 +664,5 @@ namespace AquariumCiv.Sim
             if (later) GlassRelicFound(relic);
             else State.storyFlags.Remove("relic:" + relic);
         }
-
-        /// <summary>Debug: a scholar (or any adult) taps back now, whatever the stage. Returns who, or -1.</summary>
-        public int DebugTapBack(int taps = 3) => TapBack(taps, true);
     }
 }

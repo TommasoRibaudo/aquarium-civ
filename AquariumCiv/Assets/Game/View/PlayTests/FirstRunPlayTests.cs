@@ -274,7 +274,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual(FirstRunStep.Rain, View.Step);
                 Assert.IsFalse(View.NameSheetOpen);
 
-                // Rain: the wish bubble, the button, the ground.
+                // Rain: the button, the ground.
                 yield return new WaitForSecondsRealtime(2f);
                 yield return Shot("5_rain_hint");
                 yield return TapAt(GameUiPanel.ScreenCenter(View.Root, "firstrun-rain"));
@@ -377,14 +377,14 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsTrue(File.Exists(savePath));
 
                 // "Kill": drop the scene and every view, then open the box again from the save.
-                var wishId = View.Run.RainWish?.id ?? -1;
+                var asked = Sim.State.firstRun.rainNotableId;
                 yield return LoadScene();
                 Assert.IsFalse(GameClock.Instance.Session.newWorld, "the second open loads the save");
                 Assert.IsNotNull(View);
                 Assert.IsTrue(View.Active, "the run resumes");
                 Assert.AreEqual(FirstRunStep.Rain, View.Step, "at the rain step, not the start");
                 Assert.AreEqual("Lanternfold", Sim.PlaceName);
-                Assert.AreEqual(wishId, View.Run.RainWish?.id ?? -1, "with the same wish");
+                Assert.AreEqual(asked, Sim.State.firstRun.rainNotableId, "for the same person");
                 yield return new WaitForSecondsRealtime(2.5f);
                 Assert.IsTrue(View.Root.Q("firstrun-rain").resolvedStyle.display == DisplayStyle.Flex, "the rain button is up");
                 Assert.AreEqual("rain-tap", View.ShownHintId, "and the finger points at it");

@@ -1,0 +1,27 @@
+{
+ "name": "692-b47b-reed-whistle",
+ "notes": "B47.b: a kid blows a reed held like a flute; the other kids come to listen.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 3);",
+   "return AquariumCiv.View.CampCheats.PondReady();",
+   "return AquariumCiv.View.CampCheats.PondReady();",
+   "return AquariumCiv.View.CampCheats.ReedsReady();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.ReedWhistle());"
+  ],
+  "warm": 0.5,
+  "seconds": 9,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.5,
+  "yaw": 28,
+  "pitch": 38,
+  "lead": 2.0
+ }
+}

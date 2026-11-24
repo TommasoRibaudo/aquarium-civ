@@ -88,6 +88,7 @@ namespace AquariumCiv.Sim
             if (!string.IsNullOrEmpty(def.needsBuilding) && !Has(def.needsBuilding)) return false;
             if (!string.IsNullOrEmpty(def.needsCustom) && !HasCustom(def.needsCustom)) return false;
             if (def.needsApart && (ApartOf(d)?.members.All(n => !n.alive) ?? true)) return false;
+            if (!string.IsNullOrEmpty(def.needsProp) && !ConsequenceProps.Any(p => p.kind == def.needsProp && p.placed)) return false; // 2026-11-16: the goat's line needs its pen
             return true;
         }
 
@@ -103,7 +104,8 @@ namespace AquariumCiv.Sim
             if (string.IsNullOrEmpty(raw)) return null; // no fallback: dropped quietly
             string label = DilemmaText(ddef.options[c.option].label, d);
             string credit = (d.state == DilemmaState.Answered ? "Because the Keeper chose " : "Because the people chose ") + label;
-            string text = DilemmaText(raw, d).Replace("{chosen}", label);
+            string text = DilemmaText(raw, d).Replace("{chosen}", label)
+                .Replace("{seats}", (1 + (int)((State.month - d.endMonth) / SimConfig.MonthsPerYear)).ToString()); // #721: one seat a year since the first feast
             if (raw.Contains("{credit}")) text = text.Replace("{credit}", credit);
             else text = credit + ", " + (raw.StartsWith("{") || text.Length == 0 ? text : char.ToLowerInvariant(text[0]) + text.Substring(1));
             int person = Alive(d.PersonOf(c.option)) != null ? d.PersonOf(c.option) : Alive(d.personA) != null ? d.personA : Alive(d.personB) != null ? d.personB : -1;

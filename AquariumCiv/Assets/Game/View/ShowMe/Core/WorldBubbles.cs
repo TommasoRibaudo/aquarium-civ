@@ -58,6 +58,10 @@ namespace AquariumCiv.View.ShowMe
         /// getting up".</summary>
         public HeldMoment HeldNow { get; set; }
 
+        /// <summary>#717: the Keeper's pick is telling tonight's story now (their notable id, -1 = nobody): they say their manner's lines
+        /// (<see cref="PeopleVoice.TellerLines"/>) before anything else.</summary>
+        public int TellerNow { get; set; } = -1;
+
         public WorldBubbles(SimCore sim, BubbleRules rules = null)
         {
             this.sim = sim ?? throw new ArgumentNullException(nameof(sim));
@@ -184,10 +188,18 @@ namespace AquariumCiv.View.ShowMe
         {
             if (HeldNow != null)
             {
-                var lines = PeopleVoice.MomentLines(HeldNow.kind, HeldNow.personA, HeldNow.personB);
+                var lines = PeopleVoice.MomentLines(HeldNow.kind, HeldNow.personA, HeldNow.personB,
+                    HeldNow.kind == MomentKind.Ritual ? sim.RitualOfEntry(HeldNow.entryId) : null, PeopleVoice.KeeperName(sim), sim.State.era); // #721, #719
                 for (int i = 0; i < lines.Count; i++)
                     yield return Make($"held:{HeldNow.id}:{i}", lines[i].text, lines[i].speaker, BubbleSource.Moment, -1, 0);
                 yield break;
+            }
+            // #717: the picked teller's lines while they tell it (one telling, one evening: the key carries the month).
+            if (TellerNow >= 0)
+            {
+                var tl = PeopleVoice.TellerLines(sim.State.storyTellerManner, sim.WoodpileStands);
+                for (int i = 0; i < tl.Count; i++)
+                    yield return Make($"teller:{sim.State.storyTellerMonth}:{i}", tl[i], TellerNow, BubbleSource.Moment, -1, 0);
             }
             // 1. What's happening now, in this stage's words.
             if (!string.IsNullOrEmpty(moment) && moment != PeopleMoment.Any)
@@ -208,9 +220,15 @@ namespace AquariumCiv.View.ShowMe
             {
                 var e = chron[i];
                 if (e.month < from) break;
-                if (e.salience < rules.storyMinSalience || !SimCore.ShownAsCard(e)) continue;
-                if (!string.IsNullOrEmpty(e.quote))
-                    yield return Make($"entry:{e.id}:q", e.quote, e.speakerId, BubbleSource.StoryQuote, e.id, 0);
+                if (e.salience < rules.storyMinSalience || sim.MomentHidesCard(e)) continue; // a ceremony watched live tells itself
+                if (SimCore.ShownAsCard(e))
+                {
+                    // #719: one telling per story. A carded story's bubble is its card quote, if it has one; never the story voice too.
+                    if (!string.IsNullOrEmpty(e.quote))
+                        yield return Make($"entry:{e.id}:q", e.quote, e.speakerId, BubbleSource.StoryQuote, e.id, 0);
+                    continue;
+                }
+                // History-only lines (never a card): the one it is about says it in their own words.
                 var v = PeopleVoice.StoryLine(sim, e);
                 if (v != null) yield return Make($"entry:{e.id}:v", v.text, v.speakerId, BubbleSource.StoryVoice, e.id, 0);
             }

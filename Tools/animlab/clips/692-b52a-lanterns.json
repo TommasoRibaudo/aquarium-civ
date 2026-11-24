@@ -1,0 +1,35 @@
+{
+ "name": "692-b52a-lanterns",
+ "notes": "B52.a: at dusk the lamplighter walks tent to tent with a burning stick and reaches up to each tent's lantern: the lights come on one after another.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(18.0f, 2);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(18.0f) + \" | \" + AquariumCiv.View.DayLightDriver.Status();",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return AquariumCiv.View.DayLightDriver.DebugPauseClock(true);",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.LightLanterns());"
+  ],
+  "warm": 0.5,
+  "seconds": 12,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 38,
+  "lead": 2.5
+ }
+}

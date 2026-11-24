@@ -15,62 +15,19 @@ namespace AquariumCiv.Sim
         // One-off firsts, kept in storyFlags.
         const string FlagWedding = "wedding", FlagSnow = "snow", FlagNamed = "named";
 
-        /// <summary>Trait incidents: {0} = the person, {1} = a building with a roof, {2} = the era noun (camp, village, town),
-        /// {3} = what the people call the Keeper ("the Bright One" in the camp). Two lines each, told in turn (#61), so a
-        /// long life doesn't repeat itself.</summary>
-        static readonly Dictionary<string, (string kind, float salience, string[] lines)> TraitStories = new()
+        // #715 (research 21, user 2026-11-14 "drop them"): the trait stories, the weather (storm, rainbow, fog, drought, bumper),
+        // lost in the hills, the strange light, the tavern sheep and the old ducks are gone from the stream: none of them was seen
+        // in the box or remembered. Old saves keep their entries. New events that are seen replace them (research 21 §7).
+
+        /// <summary>#715: the story kinds the stream no longer tells. An old save's entries of these stay in History, but never title an era.</summary>
+        public static readonly string[] DroppedStoryKinds =
         {
-            ["the tinkerer"] = ("invention", 0.62f, new[] { "{0} invented a bucket that pours itself.", "{0} built a wheelbarrow with five wheels. It mostly works." }),
-            ["the clever"] = ("invention", 0.62f, new[] { "{0} invented a mirror for signalling the Keeper.", "{0} worked out how to tell the time from the glass's shadow." }),
-            ["the singer"] = ("song", 0.5f, new[] { "{0} wrote a song about the Keeper's giant thumb. Everyone hums it now.", "{0} sang at the {1} until the rafters shook." }),
-            ["the joker"] = ("prank", 0.52f, new[] { "{0} painted the {1} roof bright pink overnight.", "{0} hid every spoon in the {2} inside the {1}." }),
-            ["the gardener"] = ("giant_turnip", 0.55f, new[] { "{0} grew a turnip the size of a sheep. It fed the whole {2} for a week.", "{0} planted flowers around the {1}. The bees approve." }),
-            ["the brave"] = ("brave", 0.5f, new[] { "{0} chased a fox away from the hens with a frying pan.", "{0} climbed the {1} roof in a storm to save a kitten." }),
-            ["the stubborn"] = ("stubborn", 0.48f, new[] { "{0} refused to move for the new path. The path now goes around them.", "{0} insisted the {1} was built backwards. It wasn't." }),
-            ["the worrier"] = ("worrier", 0.45f, new[] { "{0} built a little fence around the pond, just in case.", "{0} counted the people of the {2} twice a day for a month." }),
-            ["the gossip"] = ("gossip", 0.5f, new[] { "{0} spread a rumour that the Keeper has a cat. It caused quite a stir.", "{0} knew about the wedding before the couple did." }),
-            ["the grump"] = ("grump", 0.45f, new[] { "{0} complained about the noise from the {1} for a whole season.", "{0} said the harvest festival was too loud, then danced all night." }),
-            ["the dreamer"] = ("dreamer", 0.55f, new[] { "{0} dreamt of a city beyond the glass and drew a map of it.", "{0} spent a summer trying to talk to the clouds." }),
-            ["the lazy"] = ("lazy", 0.45f, new[] { "{0} napped through the entire harvest. Nobody had the heart to wake them.", "{0} invented a hammock. It was their only invention." }),
-            ["the kind"] = ("kind", 0.5f, new[] { "{0} took in a stray goat. It follows them everywhere now.", "{0} baked bread for every hearth after the storm." }),
-            ["the loud"] = ("loud", 0.45f, new[] { "{0} sneezed so hard the birds left every tree in the {2}.", "{0} called the goats home from the far side of the glass." }),
+            "storm", "rainbow", "fog", "drought", "bumper", "strange_light", "sheep", "ducks",
+            "invention", "song", "prank", "giant_turnip", "brave", "stubborn", "worrier", "gossip", "grump", "dreamer", "lazy", "kind", "loud",
         };
 
-        /// <summary>
-        /// Lines that know too much for the camp and village (chronicle-and-history.md §5.1, relics-and-glass-voice.md §4):
-        /// town-only (stage 3). Before the town each is told as its stand-in, so every trait keeps two lines. The swap
-        /// happens after the dice: the story stream draws exactly as before (same options, weights and picks), so storms,
-        /// droughts and harvests land where they did and the economy can't move. Wording waits on the user: plain strings.
-        /// </summary>
-        static readonly Dictionary<string, string> TownOnlyLines = new()
-        {
-            ["{0} invented a mirror for signalling the Keeper."] =
-                "{0} made a stick that throws a shadow, and now everyone knows when lunch is.",
-            ["{0} worked out how to tell the time from the glass's shadow."] =
-                "{0} invented a better basket. It holds slightly more berries and everyone is very impressed.",
-            ["{0} spread a rumour that the Keeper has a cat. It caused quite a stir."] =
-                "{0} swears {3} sneezed last spring. Half the {2} believes it.",
-            ["{0} dreamt of a city beyond the glass and drew a map of it."] =
-                "{0} dreamt they climbed to the edge of the sky and knocked. Something knocked back.",
-        };
-
-        /// <summary>The strange light, before and after the Keeper's Lamp has been used (relics-and-glass-voice.md §4).</summary>
-        static readonly string[] StrangeLightLamp =
-        {
-            "A strange warm light crossed the sky. Some say it was the Keeper's lamp.",
-            "The Keeper's lamp swung across the sky again. The children ran along underneath it.",
-        };
-        /// <summary>Before the Lamp: {0} = what the people call the Keeper (#61: "the Bright One" only in the camp).</summary>
-        static readonly string[] StrangeLightEarly =
-        {
-            "A strange warm light crossed the sky. Some say {0} was looking for something.",
-            "The strange warm light came back and lingered over the pond. Some say {0} had dropped something small.",
-        };
+        /// <summary>The Lamp's flag: its story is gone (#715, #718), the flag stays so an old save's storyFlags still read.</summary>
         public const string FlagLampUsed = "lamp-used";
-
-        /// <summary>A trait line as told in this era: the town-only ones become their stand-ins before the town.</summary>
-        string EraLine(string line) =>
-            CardsOn && State.era < Era.Town && TownOnlyLines.TryGetValue(line, out var early) ? early : line;
 
         /// <summary>What the people call the Keeper in this era (relics-and-glass-voice.md §2): the Bright One in the camp.</summary>
         string KeeperWord => State.era == Era.Camp ? "the Bright One" : "the Keeper";
@@ -85,14 +42,6 @@ namespace AquariumCiv.Sim
         }
 
         static string Nth(string[] lines, int n) => lines[n % lines.Length];
-
-        /// <summary>The thing found, unless this person found just that last time (#61: the same pebble came back twice). The
-        /// drawn thing still decides it, so the dice are untouched.</summary>
-        string FoundNext(string drawn, int who)
-        {
-            var last = State.chronicle.LastOrDefault(e => e.kind == "lost" && e.notableId == who);
-            return last != null && last.text.Contains(drawn) ? FoundThings[(Array.IndexOf(FoundThings, drawn) + 1) % FoundThings.Length] : drawn;
-        }
 
         /// <summary>The drawn quarrel, unless these two fell out over just that last time (#61: the same pair fell out over
         /// the same song lyric twice). The draw still decides it; no dice.</summary>
@@ -110,61 +59,43 @@ namespace AquariumCiv.Sim
         string QuarrelAgainRaw(string drawn, int a, int b)
         {
             var last = State.chronicle.LastOrDefault(e => e.kind == "rivalry" && Pair(e, a, b));
-            return last != null && last.text.Contains($"over {QuarrelIn(drawn)}.") ? Quarrels[(Array.IndexOf(Quarrels, drawn) + 1) % Quarrels.Length] : drawn;
+            // #715: also the last time they fell out in this order (as told, a first), and the flag when the History prune dropped the line
+            var sameOrder = State.chronicle.LastOrDefault(e => e.kind == "rivalry" && e.notableId == a && e.otherNotableId == b);
+            string lastText = last == null ? LastQuarrel(a, b) : last.text + " | " + (sameOrder?.text ?? "");
+            if (lastText == null) return drawn;
+            // #715: compare what would be said (gated, in this era's words), and step on until it differs from last time
+            int at = Array.IndexOf(Quarrels, drawn);
+            for (int i = 0; i < Quarrels.Length; i++)
+            {
+                string q = Quarrels[(at + i) % Quarrels.Length];
+                if (!lastText.Contains($"over {QuarrelIn(QuarrelGated(q))}.")) return q;
+            }
+            return drawn;
+        }
+
+        static string QuarrelKey(int a, int b) => $"quarrel:{Math.Min(a, b)}-{Math.Max(a, b)}=";
+
+        /// <summary>#715: the last subject this pair fell out over, kept in storyFlags (text only, no dice).</summary>
+        void RememberQuarrel(int a, int b, string over)
+        {
+            string key = QuarrelKey(a, b);
+            State.storyFlags.RemoveAll(f => f.StartsWith(key));
+            State.storyFlags.Add(key + $"over {over}.");
+        }
+
+        string LastQuarrel(int a, int b)
+        {
+            string key = QuarrelKey(a, b);
+            var f = State.storyFlags.LastOrDefault(x => x.StartsWith(key));
+            return f?.Substring(key.Length);
         }
 
         /// <summary>A quarrel subject as said in this era: the camp has no well (#61).</summary>
-        string QuarrelIn(string q) => State.era == Era.Camp && q == "whose turn it was at the well" ? "whose turn it was to fetch water" : q;
+        string QuarrelIn(string q) => State.era != Era.Camp ? q
+            : q == "whose turn it was at the well" ? "whose turn it was to fetch water"
+            : q == "where the new path should go" ? "a tent peg" : q; // #715: the camp's own words, at the source (no LandWords swap)
 
-        // World events told in turn (#61): the first wording first, then the others, so a box doesn't read the same sentence
-        // every time the ducks come back. {0} = a person or a building, {1} = the era noun. The dice are drawn as before.
-        static readonly string[] StormLines =
-        {
-            "A great storm rattled the glass. The people huddled together in the {0}.",
-            "Thunder rolled round the glass all night. Everyone squeezed into the {0} and told stories till it passed.",
-            "A storm shook the glass. By morning the {0} smelled of wet dog, and everyone was fine.",
-        };
-        static readonly string[] RainbowLines =
-        {
-            "A rainbow arched over the pond. Nobody worked that afternoon.",
-            "A double rainbow hung inside the glass. The children argued all afternoon about where it ended.",
-            "A rainbow came down right by the pond. Everyone went to look for the end of it and found mud.",
-        };
-        static readonly string[] FogLines =
-        {
-            "Fog filled the glass for a week. {0} walked into the same tree four times.",
-            "A thick fog sat in the glass for days. {0} said good morning to a bush.",
-            "Fog rolled in and stayed. {0} found the way home by following the smell of supper.",
-        };
-        static readonly string[] DroughtLines =
-        {
-            "A dry summer: the stream ran low and everyone shared their water.",
-            "The pond shrank all summer. The whole {1} learned to wash in one bucket.",
-            "A long dry spell. The people carried water up from the pond in a line, singing to keep time.",
-        };
-        static readonly string[] BumperLines =
-        {
-            "The best harvest anyone can remember. The granary door wouldn't close.",
-            "Another fine harvest: there were turnips in places turnips have no business being.",
-            "A harvest so big the {1} ran out of baskets and started using hats.",
-        };
-        static readonly string[] CampBumperLines =
-        {
-            "The best gathering anyone can remember. The baskets ran out before the berries did.",
-            "The bushes bent double with berries. Everyone had purple fingers for a month.",
-        };
-        static readonly string[] DuckLines =
-        {
-            "A family of ducks moved into the pond and took charge of it.",
-            "The ducks had ducklings. The pond is theirs now; the people are allowed to visit.",
-            "A second family of ducks arrived and fell out with the first. The pond is split down the middle.",
-        };
-        static readonly string[] SheepLines =
-        {
-            "A sheep wandered into the tavern and refused to leave. It has a stool now.",
-            "The tavern sheep had a lamb. The lamb has a stool too.",
-            "The tavern sheep is old now and gets the warm seat by the fire. Nobody argues with it.",
-        };
+        // Told in turn (#61): the first wording first, then the others, so a box doesn't read the same sentence twice running.
         static readonly string[] ElderLines =
         {
             "{0}, now the eldest, told the founding story to the children all winter.",
@@ -175,20 +106,20 @@ namespace AquariumCiv.Sim
         {
             "{0} and {1} made up over a pot of stew. The whole {2} sighed with relief.",
             "{0} and {1} are friends again. Nobody is sure who said sorry first.",
-            "{0} and {1} made peace while looking for the same lost goat. They found it together.",
+            "{0} and {1} made peace while looking for the same lost basket. They found it together.", // #715 [est]: no goat
         };
         /// <summary>P8: a living-land camp has no harvest to celebrate yet; the feast is at the fire.</summary>
-        internal static readonly string[] CampFestivalLines =
+        public static readonly string[] CampFestivalLines =
         {
             "{0} called everyone to the fire for a feast. There was dancing until dawn.",
             "{0} stoked the fire high for a feast. The food ran out long before the singing did.",
-            "{0} gathered the tribe round the fire. Someone danced with a goat, and the goat led.",
+            "{0} gathered the tribe round the fire. Someone danced with a ladle, and the ladle led.", // #715 [est]
         };
-        internal static readonly string[] FestivalLines =
+        public static readonly string[] FestivalLines =
         {
             "{0} threw a harvest festival. There was dancing until dawn.",
-            "{0} threw a harvest festival. The pies ran out long before the music did.",
-            "{0} threw a harvest festival. Someone danced with a goat, and the goat led.",
+            "{0} threw a harvest festival. The bread ran out long before the music did.", // #715 [est]: no pies
+            "{0} threw a harvest festival. Someone danced with a ladle, and the ladle led.", // #715 [est]
         };
 
         /// <summary>The building a story happens in or on: one with a roof (#61: nobody huddles in a well or climbs a field's
@@ -215,13 +146,20 @@ namespace AquariumCiv.Sim
             if (!State.storyFlags.Contains(FlagLampUsed)) State.storyFlags.Add(FlagLampUsed);
         }
 
-        static readonly string[] FoundThings =
+        // #715 [est]: no goat and no fence post in a box that has neither (research 21): the stew, and where the path goes.
+        /// <summary>The snow line's second sentence, by who is there to catch it: two kids, one kid, or only grown-ups (no dice).</summary>
+        string SnowKidClause()
         {
-            "a shiny pebble nobody can explain", "a very old boot", "a jar of honey", "a crown made of twigs",
-            "a feather as long as an arm", "a song nobody had heard before",
-        };
-        static readonly string[] Quarrels = { "a goat", "whose turn it was at the well", "the best way to bake bread", "a fence post", "a song lyric" };
+            int kids = KidCount;
+            if (kids >= 2) return "The children tried to catch it.";
+            if (kids == 1) return State.notables.Any(n => n.alive && n.age < 3f) ? "The baby stared at it." : "The little one tried to catch it.";
+            return "Everyone stood with their hands out to catch it.";
+        }
+
+        static readonly string[] Quarrels = { "the last of the stew", "whose turn it was at the well", "the best way to bake bread", "where the new path should go", "a song lyric" };
         static readonly string[] FriendReasons = { "a long night of storytelling", "sharing the last apple", "fixing a roof together", "a snowball fight" };
+        /// <summary>#720: the living land's camp (tents, no apple trees): the same reasons, in its own words (same count: the same dice).</summary>
+        static readonly string[] FriendReasonsCamp = { "a long night of storytelling", "sharing the last of the basket", "fixing a tent together", "a snowball fight" };
         static readonly string[] PlaceNames = { "Glasswick", "Brightmere", "Little Hollow", "Keepersend", "Pebbleford", "Dewmoor", "Lanternfold" };
 
         void StoryStep(int season, bool winter)
@@ -245,7 +183,7 @@ namespace AquariumCiv.Sim
             if (winter && !s.storyFlags.Contains(FlagSnow) && year >= 2 && r.Chance(0.25f))
             {
                 s.storyFlags.Add(FlagSnow);
-                Chronicle("snow", "Snow fell inside the glass for the first time. The children tried to catch it.", 0.6f);
+                Chronicle("snow", "Snow fell inside the glass for the first time. " + SnowKidClause(), 0.6f);
             }
 
             if (!r.Chance(Config.storyChancePerMonth)) return;
@@ -264,13 +202,15 @@ namespace AquariumCiv.Sim
             if (mates.a != null) Add(1f, () =>
             {
                 mates.a.friendId = mates.b.id; mates.b.friendId = mates.a.id;
-                Chronicle("friendship", $"{mates.a.FullName} and {mates.b.FullName} became fast friends after {Pick(r, FriendReasons)}.", 0.5f, mates.a.id, mates.b.id);
+                Chronicle("friendship", $"{mates.a.FullName} and {mates.b.FullName} became fast friends after {Pick(r, EcologyOn && State.era == Era.Camp ? FriendReasonsCamp : FriendReasons)}.", 0.5f, mates.a.id, mates.b.id);
             });
             var foes = PickPair(r, adults, (a, b) => a.rivalId < 0 && b.rivalId < 0 && a.friendId != b.id && a.partnerId != b.id);
             if (foes.a != null) Add(0.9f, () =>
             {
                 foes.a.rivalId = foes.b.id; foes.b.rivalId = foes.a.id;
-                Chronicle("rivalry", $"{foes.a.FullName} and {foes.b.FullName} fell out over {QuarrelIn(QuarrelAgain(Pick(r, Quarrels), foes.a.id, foes.b.id))}. They no longer share a bench.", 0.58f, foes.a.id, foes.b.id);
+                string over = QuarrelIn(QuarrelAgain(Pick(r, Quarrels), foes.a.id, foes.b.id));
+                RememberQuarrel(foes.a.id, foes.b.id, over);
+                Chronicle("rivalry", $"{foes.a.FullName} and {foes.b.FullName} fell out over {over}. They no longer share a fire.", 0.58f, foes.a.id, foes.b.id);
             });
             var feuding = adults.FirstOrDefault(n => n.rivalId >= 0 && Alive(n.rivalId) != null);
             if (feuding != null) Add(0.5f, () =>
@@ -291,53 +231,19 @@ namespace AquariumCiv.Sim
             if (eldest != null && eldest.age >= Config.eldestStoryAge && winter) Add(0.5f, () =>
                 Chronicle("elder", string.Format(Nth(ElderLines, Told("elder", eldest.id) + eldest.id), eldest.FullName), 0.55f, eldest.id));
 
-            // ---- one person, by trait (each person tells each kind of story at most once in 15 years) ----
-            foreach (var n in adults)
-            {
-                var who = n;
-                if (!TraitStories.TryGetValue(n.trait, out var t) || !Fresh(t.kind, who.id, 15)) continue;
-                Add(0.5f, () =>
-                {
-                    var b = Roofed(RandomBuilding(r));
-                    _ = Pick(r, t.lines); // drawn as before, so the story stream never moves; the lines are told in turn (#61)
-                    string line = t.lines[(Told(t.kind, who.id) + who.id) % t.lines.Length];
-                    var e = Chronicle(t.kind, string.Format(EraLine(line), who.FullName, Label(b), EraNoun(s.era), KeeperWord), t.salience, who.id);
-                    if (t.lines.Any(l => l.Contains("{1}"))) e.buildingId = b?.id ?? -1;
-                });
-            }
-            if (adults.Count > 0 && Fresh("lost", -1, 6)) Add(0.6f, () =>
+            // ---- the first loss: the Left Sandal (SimCore.Relics.cs, #74), found 20 years later. #715: no other "lost in the hills".
+            if (adults.Count > 0 && SandalLossDue && Fresh("lost", -1, 6)) Add(0.6f, () =>
             {
                 var n = Pick(r, adults);
-                string thing = FoundNext(Pick(r, FoundThings), n.id); // drawn as before
-                string sandal = SandalLossLine(n); // the box's first "lost" story is the Left Sandal's (SimCore.Relics.cs, #74)
-                var lost = Chronicle("lost", sandal ?? $"{n.FullName} got lost in the hills for three days and came back with {thing}.", 0.6f, n.id);
-                if (sandal != null) SandalLost(n, lost);
+                string sandal = SandalLossLine(n);
+                if (sandal == null) return;
+                var e = Chronicle("lost", sandal, 0.6f, n.id);
+                if (RelicsOn) SandalLost(n, e); // the relic waits to be found 20 years later; with the relics off it is only the story
             });
 
-            // ---- the world ----
-            if (Fresh("storm", -1, 6)) Add(0.6f, () =>
-            {
-                var b = Roofed(RandomBuilding(r));
-                s.mood = Math.Max(0f, s.mood - 0.05f);
-                Chronicle("storm", b != null ? string.Format(Nth(StormLines, Told("storm")), Label(b)) : "A great storm rattled the glass.", 0.5f).buildingId = b?.id ?? -1;
-            });
-            if (!winter && Fresh("rainbow", -1, 8)) Add(0.5f, () => { s.mood = Math.Min(1f, s.mood + 0.05f); Chronicle("rainbow", Nth(RainbowLines, Told("rainbow")), 0.42f); });
-            if (Fresh("fog", -1, 8)) Add(0.4f, () =>
-            {
-                var n = adults.Count > 0 ? Pick(r, adults) : null;
-                Chronicle("fog", n != null ? string.Format(Nth(FogLines, n == null ? 0 : Told("fog", n.id) + n.id), n.FullName) : "Fog filled the glass for a week.", 0.42f, n?.id ?? -1);
-            });
-            if (season >= 5 && season <= 7 && Fresh("drought", -1, 6)) Add(0.4f, () => { s.food *= 0.85f; Chronicle("drought", string.Format(Nth(DroughtLines, Told("drought")), "", EraNoun(s.era)), 0.48f); });
-            if (season >= 8 && season <= 9 && Fresh("bumper", -1, 6)) Add(0.5f, () => { s.food = Math.Min(FoodCap, s.food * 1.2f + 5f); Chronicle("bumper", string.Format(Nth(s.era == Era.Camp ? CampBumperLines : BumperLines, Told("bumper")), "", EraNoun(s.era)), 0.55f); });
-            if (Fresh("strange_light", -1, 20)) Add(0.35f, () => Chronicle("strange_light", string.Format(Nth(!CardsOn || s.storyFlags.Contains(FlagLampUsed) ? StrangeLightLamp : StrangeLightEarly, Told("strange_light")), KeeperWord), 0.5f));
-            // #519: on a living-land box ducks come only from the Keeper's jar (placed-life spec §2) and the jar tells their arrival;
-            // this old story ("a family of ducks moved into the pond") came by itself with no pond and no ducks to see. Old boxes only.
-            if (!EcologyOn && Fresh("ducks", -1, 30)) Add(0.35f, () => Chronicle("ducks", Nth(DuckLines, Told("ducks")), 0.45f));
-            if (Count(BuildingType.Tavern) > 0 && Fresh("sheep", -1, 30)) Add(0.4f, () =>
-            {
-                var b = State.buildings.First(x => x.type == BuildingType.Tavern);
-                Chronicle("sheep", Nth(SheepLines, Told("sheep")), 0.5f).buildingId = b.id;
-            });
+            // #715: a quiet month, in place of the dropped weather and trait stories (about their old share), so the kept stories
+            // don't fill the gap: fewer stories, not the same number of quarrels (research 21 §7.7). [est] weight
+            Add(QuietStoryWeight + QuietPerAdult * adults.Count, () => { });
 
             float total = options.Sum(o => o.w);
             float pick = r.Value() * total;
@@ -348,6 +254,9 @@ namespace AquariumCiv.Sim
                 return;
             }
         }
+
+        /// <summary>#715: the weight of a month with no story (the weather's and the trait stories' old share) [est].</summary>
+        public const float QuietStoryWeight = 2.5f, QuietPerAdult = 0.25f;
 
         /// <summary>No entry of this kind (about this person, if given) in the last <paramref name="years"/> years.</summary>
         bool Fresh(string kind, int notableId, int years)
@@ -456,6 +365,23 @@ namespace AquariumCiv.Sim
             var child = AddNotable(0f, parent.id, parent.family);
             Chronicle("birth", $"{child.FullName} was born to {parent.FullName}.", 0.6f, child.id);
             return child;
+        }
+
+        /// <summary>Debug (#708/#709: the kids' beats need kids; a new living land starts with five grown-ups): <paramref name="n"/> children of
+        /// <paramref name="age"/> years join a living adult's family. How many came.</summary>
+        public int DebugAddKids(int n = 2, float age = 7f)
+        {
+            int made = 0;
+            for (int i = 0; i < n; i++)
+            {
+                var parent = State.notables.Where(x => x.alive && x.age >= 18f).OrderBy(x => x.id).Skip(i).FirstOrDefault()
+                             ?? State.notables.Where(x => x.alive && x.age >= 18f).OrderBy(x => x.id).FirstOrDefault();
+                if (parent == null) break;
+                var child = AddNotable(age + i * 0.7f, parent.id, parent.family);
+                Chronicle("birth", $"{child.FullName} came to live with {parent.FullName}.", 0.2f, child.id);
+                made++;
+            }
+            return made;
         }
 
         // ---------- queries for views ----------

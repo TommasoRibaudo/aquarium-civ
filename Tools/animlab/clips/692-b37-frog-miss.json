@@ -1,0 +1,26 @@
+{
+ "name": "692-b37-frog-miss",
+ "notes": "B37, the miss: the kid pounces but the frog hops in first (a ring); the kid flops in the mud (a splash), sits up and shakes off like a wet pup; the friend laughs.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.AnimalsReady();",
+   "return AquariumCiv.View.CampCheats.AnimalsReady();",
+   "AquariumCiv.View.PeopleView.DebugSetHour(11.0f); return AquariumCiv.View.CampCheats.AnimalsReady();",
+   "AquariumCiv.View.CampLife.ForceFrogMiss = true; return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.FrogCatch());"
+  ],
+  "warm": 0.5,
+  "seconds": 16,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.45,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

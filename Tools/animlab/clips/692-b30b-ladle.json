@@ -1,0 +1,23 @@
+{
+ "name": "692-b30b-ladle",
+ "notes": "B30.b: supper at the fire: before each hand-over the giver dips the ladle (steam), then walks the bowl round.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(17.9f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.Ladle());"
+  ],
+  "warm": 0.5,
+  "seconds": 16,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.4,
+  "closeSpan": 0.5,
+  "yaw": 28,
+  "pitch": 42
+ }
+}

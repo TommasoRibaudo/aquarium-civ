@@ -177,15 +177,22 @@ namespace AquariumCiv.Life
             x = wantX; z = wantZ;
             if (Clear(fx, fz, rackAngle, rackDist, wantX, wantZ, fixedDiscs, extra, fishAngle, onPath)) return;
             float best = float.MaxValue;
-            foreach (float r in new[] { 0.6f, 0.72f, 0.84f, 0.96f })
-                for (int i = 0; i < 24; i++)
-                {
-                    float a = i / 24f * 6.2831853f;
-                    float cx = fx + (float)Math.Cos(a) * r, cz = fz + (float)Math.Sin(a) * r;
-                    if (!Clear(fx, fz, rackAngle, rackDist, cx, cz, fixedDiscs, extra, fishAngle, onPath)) continue;
-                    float d = Dist(cx, cz, wantX, wantZ);
-                    if (d < best) { best = d; x = cx; z = cz; }
-                }
+            // B3 tester fixes (4): the inner rings first; a village's crowded fire side looks farther out before it gives up on a clear spot
+            foreach (var rings in Rings)
+            {
+                foreach (float r in rings)
+                    for (int i = 0; i < 24; i++)
+                    {
+                        float a = i / 24f * 6.2831853f;
+                        float cx = fx + (float)Math.Cos(a) * r, cz = fz + (float)Math.Sin(a) * r;
+                        if (!Clear(fx, fz, rackAngle, rackDist, cx, cz, fixedDiscs, extra, fishAngle, onPath)) continue;
+                        float d = Dist(cx, cz, wantX, wantZ);
+                        if (d < best) { best = d; x = cx; z = cz; }
+                    }
+                if (best < float.MaxValue) return;
+            }
         }
+
+        static readonly float[][] Rings = { new[] { 0.6f, 0.72f, 0.84f, 0.96f }, new[] { 1.08f, 1.2f, 1.32f } };
     }
 }

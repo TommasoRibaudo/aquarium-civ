@@ -474,7 +474,7 @@ namespace AquariumCiv.EditorTools
                 var yawQ = Quaternion.Euler(0, a[k + 3], 0); // the drawn yaw: d.yaw + pose.yaw
                 var ground = new Vector3(a[k], 0f, a[k + 1]);
                 var tilt = pose.lying ? Quaternion.Euler(90f, 0, 0) : Quaternion.Euler(-pose.lean, 0, pose.roll);
-                v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
+                v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s) + Vector3.up * pose.lift, yawQ * tilt); // B3 tester fixes: a seat's lift is unscaled
                 v.transform.localScale = new Vector3(1f, pose.squash, 1f);
                 v.ApplyArms(pose);
             }

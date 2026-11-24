@@ -122,6 +122,7 @@ namespace AquariumCiv.Sim
             int season = CalendarMonth;
             bool winter = season == 11 || season == 0 || season == 1;
             EcoStep(); // the land, once a season; hash dice only, nothing off the sim's streams (SimCore.Eco.cs)
+            TiePoleFeathersLate(); // #692 (B31.a): a feather the view never tied is tied unseen
             float mult = OutputMultiplier;
             int pop = s.population;
 
@@ -496,6 +497,7 @@ namespace AquariumCiv.Sim
             text = LandWords(text); // #656/#677: a living land's words (no stream, goats or huts; no wood before the wild trees)
             var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = salience, notableId = notableId, otherNotableId = otherId };
             State.chronicle.Add(e);
+            FeatherFromLine(e); // #692 (B31.a): a wedding, a birth, the village: a feather for the pole
             MomentFromLine(e); // #369: a wedding, a birth, a new leader, a callback or a festival queues its ceremony for the Keeper
             Chronicled?.Invoke(e); // after the queue: a listener that works out the cards (the history dot) must not see the line as a card first
             return e;

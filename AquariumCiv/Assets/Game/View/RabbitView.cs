@@ -250,6 +250,57 @@ namespace AquariumCiv.View
 
         readonly List<long> liveSlots = new();
         readonly List<RabbitTrackLayout.Print> livePrints = new();
+        readonly List<RabbitTrackLayout.Print> tryPrints = new();
+        readonly HashSet<long> drawnSlots = new();
+
+        /// <summary>#665: a living trail needs at least this many whole hops on the green.</summary>
+        public const int LiveTrailMinHops = 2;
+        /// <summary>#665: trails tried per slot (other headings and curves) before it settles for the longest piece on the green.</summary>
+        public const int LiveTrailTries = 4;
+
+        /// <summary>#665: of a trail's hops (four prints each, in order), the longest unbroken run whose prints all pass
+        /// <paramref name="ok"/>: its first print and its print count (0 when no hop passes).</summary>
+        public static void LongestRun(List<RabbitTrackLayout.Print> prints, System.Func<Vector2, bool> ok, out int from, out int count)
+        {
+            from = 0; count = 0;
+            int runFrom = 0, run = 0;
+            for (int h = 0; h + 4 <= prints.Count; h += 4)
+            {
+                bool hop = true;
+                for (int i = h; i < h + 4; i++) if (!ok(prints[i].at)) { hop = false; break; }
+                if (!hop) { run = 0; continue; }
+                if (run == 0) runFrom = h;
+                run += 4;
+                if (run > count) { count = run; from = runFrom; }
+            }
+        }
+
+        static Vector2 TrailMid(List<RabbitTrackLayout.Print> prints)
+        {
+            var m = Vector2.zero;
+            foreach (var p in prints) m += p.at;
+            return prints.Count > 0 ? m / prints.Count : m;
+        }
+
+        /// <summary>#665 (winter showed none, 2026-11-16): the trail at a rabbit's spot into <see cref="livePrints"/>. A whole trail that
+        /// lies on the green wins; else other trails are tried, and the longest piece of at least <see cref="LiveTrailMinHops"/> hops on the
+        /// green is kept. (It used to drop any trail with one print off the green, so a thin meadow, such as the winter one with
+        /// fewer rabbits, almost never showed one.) Stateless: the same slot lays the same prints.</summary>
+        bool LayLiveTrail(float x, float z, uint seed, uint salt, float keep)
+        {
+            System.Func<Vector2, bool> ok = p => Field.IsGreenAt(p.x, p.y);
+            livePrints.Clear();
+            int bestCount = 0;
+            for (int t = 0; t < LiveTrailTries; t++)
+            {
+                tryPrints.Clear();
+                RabbitTrackLayout.Build(x, z, seed, salt ^ (uint)(t * 0x9E3779B9u), keep, tryPrints);
+                LongestRun(tryPrints, ok, out int from, out int count);
+                if (count == tryPrints.Count && count > 0) { livePrints.Clear(); livePrints.AddRange(tryPrints); return true; }
+                if (count > bestCount) { bestCount = count; livePrints.Clear(); livePrints.AddRange(tryPrints.GetRange(from, count)); }
+            }
+            return bestCount >= LiveTrailMinHops * 4;
+        }
 
         /// <summary>#665 (2026-11-14, "they appear all together"): a trail the view hasn't shown yet is pressed in hop by hop over
         /// <see cref="TrailRevealSeconds"/> real seconds, and new trails wait their turn, <see cref="TrailStaggerSeconds"/> apart, so a skip,
@@ -266,14 +317,20 @@ namespace AquariumCiv.View
             return Mathf.Clamp(Mathf.CeilToInt(secondsIn / TrailRevealSeconds * prints), 1, prints);
         }
 
-        /// <summary>#665: when the view starts showing this slot's trail: now, or after the trail before it has had its stagger.</summary>
+        /// <summary>#665: when the view starts showing this slot's trail: now, or after the trail before it has had its stagger. Called
+        /// oldest slot first while a build lays its trails (<see cref="drawnSlots"/> holds the ones laid so far).</summary>
         float TrailStart(long k, float now)
         {
-            if (trailShownAt.TryGetValue(k, out float at)) return at;
-            // wait only behind a trail that is still appearing (a slot that went, or one long pressed in, holds nobody back)
+            bool had = trailShownAt.TryGetValue(k, out float at);
+            if (had && at <= now) return at; // begun: it keeps its time
+            // wait only behind a trail laid before it in this build that is still appearing (a slot that went, or no longer fits, or
+            // one long pressed in, holds nobody back). 2026-11-16: it waited behind any time on record, so a trail queued behind one
+            // that then left kept waiting, and after a skip or a jump in the hour (the winter shot) none showed for seconds.
             float behind = float.NegativeInfinity;
-            foreach (var t in trailShownAt.Values) if (t + TrailRevealSeconds > now) behind = Mathf.Max(behind, t);
-            at = Mathf.Max(now, behind + TrailStaggerSeconds);
+            foreach (long o in drawnSlots)
+                if (o != k && trailShownAt.TryGetValue(o, out float t) && t + TrailRevealSeconds > now) behind = Mathf.Max(behind, t);
+            float fresh = Mathf.Max(now, behind + TrailStaggerSeconds);
+            at = had ? Mathf.Min(at, fresh) : fresh; // a queued trail only ever moves up
             trailShownAt[k] = at; lastTrailStart = at;
             return at;
         }
@@ -319,6 +376,7 @@ namespace AquariumCiv.View
             var fresh = new Color(0.44f, 0.35f, 0.22f);
             var worn = new Color(0.52f, 0.43f, 0.29f);
             int drawn = 0;
+            drawnSlots.Clear();
             LiveTrailSpots.Clear();
             foreach (long k in liveSlots)
             {
@@ -329,19 +387,19 @@ namespace AquariumCiv.View
                 if (!Field.IsGreenAt(pose.x, pose.z)) continue;
                 float age = Mathf.Clamp01((float)((nowH - born) / LiveTrailHours));
                 float old = Mathf.Round(age * 5f) / 5f;
-                livePrints.Clear();
-                RabbitTrackLayout.Build(pose.x, pose.z, seed, (uint)(k * 2654435761L) ^ (uint)id, 1f - old * 0.8f, livePrints);
-                bool fits = true;
-                foreach (var pr in livePrints) if (!Field.IsGreenAt(pr.at.x, pr.at.y)) { fits = false; break; }
-                if (!fits) continue;
+                if (!LayLiveTrail(pose.x, pose.z, seed, (uint)(k * 2654435761L) ^ (uint)id, 1f - old * 0.8f)) continue;
+                drawnSlots.Add(k);
                 var col = Color.Lerp(fresh, worn, old);
                 int shown = TrailPrintsShown(nowT - TrailStart(k, nowT), livePrints.Count);
                 if (shown == 0) continue;
                 for (int pi = 0; pi < shown; pi++) { var pr = livePrints[pi]; Print(mb, land, pr.at, pr.hind ? col : Color.Lerp(col, worn, 0.2f), pr.rx, pr.rz, pr.yaw); }
-                LiveTrailSpots.Add(new Vector2(pose.x, pose.z));
+                LiveTrailSpots.Add(TrailMid(livePrints));
                 drawn++;
             }
             LiveTrails = drawn;
+            trailGone.Clear();
+            foreach (var kv in trailShownAt) if (!drawnSlots.Contains(kv.Key)) trailGone.Add(kv.Key);
+            foreach (long g in trailGone) trailShownAt.Remove(g);
             if (liveTracks == null)
             {
                 liveTracks = new GameObject("RabbitLiveTracks") { hideFlags = HideFlags.DontSave };

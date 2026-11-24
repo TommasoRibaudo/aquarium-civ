@@ -45,9 +45,7 @@ namespace AquariumCiv.View.ShowMe.Tests
                 n.trait = "the clever";
             }
             sim.DebugSetBelief(stage, later);
-            if (later && stage == 1) sim.DebugGiveRelic(RelicId.SkyCrumb);
-            if (later && stage == 2) sim.DebugGiveRelic(RelicId.KeeperDoll);
-            if (later && stage == 3) sim.DebugGiveRelic(RelicId.Lens);
+            if (later && stage == 2) sim.DebugGiveRelic(RelicId.KeeperDoll); // #718: stages 1 and 3 have no relic; the debug belief opens their later half
             Assert.AreEqual(stage, sim.BeliefStage);
             return sim;
         }
@@ -114,7 +112,7 @@ namespace AquariumCiv.View.ShowMe.Tests
                 Assert.That(b.seconds, Is.InRange(3.5f, 7f));
                 Assert.LessOrEqual(b.lines.Count, PeopleVoice.BubbleMaxLines, "fits a phone bubble");
                 string lower = b.text.ToLowerInvariant();
-                if (stage < 3 || !later) Assert.IsFalse(lower.Contains("glass"), $"{b}: no 'glass' before the Lens");
+                if (stage < 3) Assert.IsFalse(lower.Contains("glass"), $"{b}: no 'glass' before stage 3 (#723)");
                 if (stage == 1) Assert.IsFalse(lower.Contains("window"), $"{b}: the camp has no window");
             }
             Assert.IsNotEmpty(sim.State.saidBubbles, "what was said is kept with the box (#120)");
@@ -152,13 +150,17 @@ namespace AquariumCiv.View.ShowMe.Tests
             var live = sim.State.notables.Where(n => n.alive && n.age >= SimCore.AdultAge).OrderBy(n => n.id).Take(2).ToList();
             var e = sim.Chronicle("wedding", "A wedding.", 0.9f, live[0].id);
             e.otherNotableId = live[1].id;
+            // #719: one telling per story: a wedding is a card, so its bubble is its card quote, never the story voice too
+            var v = PeopleVoice.StoryLine(sim, e);
+            Assert.IsNotNull(v, "the wedding still has its first-person words (for a line that is never a card)");
+            Assert.AreEqual(live[0].id, v.speakerId, "by the one it's about");
+            StringAssert.Contains(live[1].name, v.text);
             var wb = new WorldBubbles(sim, NoWarmUp);
+            Assert.IsFalse(wb.Candidates().Any(x => x.entryId == e.id), "no quote: the carded wedding is not told again in a bubble");
+            e.quote = "We said yes by the fire."; e.speakerId = live[0].id;
             var b = wb.Candidates().FirstOrDefault(x => x.entryId == e.id);
-            Assert.IsNotNull(b, "the wedding is talked about");
-            Assert.AreEqual(BubbleSource.StoryVoice, b.source);
-            Assert.AreEqual(live[0].id, b.speakerId, "by the one it's about");
-            StringAssert.Contains(live[1].name, b.text);
-            Assert.IsTrue(b.text.Contains("arried") || b.text.Contains("said yes"), "the wedding, in the first person: " + b.text); // #120: a few wordings
+            Assert.IsNotNull(b, "with a quote, the quote is its bubble");
+            Assert.AreEqual(BubbleSource.StoryQuote, b.source);
             wb.Force(0);
             Assert.IsFalse(wb.Candidates().Any(x => x.entryId == e.id), "one bubble a story");
         }
@@ -206,6 +208,66 @@ namespace AquariumCiv.View.ShowMe.Tests
             Assert.IsNotNull(a);
             wb.Reset();
             Assert.AreEqual(a.key, wb.Next(0, PeopleMoment.Glass)?.key);
+        }
+
+        // ---------- #719: the people's words ----------
+
+        /// <summary>#719: one telling per story. Over two hours in every stage, a story that is a card is never also told in the story
+        /// voice (only its card quote may be a bubble); the voice is for lines that are never cards.</summary>
+        [TestCase(Era.Camp, 1, 1)]
+        [TestCase(Era.Village, 7, 2)]
+        [TestCase(Era.Town, 1234, 3)]
+        public void ACardedStoryIsNeverAlsoToldInTheStoryVoice(Era era, int seed, int stage)
+        {
+            var sim = Believing(era, seed, stage, false);
+            var wb = new WorldBubbles(sim, NoWarmUp);
+            var got = Play(wb);
+            foreach (var (_, b) in got.Where(x => x.b.source == BubbleSource.StoryVoice))
+            {
+                var e = sim.State.chronicle.First(c => c.id == b.entryId);
+                Assert.IsFalse(SimCore.ShownAsCard(e), $"{e.kind} \"{e.text}\" is a card: its bubble is its quote, never the voice too");
+            }
+            var byEntry = got.Where(x => x.b.entryId >= 0).GroupBy(x => x.b.entryId);
+            foreach (var g in byEntry) Assert.AreEqual(1, g.Count(), $"entry {g.Key} told once");
+        }
+
+        /// <summary>#719: no Pip, goat, whiskers, cat, library or Keeper's lamp in the bank or the trait lines; the new leader is the
+        /// era's; the camp's festival has no bread; the grump's dog is a real dog or none.</summary>
+        [Test]
+        public void ThePeoplesWordsNameOnlyWhatTheBoxHas()
+        {
+            var banned = new[] { "pip", "goat", "whiskers", "cat", "library", "keeper's lamp" };
+            IEnumerable<string> words(string t) => System.Text.RegularExpressions.Regex.Split(t.ToLowerInvariant(), "[^a-z']+");
+            foreach (var t in SimCore.LineBank.Select(l => l.text).Concat(PeopleVoice.TraitLines.SelectMany(l => new[] { l.text, l.without ?? "" }))
+                         .Concat(PeopleVoice.BankFirstPerson.Values))
+            {
+                foreach (var w in banned.Where(x => !x.Contains(' '))) Assert.IsFalse(words(t).Contains(w), $"\"{t}\" says {w}");
+                StringAssert.DoesNotContain("Keeper's lamp", t);
+            }
+            Assert.That(PeopleVoice.MomentLines(MomentKind.NewLeader, -1, -1, era: Era.Village).Select(x => x.text), Has.Member("Long live the new headman!"));
+            Assert.That(PeopleVoice.MomentLines(MomentKind.NewLeader, -1, -1, era: Era.Town).Select(x => x.text), Has.Member("Long live the new lord!"));
+            Assert.That(PeopleVoice.MomentLines(MomentKind.NewLeader, -1, -1, era: Era.Camp).Select(x => x.text), Has.Member("Long live the new chief!"));
+            Assert.That(PeopleVoice.MomentLines(MomentKind.Festival, -1, -1, era: Era.Camp).Select(x => x.text), Has.No.Member("Pass the bread, please."));
+            var village = Believing(Era.Village, 7, 2, false);
+            var grump = PeopleVoice.TraitLines.Single(l => l.id == "grump2");
+            string said = PeopleVoice.TraitText(village, grump);
+            if (string.IsNullOrEmpty(village.GrownDogName)) Assert.AreEqual("The Keeper looks in at supper. Rude, but I don't mind.", said);
+            else StringAssert.Contains(village.GrownDogName, said);
+            var town = Believing(Era.Town, 1234, 3, false);
+            string loud = PeopleVoice.TraitText(town, PeopleVoice.TraitLines.Single(l => l.id == "loud3"));
+            Assert.AreEqual(town.Count(BuildingType.Market) > 0, loud != null, "the market line only with a market");
+        }
+
+        /// <summary>#719: a bank line that names a child ("Not you, {kid}") is said only with a living child, and with their name.</summary>
+        [Test]
+        public void AKidsNameIsARealChildOrTheLineIsNotSaid()
+        {
+            var camp = Believing(Era.Camp, 1, 1, false);
+            bool kid = camp.State.notables.Any(n => n.alive && n.age >= 4f && n.age < SimCore.AdultAge);
+            var three = camp.LinesNow().FirstOrDefault(l => l.no == 3);
+            Assert.AreEqual(kid, three != null, "line 3 only with a child");
+            foreach (var n in camp.State.notables.Where(n => n.age < SimCore.AdultAge)) n.age = 30f;
+            Assert.IsFalse(camp.LinesNow().Any(l => l.text.Contains("{kid}")), "no child: the lines that name one are not said");
         }
     }
 }

@@ -1,0 +1,25 @@
+{
+ "name": "692-b29a-warm-hands",
+ "notes": "B29.a: winter, three sit at the fire, lean in, arms out to the flames, the rub, a shiver, a self-hug, a breath of steam.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(17.8f, 2);",
+   "return AquariumCiv.View.CampCheats.ToSeason(AquariumCiv.Life.Season.Winter);",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(17.8f);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.WarmHands());"
+  ],
+  "warm": 0.3,
+  "seconds": 16,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.4,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 42
+ }
+}

@@ -193,6 +193,7 @@ namespace AquariumCiv.Life
             // #284: a tent being raised from the hides takes its builders (and a watching kid) until it stands.
             if (TentActivityAt(p, t, out var raising)) return raising;
             if (EggActivityAt(p, t, out var gathering)) return gathering; // #574: an egg gathered at the reeds, carried to the pile
+            if (NestActivityAt(p, t, out var nesting)) return nesting; // #709: a nest egg taken, or the kids looking in
             if (DebugPickerAt(p, t, out var picking)) return picking; // #361 debug: pickers to the nearest bush
             if (DebugFishAt(p, t, out var fishing)) return fishing; // #364 debug: "Fish bite now"
             if (RackMoveActivityAt(p, t, out var movingRack)) return movingRack; // #700 (B27): a path came over the rack
@@ -236,7 +237,7 @@ namespace AquariumCiv.Life
                 who = p.who, kind = kind, place = place, from = from, moving = s.Moving && from != place, partner = s.partner,
                 prop = s.prop, water = s.water, start = s.start, end = s.end, progress = Math.Min(1f, into / len),
                 step = steps <= 1 ? 0 : (int)(into / StepHours) % steps, source = s.src, trip = s.trip, pace = dayInfo.pace,
-                chronicleId = s.chronicleId, copiesPartner = s.copies, facesGlass = s.faces, count = s.count,
+                chronicleId = s.chronicleId, copiesPartner = s.copies, facesGlass = s.faces,
             };
         }
 

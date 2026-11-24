@@ -192,23 +192,25 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual("vine", care.LastPluck);
                 yield return Shot("tweezers-2-after");
 
-                // a wild sapling at the forest's edge
+                // a wild sapling at the forest's edge: #730 the tweezers leave it (the landscaping tool takes it, SimCore.EcoLandscapePluck)
                 int made = sim.DebugCreepForestEdge(4);
                 Assert.Greater(made, 0, "saplings crept in");
                 box.Refresh();
                 for (int i = 0; i < 10; i++) yield return null;
                 var e = sim.State.eco;
-                int cell = Enumerable.Range(0, EcoLand.N).First(c => e.cover[c] == (byte)EcoCover.Seedling && c != e.treeCell && sim.EcoCanPluckSapling(c));
+                int cell = Enumerable.Range(0, EcoLand.N).First(c => e.cover[c] == (byte)EcoCover.Seedling && c != e.treeCell && sim.EcoCanLandscape(c));
                 float cx = AquariumCiv.Sim.Settle.SiteMap.CXc(cell), cz = AquariumCiv.Sim.Settle.SiteMap.CZc(cell);
                 var sp = ScreenOf(box, cx, cz);
                 if (OnScreen(sp))
                 {
                     yield return TapAt(sp);
-                    Assert.AreNotEqual((byte)EcoCover.Seedling, e.cover[cell], "the sapling came out (last pluck: " + care.LastPluck + ")");
-                    Assert.AreEqual("sapling", care.LastPluck);
+                    Assert.AreEqual((byte)EcoCover.Seedling, e.cover[cell], "#730: the tweezers no longer take a sapling (last pluck: " + care.LastPluck + ")");
+                    Assert.AreNotEqual("sapling", care.LastPluck);
+                    Assert.AreEqual(cell, sim.EcoLandscapePluck(cx, cz, 0.05f), "the landscaping tool takes it");
+                    Assert.AreNotEqual((byte)EcoCover.Seedling, e.cover[cell]);
                 }
                 // The Keeper's own tree never comes out
-                Assert.IsFalse(sim.EcoCanPluckSapling(sim.EcoTree.cell));
+                Assert.IsFalse(sim.EcoCanLandscape(sim.EcoTree.cell));
                 Assert.AreEqual(sim.EcoTree.cell, e.treeCell);
             }
             finally { Close(); }
@@ -283,8 +285,8 @@ namespace AquariumCiv.View.PlayTests
 
                 foreach (int c in young)
                 {
-                    Assert.IsTrue(sim.EcoCanPluckSapling(c), $"young tree {c} can be plucked");
-                    Assert.AreEqual(c, sim.EcoPluckSapling(AquariumCiv.Sim.Settle.SiteMap.CXc(c), AquariumCiv.Sim.Settle.SiteMap.CZc(c), 0.01f));
+                    Assert.IsTrue(sim.EcoCanLandscape(c), $"young tree {c} can be plucked");
+                    Assert.AreEqual(c, sim.EcoLandscapePluck(AquariumCiv.Sim.Settle.SiteMap.CXc(c), AquariumCiv.Sim.Settle.SiteMap.CZc(c), 0.01f));
                 }
                 lock (box.TreeSpots) box.TreeSpots.Clear();
                 box.Refresh();
