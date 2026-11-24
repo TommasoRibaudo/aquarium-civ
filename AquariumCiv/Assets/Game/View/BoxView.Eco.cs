@@ -270,7 +270,7 @@ namespace AquariumCiv.View
         /// <summary>#701 round 2: where the pond's sheet and its face at a pane end: 4 mm proud of the land's edge (the soil cut), not out at the
         /// glass. The water stands on the cut face like the land does, so nothing of it hangs past the dug edge and the pane's own
         /// thickness reads the same beside water as beside land.</summary>
-        public const float WaterFace = 0.004f;
+        public const float WaterFace = 0.0005f; // #701 (the user, 2026-11-24): the water ends on the same line as the dirt (half a mm out, only so the face doesn't flicker into the soil cut)
 
         /// <summary>The pond: a flat sheet at the water level over the water cells and their neighbours; the ground above the
         /// water hides the sheet's square edge, so the shoreline is where the land meets the level. Where the water reaches the
