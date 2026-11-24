@@ -66,6 +66,7 @@ namespace AquariumCiv.View
 
         sealed class Doll
         {
+            public Vector2 dbgSpot, dbgSlot, dbgStand; public string dbgBy = ""; // tests: the plan's spot and the slot's target this frame (where a place's ring put them)
             public PegDollView view;
             public uint sig;
             public Vector2 pos;
@@ -522,6 +523,10 @@ namespace AquariumCiv.View
             meals.DrawPot(peopleRoot, Box.SolidMaterial, camp && planner.FireNow != CampFireStage.None /* #656: no pot by a fire that isn't lit */, (mx, mz) => Box.SurfaceHeight(mx, mz), LifeClock.SeasonOf(now.day) == Season.Winter, sim.StewOn(now.day)); // #676: it simmers, with what the camp has
             seen.Clear();
             claimed.Clear();
+            // 2026-11-24 (the ADay test: a doll eating at the market stood on the log-pile sitter's seat): the spots a camp or village use holds
+            // this frame are taken before anyone else picks a spot, so a settled doll's slot moves off them (Standable) instead of under a sitter
+            for (int i = 0; i < acts.Count; i++)
+                if (Camp.Busy(acts[i].who.Key) && Camp.TryCue(acts[i].who.Key, time, out var held, out _) && !held.keepSpot) claimed.Add(held.pos);
             restTaken.Clear();
             if (plannerSim != null && plannerSim.EcologyOn) // sign-off 2026-11-14: this session's laid-out bedrolls (CampBedrolls), drawn by the fire
             {
@@ -613,8 +618,10 @@ namespace AquariumCiv.View
             else if (!a.moving && !a.enRoute && !hidden) // #197: a run-in stops on the path, it does not take a slot at a place
             {
                 target = SlotSpot(d, a, spot, out face);
+                d.dbgSpot = spot; d.dbgSlot = target;
                 bool yard = a.place.kind == PlaceKind.Home && (target - spot).sqrMagnitude > SlotSpots.AtDoorReach * SlotSpots.AtDoorReach;
                 if (!d.atTower) target = Standable(target, spot, !InField(a.place), yard); // #404: a spot on the ladder or the platform is the tower's own
+                d.dbgStand = target;
                 claimed.Add(target);
                 if (yard && lotOfBuilding.TryGetValue(a.place.buildingId, out var yardLot))
                 {
@@ -654,6 +661,7 @@ namespace AquariumCiv.View
             PairCue pairCue = default; PairEvent pairEv = null;
             bool paired = !hidden && !playing && !tenting && PairStage.TryCue(a.who.Key, time, out pairEv, out pairCue);
             if (paired) { target = pairCue.pos; face = pairCue.face; }
+            d.dbgBy = (playing ? "play " : "") + (camping ? "camp:" + Camp.UseOf(a.who.Key) + " " : "") + (paired ? "pair:" + pairEv : "") + (toddling ? "toddle" : "");
             if (toddling) // 2026-11-06: behind the walking carer, pottering in front of a standing one, sat down where it plopped
             {
                 var cf = Quaternion.Euler(0f, carerDoll.yaw, 0f) * Vector3.back;
@@ -1884,6 +1892,9 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Where a person's doll stands now (box-local x, z), false if they have none.</summary>
+        /// <summary>Tests: where this person's plan put them and where their slot at the place did, this frame.</summary>
+        public string DebugSpotOf(PersonRef who) => dolls.TryGetValue(who.Key, out var d) ? $"plan ({d.dbgSpot.x:0.00},{d.dbgSpot.y:0.00}) slot ({d.dbgSlot.x:0.00},{d.dbgSlot.y:0.00}) stand ({d.dbgStand.x:0.00},{d.dbgStand.y:0.00}) pos ({d.pos.x:0.00},{d.pos.y:0.00}) drawn ({d.drawn.x:0.00},{d.drawn.y:0.00}) off ({d.offset.x:0.00},{d.offset.y:0.00}) by [{d.dbgBy}]" : "-";
+
         public bool TryGetDollPosition(PersonRef who, out Vector2 pos)
         {
             pos = default;
