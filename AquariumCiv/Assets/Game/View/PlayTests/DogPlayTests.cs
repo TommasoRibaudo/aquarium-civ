@@ -137,7 +137,14 @@ namespace AquariumCiv.View.PlayTests
                     bool cued = pv.Camp.Cued(a.who.Key) && pv.Camp.Scenes.Any(s => s.use >= CampUse.PupChew && s.use <= CampUse.KidsClose && s.keys.Contains(a.who.Key));
                     if (WorkKind(a.kind)) { work += dt; if (cued) taken += real; }
                     else if (a.kind == ActivityKind.Eat) { eat += dt; if (cued) eatTaken += dt; } // B3 tester fixes: the share of the meal's own (view) time spent in a use
-                    else if (a.kind == ActivityKind.Sleep || a.kind == ActivityKind.Nap) { sleep += dt; if (cued) sleepTaken += dt; }
+                    else if (a.kind == ActivityKind.Sleep || a.kind == ActivityKind.Nap)
+                    {
+                        // B25.b / B56.b (signed off): the guard and the drive-off get a grown-up up when the wolves come at night; CampLife lets them
+                        // (WakesForWolves), so they are not a use held through bedtime
+                        sleep += dt;
+                        bool wolves = pv.Camp.Scenes.Any(s => (s.use == CampUse.DogGuard || s.use == CampUse.WolfDriveOff) && s.keys.Contains(a.who.Key));
+                        if (cued && !wolves) sleepTaken += dt;
+                    }
                 }
             }
             pv.timeScale = 1f;

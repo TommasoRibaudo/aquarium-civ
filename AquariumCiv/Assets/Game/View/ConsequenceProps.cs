@@ -759,6 +759,33 @@ namespace AquariumCiv.View
         }
         static readonly List<int> lotCells = new();
 
+        /// <summary>B3 tester fixes (4, view): where a thing will stand this frame, as a disc of its room, before the loop places it (r = -1: it
+        /// stands nowhere at the fire's ground: not placed, not shown yet, a charm on a tree, a second feather).</summary>
+        bool AheadDisc(SimCore sim, ConsequenceProp q, ConsequenceProp pole, bool haveFire, out CampSpots.Disc d)
+        {
+            d = default;
+            if (!haveFire || !q.placed || !ReplayGate.Shows(q.placedMonth)) return false;
+            if (q.kind == ConsequenceKind.Feather && q != pole) return false;
+            if (q.anchor == PropAnchor.Tree && q.treeCell >= 0) return false;
+            float x = q.x, z = q.z;
+            if (q.anchor == PropAnchor.Fire && settledSpot.TryGetValue(q.id, out var s)) { x = s.x; z = s.y; }
+            else if (q.kind == ConsequenceKind.OfferingBasket && OfferingAtTree(sim, out float ox, out float oz)) { x = ox; z = oz; }
+            float r = q.kind == ConsequenceKind.ShoreBoat ? BoatRadius : q.kind == ConsequenceKind.GoatPen ? PenRadius : RoomOf(q.kind);
+            d = new CampSpots.Disc(x, z, r);
+            return true;
+        }
+
+        /// <summary>B3 tester fixes (4, view): would a thing of room <paramref name="own"/> at (x, z) lie inside one already stood this frame or
+        /// one stood after it (index past <paramref name="self"/>)?</summary>
+        bool InsideAThing(float x, float z, float own, int self)
+        {
+            foreach (var d in spots) if (new Vector2(x - d.x, z - d.z).magnitude < d.r + own - CampSpots.PropRadius) return true;
+            for (int j = self + 1; j < ahead.Count; j++)
+                if (ahead[j].r > 0f && new Vector2(x - ahead[j].x, z - ahead[j].z).magnitude < ahead[j].r + own - CampSpots.PropRadius) return true;
+            return false;
+        }
+        readonly List<CampSpots.Disc> ahead = new();
+
         /// <summary>#714 round 2: the boat lines up with the box's lines (the glass), its long side across the way to the fire, never a random yaw.</summary>
         float BoatYaw(float px, float pz) => Mathf.Abs(px - fx) > Mathf.Abs(pz - fz) ? 90f : 0f;
         readonly List<CampSpots.Disc> fixedScratch = new();
@@ -915,8 +942,13 @@ namespace AquariumCiv.View
             foreach (var p in list) if (p.kind != ConsequenceKind.ShoreBoat && p.kind != ConsequenceKind.GoatPen) ordered.Add(p);
             foreach (var p in list) if (p.kind == ConsequenceKind.GoatPen) ordered.Add(p); // the goat pen: after the small things, before the boat
             foreach (var p in list) if (p.kind == ConsequenceKind.ShoreBoat) ordered.Add(p);
-            foreach (var p in ordered)
+            // B3 tester fixes (4, view): a thing moved off its sim spot must keep clear of the things stood after it too (the long table moved
+            // onto the goat pen and the baskets, which come later in the list): their spots, as they will stand, go in its way
+            ahead.Clear();
+            foreach (var q in ordered) ahead.Add(AheadDisc(sim, q, pole, haveFire, out var dq) ? dq : new CampSpots.Disc(0f, 0f, -1f));
+            for (int oi = 0; oi < ordered.Count; oi++)
             {
+                var p = ordered[oi];
                 if (!p.placed) continue;
                 if (!ReplayGate.Shows(p.placedMonth)) // #669: a replay shows it from the month it was placed
                 {
@@ -943,13 +975,16 @@ namespace AquariumCiv.View
                     {
                         wide.Clear();
                         foreach (var d in spots) wide.Add(new CampSpots.Disc(d.x, d.z, d.r + own - CampSpots.PropRadius));
+                        for (int j = oi + 1; j < ahead.Count; j++) if (ahead[j].r > 0f) wide.Add(new CampSpots.Disc(ahead[j].x, ahead[j].z, ahead[j].r + own - CampSpots.PropRadius));
                         CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, wide, out px, out pz, fishAngle, onPath);
                     }
                     if (settledSpot.TryGetValue(p.id, out var was) && (was.x != px || was.y != pz))
                     {
                         fixedScratch.Clear(); CampSpots.FireSide(fx, fz, fixedScratch);
                         bool stillOk = CampSpots.Clear(fx, fz, rackAngle, LifePlanner.HideFrameDistance, was.x, was.y, fixedScratch, spots, fishAngle, onPath);
-                        if (!UnderLot(sim, p.kind, was.x, was.y) && (stillOk || !RackSites.IsNight(sim))) { px = was.x; pz = was.y; }
+                        // B3 tester fixes (4, view): a spot that now lies inside another thing is left at once (a path moves it only at night)
+                        bool onAThing = InsideAThing(was.x, was.y, own, oi);
+                        if (!UnderLot(sim, p.kind, was.x, was.y) && !onAThing && (stillOk || !RackSites.IsNight(sim))) { px = was.x; pz = was.y; }
                     }
                     settledSpot[p.id] = new Vector2(px, pz);
                     spots.Add(new CampSpots.Disc(px, pz, p.kind == ConsequenceKind.ShoreBoat ? BoatRadius : p.kind == ConsequenceKind.GoatPen ? PenRadius : own));

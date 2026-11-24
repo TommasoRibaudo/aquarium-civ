@@ -318,17 +318,31 @@ namespace AquariumCiv.View.PlayTests
             while (Time.time - t0 < 120f && !onReturn) { yield return null; onReturn = RitualPlaying(sim); }
             Debug.Log($"[b3 ritual] on return: played {onReturn} after {Time.time - t0:0} s; {StagedMoments.LastWhy}");
             float t1 = Time.time;
-            while (Time.time - t1 < 70f && sim.PlayingMoments().Count > 0) yield return null;
+            while (Time.time - t1 < 150f && sim.PlayingMoments().Count > 0) yield return null; // a ritual is 66 s of view time, plus the walk in
+            yield return new WaitForSeconds(2f); // the stage's next check finishes it (and starts the rest)
+            var pc0 = sim.MomentPacing;
+            Debug.Log($"[b3 ritual] phase 1 over after {Time.time - t1:0} s: playing {sim.PlayingMoments().Count}, watched {pc0.watchedMinutes:0.00} rest until {pc0.restUntil:0.00}");
 
             // 2. live: a year on, the month turns while the Keeper watches
             sim.State.moments?.RemoveAll(m => m.kind == MomentKind.Ritual);
             ToMonthBefore(sim, RitualKind.Berrying);
+            // Only the ritual waits: a wedding queued in the months stepped through played first and the ritual sat out the rest behind it
+            // (pacing, fine: a month is ~5 watched minutes, the ritual is held 2, a camp rests 6). This part checks the live path alone.
+            sim.State.moments?.RemoveAll(m => m.kind != MomentKind.Ritual && m.state == HeldMomentState.Waiting);
+            // A year of watching lies between the two: the rest after the return's ritual (a camp: 6 watched minutes) and the kind rule are long
+            // over by then. Without this the live ritual sat "resting" behind phase 1's, which is the pacing working, not the ritual failing.
+            sim.DebugMomentDueNow();
             PeopleView.DebugSetHour(9f);
             sim.Step(); // the month turns live
-            Debug.Log($"[b3 ritual] live in month {sim.CalendarMonth}; held: {string.Join(", ", (sim.State.moments ?? new List<HeldMoment>()).Where(m => m.kind == MomentKind.Ritual).Select(m => m.state.ToString()))}");
+            sim.State.moments?.RemoveAll(m => m.kind != MomentKind.Ritual && m.state == HeldMomentState.Waiting); // (and one the month's step queued)
+            sim.DebugMomentDueNow(); // (again: the month's step may end phase 1's batch)
+            var pc = sim.MomentPacing;
+            Debug.Log($"[b3 ritual] pacing: watched {pc.watchedMinutes:0.00} rest until {pc.restUntil:0.00} credit {pc.credit:0.0} last kind {pc.lastKind}; why {sim.MomentWaitReason()}");
+            Debug.Log($"[b3 ritual] live in month {sim.CalendarMonth}; held:{string.Join(", ", (sim.State.moments ?? new List<HeldMoment>()).Where(m => m.kind == MomentKind.Ritual).Select(m => m.state.ToString()))}");
             t0 = Time.time; bool live = false;
             while (Time.time - t0 < 120f && !live) { yield return null; live = RitualPlaying(sim); }
-            Debug.Log($"[b3 ritual] live: played {live} after {Time.time - t0:0} s; {StagedMoments.LastWhy}");
+            Debug.Log($"[b3 ritual] moments now: {string.Join(", ", (sim.State.moments ?? new List<HeldMoment>()).Select(m => $"{m.kind}#{m.id} {m.state}"))}; started {StagedMoments.Started} finished {StagedMoments.Finished} last scene {StagedMoments.LastScene?.kind}#{StagedMoments.LastScene?.momentId}");
+            Debug.Log($"[b3 ritual] live: played {live} after {Time.time - t0:0} s; staged: {StagedMoments.LastWhy}; stage: {HeldMomentStage.Instance?.LastWhy}; sim: {sim.MomentWaitReason()}");
             CloseSlice();
             Assert.IsTrue(onReturn, "the berrying walk played on the Keeper's return in its month");
             Assert.IsTrue(live, "the berrying walk played when its month came while watched");
