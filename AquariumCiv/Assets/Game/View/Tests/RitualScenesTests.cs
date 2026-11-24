@@ -43,7 +43,7 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(1, sit.Count); Assert.AreEqual(RitualScenes.SortFor, sit[0].Len, 1e-3f, "sorts the fish basket for 4 s");
             Assert.AreEqual(PropKind.FishBasket, sit[0].prop);
             var d = DollPose.Rest; sit[0].pose(ref d, 1f, sit[0].Len);
-            Assert.AreEqual(RitualScenes.HullTop, d.offset.y, 1e-4f, "sitting on the hull's end");
+            Assert.AreEqual(RitualScenes.HullTop, d.lift + d.offset.y, 1e-4f, "sitting on the hull's end (the seat height in lift since the 2026-11-23 climb)");
             Assert.AreEqual(PropKind.Rod, s.parts[0][0].prop, "comes with the rod");
             Assert.Greater(s.b, s.a, "the rod lies along the hull from the lay to the take");
             Assert.Less((s.parts[0].Last().pos - Far2).magnitude, 0.01f, "goes on to the rack");
@@ -78,6 +78,42 @@ namespace AquariumCiv.View.Tests
             var d = DollPose.Rest; var hud = s.parts[0].First(p => p.pose != null); hud.pose(ref d, 1f, hud.Len);
             Assert.Less(d.squash, 0.85f, "crouched");
             Assert.GreaterOrEqual(s.fx.Count(f => f.kind == CampFxKind.Droplets), 6, "drops off the hull");
+        }
+
+        static bool Up(CampPart p, float u) { if (p.pose == null) return false; var d = DollPose.Rest; p.pose(ref d, u, p.Len); return d.lift + d.offset.y > 0.03f; }
+
+        /// <summary>2026-11-24 (tester: "the fisher stands inside the hull", "the kids walk in through it"): from every side, no walk on the
+        /// ground crosses the hull (the climbs on and off, lifted, may).</summary>
+        static void NeverThroughTheHull(CampScene s, Vector2[] starts, string what)
+        {
+            for (int m = 0; m < s.parts.Count; m++)
+            {
+                var at = starts[Mathf.Min(m, starts.Length - 1)];
+                foreach (var p in s.parts[m])
+                {
+                    bool lifted = Up(p, 0f) || Up(p, p.Len);
+                    if (!lifted)
+                        for (float k = 0f; k <= 1f; k += 0.02f)
+                        {
+                            var q = Vector2.Lerp(at, p.pos, k) - Spot; // the hull lies along x (Vector2.right)
+                            Assert.IsFalse(Mathf.Abs(q.x) < 0.15f && Mathf.Abs(q.y) < 0.13f, $"{what}: member {m} walks through the hull at {q} (to {p.pos - Spot}, {p.style})");
+                        }
+                    at = p.pos;
+                }
+            }
+        }
+
+        [Test]
+        public void B77_TheBoatScenes_NobodyWalksThroughTheHull()
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                Vector2 Dir(float deg) => Spot + (Vector2)(Quaternion.Euler(0f, 0f, deg) * Vector3.right) * 0.8f;
+                var a = Dir(i * 45f); var b = Dir(i * 45f + 120f); var c = Dir(i * 45f + 240f);
+                NeverThroughTheHull(RitualScenes.BoatSort(1, a, Spot, Vector2.right, ToCam, b, 0f), new[] { a }, $"sort from {i * 45}°");
+                NeverThroughTheHull(RitualScenes.BoatHouse(new[] { 1, 2, 3 }, new[] { a, b, c }, Spot, Vector2.right, ToCam, 0f), new[] { a, b, c }, $"house from {i * 45}°");
+                NeverThroughTheHull(RitualScenes.BoatLee(new[] { 1, 2, 3 }, new[] { a, b, c }, Spot, Vector2.right, ToCam, 0f), new[] { a, b, c }, $"lee from {i * 45}°");
+            }
         }
 
         [Test]

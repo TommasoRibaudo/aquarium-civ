@@ -27,6 +27,56 @@ namespace AquariumCiv.View
         /// <summary>How far out from the hull's middle line a kid stands beside it: to hide, knock, climb on and off (the hull is ~0.24 u wide, a doll ~0.06: BoatLee presses them at 0.15).</summary>
         public const float HullStep = 0.17f;
 
+        /// <summary>2026-11-24 (tester: the walks in cut straight through the hull): the corners a walk past the boat turns at, in the hull's frame
+        /// (half its length 0.135 plus a doll, <see cref="HullStep"/> out to the side), and the box a straight walk must not cross (a little inside them).</summary>
+        const float CornerAlong = 0.2f, KeepAlong = 0.17f, KeepAcross = 0.145f;
+
+        static bool CrossesHull(Vector2 a, Vector2 b)
+        {
+            // Liang-Barsky against |x| < KeepAlong, |y| < KeepAcross (hull frame)
+            float t0 = 0f, t1 = 1f; var d = b - a;
+            bool Clip(float p, float q) { if (Mathf.Abs(p) < 1e-6f) return q >= 0f; float r = q / p; if (p < 0f) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; } return true; }
+            return Clip(-d.x, a.x + KeepAlong) && Clip(d.x, KeepAlong - a.x) && Clip(-d.y, a.y + KeepAcross) && Clip(d.y, KeepAcross - a.y) && t1 - t0 > 1e-4f;
+        }
+
+        /// <summary>The turning points (world) of the shortest walk from <paramref name="from"/> to <paramref name="to"/> that goes round the hull
+        /// (none when the straight line is clear; else one corner, or two at the same end).</summary>
+        internal static List<Vector2> RoundHull(Vector2 from, Vector2 to, Vector2 boat, Vector2 along)
+        {
+            var acr = new Vector2(-along.y, along.x);
+            Vector2 ToHull(Vector2 w) { var r = w - boat; return new Vector2(Vector2.Dot(r, along), Vector2.Dot(r, acr)); }
+            Vector2 Out(Vector2 h) => boat + along * h.x + acr * h.y;
+            var a = ToHull(from); var b = ToHull(to);
+            var best = new List<Vector2>();
+            if (!CrossesHull(a, b)) return best;
+            float bestLen = float.MaxValue;
+            var cs = new[] { new Vector2(CornerAlong, HullStep), new Vector2(CornerAlong, -HullStep), new Vector2(-CornerAlong, HullStep), new Vector2(-CornerAlong, -HullStep) };
+            foreach (var c in cs)
+                if (!CrossesHull(a, c) && !CrossesHull(c, b)) { float l = (c - a).magnitude + (b - c).magnitude; if (l < bestLen) { bestLen = l; best = new List<Vector2> { Out(c) }; } }
+            foreach (var c in cs)
+                foreach (var e in cs)
+                    if (c != e && !CrossesHull(a, c) && !CrossesHull(c, e) && !CrossesHull(e, b))
+                    { float l = (c - a).magnitude + (e - c).magnitude + (b - e).magnitude; if (l < bestLen - 1e-4f) { bestLen = l; best = new List<Vector2> { Out(c), Out(e) }; } }
+            return best;
+        }
+
+        /// <summary>Walks <paramref name="m"/> from <paramref name="from"/> to <paramref name="to"/> starting at <paramref name="t"/>, round the hull;
+        /// returns the time they arrive. The last leg faces <paramref name="face"/>.</summary>
+        internal static float WalkRound(CampScene s, int m, float t, Vector2 from, Vector2 to, Vector2 face, Vector2 boat, Vector2 along, float speed, PropKind prop = PropKind.None, bool run = false)
+        {
+            var pts = RoundHull(from, to, boat, along); pts.Add(to);
+            var at = from;
+            for (int i = 0; i < pts.Count; i++)
+            {
+                bool last = i == pts.Count - 1;
+                float w = WalkTime(at, pts[i], speed);
+                var p = s.Part(m, t, t + w, pts[i], last ? face : pts[i] + (pts[i] - at), DollStyle.Stand, null, prop, speed);
+                p.run = run;
+                t += w; at = pts[i];
+            }
+            return t;
+        }
+
         public const float HullTop = 0.12f; // measured: the Kenney hull is ~0.1 mesh u high before the prop's 1.5 scale, a sitter on its end sits a little lower than the keel
         /// <summary>B77.a: the sort's length (SortBasket, as built).</summary>
         public const float SortFor = 4f;
@@ -110,9 +160,8 @@ namespace AquariumCiv.View
             var s = new CampScene(CampUse.BoatSort, t0, boat) { followReach = 2f, p0 = boat, p1 = along };
             int m = s.Add(who);
             var side = Vector2.Dot(toCam, new Vector2(-along.y, along.x)) >= 0f ? new Vector2(-along.y, along.x) : new Vector2(along.y, -along.x); // the hull's camera side
-            var lay = boat + side * 0.09f;
-            float t = WalkTime(at, lay, Walk);
-            s.Part(m, 0f, t, lay, boat, DollStyle.Stand, null, PropKind.Rod, Walk);
+            var lay = boat + side * HullStep; // 2026-11-24 (tester): beside the hull, reaching over it (0.09 stood the fisher inside the boat)
+            float t = WalkRound(s, m, 0f, at, lay, boat, boat, along, Walk, PropKind.Rod);
             s.Part(m, t, t + 0.7f, lay, boat, DollStyle.Stand, (ref DollPose p, float u, float l) => { float q = In(u, 0f, 0.3f); p.armR = Lerp(new Vector3(120f, 0f, 8f), new Vector3(90f, 0f, 8f), q); p.lean += 14f * q; }, PropKind.Rod);
             s.a = t + 0.55f;
             s.Fx(s.a, CampFxKind.Prop, Vector3.zero, 1f, (int)PropFx.Jolt);
@@ -130,7 +179,9 @@ namespace AquariumCiv.View
             s.Part(m, t + 0.5f, t + 1.3f, lay, boat, DollStyle.Stand, (ref DollPose p, float u, float l) => { float q = Bump(u, 0f, l); p.armR = Lerp(p.armR, new Vector3(90f, 0f, 8f), q); p.lean += 14f * q; }, PropKind.FishBasket, Walk);
             s.b = t + 1.1f;
             t += 1.3f;
-            CampScenes5.Go(s, m, t, WalkTime(lay, rack, Walk), rack, rack + toCam, Walk).prop = PropKind.FishBasket;
+            var from = lay;
+            foreach (var c in RoundHull(lay, rack, boat, along)) { float w = WalkTime(from, c, Walk); s.Part(m, t, t + w, c, c + (c - from), DollStyle.Stand, null, PropKind.FishBasket, Walk); t += w; from = c; }
+            CampScenes5.Go(s, m, t, WalkTime(from, rack, Walk), rack, rack + toCam, Walk).prop = PropKind.FishBasket;
             return s;
         }
 
@@ -144,21 +195,20 @@ namespace AquariumCiv.View
             var s = new CampScene(CampUse.BoatHouse, t0, boat) { holdFocus = true, kind = 1 };
             var near = Vector2.Dot(toCam, new Vector2(-along.y, along.x)) >= 0f ? new Vector2(-along.y, along.x) : new Vector2(along.y, -along.x);
             int n = Mathf.Min(3, kids.Count);
-            var ms = new int[n]; var spots = new Vector2[n];
+            var ms = new int[n]; var spots = new Vector2[n]; var arrive = new float[n];
             float t = 0f;
             for (int i = 0; i < n; i++)
             {
                 ms[i] = s.Add(kids[i]);
                 spots[i] = boat + near * 0.15f + along * ((i - (n - 1) * 0.5f) * 0.06f); // pressed against the hull, 0.06 apart
-                float w = WalkTime(at[i], spots[i], KidRun);
-                s.Part(ms[i], 0f, w, spots[i], spots[i] + near, DollStyle.Stand, null, PropKind.None, KidRun).run = true;
-                t = Mathf.Max(t, w);
+                arrive[i] = WalkRound(s, ms[i], 0f, at[i], spots[i], spots[i] + near, boat, along, KidRun, PropKind.None, true); // round the hull (2026-11-24)
+                t = Mathf.Max(t, arrive[i]);
             }
             s.a = t;
             for (int i = 0; i < n; i++)
             {
                 float ph = i * 0.31f;
-                s.Part(ms[i], WalkTime(at[i], spots[i], KidRun), t + CampScenes6.HuddleFor, spots[i], spots[i] + near, DollStyle.Stand, (ref DollPose p, float u, float l) =>
+                s.Part(ms[i], arrive[i], t + CampScenes6.HuddleFor, spots[i], spots[i] + near, DollStyle.Stand, (ref DollPose p, float u, float l) =>
                 {
                     p.squash = Mathf.Lerp(p.squash, 0.8f, In(u, 0f, 0.3f)); p.offset.y -= 0.01f * In(u, 0f, 0.3f); // crouched in its lee
                     p.armL = new Vector3(30f, 0f, -4f); p.armR = new Vector3(30f, 0f, 4f);
@@ -182,12 +232,12 @@ namespace AquariumCiv.View
             int hide = s.Add(kids[0]), knock = s.Add(kids[1]);
             var behind = boat - near * HullStep; // 2026-11-23: beside the hull, not in it (0.1 hid the kid inside the boat)
             var front = boat + near * HullStep;
-            float th = WalkTime(at[0], behind, KidWalk), tk = WalkTime(at[1], front, KidWalk);
+            // 2026-11-24 (tester): the walks in go round the hull, never across it
+            float th = WalkRound(s, hide, 0f, at[0], behind, boat, boat, along, KidRun, PropKind.None, true);
+            float tk = WalkRound(s, knock, 0f, at[1], front, boat, boat, along, KidWalk);
             float t = Mathf.Max(th + 0.8f, tk);
-            s.Part(hide, 0f, th, behind, boat, DollStyle.Stand, null, PropKind.None, KidRun).run = true;
             CampPoseFn crouch = (ref DollPose p, float u, float l) => { p.squash *= 0.7f; p.offset.y -= 0.012f; p.lean += 15f; };
             s.Part(hide, th, t + 1.4f, behind, boat, DollStyle.Stand, crouch);
-            s.Part(knock, 0f, tk, front, boat, DollStyle.Stand, null, PropKind.None, KidWalk);
             if (tk < t) s.Part(knock, tk, t, front, boat, DollStyle.Stand);
             // the knock: arm x 90, two taps; the boat jolts on each
             s.Part(knock, t, t + 1.2f, front, boat, DollStyle.Knock);
@@ -217,7 +267,8 @@ namespace AquariumCiv.View
             {
                 int third = s.Add(kids[2]);
                 var seatC = boat + along * 0.15f; var stepC = seatC + near * HullStep;
-                s.Part(third, 0f, t + 0.4f, stepC, seatC + near, DollStyle.Stand, null, PropKind.None, KidWalk);
+                float tc = WalkRound(s, third, 0f, at[2], stepC, seatC + near, boat, along, KidWalk);
+                if (tc < t + 0.4f) s.Part(third, tc, t + 0.4f, stepC, seatC + near, DollStyle.Stand);
                 ClimbOn(s, third, t + 0.4f, 0.4f, seatC, seatC + near, HullTop);
                 s.Part(third, t + 0.8f, off, seatC, seatC + near, DollStyle.Sit, swing(0.7f));
                 ClimbOff(s, third, off, 0.5f, stepC, seatC + near, HullTop);
