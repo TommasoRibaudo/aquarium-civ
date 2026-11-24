@@ -135,6 +135,8 @@ namespace AquariumCiv.View
     {
         sealed class Drawn { public GameObject go; public Mesh mesh; public MeshBuilder mb; }
         readonly Dictionary<(Place, int), Drawn> drawn = new();
+        /// <summary>Destroy in play, DestroyImmediate in edit mode (the edit-mode tests tick the people too: Destroy there logs an error).</summary>
+        static void Gone(UnityEngine.Object o) { if (Application.isPlaying) UnityEngine.Object.Destroy(o); else UnityEngine.Object.DestroyImmediate(o); }
         readonly List<(Place, int)> stale = new();
         readonly HashSet<(Place, int)> live = new();
 
@@ -168,7 +170,7 @@ namespace AquariumCiv.View
                 d.mb.verts.Clear(); d.mb.normals.Clear(); d.mb.colors.Clear(); d.mb.uvs.Clear(); d.mb.lamps.Clear(); d.mb.tris.Clear();
                 look.seed = l.home.buildingId * 31 + 7;
                 LaundryLines.Build(d.mb, new Vector3(an.centre.x, groundY(an.centre.x, an.centre.y), an.centre.y), an.along, an.outDir, look, scale);
-                if (d.mesh != null) UnityEngine.Object.Destroy(d.mesh);
+                if (d.mesh != null) Gone(d.mesh);
                 d.mesh = d.mb.ToMesh("Washing"); d.mesh.hideFlags = HideFlags.DontSave;
                 d.go.GetComponent<MeshFilter>().sharedMesh = d.mesh;
                 d.go.SetActive(true);
@@ -176,7 +178,7 @@ namespace AquariumCiv.View
             }
             stale.Clear();
             foreach (var kv in drawn) if (!live.Contains(kv.Key)) stale.Add(kv.Key);
-            foreach (var k in stale) { var d = drawn[k]; if (d.go != null) UnityEngine.Object.Destroy(d.go); if (d.mesh != null) UnityEngine.Object.Destroy(d.mesh); drawn.Remove(k); }
+            foreach (var k in stale) { var d = drawn[k]; if (d.go != null) Gone(d.go); if (d.mesh != null) Gone(d.mesh); drawn.Remove(k); }
         }
 
         /// <summary>The line's look at <paramref name="now"/>, or false when nothing is drawn (before the chore, after the take-in or the fade).</summary>
@@ -238,7 +240,7 @@ namespace AquariumCiv.View
 
         public void Clear()
         {
-            foreach (var d in drawn.Values) { if (d.go != null) UnityEngine.Object.Destroy(d.go); if (d.mesh != null) UnityEngine.Object.Destroy(d.mesh); }
+            foreach (var d in drawn.Values) { if (d.go != null) Gone(d.go); if (d.mesh != null) Gone(d.mesh); }
             drawn.Clear(); live.Clear();
         }
     }
