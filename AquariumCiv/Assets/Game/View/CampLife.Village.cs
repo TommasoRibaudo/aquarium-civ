@@ -706,7 +706,8 @@ namespace AquariumCiv.View
         {
             var mid = VillageMiddle();
             var left = new List<PieceData>();
-            foreach (var hm in ShownHomes(mid, force ? 0.35f : -0.2f)) if (force || !HouseLit(hm.seed)) left.Add(hm); // the cheat: homes that face the camera
+            foreach (var hm in ShownHomes(mid, force ? 0.35f : -0.2f))
+                if ((force || !HouseLit(hm.seed)) && !ThingBusy(ThingHomeBase + Mathf.Abs(hm.seed) % 100)) left.Add(hm); // the cheat: homes that face the camera; never a home whose step is in use (the doorstep sit: 2026-11-24, the ADay test)
             if (left.Count == 0) return PiecesOf(PieceKind.Home, mid).Count == 0 ? "no home in the box" : "the lanterns are lit";
             var lanterns = new List<Vector2>(); var stands = new List<Vector2>();
             var from = mid;
@@ -719,6 +720,7 @@ namespace AquariumCiv.View
             }
             int who = VGrown(acts, stands[0], force);
             if (who == Nobody) return "no grown-up free";
+            if (Playing(CampUse.TentDoorSit)) return "a doorstep sit is on (the lamplighter comes after)"; // 2026-11-24: never past a sitter's step
             return StartV(CampScenes5b.LightLanterns(who, At(who).Value, lanterns, ToCam(lanterns[0]), time, stands), 0, CampUse.LightLanterns);
         }
 
@@ -735,6 +737,7 @@ namespace AquariumCiv.View
         string TryHouseDoorSit(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
             var homes = ShownHomes(VillageMiddle(), force ? 0.35f : -0.2f);
+            if (!force && Playing(CampUse.LightLanterns)) return "the lamplighter's round is on"; // 2026-11-24: not on a step the round is passing
             if (!force)
             {   // 2026-11-24 (a year's census): someone free at dusk goes to sit on the doorstep of the home nearest them (within 3 u) [est]
                 homes.RemoveAll(hm => ThingBusy(ThingHomeBase + Mathf.Abs(hm.seed) % 100));

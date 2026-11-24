@@ -380,7 +380,7 @@ namespace AquariumCiv.View
                 s.Part(k, from, from + wk, kseat, fire, DollStyle.Stand, null, PropKind.None, KidWalk);
                 s.Part(k, from + wk, t, kseat, fire, DollStyle.Sit, (ref DollPose p, float u, float l) => { p.roll += 8f * In(u, 0.3f, 0.4f); });
                 s.Part(k, t, t + 0.7f, door - out1 * 0.06f, door - out1, DollStyle.Stand, null, PropKind.None, KidWalk);
-                s.Part(k, t + 0.7f, t + 1.4f, door - out1 * 0.06f, door - out1, DollStyle.Hidden);
+                s.Part(k, t + 0.7f, t + 1.4f, door - out1 * 0.13f, door - out1, DollStyle.Hidden); // 2026-11-24: in, a step further than the grown-up's (never one spot for two, even unseen)
             }
             s.Part(g, t, t + 0.8f, door - out1 * 0.06f, door - out1, DollStyle.Stand, null, PropKind.None, Walk);
             s.Part(g, t + 0.8f, t + 1.4f, door - out1 * 0.06f, door - out1, DollStyle.Hidden);
