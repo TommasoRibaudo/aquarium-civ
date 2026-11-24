@@ -189,6 +189,13 @@ namespace AquariumCiv.View
                 Last = $"no: cell {cell}";
                 Ghost.Wobble();
                 noAt = box.land.OnGround(at.x, at.z); noT = Time.unscaledTime;
+                if (s == LifeSpecies.Thicket)
+                {   // #664: the bushes' "no" says why (the fire, the wet, the room), not only the wobble
+                    string why = cell < 0 ? "Not here" : sim.ThicketRefusal(cell) ?? "Not here";
+                    LastRefusal = why;
+                    Last = $"no: cell {cell}: {why}";
+                    hud?.Toast(why + ".", 3f, through: true);
+                }
                 return;
             }
             bool moved = GhostShown;

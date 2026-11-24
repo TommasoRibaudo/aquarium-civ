@@ -119,6 +119,8 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(dark);
             yield return Frames(5);
             Assert.AreEqual(ref0 + 1, lpv.Refusals, "the soft no: " + lpv.Last);
+            Assert.AreEqual(Sim.ThicketRefusal(darkCell), lpv.LastRefusal, "#664: the no says why");
+            Assert.AreEqual(lpv.LastRefusal + ".", GameUiPanel.Toasts.Current, "#664: and the toast shows it");
             Assert.IsFalse(lpv.GhostShown, "no ghost off the glow");
             Assert.IsTrue(Sim.JarReady(LifeSpecies.Thicket), "nothing placed");
             Assert.AreEqual(GameHud.KitTool.Life, hud.Hand, "still in hand");
@@ -169,6 +171,53 @@ namespace AquariumCiv.View.PlayTests
             yield return Shot("p9-slot-6-placed");
             if (!Sim.AnyJarReady) Assert.IsFalse(hud.LifeDotShown, "no jar ready: the dot goes");
             AssertNoErrors("life slot");
+        }
+
+        /// <summary>#664: with the bushes in hand, a tap on green ground the bushes can't use says why, in a toast: by the fire, in the wet,
+        /// on ground that isn't grass. Shots of each.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator RefusedBushTap_SaysWhy()
+        {
+            yield return LivingMeadow();
+            var hud = GameHud.Instance;
+            for (int i = 0; i < 16 && !Sim.JarReady(LifeSpecies.Thicket); i++) EcoDebug.SkipSeasons(1);
+            Assert.IsTrue(Sim.JarReady(LifeSpecies.Thicket), "the thicket's jar opened");
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
+            yield return new WaitForSecondsRealtime(0.6f);
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-thicket"));
+            yield return new WaitForSecondsRealtime(0.5f);
+            Assert.AreEqual(LifeSpecies.Thicket, hud.HeldLife, "the bushes in hand");
+            yield return Until(() => GameUiPanel.Toasts.Current == GameHud.LifeHintFor(LifeSpecies.Thicket), 8f); // after the jar's own toast
+            Assert.AreEqual(GameHud.LifeHintFor(LifeSpecies.Thicket), GameUiPanel.Toasts.Current, "#664: the first hint says where bushes go");
+            StringAssert.Contains("open grass away from the fire", GameUiPanel.Toasts.Current);
+            yield return Shot("664-0-hint");
+            var lpv = LifePlaceView.Instance;
+            // one tap per reason, on a cell on screen that the rule refuses for that reason
+            var seen = new HashSet<ThicketRefusalReason>();
+            foreach (var want in new[] { ThicketRefusalReason.NearFire, ThicketRefusalReason.Wet, ThicketRefusalReason.NotGrass, ThicketRefusalReason.NoRoom })
+            {
+                int cell = -1; Vector2 at = default;
+                for (int c = 0; c < AquariumCiv.Sim.Eco.EcoLand.N && cell < 0; c++)
+                {
+                    if (Sim.WhyNotThicket(c) != want) continue;
+                    var p = lpv.ScreenOf(c);
+                    if (p.x < Screen.width * 0.15f || p.x > Screen.width * 0.85f || p.y < Screen.height * 0.25f || p.y > Screen.height * 0.75f || UiInput.Over(p)) continue;
+                    if (!EcoMistView.Instance.GroundPoint(p, out var g) || AquariumCiv.Sim.Settle.SiteMap.CellAt(g.x, g.z) != c) continue;
+                    cell = c; at = p;
+                }
+                if (cell < 0) { Debug.Log($"[664] no {want} cell on screen"); continue; }
+                int r0 = lpv.Refusals;
+                yield return TapAt(at);
+                yield return Frames(5);
+                Assert.AreEqual(r0 + 1, lpv.Refusals, $"{want}: refused ({lpv.Last})");
+                Assert.AreEqual(Sim.ThicketRefusal(cell), lpv.LastRefusal, $"{want}: the reason");
+                Assert.AreEqual(lpv.LastRefusal + ".", GameUiPanel.Toasts.Current, $"{want}: the toast");
+                Debug.Log($"[664] {want}: \"{GameUiPanel.Toasts.Current}\"");
+                seen.Add(want);
+                yield return new WaitForSecondsRealtime(0.3f);
+                yield return Shot($"664-{seen.Count}-{want}");
+            }
+            Assert.IsTrue(seen.Contains(ThicketRefusalReason.NearFire) && seen.Contains(ThicketRefusalReason.Wet), "the fire and the wet are on screen in this box: " + string.Join(", ", seen));
         }
 
         [UnityTest, Timeout(600000)]
