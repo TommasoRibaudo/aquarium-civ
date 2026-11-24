@@ -26,11 +26,18 @@ milestone is done when its issues are closed and its own "done when" is met.
 - **Labels:** `type:feature|bug|spike|research|tooling`, `lane:sim|view|ui|docs`, `needs:editor`, `needs:user`.
   Filter `label:needs:user` to see everything waiting on the user.
 - **Ready** means: briefed with the template, dependencies done, no open `needs:user`.
+- **Every open issue is on the board with a status, and in a milestone** (cleaned up 2026-11-15; before that 61 issues were
+  missing and 82 had no status). File an issue → add it to the board (Backlog) → give it a milestone, in the same step.
+  Closed issues go to Done through `Tools/close-issue.sh`, never by `gh issue close` alone.
+- **Milestones now:** `Polish` (`launch-blocker` label marks what must close before a build goes to testers), `P9 Placed life`,
+  `P10 Expeditions`, `Writing events`, `Seeds and bushes`, `Later` (parked ideas). A milestone is closed on GitHub when its
+  last issue closes. M2 to M8, "After the slice", P7, P8 and Visit loop are closed.
 
 ## 3. Branches
-- `vs/slice` = the **integration branch** for the slice (worktree `F:\GameDev-slice`). The orchestrator merges finished
-  work here (user approval 2026-10-29). `main`/`dev` stay PR-only (docs/ci.md).
-- One branch per issue: `vs/<issue#>-<slug>`, from `vs/slice`, in its own git worktree for lane A work.
+- **Today (2026-11-15):** work branches off `dev`, merges to `dev` by PR, and `dev` goes to `main` by PR after CI
+  (docs/ci.md). `vs/slice` was the integration branch during the slice and is history.
+- One branch per issue: `vs/<issue#>-<slug>` (or `p9/…`), in its own git worktree for lane A work. Remove the worktree and
+  delete the branch once it is merged into `main`.
 - Never commit `AquariumCiv/AquariumCiv.slnx` or `AquariumCiv/Assets/Art/Materials/Glass.mat`.
 
 ## 4. Lanes: what can run in parallel
