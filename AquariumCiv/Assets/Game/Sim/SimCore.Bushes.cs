@@ -71,6 +71,9 @@ namespace AquariumCiv.Sim
         /// <summary>#728: why a thicket can't be placed on this cell (the people's plain words, as the refused tap shows), or null when the ground is fine.</summary>
         public string ThicketRefusal(int cell) => EcologyOn ? EcoM.ThicketRefusal(cell, SettledCell) : "Not here";
 
+        /// <summary>#664: which rule refuses a thicket on this cell (<see cref="EcoModel.WhyNotThicket"/>); OffLand off the ecology.</summary>
+        public ThicketRefusalReason WhyNotThicket(int cell) => EcologyOn ? EcoM.WhyNotThicket(cell, SettledCell) : ThicketRefusalReason.OffLand;
+
         /// <summary>#728: an earned bush is in the pouch, the first thicket is down and nothing here refuses (the glow for the bush in hand).</summary>
         public bool CanPlaceBush(int cell) => EcologyOn && BushesInPouch > 0 && LifeIsPlaced(LifeSpecies.Thicket) && EcoM.ThicketRefusal(cell, SettledCell) == null;
 
