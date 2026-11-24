@@ -382,7 +382,7 @@ namespace AquariumCiv.View
         /// <summary>B52.a: the lamplighter walks tent to tent with a burning stick (a twig with an ember tip) and reaches up to each tent's lantern
         /// (arm x 150) → hit: it lights (a <see cref="CampMark.LanternLit"/> at the pole) with one spark; 1.5 s apart plus the walk.
         /// <see cref="CampScene.a"/>: the first light.</summary>
-        public static CampScene LightLanterns(int lighter, Vector2 at, IList<Vector2> poles, Vector2 toCam, float t0)
+        public static CampScene LightLanterns(int lighter, Vector2 at, IList<Vector2> poles, Vector2 toCam, float t0, IList<Vector2> stands = null)
         {
             toCam = Unit(toCam, Vector2.down);
             var s = new CampScene(CampUse.LightLanterns, t0, poles.Count > 0 ? poles[0] : at) { followReach = 1.4f };
@@ -393,7 +393,7 @@ namespace AquariumCiv.View
             {
                 // #692 p5 retakes (the lighter hid the lantern): beside the pole across the camera's view, on the side they come from
                 var side = new Vector2(-toCam.y, toCam.x); if (Vector2.Dot(side, from - poles[i]) < 0f) side = -side;
-                var st = poles[i] + side * 0.065f + toCam * 0.02f;
+                var st = stands != null && i < stands.Count ? stands[i] : poles[i] + side * 0.065f + toCam * 0.02f; // 2026-11-24: at a house, in front of its wall
                 float w = WalkTime(from, st, Walk);
                 s.Part(m, t, t + w, st, poles[i], DollStyle.Stand, null, PropKind.Twig, Walk); t += w;
                 s.Part(m, t, t + LightGap, st, poles[i], DollStyle.Stand, (ref DollPose p, float u, float l) => { float k = In(u, 0f, 0.3f) * (1f - In(u, 1.0f, 0.3f)); p.armR = Lerp(p.armR, new Vector3(150f, 0f, 6f), k); p.offset.y += 0.01f * k; }, PropKind.Twig);

@@ -216,8 +216,15 @@ namespace AquariumCiv.View
                 {
                     if (Go(CampUse.DogFetch, Sometimes) && TryFetch(acts, time, false, grown) == null) return;
                     if (grown.gen >= 2 && Go(CampUse.DogRide, VeryRare) && TryRide(acts, time, false, grown) == null) return;
+                    // 2026-11-24 (the user: every approved use happens by itself): a free grown-up takes the dog after rabbits seen near the camp
+                    // and the dog lies out in the sun on a clear afternoon
+                    if (h >= 12f && planner.WeatherOn(now.day) is Weather.Clear or Weather.Rainbow && LifeClock.SeasonOf(now.day) != Season.Winter
+                        && Go(CampUse.DogSun, Sometimes) && Tried(CampUse.DogSun, TryDogSun(acts, time, false, grown))) return;
                 }
             }
+            // 2026-11-24 (a year's census: the grown-ups work all day, free from ~17 h): an evening hunt, when the rabbits come out
+            if (h >= 16f && h < 18.2f && !wet && grown != null && !DogBusy(grown.id) && (!dogActors.TryGetValue(grown.id, out var gh) || gh.huntWith == int.MinValue)
+                && Go(CampUse.DogHunt, Sometimes) && Tried(CampUse.DogHunt, TryDogHunt(acts, time, false, grown))) return;
             if (h >= 18.6f && h < 20.6f)
             {
                 if (pup != null && !DogBusy(pup.id) && Go(CampUse.PupSleep, Often) && TryPupSleep(acts, time, false, pup) == null) return;
@@ -322,7 +329,8 @@ namespace AquariumCiv.View
         string TryDogHunt(IReadOnlyList<PersonActivity> acts, float time, bool force, Dog dog)
         {
             var fire = meals.Fire;
-            int hunter = Grown1(acts, fire, force);
+            int hunter = force ? Grown1(acts, fire, true) : Grown1(acts, DogNow(dog), false); // 2026-11-24: naturally, a free grown-up by the dog (it keeps near its people)
+            if (hunter == Nobody && !force) hunter = Grown1(acts, fire, false);
             if (hunter == Nobody) return "no grown-up free";
             var hAt = At(hunter).Value;
             Vector2 rabbits = fire + Rotate(ToCam(fire), 80f) * 1.2f;
@@ -331,7 +339,10 @@ namespace AquariumCiv.View
             {
                 int id = rv.NearestShown(fire.x, fire.y);
                 if (id >= 0 && rv.TryGetPosition(id, out var rp)) rabbits = new Vector2(rp.x, rp.z);
+                else if (!force) return "no rabbits shown";
             }
+            else if (!force) return "no rabbits shown";
+            if (!force && (rabbits - fire).magnitude > 2.5f) return "no rabbits near the camp"; // [est] seen from the camp, so worth the walk
             if ((rabbits - hAt).magnitude > 0.9f) rabbits = hAt + (rabbits - hAt).normalized * 0.9f; // [est] the walk-out keeps to one frame
             return StartDog(DogScenes.DogHunt(dog.id, DogNow(dog), hunter, hAt, rabbits, ToCam(hAt), time), CampUse.DogHunt);
         }

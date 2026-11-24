@@ -40,7 +40,7 @@ namespace AquariumCiv.View
 
         void ResetVillage()
         {
-            villageDay = long.MinValue; felledAt.Clear(); scarecrows.Clear(); homeExtras.Clear(); grids.Clear(); posts.Clear(); postsLeft.Clear(); birdPerched = -1;
+            villageDay = long.MinValue; houseLit.Clear(); felledAt.Clear(); scarecrows.Clear(); homeExtras.Clear(); grids.Clear(); posts.Clear(); postsLeft.Clear(); birdPerched = -1;
         }
 
         void DestroyVillage()
@@ -455,6 +455,9 @@ namespace AquariumCiv.View
             if (h >= 9f && h < 12f && !wet && Go(CampUse.HomeMend, 0.34f, 0) && Tried(CampUse.HomeMend, TryHomeMend(acts, time, false))) return;
             // B58.j (work): a leaning fence post fixed (sometimes), mornings
             if (h >= 8f && h < 11.5f && !wet && Go(CampUse.FenceFix, Sometimes, 0) && Tried(CampUse.FenceFix, TryFenceFix(acts, time, false))) return;
+            // B52.a / B40.c at the houses (2026-11-24: houses only, so the village plays them): the lamplighter's round at dusk, the doorway sit
+            if (h >= 17.4f && Go(CampUse.LightLanterns, 1f, 0) && Tried(CampUse.LightLanterns, TryHouseLanterns(acts, time, false))) return;
+            if (h >= 17f && Go(CampUse.TentDoorSit, Often, 0) && Tried(CampUse.TentDoorSit, TryHouseDoorSit(acts, time, false))) return;
             // B58.g: two who meet in a street stop to talk (often, as B50.b)
             if (h >= 8f && h < 18f && Go(CampUse.StreetChat, Often, ThingStreet) && Tried(CampUse.StreetChat, TryStreetChat(acts, time, false))) return;
             // B59.k (work): barn chores in the morning (often)
@@ -667,6 +670,107 @@ namespace AquariumCiv.View
                 }
             var s = VillageScenes.HarvestDance(who, AtAll(who), centre, BeatHash.Range(12f, 16f, (int)today, 3, 6950), time);
             return StartV(s, ThingFieldBase + FieldKey(f) % 100, CampUse.HarvestDance);
+        }
+
+        // ================================================================== B52.a / B40.c at the houses (2026-11-24)
+        /// <summary>The day each home's door lantern was lit (by its seed).</summary>
+        readonly Dictionary<int, long> houseLit = new();
+        /// <summary>Lit today (at dusk; the cheat any time) until the next dawn.</summary>
+        bool HouseLit(int seed) => houseLit.TryGetValue(seed, out long d) && (d == now.day || d == now.day - 1 && Hour < 6.5f);
+
+        /// <summary>A home's door (on the front wall, Pieces.Draw's Home: x = +0.18 w), the way out of it, and its lantern: hung on the wall
+        /// beside the door at <see cref="CampGeo5.PoleH"/>, on a small iron arm [est].</summary>
+        static void HouseDoor(PieceData home, out Vector2 door, out Vector2 outward, out Vector2 lantern)
+        {
+            HomeFront(home, out float fz, out float hw, out _);
+            outward = LotDir(home, 0f, -1f);
+            float dx = home.w * 0.18f;
+            door = LotPoint(home, dx, fz);
+            lantern = LotPoint(home, dx + 0.075f, fz - HouseLanternOut);
+        }
+
+        /// <summary>How far the lantern hangs out from the wall (its iron arm's reach).</summary>
+        public const float HouseLanternOut = 0.022f;
+
+        /// <summary>The homes standing now, their fronts toward the camera (so the uses play where they are seen) [est: as the mend's -0.2].</summary>
+        List<PieceData> ShownHomes(Vector2 near, float facing = -0.2f)
+        {
+            var homes = PiecesOf(PieceKind.Home, near);
+            homes.RemoveAll(hm => Vector2.Dot(LotDir(hm, 0f, -1f), ToCam(hm.Pos)) < facing);
+            return homes;
+        }
+
+        /// <summary>B52.a at the houses: at dusk one grown-up walks home to home (nearest next, up to 4) with a burning stick and lights each
+        /// door's lantern; they stay lit until dawn.</summary>
+        string TryHouseLanterns(IReadOnlyList<PersonActivity> acts, float time, bool force)
+        {
+            var mid = VillageMiddle();
+            var left = new List<PieceData>();
+            foreach (var hm in ShownHomes(mid, force ? 0.35f : -0.2f)) if (force || !HouseLit(hm.seed)) left.Add(hm); // the cheat: homes that face the camera
+            if (left.Count == 0) return PiecesOf(PieceKind.Home, mid).Count == 0 ? "no home in the box" : "the lanterns are lit";
+            var lanterns = new List<Vector2>(); var stands = new List<Vector2>();
+            var from = mid;
+            while (left.Count > 0 && lanterns.Count < (force ? 1 : 4)) // the cheat (its clip): one, so the lighting stays in frame
+            {
+                int bi = 0;
+                for (int i = 1; i < left.Count; i++) { HouseDoor(left[i], out _, out _, out var li); HouseDoor(left[bi], out _, out _, out var lb); if ((li - from).sqrMagnitude < (lb - from).sqrMagnitude) bi = i; }
+                HouseDoor(left[bi], out _, out var outw, out var lan);
+                lanterns.Add(lan); stands.Add(lan + outw * 0.07f); from = lan; left.RemoveAt(bi);
+            }
+            int who = VGrown(acts, stands[0], force);
+            if (who == Nobody) return "no grown-up free";
+            return StartV(CampScenes5b.LightLanterns(who, At(who).Value, lanterns, ToCam(lanterns[0]), time, stands), 0, CampUse.LightLanterns);
+        }
+
+        /// <summary>The cheat (and its night clip): every home's door lantern lit now, until dawn.</summary>
+        public string LightAllHouseLanterns()
+        {
+            if (!VillageEra) return "houses only: no village yet";
+            var homes = PiecesOf(PieceKind.Home, VillageMiddle());
+            foreach (var hm in homes) houseLit[hm.seed] = now.day;
+            return $"{homes.Count} house lanterns lit";
+        }
+
+        /// <summary>B40.c at the houses: a grown-up sits on the doorstep at dusk, a kid of theirs (else a kid near) comes and leans on them.</summary>
+        string TryHouseDoorSit(IReadOnlyList<PersonActivity> acts, float time, bool force)
+        {
+            var homes = ShownHomes(VillageMiddle(), force ? 0.35f : -0.2f);
+            if (!force)
+            {   // 2026-11-24 (a year's census): someone free at dusk goes to sit on the doorstep of the home nearest them (within 3 u) [est]
+                homes.RemoveAll(hm => ThingBusy(ThingHomeBase + Mathf.Abs(hm.seed) % 100));
+                foreach (var a in acts)
+                {
+                    if (!VFree(a) || !IsGrown(a) || !(At(a.who.Key) is Vector2 p)) continue;
+                    PieceData best = null; float bd = 3f;
+                    foreach (var hm in homes) { HouseDoor(hm, out var dr, out _, out _); float d = (dr - p).magnitude; if (d < bd) { bd = d; best = hm; } }
+                    if (best == null) continue;
+                    HouseDoor(best, out var door0, out var out0, out _);
+                    int kid0 = Nobody;
+                    foreach (var n in sim.State.notables) if (n.alive && n.parentId == a.who.Key && n.age < 12f && Shown(acts, n.id) && FreeKey(acts, n.id)) { kid0 = n.id; break; }
+                    if (kid0 == Nobody) kid0 = VKid(acts, door0, false, new[] { a.who.Key });
+                    var s0 = CampScenes5.TentDoorSit(a.who.Key, kid0, p, kid0 != Nobody ? At(kid0).Value : default, door0 + out0 * 0.06f, out0, door0 + out0,
+                        BeatHash.Range(10f, 18f, (int)today, Mathf.Abs(best.seed) % 97, 6961), time, ToCam(door0));
+                    return StartV(s0, ThingHomeBase + Mathf.Abs(best.seed) % 100, CampUse.TentDoorSit);
+                }
+                return homes.Count == 0 ? "no home facing the camera" : "no grown-up free near a home";
+            }
+            foreach (var home in homes)
+            {
+                int thing = ThingHomeBase + Mathf.Abs(home.seed) % 100;
+                if (ThingBusy(thing)) continue;
+                HouseDoor(home, out var door, out var outw, out _);
+                if (force && Blocked(door + outw * 0.2f, 0.12f, home)) continue;
+                int grown = VGrown(acts, door, force);
+                if (grown == Nobody) continue; // 2026-11-24 (a year's census): the next home, someone may be free by it
+                int kid = Nobody;
+                foreach (var n in sim.State.notables) if (n.alive && n.parentId == grown && n.age < 12f && Shown(acts, n.id) && (force || FreeKey(acts, n.id))) { kid = n.id; break; }
+                if (kid == Nobody) kid = VKid(acts, door, force, new[] { grown });
+                var watch = door + outw;
+                var s = CampScenes5.TentDoorSit(grown, kid, At(grown).Value, kid != Nobody ? At(kid).Value : default, door + outw * 0.06f, outw, watch,
+                    force ? 10f : BeatHash.Range(10f, 18f, (int)today, Mathf.Abs(home.seed) % 97, 6961), time, ToCam(door));
+                return StartV(s, thing, CampUse.TentDoorSit);
+            }
+            return homes.Count == 0 ? "no home facing the camera" : "no grown-up free by a doorstep";
         }
 
         string TryHomeMend(IReadOnlyList<PersonActivity> acts, float time, bool force)
@@ -1336,6 +1440,7 @@ namespace AquariumCiv.View
         public static string BarnChores() => Do(CampUse.BarnChores);
         public static string HayJump() => Do(CampUse.HayJump);
         public static string VillageStatus() { var c = Camp; return c == null ? "no PeopleView" : c.VillageStatus(); }
+        public static string HouseLanternsLit() { var c = Camp; return c == null ? "no PeopleView" : c.LightAllHouseLanterns(); }
         public static string VillageDolls() { var c = Camp; return c == null ? "no PeopleView" : c.VillageDolls(); }
         public static string VillageWho() { var c = Camp; return c == null ? "no PeopleView" : c.VillageWho(); }
     }
