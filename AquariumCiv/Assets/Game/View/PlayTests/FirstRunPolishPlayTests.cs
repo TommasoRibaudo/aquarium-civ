@@ -171,21 +171,26 @@ namespace AquariumCiv.View.PlayTests
                 yield return TapAt(GameUiPanel.ScreenCenter(Run.Root, "firstrun-plate"));
                 yield return new WaitForSecondsRealtime(0.4f);
                 Assert.IsTrue(Run.NameSheetOpen, "a tap on the plate opens the naming sheet");
+                // 2026-11-24: the hour is read on the frame the hold lets go (in the living land that is at the naming, and the light has
+                // already eased ~0.25 h by the frames after; the old read came 10 frames late and failed on dev)
+                float letGoShown = float.NaN;
+                IEnumerator Watch(int frames) { for (int f = 0; f < frames; f++) { if (float.IsNaN(letGoShown) && !light.HeldForFirstRun) letGoShown = light.Logic.ShownHour; yield return null; } }
                 yield return TapAt(GameUiPanel.ScreenCenter(Run.Root, "firstrun-name-keep"));
-                yield return Frames(10);
+                yield return Watch(10);
                 if (eco) Assert.IsFalse(Run.Active, "named: the living land's run is done");
                 else
                 {
                     Assert.AreNotEqual(FirstRunStep.Name, Run.Step, "named");
                     Assert.IsTrue(light.HeldForFirstRun, "the old slice's run still holds the day until it ends");
                     FirstRunView.DebugSkipAll();
-                    yield return Frames(3);
+                    yield return Watch(3);
                 }
                 Assert.IsFalse(Run.Active);
 
                 // The light lets go and chases the clock at its usual rate: a soft blend, no jump.
+                Assert.IsFalse(float.IsNaN(letGoShown), "the hold let go while watched");
+                Assert.AreEqual(DayLightDriver.FirstRunHour, letGoShown, 0.2f, "no jump on the frame it lets go");
                 float shown0 = light.Logic.ShownHour;
-                Assert.AreEqual(DayLightDriver.FirstRunHour, shown0, 0.2f, "no jump on the frame it lets go");
                 Assert.IsFalse(light.HeldForFirstRun);
                 float t0 = Time.unscaledTime;
                 yield return new WaitForSecondsRealtime(1f);
