@@ -102,6 +102,7 @@ namespace AquariumCiv.GameUI
         {
             if (Instance != this) return;
             UiInput.Remove(IsOverUi);
+            if (toastUnderCaption) { toastUnderCaption = false; GameUiPanel.Toasts.Hold(CaptionHold, false); } // the queue is static: never leave it held
         }
 
         void OnDestroy()
@@ -559,7 +560,7 @@ namespace AquariumCiv.GameUI
             {
                 if (n.Contains("seed in the ground")) return "needs the tree";
                 int a = n.IndexOf(" need the ", StringComparison.Ordinal);
-                if (a >= 0) return "needs " + n.Substring(a + 10).Replace(" first", "");
+                if (a >= 0) return "needs " + n.Substring(a + 10).Replace(" first", "").Replace(" set down", "");
             }
             if (n.Contains("bigger meadow")) return "more meadow";
             if (n.Contains("meadow")) return "needs a meadow";
@@ -654,7 +655,7 @@ namespace AquariumCiv.GameUI
         {
             bool any = sim.AnyJarReady;
             lifeShown = any;
-            bool dot = any && hand != KitTool.Life;
+            bool dot = any && hand == KitTool.None; // tester 11-24: no dot (nor its halo) on "Put away" while any tool is in hand
             if (cleanButton != null && cleanButton.ClassListContains("kg-tool--life") != dot) { cleanButton.EnableInClassList("kg-tool--life", dot); ShowToolWord(); }
             SetKitPulse(dot && !hidden && !cameraMode);
             if (hand == KitTool.Life && !sim.JarReady(heldLife)) SetHand(KitTool.None); // placed (or gone): the tool is put down
@@ -920,6 +921,46 @@ namespace AquariumCiv.GameUI
             GlassMotion.Show(toastLabel, GlassMotion.FadeOff);
         }
 
+        /// <summary>The hold the toast lane takes while a caption plate sits where the toast would go.</summary>
+        public const string CaptionHold = "caption";
+        bool toastUnderCaption;
+
+        /// <summary>Tester 2026-11-25 (750×1334): with a tall sheet up the toast's lane rises to the top of the screen, where a person's caption
+        /// plate is ("This is the spot", Harl); the two printed over each other. The toast now waits while a caption it would cover is up,
+        /// and comes back after (MessageQueue.Hold).</summary>
+        void HoldUnderCaption()
+        {
+            bool clash = false;
+            var tree = toastLabel.panel?.visualTree;
+            var tr = toastLabel.worldBound; // where it is drawn (kept from the last time it was up while it is down)
+            if (tr.height > 1f && !float.IsNaN(tr.height)) lastToastRect = tr;
+            if (tree != null && lastToastRect.height > 1f)
+            {
+                float top = lastToastRect.yMin, low = lastToastRect.yMax;
+                tree.Query(className: "kg-caption").ForEach(c =>
+                {
+                    if (clash || c == toastLabel || c.ClassListContains(GlassMotion.CaptionOff) || !Shown(c)) return;
+                    var r = c.worldBound;
+                    if (r.height > 1f && r.yMin < low && r.yMax > top) clash = true;
+                });
+            }
+            if (clash == toastUnderCaption) return;
+            toastUnderCaption = clash;
+            GameUiPanel.Toasts.Hold(CaptionHold, clash);
+        }
+
+        Rect lastToastRect;
+
+        static bool Shown(VisualElement e)
+        {
+            for (var p = e; p != null; p = p.parent)
+                if (p.resolvedStyle.display == DisplayStyle.None || p.resolvedStyle.visibility == Visibility.Hidden || p.resolvedStyle.opacity < 0.05f) return false;
+            return true;
+        }
+
+        /// <summary>The toast is held back by a caption it would cover (tests).</summary>
+        public bool ToastUnderCaption => toastUnderCaption;
+
         void DropToasts()
         {
             GameUiPanel.Toasts.Clear();
@@ -1071,7 +1112,7 @@ namespace AquariumCiv.GameUI
             if (Screen.safeArea != lastSafe || Screen.width != lastScreen.x || Screen.height != lastScreen.y) ApplySafeArea();
             UpdateBlockers();
             if (cameraMode) UpdateCameraMode();
-            if (toastLabel != null) PumpToast();
+            if (toastLabel != null) { HoldUnderCaption(); PumpToast(); }
             if (outsideSheet != null || barProbes.Count > 0) PlaceToast(); // it has no height until its first layout; a choice's bar and button move
             FollowFirstRun();
             FollowKit();

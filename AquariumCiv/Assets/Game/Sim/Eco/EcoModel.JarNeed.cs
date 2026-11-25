@@ -33,7 +33,9 @@ namespace AquariumCiv.Sim.Eco
             var below = LifeJar.RungBelow(s);
             string n = PlainName(s);
             if (below.HasValue && !IsPlaced(below.Value))
-                return n + " need the " + (below.Value == LifeSpecies.Thicket ? "bushes" : PlainName(below.Value).ToLowerInvariant()) + " first";
+                // tester 11-24: with the rung below ready in the kit, "need the bushes first" read as done: it means set down in the box
+                return n + " need the " + (below.Value == LifeSpecies.Thicket ? "bushes" : PlainName(below.Value).ToLowerInvariant())
+                    + (Jar(below.Value).State == JarState.Ready ? " set down" : "") + " first";
             bool anyMeadow = st.cGrass + st.cTall > 0;
             switch (s)
             {

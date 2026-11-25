@@ -366,6 +366,41 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("hud");
         }
 
+        /// <summary>Tester 2026-11-25 (750×1334): with the kit up, the toast's lane is at the top of the screen, where a person's caption plate
+        /// sits; the two printed over each other. The toast waits while the caption is up, and comes back after it.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator ToastWaits_UnderACaptionItWouldCover()
+        {
+            GameUiPanel.AcceptInputUnfocused(true);
+            yield return OpenSlice(750, 1334);
+            var hud = GameHud.Instance; var root = hud.Root;
+            GameUiPanel.Toasts.Clear();
+            hud.Open(GameHud.Kit);
+            yield return Frames(4);
+            hud.Toast("A seed is in your kit.", 6f);
+            yield return Frames(4);
+            var toast = root.Q("hud-toast");
+            Assert.AreEqual("A seed is in your kit.", GameUiPanel.Toasts.Current, "up, with nothing in its way");
+            // a person's line plate lands on the toast's lane (on the small phone the kit lifts the lane to the plate's place, under the title)
+            var caption = new GlassCaption("This is the spot. Put our things down.", "Harl") { name = "test-caption" };
+            root.Add(caption);
+            yield return Frames(4);
+            hud.SetBarProbe("test-tall-sheet", () => caption.worldBound.yMax); // the tall kit's top: the toast lane rises onto the plate
+            yield return Frames(4);
+            Debug.Log($"[toast] caption {caption.worldBound}, toast {toast.worldBound} in {toast.parent.worldBound}, bottom {toast.resolvedStyle.bottom}, held {hud.ToastUnderCaption} ({GameUiPanel.Toasts.Holders})");
+            Assert.IsTrue(hud.ToastUnderCaption, "the caption is in the toast's lane: it holds the toast");
+            Assert.IsNull(GameUiPanel.Toasts.Current, "the toast waits, not printed over the caption");
+            caption.RemoveFromHierarchy();
+            yield return Frames(4);
+            hud.SetBarProbe("test-tall-sheet", null);
+            Assert.IsFalse(hud.ToastUnderCaption, "the caption is gone");
+            Assert.AreEqual("A seed is in your kit.", GameUiPanel.Toasts.Current, "the toast comes back");
+            hud.CloseSheet();
+            GameUiPanel.Toasts.Clear();
+            yield return Frames(2);
+            AssertNoErrors("toast under caption");
+        }
+
         [UnityTest, Timeout(120000)]
         public IEnumerator HistoryOpensTheTimeLapseEvenWithStoriesWaiting()
         {

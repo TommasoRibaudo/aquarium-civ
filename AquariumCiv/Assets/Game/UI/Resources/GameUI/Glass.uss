@@ -857,11 +857,25 @@
 .kit-grid { flex-direction: row; flex-wrap: wrap; flex-shrink: 0; }
 /* the tile: four to a row (23.5 % + 2 % gaps), the icon top left, the name and its line at the bottom */
 .kit-tile {
-    width: 23.5%; height: 214.5px; min-width: 0; margin: 0 2% 19.25px 0; padding: 16.5px 16.5px 13.75px 16.5px; flex-shrink: 0;
+    width: 23.5%; height: 214.5px; min-width: 0; margin: 0 2% 27.5px 0; padding: 16.5px 16.5px 13.75px 16.5px; flex-shrink: 0;
     flex-direction: column; justify-content: flex-end; align-items: flex-start;
-    border-width: 2.75px; border-color: var(--edge); border-radius: 44px;
-    background-color: var(--flat-tint);
+    border-width: 0; border-radius: 44px;
+    background-color: rgba(0, 0, 0, 0);
 }
+/* 2026-11-24 (the user: "the buttons for the tools and the animals and plants are still flat"): the tools' layers (#668, .kg-tool-*) */
+.kit-tile:hover, .kit-tile:active, .kit-tile.kg-btn--pressed { background-color: rgba(0, 0, 0, 0); }
+.kit-tile-shade {
+    position: absolute; left: -24px; right: -24px; top: -4px; bottom: -42px;
+    background-image: url("GlassShadow.png"); -unity-background-image-tint-color: rgba(46, 42, 39, 0.34);
+    -unity-slice-left: 200; -unity-slice-right: 200; -unity-slice-top: 200; -unity-slice-bottom: 200; -unity-slice-scale: 0.4px;
+}
+.kit-tile-lip { position: absolute; left: 0; right: 0; top: 8.25px; bottom: -8.25px; border-radius: 44px; background-color: rgba(106, 75, 54, 0.24); }
+.kit-tile-face {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0; border-radius: 44px;
+    background-image: url("ToolFace.png"); -unity-background-scale-mode: stretch-to-fill;
+    border-width: 2.75px; border-color: var(--edge);
+}
+.kit-tile:active > .kit-tile-face, .kit-tile.kg-btn--pressed > .kit-tile-face { -unity-background-image-tint-color: var(--pressed-fill); }
 .kit-tile--end { margin-right: 0; }
 .kit-tile-glyph { position: absolute; left: 19.25px; top: 19.25px; width: 71.5px; height: 71.5px; }
 .kit-tile-name {
@@ -891,20 +905,23 @@
 .kit-tile-check-icon { width: 30.25px; height: 30.25px; -unity-background-image-tint-color: var(--on-primary); }
 .kit-tile-tag { display: none; position: absolute; left: 50%; top: -24.75px; width: 99px; height: 44px; margin-left: -49.5px; font-size: 30.25px; border-radius: 22px; }
 .kit-tile-dot { display: none; position: absolute; top: -11px; right: -11px; }
-.kit-tile--new { border-width: 5.5px; border-color: var(--brass); }
+.kit-tile--new > .kit-tile-face { border-width: 5.5px; border-color: var(--brass); }
 .kit-tile--new > .kit-tile-tag { display: flex; }
-.kit-tile--hand { border-width: 5.5px; border-color: var(--primary); }
+.kit-tile--hand > .kit-tile-face { border-width: 5.5px; border-color: var(--primary); }
 .kit-tile--hand > .kit-tile-check { display: flex; }
 .kit-tile--dot > .kit-tile-dot { display: flex; }
 /* #662: shut is never a fade (spec.md §4): a thin timber edge, a paler fill, a lock, full-strength words; a press doesn't darken it */
-.kit-tile--shut, .kit-tile--shut:hover, .kit-tile--shut:active, .kit-tile--shut.kg-btn--pressed {
-    height: 192.5px; scale: 1 1; background-color: var(--off-fill); border-width: 2.75px; border-color: var(--timber);
+.kit-tile--shut, .kit-tile--shut:hover, .kit-tile--shut:active, .kit-tile--shut.kg-btn--pressed { height: 192.5px; scale: 1 1; }
+/* shut: flat on the shelf (no shadow, no lip), a paler fill and a timber edge: ready tiles stand up, shut ones lie down (#662) */
+.kit-tile--shut > .kit-tile-shade, .kit-tile--shut > .kit-tile-lip { display: none; }
+.kit-tile--shut > .kit-tile-face, .kit-tile--shut:active > .kit-tile-face, .kit-tile--shut.kg-btn--pressed > .kit-tile-face {
+    background-image: none; background-color: var(--off-fill); border-width: 2.75px; border-color: var(--timber); -unity-background-image-tint-color: rgb(255, 255, 255);
 }
 .kit-tile--shut > .kit-tile-glyph { opacity: 0.55; }
 .kit-tile--shut > .kit-tile-lock { display: flex; }
 .kit-tile--shut > .kit-tile-line { -unity-font-definition: var(--font-serif); color: var(--ink); -unity-text-outline-color: var(--ink); }
 /* the shut jar the note speaks of: a timber line along its foot */
-.kit-tile--shut.kit-tile--picked { border-bottom-width: 8.25px; }
+.kit-tile--shut.kit-tile--picked > .kit-tile-face { border-bottom-width: 8.25px; }
 .kit-note {
     margin: 11px 0 0 0; padding: 22px 33px; flex-shrink: 0; white-space: normal;
     border-radius: 38.5px; border-left-width: 8.25px; border-color: var(--brass); background-color: rgba(217, 184, 115, 0.22);

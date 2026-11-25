@@ -1478,7 +1478,7 @@ approve the animations and assets"). The checklist to answer is [batch3-approval
   means weeds and creeping seedlings.
 - Wolves: decisions.md 2026-11-07: the people never kill a wolf; they drive them off with shouts, torches and fences; wolves
   never come in among the tents. Dogs capped at 1–3.
-- Animal counts: `Sim/AnimalBudget.cs` (on the 6 × 6 land: rabbits 8, deer 6, ducks 6, fish 5, frogs 4, wolves 4). Nothing
+- Animal counts: `Sim/AnimalBudget.cs` (on the 6 × 6 land: rabbits 6, deer 5, ducks 4, fish 4, frogs 3, wolves 3 since #710, 2026-11-24). Nothing
   below adds a drawn animal except the nest's bird (B71, an open question).
 - Stew pot look: signed off in the 2026-11-15 walkthrough (#676 comment). Feather pole and feedback#79: #566 comments.
 - **S-ritual** (B72–B77, added after the 2026-11-15 approvals, row 217): the four yearly rituals (#721), the teller's manner
@@ -2224,7 +2224,7 @@ at that edge (pond water sits 0.08 u under the land). The pond reaches the glass
 glass"); the front pane faces the default camera, the side panes show at an angle.
 
 ##### B70.a The count (no new animals)
-The fish drawn are the sim's: `EcoFishShown()`, capped by `AnimalBudget.Fish` (5 on the 6 × 6 land, via `SimCore.FishShownCap`).
+The fish drawn are the sim's: `EcoFishShown()`, capped by `AnimalBudget.Fish` (4 on the 6 × 6 land since #710 2026-11-24, via `SimCore.FishShownCap`).
 **Each fish is drawn once**: as a shadow from above, or, when its swim takes it within 0.15 u of a wall, as a side fish on the
 wall. **At most 2 on the walls at once** [est], so the glass shows a glimpse, not a tank show. No fish before fish are placed (B16.e).
 
@@ -2657,6 +2657,16 @@ picks it. Every number is [est] until the clip.
 - the fruit is picked from the ground, never by climbing;
 - the knife stays with the grown-ups;
 - the stone is rolled only by grown-ups, with the kids kept back 0.3 u.
+
+## B79. The ball game at the pond and in a dry hollow (#744, 2026-11-24)
+
+The user's pick (options 3 and 4): a missed ball (B2.b) that ends on the pond is waded for; in a dry hollow it rolls to the bottom.
+Land as before, and the frozen pond, are unchanged. [est] until the clip.
+
+| # | When | Beats | Props · reuse | Cheat / clip |
+|---|---|---|---|---|
+| B79.a The wade-in | a miss whose bounce-and-roll ends on the drawn pond | the ball comes down on the water (a small splash and a ring) and floats a third under; the nearest kid runs to the edge and wades in ankle-deep (`sink` 0.02, only while on the water) to stand beside it; picks it up (`PlayCatch`), shakes it (`PlayShake`, 0.6 s), runs back to their spot | the ball; R B4's wading, `PlayShake` | `NaturalUses.BallInThePond_AndTheDryHollow_Frames` (pond) |
+| B79.b The roll into the hollow | a miss that stops on dry ground sloping down into a dip (a drop over 3 cm within 0.6 u) | the ball rolls on down (0.35 u/s, easing to a stop, spinning) to the bottom; the fetcher runs down after it, picks it up there, runs back | the ball; the roll is the game's own | the same test (the dried pond's hollow) |
 
 ## B80. New events (#722), batch 2
 

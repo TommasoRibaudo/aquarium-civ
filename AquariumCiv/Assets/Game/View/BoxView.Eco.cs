@@ -337,7 +337,16 @@ namespace AquariumCiv.View
                             float x0 = x - h + si * step, x1 = x0 + step, z0 = z - h + sj * step, z1 = z0 + step;
                             bool eL = i == 0 && si == 0 && land.Height(-HX + 0.001f, (z0 + z1) * 0.5f) < y, eR = i == Site.NX - 1 && si == Sub - 1 && land.Height(HX - 0.001f, (z0 + z1) * 0.5f) < y;
                             bool eF = j == 0 && sj == 0 && land.Height((x0 + x1) * 0.5f, Land.ZMin + 0.001f) < y, eB = j == Site.NZ - 1 && sj == Sub - 1 && land.Height((x0 + x1) * 0.5f, Land.ZMax - 0.001f) < y;
-                            if (!WaterPieceUnder(x0, z0, x1, z1)) continue; // at the glass too: the piece against the pane still ends inside the bank
+                            if (!WaterPieceUnder(x0, z0, x1, z1))
+                            {
+                                // 2026-11-25 (the user: the section stopped in a straight cut): a bank piece against the pane draws no sheet,
+                                // but its section does, down to nothing where the ground comes up, so the side view follows the bank
+                                if (i == 0 && si == 0) WaterWall(mb, new Vector2(-HX, z0), new Vector2(-HX, z1), -HX - WaterFace, new Vector3(-1, 0, 0), y, co);
+                                if (i == Site.NX - 1 && si == Sub - 1) WaterWall(mb, new Vector2(HX, z0), new Vector2(HX, z1), HX + WaterFace, new Vector3(1, 0, 0), y, co);
+                                if (j == 0 && sj == 0) WaterWall(mb, new Vector2(x0, Land.ZMin), new Vector2(x1, Land.ZMin), Land.ZMin - WaterFace, new Vector3(0, 0, -1), y, co);
+                                if (j == Site.NZ - 1 && sj == Sub - 1) WaterWall(mb, new Vector2(x0, Land.ZMax), new Vector2(x1, Land.ZMax), Land.ZMax + WaterFace, new Vector3(0, 0, 1), y, co);
+                                continue; // the sheet ends inside the bank
+                            }
                             // At the box's edge the sheet ends on the soil cut's face (4 mm proud), where the ground there is under the water.
                             if (eL) x0 = -HX - WaterFace; if (eR) x1 = HX + WaterFace;
                             if (eF) z0 = Land.ZMin - WaterFace; if (eB) z1 = Land.ZMax + WaterFace;
@@ -360,22 +369,63 @@ namespace AquariumCiv.View
         /// <summary>One cell's face of the pond against a pane: its top edge at the water level, its foot on the soil cut's top,
         /// lighter at the top and deeper below, drawn facing out (to the eye behind the glass). <paramref name="a"/>/<paramref name="b"/>
         /// are the points on the land's edge (their height gives the foot); the wall stands at <paramref name="glassAt"/> on its axis.</summary>
+        /// <summary>#708 (the user 2026-11-15: "the deeper basin after the deeper box"): where the pond meets a pane, the water's section seen
+        /// through the glass reaches <see cref="BasinBelow"/> under the pond's floor there (view only: the sim's pond is as it was).
+        /// 2026-11-25 (the user: "the water level just stops on the left"): the extra depth grows with the distance along the pane from the
+        /// bank (where the ground comes up to the water line), over <see cref="BankRamp"/>, so the section slopes down from the bank like a
+        /// basin instead of dropping straight to its full depth. The fish swim down into it.</summary>
+        public const float BasinBelow = 0.16f, SiltBand = 0.012f, BankRamp = 0.5f;
+
+        /// <summary>The foot of the section at <paramref name="ground"/>, <paramref name="fromBank"/> along the pane from the bank.</summary>
+        public static float WallFoot(float ground, float y, float fromBank)
+        {
+            if (ground >= y) return y; // the bank: no water here
+            float u = Mathf.Clamp01(fromBank / BankRamp);
+            float extra = Mathf.Lerp(0.005f, BasinBelow, u * u * (3f - 2f * u));
+            return ground - extra;
+        }
+
+        /// <summary>How far along the pane point <paramref name="q"/> (on the land's edge) is from the nearest bank: a point where the ground
+        /// reaches the water line <paramref name="y"/>, or the box's corner. At most <see cref="BankRamp"/>.</summary>
+        public float FromBank(Vector2 q, bool alongX, float y)
+        {
+            const float Step = 0.02f;
+            float lo = alongX ? Land.ZMin : -Land.HX, hi = alongX ? Land.ZMax : Land.HX, t0 = alongX ? q.y : q.x;
+            for (float d = 0f; d < BankRamp; d += Step)
+                for (int sgn = -1; sgn <= 1; sgn += 2)
+                {
+                    float t = t0 + sgn * d;
+                    if (t <= lo || t >= hi) return d;
+                    float g = alongX ? land.Height(q.x, t) : land.Height(t, q.y);
+                    if (g >= y) return d;
+                }
+            return BankRamp;
+        }
+
         void WaterWall(MeshBuilder mb, Vector2 a, Vector2 b, float glassAt, Vector3 outward, float y, LandColors co)
         {
             bool alongX = outward.x != 0f;
             Vector3 P(Vector2 q, float h) => alongX ? new Vector3(glassAt, h, q.y) : new Vector3(q.x, h, glassAt);
             // The foot sits just under the soil cut's top so no gap shows between the ground and the wall.
-            float ha = land.Height(a.x, a.y) - 0.03f, hb = land.Height(b.x, b.y) - 0.03f;
-            if (ha >= y && hb >= y) return;
-            ha = Mathf.Min(ha, y - 0.01f); hb = Mathf.Min(hb, y - 0.01f);
+            float ga = land.Height(a.x, a.y), gb = land.Height(b.x, b.y);
+            if (ga >= y && gb >= y) return;
+            float ha = WallFoot(ga, y, FromBank(a, alongX, y)), hb = WallFoot(gb, y, FromBank(b, alongX, y));
             var top = Color.Lerp(co.water, Color.white, 0.12f);
-            var da = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01((y - ha) / 0.3f));
-            var db = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01((y - hb) / 0.3f));
-            Vector3 fa = P(a, ha), fb = P(b, hb), ta = P(a, y), tb = P(b, y);
+            // #708: a deeper section darkens slower, so it still reads as water near the floor (at most 55 % of the deep colour)
+            var da = Color.Lerp(co.water, co.waterDeep, 0.55f * Mathf.Clamp01((y - ha) / 0.25f));
+            var db = Color.Lerp(co.water, co.waterDeep, 0.55f * Mathf.Clamp01((y - hb) / 0.25f));
+            // #708 (the deeper basin): the floor of the section is a band of silt over the soil, so the water's bottom reads
+            float sa = Mathf.Min(ha + SiltBand, Mathf.Lerp(ha, y, 0.5f)), sb = Mathf.Min(hb + SiltBand, Mathf.Lerp(hb, y, 0.5f));
+            var silt = Color.Lerp(co.waterDeep, co.pondBed, 0.55f);
+            Vector3 fa = P(a, sa), fb = P(b, sb), ta = P(a, y), tb = P(b, y), ua = P(a, ha), ub = P(b, hb);
             // Front faces are the ones whose cross product points at the viewer (as QuadUp has it).
-            if (Vector3.Dot(Vector3.Cross(ta - fa, tb - fa), outward) > 0f) { mb.TriC(fa, ta, tb, da, top, top); mb.TriC(fa, tb, fb, da, top, db); }
-            else { mb.TriC(fa, tb, ta, da, top, top); mb.TriC(fa, fb, tb, da, db, top); }
+            bool front = Vector3.Dot(Vector3.Cross(ta - fa, tb - fa), outward) > 0f;
+            float emWas = mb.emission; mb.emission = SectionLight; // #708: the side face catches little light; a little of its own so it reads as water
+            if (front) { mb.TriC(fa, ta, tb, da, top, top); mb.TriC(fa, tb, fb, da, top, db); mb.TriC(ua, fa, fb, silt, silt, silt); mb.TriC(ua, fb, ub, silt, silt, silt); }
+            else { mb.TriC(fa, tb, ta, da, top, top); mb.TriC(fa, fb, tb, da, db, top); mb.TriC(ua, fb, fa, silt, silt, silt); mb.TriC(ua, ub, fb, silt, silt, silt); }
+            mb.emission = emWas;
         }
+        const float SectionLight = 0.35f;
 
         /// <summary>The meshes as drawn, for the tests and the shots (#269, #270).</summary>
         public Mesh DebugWaterMesh => waterFilter != null ? waterFilter.sharedMesh : null;

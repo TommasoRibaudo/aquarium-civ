@@ -131,6 +131,47 @@ namespace AquariumCiv.View.PlayTests
             CloseSlice();
         }
 
+        /// <summary>2026-11-24 (tester: two village kids at play fused into one body; two story listeners 0.008 u apart): through a village evening
+        /// at play speed, no two settled people stay closer than 0.03 u for half a second.</summary>
+        [UnityTest, Timeout(900000)]
+        public IEnumerator Village_NobodyStandsInsideAnybody()
+        {
+            UseLivingLand(true);
+            GameUiPanel.AcceptInputUnfocused(true);
+            yield return OpenSlice(750, 1334, seed: 4242);
+            Debug.Log("[apart] " + CampCheats.StageVillage(15.5f, false, 6, onlyCheats: false));
+            yield return Frames(10);
+            var pv = PeopleView.Find();
+            pv.timeScale = 1f;
+            var close = new Dictionary<(int, int), float>();
+            var worst = new List<string>();
+            float t0 = Time.realtimeSinceStartup;
+            while (pv.Now.hour < 19f && Time.realtimeSinceStartup - t0 < 600f)
+            {
+                yield return null;
+                var pts = new List<(int k, Vector2 p, string what)>();
+                foreach (var a in pv.Activities)
+                {
+                    if (a.moving || pv.IsWalking(a.who) || a.kind == ActivityKind.Sleep || pv.Planner.StageOf(a.who) == LifeStage.Baby) continue;
+                    if (pv.TryGetDollPosition(a.who, out var q)) pts.Add((a.who.Key, q, pv.Describe(a)));
+                }
+                var seenNow = new HashSet<(int, int)>();
+                for (int i = 0; i < pts.Count; i++)
+                    for (int j = i + 1; j < pts.Count; j++)
+                    {
+                        if ((pts[i].p - pts[j].p).magnitude >= 0.03f) continue;
+                        var key = (Mathf.Min(pts[i].k, pts[j].k), Mathf.Max(pts[i].k, pts[j].k));
+                        seenNow.Add(key);
+                        close[key] = (close.TryGetValue(key, out float f) ? f : 0f) + Time.deltaTime;
+                        if (close[key] >= 0.5f && worst.Count < 8) { worst.Add($"{pv.Now} {pts[i].what} | {pts[j].what}"); close[key] = -999f; }
+                    }
+                foreach (var k in new List<(int, int)>(close.Keys)) if (!seenNow.Contains(k) && close[k] > 0f) close[k] = 0f;
+            }
+            Debug.Log("[apart] " + (worst.Count == 0 ? "nobody inside anybody" : string.Join(" || ", worst)));
+            CloseSlice();
+            Assert.IsEmpty(worst, "two people inside each other for half a second: " + string.Join(" || ", worst));
+        }
+
         [UnityTest, Timeout(1800000)]
         public IEnumerator VillageNatural_HouseLanternsAndDoorstepSitStartByThemselves()
         {
@@ -145,6 +186,87 @@ namespace AquariumCiv.View.PlayTests
             var missing = want.Where(u => !pv.Camp.Started.ContainsKey(u)).ToList();
             CloseSlice();
             Assert.IsEmpty(missing, "never started by themselves: " + string.Join(", ", missing));
+        }
+
+        /// <summary>#744 (the user, 2026-11-24, options 3 and 4): frames of a ball game at the pond's shore whose missed throw lands in the water
+        /// (the fetcher wades in, shakes it, runs back), then the same spot with the pond dried (the ball rolls down into the hollow). Explicit:
+        /// the clip for the user's sign-off.</summary>
+        [UnityTest, Explicit("Frames for the user's sign-off (#744)"), Timeout(900000)]
+        public IEnumerator BallInThePond_AndTheDryHollow_Frames()
+        {
+            UseLivingLand(true);
+            GameUiPanel.AcceptInputUnfocused(true);
+            yield return OpenSlice(1179, 2556, seed: 4242);
+            Debug.Log("[744] " + CampCheats.StageCamp(11f, 4));
+            Debug.Log("[744] " + EcoDebug.WaterBreaksNow());
+            yield return new WaitForSeconds(12f);
+            var pv = PeopleView.Find();
+            var box = Object.FindAnyObjectByType<BoxView>();
+            var rig = Camera.main.GetComponent<BoxCamera>();
+            System.IO.Directory.CreateDirectory(Shots + "744/");
+            // a shore point: dry land with drawn water 0.25-0.35 u away
+            Vector2 shore = default, water = default; bool found = false;
+            for (int c = 0; c < AquariumCiv.Sim.Settle.SiteMap.N && !found; c++)
+            {
+                float x = AquariumCiv.Sim.Settle.SiteMap.CXc(c), z = AquariumCiv.Sim.Settle.SiteMap.CZc(c);
+                if (!box.WaterDrawnAt(x, z)) continue;
+                for (int k = 0; k < 8 && !found; k++)
+                {
+                    var d = new Vector2(Mathf.Cos(k * Mathf.PI / 4f), Mathf.Sin(k * Mathf.PI / 4f));
+                    var land = new Vector2(x, z) - d * 0.3f;
+                    if (box.WaterDrawnAt(land.x, land.y) || !box.land.Inside(land, 0.3f) || box.WaterDrawnAt(land.x - d.x * 0.15f, land.y - d.y * 0.15f)) continue;
+                    shore = land; water = new Vector2(x, z); found = true;
+                }
+            }
+            Assert.IsTrue(found, "a shore point by the pond");
+            var kids = pv.Activities.Where(a => pv.Planner.StageOf(a.who) == LifeStage.Kid).Select(a => a.who.Key).Take(3).ToList();
+            Assert.AreEqual(3, kids.Count, "three kids");
+            bool ball(BallGame.Throw th, float local) => local > th.pickStart + BallGame.Pick * 0.6f + 0.05f && local < th.pickEnd; // held, standing still
+            IEnumerator Play(string tag, System.Func<BallGame.Throw, bool> want)
+            {
+                // a seed whose live game (Direct moves the centre to open ground and starts after a lead) has the wanted miss early on
+                BallGame live = null; int seed = -1, k0 = -1;
+                for (int sd = 1; sd < 300 && seed < 0; sd++)
+                {
+                    if (pv.KidPlay.Direct(PlayGame.Ball, kids, shore, 40f, sd) == null) continue;
+                    if (!pv.KidPlay.TryCue(kids[0], pv.PoseClock, out _, out var kg, out _) || kg is not BallGame bg) continue;
+                    for (int k = 0; k < 6; k++) if (want(bg.ThrowAt(k))) { live = bg; seed = sd; k0 = k; break; }
+                }
+                Assert.IsNotNull(live, tag + ": a seed with the wanted miss");
+                var probe = live.ThrowAt(k0);
+                rig.FlyTo(box.transform.TransformPoint(box.land.OnGround((shore.x + probe.restPos.x) * 0.5f, (shore.y + probe.restPos.y) * 0.5f)), Mathf.Max(rig.minZoom * 1.1f, 0.25f), 0.4f);
+                for (int i = 0; i < 200 && rig.IsFlying; i++) yield return null;
+                int f = 0;
+                float nearest = 9f, worstJump = 0f; bool sank = false; Vector3? prevHeld = null;
+                var fetcherRef = pv.Activities.First(a => a.who.Key == kids[probe.fetcher]).who;
+                while (pv.PoseClock - live.t0 < probe.backAt + 1.5f)
+                {
+                    yield return null;
+                    float local = pv.PoseClock - live.t0;
+                    if (local > probe.launch - 0.4f && (f++ % 3) == 0) ScreenCapture.CaptureScreenshot(Shots + $"744/{tag}_{f:000}.png");
+                    // what the tester watched for: the fetcher reaches the ball where it lies; a held ball never jumps
+                    var ballGo = GameObject.Find("Play Ball");
+                    if (ballGo == null || !pv.TryGetDollTransform(fetcherRef, out var doll)) continue;
+                    var rootT = ballGo.transform.parent;
+                    var dl = rootT.InverseTransformPoint(doll.position);
+                    if (local > probe.land + 0.3f && local < probe.pickStart + 0.2f)
+                        nearest = Mathf.Min(nearest, new Vector2(dl.x - probe.restPos.x, dl.z - probe.restPos.y).magnitude);
+                    if (local > probe.pickStart && local < probe.pickEnd && box.WaterDrawnAt(dl.x, dl.z)) sank = true; // (the people's root is raised: x/z are the land's, y is not)
+                    var bl = ballGo.transform.localPosition;
+                    var held = ball(probe, local);
+                    if (held && prevHeld.HasValue) worstJump = Mathf.Max(worstJump, new Vector2(bl.x - prevHeld.Value.x, bl.z - prevHeld.Value.z).magnitude);
+                    prevHeld = held ? bl : (Vector3?)null;
+                }
+                Debug.Log($"[744] {tag}: seed {seed}, throw {k0}, rest {probe.restPos}, wet {probe.wet}, rolls {probe.rolls}; fetcher nearest {nearest:0.000} u, sank {sank}, worst held jump {worstJump:0.000} u");
+                Assert.Less(nearest, 0.1f, tag + ": the fetcher reaches the ball where it lies");
+                if (probe.wet) Assert.IsTrue(sank, tag + ": wades into the water for it");
+                Assert.Less(worstJump, 0.05f, tag + ": the ball never jumps into the hands");
+            }
+            yield return Play("pond", th => th.miss && th.wet);
+            Debug.Log("[744] " + EcoDebug.PondDries());
+            yield return new WaitForSeconds(2f);
+            yield return Play("hollow", th => th.miss && th.rolls);
+            CloseSlice();
         }
     }
 }
