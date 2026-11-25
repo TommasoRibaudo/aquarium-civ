@@ -22,7 +22,7 @@ namespace AquariumCiv.View
         /// <summary>B42.d [est]: a kid sneaks a fish one day in four; B40.b, B47.b, B48.b, B51 are rare.</summary>
         public const float Rare = 0.25f, VeryRare = 0.12f;
 
-        static bool IsCampUse(CampUse u) => u >= CampUse.TentPeek && u <= CampUse.Swing;
+        static bool IsCampUse(CampUse u) => u >= CampUse.TentPeek && u <= CampUse.Swing || u == CampUse.SkyLook; // #687: the look up for rain
         /// <summary>#692 p5 (the Editor pass: rings, the boat and the skipping stone sank under a raised pond): the pond's own surface height.</summary>
         float PondY { get { var b = LandBox; return b != null && b.layout.eco.pondCells > 0 ? b.layout.eco.waterY : Land.WaterY; } }
 
@@ -470,6 +470,8 @@ namespace AquariumCiv.View
             if (h >= 9.5f && h < 11.5f && Go(CampUse.TendRacks, Often, ThingFishRack) && TryTend(acts, time, false) == null) return;
             // B50.b at dusk (2026-11-24, a year's census: the grown-ups are free from ~17 h): two coming in to the fire meet on the way and talk
             if (h >= 17f && h < 18.3f && Go(CampUse.PathChat, Often, ThingPath) && Tried(CampUse.PathChat, TryPathChat(acts, time, false))) return;
+            // #687 (the thirst signs): in a dry spell (most of the grass thirsty) a free grown-up looks up at the glass for rain, 9-18.3 h
+            if (h >= 9f && h < 18.3f && sim.EcoThirst >= ThirstyBox && Go(CampUse.SkyLook, Sometimes, 0) && Tried(CampUse.SkyLook, TrySkyLook(acts, time, false))) return;
             if (!day) return;
             // B53.d: the swing is hung once, a free afternoon the first view day the tree stands; then kids swing (play time only)
             if (!swingHung && h >= 13f && Go(CampUse.HangSwing, 1f, ThingSwing) && TryHangSwing(acts, time, false) == null) return;
@@ -1012,6 +1014,20 @@ namespace AquariumCiv.View
             return null;
         }
 
+        /// <summary>#687: the share of the grass thirsty before the people look up for rain.</summary>
+        public const float ThirstyBox = 0.5f;
+
+        string TrySkyLook(IReadOnlyList<PersonActivity> acts, float time, bool force)
+        {
+            if (meals == null || !meals.HasFire) return "no camp";
+            int who = Grown1(acts, meals.Fire, force);
+            if (who == Nobody) return "no grown-up free";
+            var at = At(who).Value;
+            Add(CampScenes5b.SkyLook(who, at, ToCam(at), time));
+            doneToday.Add(CampUse.SkyLook);
+            return null;
+        }
+
         string TryMoths(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
             // #692 p5 notes: the moths come to the fire's light (no lanterns in the camp)
@@ -1155,6 +1171,7 @@ namespace AquariumCiv.View
                 case CampUse.PathRace: return TryPathRace(acts, time, true) ?? "kids race on the path";
                 case CampUse.PathChat: return TryPathChat(acts, time, true) ?? "a chat on a path";
                 case CampUse.StoneGift: return TryGift(acts, time, true) ?? "a gift at the remembering stone";
+                case CampUse.SkyLook: return TrySkyLook(acts, time, true) ?? "looking up at the glass for rain";
                 case CampUse.LightLanterns: return InTents ? TryLanterns(acts, time, true) ?? "the lanterns lit" : TryHouseLanterns(acts, time, true) ?? "the house lanterns lit";
                 case CampUse.ChaseMoths: return TryMoths(acts, time, true) ?? "kids chase moths";
                 case CampUse.PullWeed: return TryWeed(acts, time, true) ?? "a weed pulled";
@@ -1657,6 +1674,7 @@ namespace AquariumCiv.View
         public static string TentPeek() => Do(CampUse.TentPeek);
         public static string TentToy() => Do(CampUse.TentToy);
         public static string TentDoorSit() => Do(CampUse.TentDoorSit);
+        public static string SkyLook() => Do(CampUse.SkyLook); // #687
         public static string CountStash() => Do(CampUse.CountStash);
         public static string SnackSneak() => Do(CampUse.SnackSneak);
         public static string TendRacks() => Do(CampUse.TendRacks);

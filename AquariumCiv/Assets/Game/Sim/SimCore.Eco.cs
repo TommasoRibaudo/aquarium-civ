@@ -23,6 +23,36 @@ namespace AquariumCiv.Sim
         public event Action<string> EcoGateOpened;
 
         public bool EcologyOn => State.eco != null && State.eco.on;
+
+        /// <summary>#687 (the thirst signs, the user 2026-11-24): a grass cell under this moisture reads thirsty (the view pales it, wilts its
+        /// tufts; the people look up at the sky when most of the grass is).</summary>
+        public const float ThirstMoist = 0.15f;
+        /// <summary>#687: the share of the grass (short and tall) that is thirsty now, 0..1 (0 with no grass or the living land off).</summary>
+        public float EcoThirst
+        {
+            get
+            {
+                if (!EcologyOn) return 0f;
+                var e = State.eco; int green = 0, dry = 0;
+                for (int c = 0; c < e.cover.Length; c++)
+                {
+                    var cv = (Eco.EcoCover)e.cover[c];
+                    if (cv != Eco.EcoCover.Grass && cv != Eco.EcoCover.Tall) continue;
+                    green++; if (e.moisture[c] < ThirstMoist) dry++;
+                }
+                return green == 0 ? 0f : (float)dry / green;
+            }
+        }
+
+        /// <summary>#687 cheat: a dry spell now: every cell off the water dries to dust (the grass stays: a dry spell only slows growth).</summary>
+        public int DebugDrySpell()
+        {
+            if (!EcologyOn) return 0;
+            var e = State.eco; int n = 0;
+            for (int c = 0; c < e.cover.Length; c++) if ((Eco.EcoCover)e.cover[c] != Eco.EcoCover.Water) { e.moisture[c] = 0.03f; n++; }
+            CoverEdits++;
+            return n;
+        }
         /// <summary>The ecology is on and the camp gate is still closed: the tribe is one tent and a fire (the view's jobs wait on this, #246).</summary>
         public bool BeforeCamp => EcologyOn && State.eco.campGateMonth < 0;
         public bool CampGateOpen => EcologyOn && State.eco.campGateMonth >= 0;

@@ -280,6 +280,8 @@ namespace AquariumCiv.View
         BoatSort,
         /// <summary>B77.b: the kids' house round the boat: a knock, a head pops up, they sit on it (life).</summary>
         BoatHouse,
+        /// <summary>#687 (the thirst signs): in a dry spell a grown-up stops, looks up at the glass for rain and shakes their head (life).</summary>
+        SkyLook,
     }
 
     /// <summary>#694: what a dog or a visiting wolf does in a <see cref="QuadPart"/> (P0's moves; CampLife.Dogs poses them).</summary>

@@ -200,6 +200,19 @@ namespace AquariumCiv.View
         // ================================================================== B49.a sit on top at dusk
         /// <summary>B49.a: 1–3 grown-ups walk up the hill and sit on the top facing the camp and the fire, chatting quietly (a nod, a hand now and
         /// then); they stay <paramref name="sitFor"/> s (till the lamps come on).</summary>
+        /// <summary>#687 (the thirst signs, the user 2026-11-24): in a dry spell a grown-up stops where they stand, looks up at the glass for
+        /// rain (2.6 s), then lowers their head and shakes it slowly (two turns of ±12°, 1.4 s). <see cref="CampScene.a"/>: the look up.</summary>
+        public static CampScene SkyLook(int who, Vector2 at, Vector2 toCam, float t0)
+        {
+            toCam = Unit(toCam, Vector2.down);
+            var s = new CampScene(CampUse.SkyLook, t0, at);
+            int m = s.Add(who);
+            s.Part(m, 0f, 2.6f, at, at + toCam, DollStyle.LookUp);
+            s.a = 0.6f;
+            s.Part(m, 2.6f, 4.0f, at, at + toCam, DollStyle.Stand, (ref DollPose p, float u, float l) => { p.yaw += 12f * Mathf.Sin(u / l * Mathf.PI * 4f); p.lean += 6f * In(u, 0f, 0.3f); });
+            return s;
+        }
+
         public static CampScene HillDusk(IList<int> who, IList<Vector2> at, Vector2 top, Vector2 fire, float sitFor, float t0)
         {
             var toFire = Unit(fire - top, Vector2.down);
