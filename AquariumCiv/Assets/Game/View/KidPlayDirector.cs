@@ -26,6 +26,7 @@ namespace AquariumCiv.View
             public bool forced;
             public float until = float.MaxValue;
             public GameObject ball;
+            public bool splashed; // #744: the ball came down on the pond (its splash played)
             public int ballShot = -1;
             public ArcShot flight;
             public Vector3 lastBall;
@@ -69,8 +70,38 @@ namespace AquariumCiv.View
         /// Once a frame, before the dolls are driven: who plays where, and the groups (re-split when a place's kids have changed and
         /// stayed changed for <see cref="Settle"/> s, or a 2-hour block turned).
         /// </summary>
+        /// <summary>#744: from a ball's resting point, downhill in short steps to the bottom of a dip (at most 0.6 u); the point itself on
+        /// flat ground (a drop under 3 cm is no hollow).</summary>
+        System.Func<Vector2, bool> pondAt;
+        System.Func<Vector2, Vector2> rollsTo;
+
+        Vector2 Downhill(Vector2 p)
+        {
+            var b = BoxNow;
+            if (b == null) return p;
+            var q = p; float h = b.land.Height(q.x, q.y), h0 = h;
+            for (int n = 0; n < 15 && (q - p).magnitude < 0.6f; n++)
+            {
+                Vector2 best = q; float bh = h - 0.002f;
+                for (int k = 0; k < 8; k++)
+                {
+                    var c = q + new Vector2(Mathf.Cos(k * Mathf.PI / 4f), Mathf.Sin(k * Mathf.PI / 4f)) * 0.04f;
+                    if (Mathf.Abs(c.x) > Land.HX - 0.08f || !Land.InZ(c.y, 0.08f)) continue;
+                    float ch = b.land.Height(c.x, c.y);
+                    if (ch < bh) { bh = ch; best = c; }
+                }
+                if (best == q) break;
+                q = best; h = bh;
+            }
+            return h0 - h > 0.03f ? q : p;
+        }
+
         public void Step(LifePlanner planner, IReadOnlyList<PersonActivity> acts, ViewTime viewNow, float time, Transform root)
         {
+            // #744: the ball game reads the real land: the drawn pond, and where a ball rolls on to in a dry hollow
+            // (the newest director sets them each step; a hook left by a destroyed one answers "flat dry land")
+            BallGame.PondAt = pondAt ??= p => { if (pv == null) return false; var b = BoxNow; return b != null && b.layout.eco.on && b.layout.eco.pondCells > 0 && b.WaterDrawnAt(p.x, p.y); };
+            BallGame.RollsTo = rollsTo ??= p => pv == null ? p : Downhill(p);
             now = time;
             candidates.Clear();
             foreach (var l in atPlace.Values) l.Clear();
@@ -360,6 +391,14 @@ namespace AquariumCiv.View
                     var s = Arc.Sample(g.flight, now - g.game.t0);
                     float ground = pv.GroundAt(s.position.x, s.position.z);
                     pos = new Vector3(s.position.x, ground + Mathf.Max(s.position.y, BallGame.BallR * 0.8f), s.position.z);
+                    if (b.placed)
+                    {   // #744: rolling into a hollow, lying at its bottom, or floating on the pond (a third under the surface)
+                        float gy = pv.GroundAt(b.position.x, b.position.z);
+                        float lv = 0f; bool afloat = b.floating && PondLevel(out lv);
+                        pos = new Vector3(b.position.x, afloat ? lv + BallGame.BallR * 0.35f : gy + BallGame.BallR * 0.8f, b.position.z);
+                        if (afloat && !g.splashed) { g.splashed = true; HitFx.Puff(PuffKind.Droplets, root.TransformPoint(pos), Vector3.up, 0.8f); HitFx.Puff(PuffKind.Ring, root.TransformPoint(new Vector3(pos.x, lv, pos.z)), Vector3.up, 0.8f); }
+                    }
+                    else g.splashed = false;
                     if (g.flight.landing == Landing.BounceRoll && Arc.LandedBetween(g.flight, g.lastT - g.game.t0, now - g.game.t0))
                         HitFx.Puff(PuffKind.Dust, root.TransformPoint(new Vector3(pos.x, ground, pos.z)), Vector3.up, 0.7f); // B2.b: a small dust where it lands
                 }

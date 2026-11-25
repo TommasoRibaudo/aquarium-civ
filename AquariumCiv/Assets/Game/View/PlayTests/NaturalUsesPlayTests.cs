@@ -131,6 +131,70 @@ namespace AquariumCiv.View.PlayTests
             CloseSlice();
         }
 
+        /// <summary>#744 (the user, 2026-11-24, options 3 and 4): frames of a ball game at the pond's shore whose missed throw lands in the water
+        /// (the fetcher wades in, shakes it, runs back), then the same spot with the pond dried (the ball rolls down into the hollow). Explicit:
+        /// the clip for the user's sign-off.</summary>
+        [UnityTest, Explicit("Frames for the user's sign-off (#744)"), Timeout(900000)]
+        public IEnumerator BallInThePond_AndTheDryHollow_Frames()
+        {
+            UseLivingLand(true);
+            GameUiPanel.AcceptInputUnfocused(true);
+            yield return OpenSlice(1179, 2556, seed: 4242);
+            Debug.Log("[744] " + CampCheats.StageCamp(11f, 4));
+            Debug.Log("[744] " + EcoDebug.WaterBreaksNow());
+            yield return new WaitForSeconds(12f);
+            var pv = PeopleView.Find();
+            var box = Object.FindAnyObjectByType<BoxView>();
+            var rig = Camera.main.GetComponent<BoxCamera>();
+            System.IO.Directory.CreateDirectory(Shots + "744/");
+            // a shore point: dry land with drawn water 0.25-0.35 u away
+            Vector2 shore = default, water = default; bool found = false;
+            for (int c = 0; c < AquariumCiv.Sim.Settle.SiteMap.N && !found; c++)
+            {
+                float x = AquariumCiv.Sim.Settle.SiteMap.CXc(c), z = AquariumCiv.Sim.Settle.SiteMap.CZc(c);
+                if (!box.WaterDrawnAt(x, z)) continue;
+                for (int k = 0; k < 8 && !found; k++)
+                {
+                    var d = new Vector2(Mathf.Cos(k * Mathf.PI / 4f), Mathf.Sin(k * Mathf.PI / 4f));
+                    var land = new Vector2(x, z) - d * 0.3f;
+                    if (box.WaterDrawnAt(land.x, land.y) || !box.land.Inside(land, 0.3f) || box.WaterDrawnAt(land.x - d.x * 0.15f, land.y - d.y * 0.15f)) continue;
+                    shore = land; water = new Vector2(x, z); found = true;
+                }
+            }
+            Assert.IsTrue(found, "a shore point by the pond");
+            var kids = pv.Activities.Where(a => pv.Planner.StageOf(a.who) == LifeStage.Kid).Select(a => a.who.Key).Take(3).ToList();
+            Assert.AreEqual(3, kids.Count, "three kids");
+            IEnumerator Play(string tag, System.Func<BallGame.Throw, bool> want)
+            {
+                // a seed whose throw lands as wanted early on (the throws are a function of the seed, the members and the centre)
+                int seed = -1, k0 = -1;
+                for (int sd = 1; sd < 400 && seed < 0; sd++)
+                {
+                    var g = new BallGame(sd, 0f, kids, shore);
+                    for (int k = 0; k < 6; k++) if (want(g.ThrowAt(k))) { seed = sd; k0 = k; break; }
+                }
+                Assert.GreaterOrEqual(seed, 0, tag + ": a seed with the wanted miss");
+                var probe = new BallGame(seed, 0f, kids, shore).ThrowAt(k0);
+                rig.FlyTo(box.transform.TransformPoint(box.land.OnGround((shore.x + probe.restPos.x) * 0.5f, (shore.y + probe.restPos.y) * 0.5f)), Mathf.Max(rig.minZoom * 1.1f, 0.25f), 0.4f);
+                for (int i = 0; i < 200 && rig.IsFlying; i++) yield return null;
+                float? until = pv.KidPlay.Direct(PlayGame.Ball, kids, shore, probe.backAt + 4f, seed);
+                Assert.IsNotNull(until, tag + ": the game started");
+                float t0 = Time.realtimeSinceStartup; int f = 0;
+                while (Time.realtimeSinceStartup - t0 < probe.backAt + 1.5f)
+                {
+                    yield return null;
+                    float local = Time.realtimeSinceStartup - t0;
+                    if (local > probe.launch - 0.4f && (f++ % 3) == 0) ScreenCapture.CaptureScreenshot(Shots + $"744/{tag}_{f:000}.png");
+                }
+                Debug.Log($"[744] {tag}: seed {seed}, throw {k0}, rest {probe.restPos}, wet {probe.wet}, rolls {probe.rolls}");
+            }
+            yield return Play("pond", th => th.miss && th.wet);
+            Debug.Log("[744] " + EcoDebug.PondDries());
+            yield return new WaitForSeconds(2f);
+            yield return Play("hollow", th => th.miss && th.rolls);
+            CloseSlice();
+        }
+
         [UnityTest, Timeout(1800000)]
         public IEnumerator VillageNatural_HouseLanternsAndDoorstepSitStartByThemselves()
         {

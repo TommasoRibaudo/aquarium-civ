@@ -2636,3 +2636,13 @@ Answered 2026-11-15 (decisions.md "Batch 3 approvals"). Added with S-ritual (app
     4 grown-ups in the camp and village; the whole town behind the priest.
 15. **The unpicked evening teller** (B76): give the eldest's winter story the slow manner's gestures too, or keep `Speech`?
     My pick: keep `Speech`.
+
+## B79. The ball game at the pond and in a dry hollow (#744, 2026-11-24)
+
+The user's pick (options 3 and 4): a missed ball (B2.b) that ends on the pond is waded for; in a dry hollow it rolls to the bottom.
+Land as before, and the frozen pond, are unchanged. [est] until the clip.
+
+| # | When | Beats | Props · reuse | Cheat / clip |
+|---|---|---|---|---|
+| B79.a The wade-in | a miss whose bounce-and-roll ends on the drawn pond | the ball comes down on the water (a small splash and a ring) and floats a third under; the nearest kid runs to the edge and wades in ankle-deep (`sink` 0.02, only while on the water) to stand beside it; picks it up (`PlayCatch`), shakes it (`PlayShake`, 0.6 s), runs back to their spot | the ball; R B4's wading, `PlayShake` | `NaturalUses.BallInThePond_AndTheDryHollow_Frames` (pond) |
+| B79.b The roll into the hollow | a miss that stops on dry ground sloping down into a dip (a drop over 3 cm within 0.6 u) | the ball rolls on down (0.35 u/s, easing to a stop, spinning) to the bottom; the fetcher runs down after it, picks it up there, runs back | the ball; the roll is the game's own | the same test (the dried pond's hollow) |
