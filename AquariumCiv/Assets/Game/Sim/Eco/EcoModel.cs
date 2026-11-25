@@ -192,7 +192,11 @@ namespace AquariumCiv.Sim.Eco
             }
             st.humidity = MathF.Min(1f, st.humidity + t.mistAir * amount);
             float deep = t.mistDeep * amount;
-            lastStrokeFedPond = wFed > 0f; lastPondRise = 0f;
+            // #687: only a pond answers: with no water yet the hollow's puddles stay puddles (a stroke there made them pond at once, and the
+            // people walking to the puddle had nothing to reach: EcoMistViewPlayTests)
+            bool pondNow = false;
+            for (int c = 0; c < EcoLand.N && !pondNow; c++) pondNow = Cv(c) == EcoCover.Water;
+            lastStrokeFedPond = wFed > 0f && pondNow; lastPondRise = 0f;
             if (lastStrokeFedPond)
             {
                 deep -= AnswerStroke(deep * wFed / wAll);
