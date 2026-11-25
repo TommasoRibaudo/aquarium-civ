@@ -54,6 +54,15 @@ namespace AquariumCiv.Sim.Eco
         public float tablePerSoak = 0.0003f, soakCapPerSeason = 12f; // rise per unit soaked down; the soil takes only so much a season
         public float tablePondDamp = 50f;                         // a bigger pond takes more water per unit of rise
         public float tableSummerLoss = 0.002f, tableSwing = 0.015f; // falls a little in summer, never below peak - swing
+        /// <summary>#687 (2026-11-15, "the pond answers the stroke"): the soak lands at the next game month instead of the next season.
+        /// Each month the soil above field capacity gives soakShareMonth of its excess (three months take about what the season's
+        /// soakShare took), the table takes at most a third of soakCapPerSeason, and summer's loss comes a third a month. Off = the old
+        /// seasonal soak (paired runs only).</summary>
+        public bool soakMonthly = true;
+        public float soakShareMonth = 0.206f;                     // 1 - (1 - soakShare)^(1/3), then checked against the yearly totals
+        /// <summary>#687: a stroke that fed the pond (fell on the water or the hollow round it) sends its share down at once, booked against the
+        /// coming month's soak (same water, sooner): the pond's edge rises a little right after the stroke.</summary>
+        public bool pondAnswers = true;
         public int pondGateCells = 20;                            // "water at the surface" for the village gate
 
         // Cover succession
