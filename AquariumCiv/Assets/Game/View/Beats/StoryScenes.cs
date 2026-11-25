@@ -457,8 +457,8 @@ namespace AquariumCiv.View
             toCam = Unit(toCam, Vector2.down); var acr = Across(toCam);
             RollPath(spot, first, yaw, flip, out var dir, out var from, out var end, out int quarters);
             var len = StoneUpAxis(yaw); // the stone's length while it lies: from its foot at the path toward its top
-            // the camera holds on the whole of it: the path, the lying length and both stones
-            var s = new CampScene(CampUse.SecondStone, t0, (from + end) * 0.5f + len * (StoneLen * 0.35f)) { holdFocus = true, p0 = from, p1 = end };
+            // the camera holds between the roll and the stone's spot (the cut happens at the spot, on the camera side)
+            var s = new CampScene(CampUse.SecondStone, t0, ((from + end) * 0.5f + spot) * 0.5f) { holdFocus = true, p0 = from, p1 = end };
             int mw = s.Add(who), mh = helper != Nobody ? s.Add(helper) : -1;
             var rollers = mh >= 0 ? new[] { mw, mh } : new[] { mw };
             // behind it, both hands on its side, spread along its length
