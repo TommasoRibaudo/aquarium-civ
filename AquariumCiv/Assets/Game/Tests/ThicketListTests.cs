@@ -95,14 +95,14 @@ namespace AquariumCiv.Tests
             var g = sim.EcoGround; var e = sim.State.eco;
             for (int c = 0; c < EcoLand.N; c++) if ((EcoCover)e.cover[c] == EcoCover.Bare && !g.InBasin(c)) e.cover[c] = (byte)EcoCover.Grass;
             int fire = SiteMap.CellAt(g.campX + 0.2f, g.campZ);
-            Assert.AreEqual("Too near the fire", sim.ThicketRefusal(fire));
+            Assert.AreEqual("Too close to the fire", sim.ThicketRefusal(fire));
             Assert.IsTrue(sim.PlantTree(g.campX + 0.9f, g.campZ));
             Assert.GreaterOrEqual(sim.DebugPlaceNearCamp(LifeSpecies.Thicket), 0);
             int hollow = Enumerable.Range(0, EcoLand.N).First(c => g.InBasin(c));
             Assert.IsNotNull(sim.ThicketRefusal(hollow));
             int far = Enumerable.Range(0, EcoLand.N).First(c => sim.ThicketRefusal(c) == null);
             e.cover[far] = (byte)EcoCover.Tree;
-            Assert.AreEqual("Bushes need open meadow", sim.ThicketRefusal(far));
+            Assert.AreEqual("The bushes need grass here", sim.ThicketRefusal(far));
             Assert.AreEqual("Not here", sim.ThicketRefusal(-1));
         }
 
@@ -217,6 +217,166 @@ namespace AquariumCiv.Tests
                 if (!near && sim.LifeGroundOk(LifeSpecies.Rabbits, c)) free++;
             }
             Assert.Greater(free, 100, "the rest of the land stays theirs");
+        }
+
+        // ---------------------------------------------------------------- #664: a reason for each refusal
+
+        /// <summary>A box with meadow on all dry land (no thicket yet), its EcoModel (no settlement unless a test passes one), and a cell a
+        /// thicket may take, well off the glass and clear of the real settlement.</summary>
+        static (SimCore sim, EcoModel m, int ok) ReasonWorld()
+        {
+            var sim = World();
+            var g = sim.EcoGround; var e = sim.State.eco;
+            for (int c = 0; c < EcoLand.N; c++) if ((EcoCover)e.cover[c] == EcoCover.Bare && !g.InBasin(c)) e.cover[c] = (byte)EcoCover.Grass;
+            var m = new EcoModel(e, g, sim.Config.eco);
+            int ok = Enumerable.Range(0, EcoLand.N).First(c => sim.WhyNotThicket(c) == ThicketRefusalReason.None // clear of the real settlement too
+                && SiteMap.I(c) > 10 && SiteMap.I(c) < SiteMap.NX - 10 && SiteMap.J(c) > 10 && SiteMap.J(c) < SiteMap.NZ - 10);
+            return (sim, m, ok);
+        }
+
+        /// <summary>The reason is the expected one, its words are the refused tap's, and GroundOk says the same yes or no.</summary>
+        static void Says(EcoModel m, int cell, ThicketRefusalReason want, string words, System.Func<int, bool> settled = null)
+        {
+            Assert.AreEqual(want, m.WhyNotThicket(cell, settled), $"cell {cell}");
+            Assert.AreEqual(words, m.ThicketRefusal(cell, settled));
+            Assert.AreEqual(want == ThicketRefusalReason.None, m.GroundOk(LifeSpecies.Thicket, cell, settled), "GroundOk agrees");
+        }
+
+        static int Offset(int cell, int di, int dj) => SiteMap.Index(SiteMap.I(cell) + di, SiteMap.J(cell) + dj);
+
+        [Test]
+        public void Reason_None_OnOpenDryMeadow()
+        {
+            var (sim, m, ok) = ReasonWorld();
+            Says(m, ok, ThicketRefusalReason.None, null);
+            Assert.AreEqual(ThicketRefusalReason.None, sim.WhyNotThicket(ok), "SimCore's own settlement does not reach it either");
+            Assert.IsTrue(sim.LifeGroundOk(LifeSpecies.Thicket, ok));
+        }
+
+        [Test]
+        public void Reason_OffLand()
+        {
+            var (_, m, _) = ReasonWorld();
+            Says(m, -1, ThicketRefusalReason.OffLand, "Not here");
+            Says(m, EcoLand.N, ThicketRefusalReason.OffLand, "Not here");
+        }
+
+        [Test]
+        public void Reason_NotGrass()
+        {
+            var (sim, m, ok) = ReasonWorld();
+            sim.State.eco.cover[ok] = (byte)EcoCover.Bare; // not misted yet
+            Says(m, ok, ThicketRefusalReason.NotGrass, "The bushes need grass here");
+            sim.State.eco.cover[ok] = (byte)EcoCover.Tall; // tall grass is meadow too
+            Says(m, ok, ThicketRefusalReason.None, null);
+        }
+
+        [Test]
+        public void Reason_NearFire()
+        {
+            var (sim, m, _) = ReasonWorld();
+            var g = sim.EcoGround;
+            int fire = SiteMap.CellAt(g.campX + 0.5f, g.campZ);
+            sim.State.eco.cover[fire] = (byte)EcoCover.Grass;
+            Assert.Less(Terrain.Dist(SiteMap.CXc(fire), SiteMap.CZc(fire), g.campX, g.campZ), sim.Config.eco.bushCampMargin);
+            Says(m, fire, ThicketRefusalReason.NearFire, "Too close to the fire");
+        }
+
+        [Test]
+        public void Reason_NearGlass()
+        {
+            var (sim, m, _) = ReasonWorld();
+            var g = sim.EcoGround;
+            // dry meadow one cell in from the left glass, off the fire: the thicket's disc would cross the glass
+            int edge = Enumerable.Range(0, SiteMap.NZ).Select(j => SiteMap.Index(1, j))
+                .First(c => !g.InBasin(c) && (EcoCover)sim.State.eco.cover[c] == EcoCover.Grass
+                            && Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), g.campX, g.campZ) >= sim.Config.eco.bushCampMargin);
+            Says(m, edge, ThicketRefusalReason.NearGlass, "Too near the glass");
+        }
+
+        [Test]
+        public void Reason_Wet_PondInsideTheThicket()
+        {
+            var (sim, m, ok) = ReasonWorld();
+            int pond = Offset(ok, 2, 0); // 0.2 u off: inside the thicket's own radius (0.45 u)
+            sim.State.eco.cover[pond] = (byte)EcoCover.Water;
+            Says(m, ok, ThicketRefusalReason.Wet, "Too wet here");
+        }
+
+        [Test]
+        public void Reason_Wet_GrassInTheHollow()
+        {
+            var (sim, m, _) = ReasonWorld();
+            var g = sim.EcoGround;
+            int hollow = Enumerable.Range(0, EcoLand.N).First(c => g.InBasin(c)
+                && Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), g.campX, g.campZ) >= sim.Config.eco.bushCampMargin
+                && SiteMap.I(c) > 6 && SiteMap.I(c) < SiteMap.NX - 6 && SiteMap.J(c) > 6 && SiteMap.J(c) < SiteMap.NZ - 6);
+            sim.State.eco.cover[hollow] = (byte)EcoCover.Grass; // green, but in the hollow
+            Says(m, hollow, ThicketRefusalReason.Wet, "Too wet here");
+        }
+
+        [Test]
+        public void Reason_NearHouses()
+        {
+            var (sim, m, ok) = ReasonWorld();
+            int lot = Offset(ok, 0, 3);
+            Says(m, ok, ThicketRefusalReason.NearHouses, "Too near the houses", c => c == lot);
+            var g = sim.EcoGround;
+            g.yard[lot] = true; // a yard counts as the settlement too
+            try { Says(m, ok, ThicketRefusalReason.NearHouses, "Too near the houses"); }
+            finally { g.yard[lot] = false; }
+        }
+
+        [Test]
+        public void Reason_NoRoom_OnlyTheRaggedEdgeIsWet()
+        {
+            var (sim, m, ok) = ReasonWorld();
+            int pond = Offset(ok, 5, 0); // 0.5 u off: past the radius (0.45 u), inside the ragged edge's reach (0.53 u)
+            sim.State.eco.cover[pond] = (byte)EcoCover.Water;
+            Says(m, ok, ThicketRefusalReason.NoRoom, "Not enough room for the bushes");
+            sim.State.eco.cover[pond] = (byte)EcoCover.Grass;
+            sim.State.eco.cover[Offset(ok, 6, 0)] = (byte)EcoCover.Water; // 0.6 u: out of reach, fine again
+            Says(m, ok, ThicketRefusalReason.None, null);
+        }
+
+        [Test]
+        public void Reason_Wet_BeatsHouses_AndHousesBeatTheWetEdge()
+        {
+            var (sim, m, ok) = ReasonWorld();
+            int lot = Offset(ok, 0, 3);
+            sim.State.eco.cover[Offset(ok, 5, 0)] = (byte)EcoCover.Water;
+            Says(m, ok, ThicketRefusalReason.NearHouses, "Too near the houses", c => c == lot);
+            sim.State.eco.cover[Offset(ok, 2, 0)] = (byte)EcoCover.Water;
+            Says(m, ok, ThicketRefusalReason.Wet, "Too wet here", c => c == lot);
+        }
+
+        [Test]
+        public void Reason_AlreadyThicket_AndBoxFull()
+        {
+            var sim = WithThickets(0);
+            var m = new EcoModel(sim.State.eco, sim.EcoGround, sim.Config.eco);
+            var first = List(sim)[0];
+            Says(m, first.cell, ThicketRefusalReason.AlreadyThicket, "Already a thicket here");
+            Assert.AreEqual(ThicketRefusalReason.AlreadyThicket, sim.WhyNotThicket(first.cell));
+            sim.Config.eco.thicketMax = 1;
+            int far = Enumerable.Range(0, EcoLand.N).First(c => m.WhyNotThicket(c) == ThicketRefusalReason.BoxFull);
+            Says(m, far, ThicketRefusalReason.BoxFull, "The box holds 1 thickets");
+        }
+
+        [Test]
+        public void EveryCell_GroundOkIsExactlyNoReason()
+        {
+            var sim = WithThickets(1);
+            var m = new EcoModel(sim.State.eco, sim.EcoGround, sim.Config.eco);
+            int ok = 0;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                bool none = sim.WhyNotThicket(c) == ThicketRefusalReason.None;
+                Assert.AreEqual(none, sim.LifeGroundOk(LifeSpecies.Thicket, c), $"cell {c}");
+                Assert.AreEqual(none, sim.ThicketRefusal(c) == null, $"cell {c}");
+                if (none) ok++;
+            }
+            Assert.Greater(ok, 100, "plenty of ground is still fine");
         }
 
         [Test]

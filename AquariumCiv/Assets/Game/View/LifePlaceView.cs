@@ -189,6 +189,13 @@ namespace AquariumCiv.View
                 Last = $"no: cell {cell}";
                 Ghost.Wobble();
                 noAt = box.land.OnGround(at.x, at.z); noT = Time.unscaledTime;
+                if (s == LifeSpecies.Thicket)
+                {   // #664: the bushes' "no" says why (the fire, the wet, the room), not only the wobble
+                    string why = cell < 0 ? "Not here" : sim.ThicketRefusal(cell) ?? "Not here";
+                    LastRefusal = why;
+                    Last = $"no: cell {cell}: {why}";
+                    SayRefusal(why, GameHud.LifeHintFor(s));
+                }
                 return;
             }
             bool moved = GhostShown;
@@ -210,7 +217,7 @@ namespace AquariumCiv.View
                 Last = $"no: cell {cell}: {why}";
                 Ghost.Wobble();
                 noAt = box.land.OnGround(at.x, at.z); noT = Time.unscaledTime;
-                hud?.Toast(why + ".", 3f, through: true);
+                SayRefusal(why, GameHud.BushHint);
                 return;
             }
             bool moved = GhostShown;
@@ -218,6 +225,16 @@ namespace AquariumCiv.View
             LifeArrivalView.Instance?.LeanOnGhost(LifeSpecies.Thicket, Ghost.At);
             Last = moved ? $"ghost moved to {cell}" : $"ghost at {cell}";
         }
+
+        /// <summary>#664: the answer to this tap shows now: the hint and the last tap's answer give way to it (not after their time).</summary>
+        void SayRefusal(string why, string hint)
+        {
+            GameUiPanel.Toasts.Withdraw(hint);
+            if (!string.IsNullOrEmpty(saidRefusal) && saidRefusal != why + ".") GameUiPanel.Toasts.Withdraw(saidRefusal);
+            saidRefusal = why + ".";
+            hud?.Toast(saidRefusal, 3f, through: true);
+        }
+        string saidRefusal;
 
         void PlaceBush(SimCore sim, int cell)
         {

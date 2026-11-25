@@ -283,7 +283,7 @@ namespace AquariumCiv.GameUI
         /// <summary>The seed hint up now (SeedPlaceView takes it down when its ghost shows).</summary>
         public string SeedHintShown => seedHintShown;
         /// <summary>#731: an earned bush in hand.</summary>
-        public const string BushHint = "Bushes: tap the glowing ground to pick a spot. " + ViewTail;
+        public const string BushHint = "Bushes need open grass away from the fire: tap the glowing ground to pick a spot. " + ViewTail; // #664: where it will be OK, said once
         /// <summary>#730: the plucking tool's word on its button (the name is still the user's to pick: SimCore.LandscapeToolName as is).</summary>
         public static string LandscapeLabel
         {
@@ -397,7 +397,7 @@ namespace AquariumCiv.GameUI
         {
             AquariumCiv.Sim.Eco.LifeSpecies.Ducks => "The ducks: " + Lower(LifeWaterHint),
             AquariumCiv.Sim.Eco.LifeSpecies.Fish => "The fish: " + Lower(LifeWaterHint),
-            AquariumCiv.Sim.Eco.LifeSpecies.Thicket => "The bushes: " + Lower(LifeHint),
+            AquariumCiv.Sim.Eco.LifeSpecies.Thicket => "The bushes need open grass away from the fire: " + Lower(LifeHint), // #664
             AquariumCiv.Sim.Eco.LifeSpecies.Rabbits => "The rabbits: " + Lower(LifeHint),
             AquariumCiv.Sim.Eco.LifeSpecies.Deer => "The deer: " + Lower(LifeHint),
             _ => "The wolves: tap a glowing den spot in the wood. " + ViewTail,
