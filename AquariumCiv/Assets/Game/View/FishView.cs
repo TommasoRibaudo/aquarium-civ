@@ -205,7 +205,7 @@ namespace AquariumCiv.View
             if (!box.WaterPieceUnder(x0, z0, x0 + step, z0 + step)) return 0f;
             float ground = box.land.Height(edge.x, edge.y);
             if (ground >= y) return 0f;
-            float foot = BoxView.WallFoot(ground, y) + BoxView.SiltBand; // #708: the deeper section, above its silt
+            float foot = BoxView.WallFoot(ground, y, box.FromBank(edge, s is GlassSide.Left or GlassSide.Right, y)) + BoxView.SiltBand; // #708: the deeper section, above its silt
             return y - foot;
         }
 
