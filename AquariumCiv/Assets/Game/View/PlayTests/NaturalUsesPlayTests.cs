@@ -180,29 +180,46 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(found, "a shore point by the pond");
             var kids = pv.Activities.Where(a => pv.Planner.StageOf(a.who) == LifeStage.Kid).Select(a => a.who.Key).Take(3).ToList();
             Assert.AreEqual(3, kids.Count, "three kids");
+            bool ball(BallGame.Throw th, float local) => local > th.pickStart + BallGame.Pick * 0.6f + 0.05f && local < th.pickEnd; // held, standing still
             IEnumerator Play(string tag, System.Func<BallGame.Throw, bool> want)
             {
-                // a seed whose throw lands as wanted early on (the throws are a function of the seed, the members and the centre)
-                int seed = -1, k0 = -1;
-                for (int sd = 1; sd < 400 && seed < 0; sd++)
+                // a seed whose live game (Direct moves the centre to open ground and starts after a lead) has the wanted miss early on
+                BallGame live = null; int seed = -1, k0 = -1;
+                for (int sd = 1; sd < 300 && seed < 0; sd++)
                 {
-                    var g = new BallGame(sd, 0f, kids, shore);
-                    for (int k = 0; k < 6; k++) if (want(g.ThrowAt(k))) { seed = sd; k0 = k; break; }
+                    if (pv.KidPlay.Direct(PlayGame.Ball, kids, shore, 40f, sd) == null) continue;
+                    if (!pv.KidPlay.TryCue(kids[0], pv.PoseClock, out _, out var kg, out _) || kg is not BallGame bg) continue;
+                    for (int k = 0; k < 6; k++) if (want(bg.ThrowAt(k))) { live = bg; seed = sd; k0 = k; break; }
                 }
-                Assert.GreaterOrEqual(seed, 0, tag + ": a seed with the wanted miss");
-                var probe = new BallGame(seed, 0f, kids, shore).ThrowAt(k0);
+                Assert.IsNotNull(live, tag + ": a seed with the wanted miss");
+                var probe = live.ThrowAt(k0);
                 rig.FlyTo(box.transform.TransformPoint(box.land.OnGround((shore.x + probe.restPos.x) * 0.5f, (shore.y + probe.restPos.y) * 0.5f)), Mathf.Max(rig.minZoom * 1.1f, 0.25f), 0.4f);
                 for (int i = 0; i < 200 && rig.IsFlying; i++) yield return null;
-                float? until = pv.KidPlay.Direct(PlayGame.Ball, kids, shore, probe.backAt + 4f, seed);
-                Assert.IsNotNull(until, tag + ": the game started");
-                float t0 = Time.realtimeSinceStartup; int f = 0;
-                while (Time.realtimeSinceStartup - t0 < probe.backAt + 1.5f)
+                int f = 0;
+                float nearest = 9f, worstJump = 0f; bool sank = false; Vector3? prevHeld = null;
+                var fetcherRef = pv.Activities.First(a => a.who.Key == kids[probe.fetcher]).who;
+                while (pv.PoseClock - live.t0 < probe.backAt + 1.5f)
                 {
                     yield return null;
-                    float local = Time.realtimeSinceStartup - t0;
+                    float local = pv.PoseClock - live.t0;
                     if (local > probe.launch - 0.4f && (f++ % 3) == 0) ScreenCapture.CaptureScreenshot(Shots + $"744/{tag}_{f:000}.png");
+                    // what the tester watched for: the fetcher reaches the ball where it lies; a held ball never jumps
+                    var ballGo = GameObject.Find("Play Ball");
+                    if (ballGo == null || !pv.TryGetDollTransform(fetcherRef, out var doll)) continue;
+                    var rootT = ballGo.transform.parent;
+                    var dl = rootT.InverseTransformPoint(doll.position);
+                    if (local > probe.land + 0.3f && local < probe.pickStart + 0.2f)
+                        nearest = Mathf.Min(nearest, new Vector2(dl.x - probe.restPos.x, dl.z - probe.restPos.y).magnitude);
+                    if (local > probe.pickStart && local < probe.pickEnd && box.WaterDrawnAt(dl.x, dl.z)) sank = true; // (the people's root is raised: x/z are the land's, y is not)
+                    var bl = ballGo.transform.localPosition;
+                    var held = ball(probe, local);
+                    if (held && prevHeld.HasValue) worstJump = Mathf.Max(worstJump, new Vector2(bl.x - prevHeld.Value.x, bl.z - prevHeld.Value.z).magnitude);
+                    prevHeld = held ? bl : (Vector3?)null;
                 }
-                Debug.Log($"[744] {tag}: seed {seed}, throw {k0}, rest {probe.restPos}, wet {probe.wet}, rolls {probe.rolls}");
+                Debug.Log($"[744] {tag}: seed {seed}, throw {k0}, rest {probe.restPos}, wet {probe.wet}, rolls {probe.rolls}; fetcher nearest {nearest:0.000} u, sank {sank}, worst held jump {worstJump:0.000} u");
+                Assert.Less(nearest, 0.1f, tag + ": the fetcher reaches the ball where it lies");
+                if (probe.wet) Assert.IsTrue(sank, tag + ": wades into the water for it");
+                Assert.Less(worstJump, 0.05f, tag + ": the ball never jumps into the hands");
             }
             yield return Play("pond", th => th.miss && th.wet);
             Debug.Log("[744] " + EcoDebug.PondDries());

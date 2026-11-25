@@ -26,6 +26,7 @@ namespace AquariumCiv.View
             public bool forced;
             public float until = float.MaxValue;
             public GameObject ball;
+            public bool wasFree; public float waitedHands = -1f; // #744 (tester): a picked-up ball waits where it lies until the hands reach it
             public bool splashed; // #744: the ball came down on the pond (its splash played)
             public int ballShot = -1;
             public ArcShot flight;
@@ -343,6 +344,8 @@ namespace AquariumCiv.View
         public static float BallMinPixels = 9f;
 
         /// <summary>The ball's radius (root-local units) that makes it <see cref="BallMinPixels"/> across on the main camera at <paramref name="local"/>.</summary>
+        public const float HandsReach = 0.07f, HandsWait = 1.5f;
+
         static float MinBallRadius(Transform root, Vector3 local)
         {
             var cam = Camera.main;
@@ -378,6 +381,14 @@ namespace AquariumCiv.View
                     if (pv.Camp.Busy(g.game.KeyOf(b.holder))) { g.ball.SetActive(false); continue; } // #692 review: a kid borrowed by a camp use put the ball down (it hung, huge, in the feather clip)
                     var hands = (v.armL.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f)) + v.armR.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f))) * 0.5f;
                     pos = root.InverseTransformPoint(hands);
+                    // #744 (tester): never jumps into hands that are still away from it (a doll running late); waits at most HandsWait
+                    if (g.wasFree) { g.waitedHands = 0f; g.wasFree = false; }
+                    if (g.waitedHands >= 0f)
+                    {
+                        float off = new Vector2(pos.x - g.lastBall.x, pos.z - g.lastBall.z).magnitude;
+                        if (off > HandsReach && g.waitedHands < HandsWait) { g.waitedHands += Time.deltaTime; pos = g.lastBall; }
+                        else g.waitedHands = -1f;
+                    }
                 }
                 else
                 {
@@ -406,6 +417,7 @@ namespace AquariumCiv.View
                 g.ball.transform.localPosition = pos;
                 g.ball.transform.localRotation = b.Free ? b.rotation : Quaternion.identity;
                 g.ball.transform.localScale = Vector3.one * (Mathf.Max(zoom * BallGame.BallR, MinBallRadius(root, pos)) / PegDoll.BallMeshR);
+                if (b.Free) g.wasFree = true;
                 g.lastBall = pos;
                 g.lastT = now;
             }
