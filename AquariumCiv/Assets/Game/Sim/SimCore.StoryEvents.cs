@@ -234,7 +234,8 @@ namespace AquariumCiv.Sim
             return StoryLine(StoryEvent.SecondStone, $"The name stone was full. {who.name} rolled a second one beside it, and {dead.name}'s name went on first.", 0.75f, who.id, dead.id);
         }
 
-        /// <summary>A grown or young tree within reach in front of (x, z): toward the front glass (lower z), where the camera looks from [est].</summary>
+        /// <summary>A grown or young tree whose canopy can hide (x, z) from the camera: in front of it (toward the front glass, lower z, where the camera
+        /// looks in from) and within a canopy's reach to either side [est: the Keeper's tree 0.56 u aside, 0.64 u in front hid the stone in the clip].</summary>
         bool TreeInFront(float x, float z)
         {
             var e = State.eco;
@@ -244,7 +245,7 @@ namespace AquariumCiv.Sim
                 var cv = (AquariumCiv.Sim.Eco.EcoCover)e.cover[c];
                 if (cv != AquariumCiv.Sim.Eco.EcoCover.Tree && cv != AquariumCiv.Sim.Eco.EcoCover.Young) continue;
                 float dx = Settle.SiteMap.CXc(c) - x, dz = Settle.SiteMap.CZc(c) - z;
-                if (Math.Abs(dx) < 0.25f && dz < 0.05f && dz > -0.5f) return true;
+                if (Math.Abs(dx) < 0.6f && dz < 0.05f && dz > -0.9f) return true; // a grown canopy is wide, and seen from above it covers what stands behind it
             }
             return false;
         }
