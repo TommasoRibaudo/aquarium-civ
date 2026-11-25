@@ -653,6 +653,10 @@ namespace AquariumCiv.View
             if (playing) { var cueAt = OutOfFire(PlayOffLots(playCue.pos, spot), CrowdAvoid.FireKeep + 0.01f); target = FreeOfPeople(cueAt, false) ? cueAt : Standable(cueAt, cueAt, true, false, false); target = Apart(target, playSpots); face = playCue.face; playSpots.Add(target); } // batch 2: never on top of a still grown-up (nor in a lot); 2026-11-24 (tester): nor inside another kid at play
             // #692: a camp use has them (borrowed from their free time, or inside their own work): its part says where, what they face, the move, the prop
             CampPart campPart = null; float campInto = 0f;
+            // #744 (tester): wading in for the ball, or down in a dried pond's hollow (still 'pond' to the paths): where the game says,
+            // past the lot, crowd and ashore nudges above, which would put the fetcher back on the shore
+            if (playing && (playCue.sink > 0f || (BallGame.PondAt != null && land.IsWater(playCue.pos.x, playCue.pos.y) && !BallGame.PondAt(playCue.pos))))
+            { target = playCue.pos; playSpots[playSpots.Count - 1] = target; }
             bool camping = !hidden && !hunting && !tenting && Camp.Busy(a.who.Key) && !PairStage.TryCue(a.who.Key, time, out _, out _) && Camp.TryCue(a.who.Key, time, out campPart, out campInto);
             bool campMoves = camping && !campPart.keepSpot;
             if (camping)
@@ -678,6 +682,7 @@ namespace AquariumCiv.View
             float pokeSince = 0f; bool pokeBig = false;
             bool poking = !hidden && !paired && !playing && !tenting && !camping && !a.moving && meals.Poking(a.who.Key, time, out pokeSince, out pokeBig);
             if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && !(playing && playCue.sink > 0f) /* #359: wading in on purpose */ && land.IsWater(target.x, target.y)
+                && !(playing && BallGame.PondAt != null && !BallGame.PondAt(target)) /* #744 (tester): a dried pond's hollow is dry ground to play in */
                 && !(IceView.Instance != null && IceView.Instance.OnIce(target)) /* #618: on the ice */)
             {
                 var wet = target;

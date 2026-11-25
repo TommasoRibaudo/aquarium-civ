@@ -45,6 +45,9 @@ namespace AquariumCiv.View
         /// <summary>The throw it is on (free) or was last on.</summary>
         public int shotIndex;
         public ArcShot shot;
+        /// <summary>#744: the view draws it where <see cref="position"/> says (x, z), on the ground, or on the water's surface when
+        /// <see cref="floating"/>, not along its own copy of the arc.</summary>
+        public bool placed, floating;
         /// <summary>Free: where it is (box x, z; y above the flat ground) and how it is turned.</summary>
         public Vector3 position;
         public Quaternion rotation;
@@ -449,11 +452,20 @@ namespace AquariumCiv.View
         {
             public int from, to, fetcher, holderAfter;
             public bool miss, holdUp;
-            public Vector2 fromPos, aim, fetchTo, restPos;
-            public float ready, launch, land, runStart, arrive, pickStart, pickEnd, backAt, holdUpAt, next;
+            /// <summary>#744: the missed ball came to rest on the pond (it floats; the fetcher wades in), or rolled on down into a dry hollow.</summary>
+            public bool wet, rolls;
+            public Vector2 fromPos, aim, fetchTo, restPos, rollFrom;
+            public float ready, launch, land, runStart, arrive, pickStart, pickEnd, backAt, holdUpAt, next, rollStart, rollEnd;
             public ArcShot shot;
             public Vector2[] spots;
         }
+
+        /// <summary>#744 (the user, 2026-11-24): the view's land for the ball. <see cref="PondAt"/>: is this point on the pond's water;
+        /// <see cref="RollsTo"/>: where a ball left here rolls on to (the bottom of a dry hollow), or the point itself. Null: flat dry land.</summary>
+        public static Func<Vector2, bool> PondAt;
+        public static Func<Vector2, Vector2> RollsTo;
+        /// <summary>#744: the shake after a ball fished from the pond; the wade's depth (ankle-deep); a roll's pace.</summary>
+        public const float Shake = 0.6f, WadeSink = 0.02f, RollSpeed = 0.35f;
 
         readonly List<Throw> throws = new();
         readonly Vector2[] home;
@@ -551,6 +563,19 @@ namespace AquariumCiv.View
                     float restAt = th.land + Arc.SettleSeconds(th.shot);
                     var rest = Arc.Sample(th.shot, restAt).position;
                     th.restPos = new Vector2(rest.x, rest.z);
+                    // #744: on the pond it floats where it came down; in a dry hollow it rolls on to the bottom
+                    th.wet = PondAt != null && PondAt(th.restPos);
+                    if (!th.wet && RollsTo != null)
+                    {
+                        var down = RollsTo(th.restPos);
+                        float far = (down - th.restPos).magnitude;
+                        if (far > 0.05f)
+                        {
+                            th.rolls = true; th.rollFrom = th.restPos; th.rollStart = restAt; th.rollEnd = restAt + far / RollSpeed;
+                            th.restPos = down; restAt = th.rollEnd;
+                            th.wet = PondAt != null && PondAt(down);
+                        }
+                    }
                     // The nearest kid fetches it (alone: the thrower).
                     int f = 0; float best = float.MaxValue;
                     for (int i = 0; i < n; i++)
@@ -562,11 +587,11 @@ namespace AquariumCiv.View
                     th.fetcher = f;
                     var toBall = th.restPos - spots[f];
                     float m = toBall.magnitude;
-                    th.fetchTo = m > 0.07f ? th.restPos - toBall / m * 0.07f : spots[f];
+                    th.fetchTo = m > 0.07f ? th.restPos - toBall / m * (th.wet ? 0.05f : 0.07f) : spots[f]; // #744: in the water, right up to it
                     th.runStart = th.land + 0.25f;
                     th.arrive = th.runStart + (th.fetchTo - spots[f]).magnitude / RunSpeed;
                     th.pickStart = Mathf.Max(th.arrive, restAt - 0.1f);
-                    th.pickEnd = th.pickStart + Pick;
+                    th.pickEnd = th.pickStart + Pick + (th.wet ? Shake : 0f); // #744: a shake of the wet ball before the run back
                     th.backAt = n == 1 ? th.pickEnd : th.pickEnd + (th.fetchTo - spots[f]).magnitude / RunSpeed;
                     th.holderAfter = f;
                     th.next = th.backAt + Turn;
@@ -631,11 +656,13 @@ namespace AquariumCiv.View
                 cue.since = local - th.land;
                 if (local < th.runStart) { cue.style = i == th.to ? DollStyle.PlayCatch : DollStyle.Stand; cue.face = i == th.to ? th.fromPos : cue.face; }
                 else if (local < th.arrive) { cue.style = DollStyle.PlayCatch; cue.under = DollStyle.Run; cue.face = th.restPos; }
-                else if (local < th.pickEnd) { cue.style = DollStyle.PlayCatch; cue.face = th.restPos; cue.endBeat = true; }
+                else if (local < th.pickEnd) { cue.style = th.wet && local >= th.pickEnd - Shake ? DollStyle.PlayShake : DollStyle.PlayCatch; cue.face = th.restPos; cue.endBeat = true; }
                 else if (local < th.backAt) { cue.style = DollStyle.Run; cue.under = DollStyle.Run; cue.face = th.spots[i]; }
                 else { cue.style = DollStyle.Stand; cue.face = NextAim(k); }
                 if (i == th.from && local < th.launch + 0.66f && local < th.runStart) { cue.role = GroupRole.Thrower; cue.style = DollStyle.PlayThrow; cue.hitOn = Release; cue.endBeat = local >= th.launch; cue.face = th.aim; cue.since = local - th.ready; }
             }
+            // #744: wading: ankle-deep while the fetcher's feet are on the pond (the view lets a sunk play cue stand in the water)
+            if (th.miss && th.wet && i == th.fetcher && PondAt != null && PondAt(cue.pos)) cue.sink = WadeSink;
             if (th.holdUp && i == th.holderAfter && local >= th.holdUpAt && local < th.holdUpAt + HoldUp)
             {
                 cue.role = GroupRole.Cheerer;
@@ -707,10 +734,21 @@ namespace AquariumCiv.View
             var th = throws[k];
             var b = new BallState { shotIndex = k, shot = th.shot, holder = th.from, stage = ArcStage.Resting };
             if (local < th.launch) return b;
-            if (local < th.land || (th.miss && local < th.pickEnd - Pick * 0.4f))
+            float pickedAt = th.pickStart + Pick * 0.6f; // the hands close on it
+            if (local < th.land || (th.miss && local < pickedAt))
             {
-                var s = Arc.Sample(th.shot, local);
+                var s = Arc.Sample(th.shot, Mathf.Min(local, th.rolls ? th.rollStart : local));
                 b.holder = -1; b.position = s.position; b.rotation = s.rotation; b.stage = s.stage;
+                // #744: rolling on down into the hollow, then lying at its bottom; or floating on the pond where it fell
+                if (th.miss && th.rolls && local >= th.rollStart)
+                {
+                    float u = Mathf.Clamp01((local - th.rollStart) / Mathf.Max(0.01f, th.rollEnd - th.rollStart));
+                    u = 1f - (1f - u) * (1f - u); // eases to a stop
+                    var p = Vector2.Lerp(th.rollFrom, th.restPos, u);
+                    b.placed = true; b.position = new Vector3(p.x, BallR, p.y);
+                    b.rotation = Quaternion.Euler(0f, 0f, -u * (th.restPos - th.rollFrom).magnitude / BallR * Mathf.Rad2Deg);
+                }
+                if (th.miss && th.wet && local >= th.land + 0.05f) { b.placed = true; b.floating = true; b.position = new Vector3(th.restPos.x, 0f, th.restPos.y); }
                 return b;
             }
             b.holder = th.holderAfter;
