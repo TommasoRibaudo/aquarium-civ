@@ -18,7 +18,8 @@ namespace AquariumCiv.View.PlayTests
 
         IEnumerator Shot(string name)
         {
-            string tag = File.ReadAllText(Dir + "tag.txt").Trim();
+            Directory.CreateDirectory(Dir);
+            string tag = File.Exists(Dir + "tag.txt") ? File.ReadAllText(Dir + "tag.txt").Trim() : "x"; // no tag file: run "x", not a crash
             yield return new WaitForEndOfFrame();
             var t = ScreenCapture.CaptureScreenshotAsTexture();
             File.WriteAllBytes(Dir + tag + "_" + name + ".png", t.EncodeToPNG());
