@@ -679,6 +679,8 @@ namespace AquariumCiv.Sim
                 var e = Chronicle(kind, text, salience, who?.id ?? -1, other?.id ?? -1);
                 e.buildingId = SeatBuilding(seat.role)?.id ?? -1;
             }
+            // #722 (1.4): a new leader in the seat: the antlers go to their door (after the line, so its moment queues after the new leader's)
+            if (who != null && seat.holderId == who.id && seat.role == LeaderOf(State.era) && LeaderSeatLine(kind)) AntlersAfterSeat(who, seat);
             ReviewIfNewLord();
         }
 

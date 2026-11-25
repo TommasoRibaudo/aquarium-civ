@@ -848,6 +848,8 @@ namespace AquariumCiv.View
                 else if (style == DollStyle.Mend) (kind, slot) = (PropKind.Pelt, PropSlot.Front);
             }
             if (started) (kind, slot) = (startCue.prop, startCue.slot); // #656/#677: the scene says what they carry
+            if (!camping && kind is PropKind.Bucket or PropKind.BucketEmpty && plannerSim != null && a.who.Key == plannerSim.SpoutBucketUserId) // the scenes say their own (B80.c, the watering uses)
+                kind = kind == PropKind.Bucket ? PropKind.SpoutBucket : PropKind.SpoutBucketEmpty; // #722 (2.1): the tinkerer's crooked bucket, in their hand
             if (StagedLook != null && !hunting && !camping && !paired && !playing && !started && !Camp.CheatHolds(a.who.Key)) StagedLook(a, walking, ref style, ref kind, ref slot); // S-ritual
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
             v.HoldInLeft(BerryMotion.BasketInLeft(style) || kind is PropKind.Bowl or PropKind.BowlEmpty); // #361: the right hand picks, the basket rides in the left; #365: so does the meal's bowl
@@ -1620,7 +1622,7 @@ namespace AquariumCiv.View
             // Fit the slot to the mesh: a bundle rides on the back, buckets hang from the hand, a block is hugged.
             if (kind is PropKind.Basket or PropKind.FishBasket) slot = PropSlot.Hand; // #361: a basket is held in a hand (the left one while the right picks, PegDollView.HoldInLeft), never hugged: SlotOf says Arms
             else if (kind == PropKind.Bundle && slot != PropSlot.Shoulder) slot = PropSlot.Back;
-            else if (kind is PropKind.Bucket or PropKind.BucketMuddy or PropKind.BucketEmpty) slot = PropSlot.Hand;
+            else if (kind is PropKind.Bucket or PropKind.BucketMuddy or PropKind.BucketEmpty or PropKind.SpoutBucket or PropKind.SpoutBucketEmpty) slot = PropSlot.Hand;
             else if (kind == PropKind.Block && slot == PropSlot.Hand) slot = PropSlot.Arms;
             else if (kind == PropKind.Barrel) slot = PropSlot.Front;
             else if (kind == PropKind.Ball) slot = PropSlot.Arms; // #358: hugged

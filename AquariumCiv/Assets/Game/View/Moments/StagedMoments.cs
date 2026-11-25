@@ -145,7 +145,9 @@ namespace AquariumCiv.View
                 // #721: the ritual's name on the caption as it begins (the people's own lines follow as the moment's bubbles).
                 // #722 (4.3): with the singer's song named, its name too ("The harvest feast: One More Bowl"); never in a bubble (#276).
                 LastCaption = live.sim.RitualCaption(ritual);
-                ShowMeDirector.Instance?.Say(LastCaption, PersonRef.None, CaptionSeconds, LineKind.Echo);
+                // #722 (2.2, B80.d): the year the singer made their song, the song's line is the caption (the line rides this moment)
+                if (live.sim.SongLineOn(live.moment.entryId) is string song) LastCaption = song;
+                ShowMeDirector.Instance?.Say(LastCaption, PersonRef.None, LastCaption == live.sim.RitualCaption(ritual) ? CaptionSeconds : StoryMoment.CaptionSeconds, LineKind.Echo);
             }
             if (live.moment.kind == MomentKind.Wedding && live.sim.KeeperWeddingLine(live.moment.entryId) is string wed)
             {
@@ -261,7 +263,13 @@ namespace AquariumCiv.View
             foreach (var l in lives)
             {
                 if (l.scene == null || l.over || now.day != l.scene.day) continue;
-                l.bubbles ??= RitualBubbles.ForHeldMoment(l.scene);
+                if (l.bubbles == null)
+                {
+                    l.bubbles = RitualBubbles.ForHeldMoment(l.scene);
+                    // #722 (2.2, B80.d): at the song's ritual (every year) its singer starts the tune and everyone joins in by the end
+                    if (l.moment != null && l.moment.kind == MomentKind.Ritual && l.sim?.SongSingerOf(l.sim.RitualOfEntry(l.moment.entryId)) is Notable singer)
+                        l.bubbles = RitualBubbles.SongFirst(l.bubbles, l.scene, singer.id);
+                }
                 foreach (var b in l.bubbles) if (now.hour >= b.start && now.hour < b.end) into.Add((b, false));
             }
         }

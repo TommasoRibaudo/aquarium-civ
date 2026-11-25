@@ -355,6 +355,24 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("People: the Keeper's child grows up")) last = StoryMoment.DebugPlayNow(StoryEvent.KeeperChildGrown);
                 GUILayout.EndHorizontal();
                 if (GUILayout.Button("People: the Keeper's child marries")) last = StoryMoment.DebugKeeperChildWed();
+                // batch 3 (B80.b-h): each event now (its gate eased; says why on failure), and the life uses they leave
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Chief: pass the antlers")) last = StoryMoment.DebugPlayNow(StoryEvent.AntlersPassed);
+                if (GUILayout.Button("Trait: the tinkerer's bucket")) last = StoryMoment.DebugPlayNow(StoryEvent.TinkererBucket);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Trait: the gardener's flowers")) last = StoryMoment.DebugPlayNow(StoryEvent.GardenerFlowers);
+                if (GUILayout.Button("Stone: water the flowers")) last = CampCheats.FlowerWater();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Trait: the joker's face")) last = StoryMoment.DebugPlayNow(StoryEvent.JokerFace);
+                if (GUILayout.Button("Woodpile: a kid pats the face")) last = CampCheats.FacePat();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Weather: the dry spell")) last = StoryMoment.DebugPlayNow(StoryEvent.DrySpell);
+                if (GUILayout.Button("Tree: the waterer's evening bucket")) last = CampCheats.TreeWater();
+                GUILayout.EndHorizontal();
+                if (GUILayout.Button("Weather: the first snow")) last = StoryMoment.DebugPlayNow(StoryEvent.FirstSnow);
             }
             // ---- end #722 ----
             // ---- fb4 #540: camp props ----

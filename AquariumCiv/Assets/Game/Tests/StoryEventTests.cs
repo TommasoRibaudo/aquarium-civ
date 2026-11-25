@@ -22,6 +22,9 @@ namespace AquariumCiv.Tests
 
         static void Months(SimCore sim, int n) { for (int i = 0; i < n; i++) sim.Advance(1.0 / 12); }
 
+        /// <summary>#722 batch 3: no tinkerer, gardener or joker, so their events (the props placed here are their gates) never take the year.</summary>
+        static void NoTraitEvents(SimCore sim) { foreach (var n in sim.State.notables) if (n.trait is "the tinkerer" or "the gardener" or "the joker") n.trait = "the kind"; }
+
         static ChronicleEntry[] Lines(SimCore sim, string id) => sim.State.chronicle.Where(e => e.kind == StoryEvent.Kind(id)).ToArray();
 
         /// <summary>The name stone stands (placed a month ago) and <paramref name="names"/> people died since.</summary>
@@ -32,6 +35,7 @@ namespace AquariumCiv.Tests
             Assert.IsNotNull(stone, "a name stone stands");
             stone.dueMonth = sim.State.month - 1;
             sim.DebugAddKids(names + 4, 30f); // grown-ups enough to lose some and still have one to roll the stone
+            NoTraitEvents(sim);
             for (int i = sim.NamesSince(stone).Count; i < names; i++) Assert.IsNotNull(sim.DebugKillOldest());
             return stone;
         }

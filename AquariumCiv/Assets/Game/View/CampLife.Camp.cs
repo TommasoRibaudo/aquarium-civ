@@ -1018,7 +1018,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>#687: the share of the grass thirsty before the people look up for rain.</summary>
-        public const float ThirstyBox = 0.5f;
+        public const float ThirstyBox = SimCore.ThirstyBox; // #722 (3.2): shared with the sim's dry spell
 
         string TrySkyLook(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {

@@ -11,7 +11,8 @@ namespace AquariumCiv.View
     /// #722: a story event as a live moment (docs/design/new-events.md §1.1-1.3, animation-specs B78.a-c). Registered with
     /// <see cref="HeldMomentStage"/> for <see cref="MomentKind.Story"/>: CampLife casts and starts the event's scene (the first fruit, the two
     /// marks, the second stone, B80.a the Keeper's child: <see cref="CampLife.StartStory"/>), and the line is said on the caption as it starts
-    /// (as the rituals' names). 2.2 (the singer's song) has no scene yet: its line is a card, never a Story moment (<see cref="StoryEvent.Staged"/>).
+    /// (as the rituals' names). 2.2 (the singer's song) rides the ritual's own moment (B80.d), never a Story moment (<see cref="StoryEvent.Staged"/>).
+    /// Batch 3 (B80.b-h): the antlers, the tinkerer, the gardener, the joker, the dry spell, the first snow; the antlers wait for the new leader's moment.
     /// The moment is done when the scene has ended. Not castable now (its people busy or away): null, so it waits and, after a few tries, is a
     /// card; at night it waits for the morning.
     /// </summary>
@@ -40,6 +41,13 @@ namespace AquariumCiv.View
                 LastWhy = "night: it waits for the morning";
                 return null;
             }
+            // #722 (1.4, B80.b): the antlers pass right after the new leader's own moment (both queue as the seat changes); a cheat plays alone
+            if (!m.cheat && sim.StoryOfEntry(m.entryId) == StoryEvent.AntlersPassed && NewLeaderPending(sim))
+            {
+                sim.NightWaitMoment(m.id); // it waits, not a try
+                LastWhy = "after the new leader's moment";
+                return null;
+            }
             var scene = camp.StartStory(sim, m);
             if (scene == null) { LastWhy = camp.LastStoryWhy; return null; }
             var entry = Entry(sim, m.entryId);
@@ -51,6 +59,13 @@ namespace AquariumCiv.View
             LastWhy = null;
             Started++;
             return new MomentStaging { Done = () => !camp.StoryPlaying(scene), Stop = () => camp.StopStory(scene) };
+        }
+
+        static bool NewLeaderPending(SimCore sim)
+        {
+            foreach (var x in sim.WaitingMoments()) if (x.kind == MomentKind.NewLeader) return true;
+            foreach (var x in sim.PlayingMoments()) if (x.kind == MomentKind.NewLeader) return true;
+            return false;
         }
 
         static ChronicleEntry Entry(SimCore sim, int id)
@@ -89,10 +104,12 @@ namespace AquariumCiv.View
                 PeopleView.DebugSetHour(id == StoryEvent.TwoMarks ? 16.5f : 9.5f); // the marks: toward dusk after the wedding
                 skipped = " (skipped to the day)";
             }
+            string dry = id == StoryEvent.DrySpell ? " | " + EcoDebug.DrySpell() : ""; // B80.g: the "Dry spell now" cheat first (the grass browns at once)
             var e = sim.DebugStory(id, out string why);
             if (e == null) return "not now: " + why;
             var m = sim.MomentOfEntry(e.id);
-            if (m == null) return $"{e.text} | {pv.Camp.Force(CampLife.UseOfStory(id))}{skipped}";
+            if (m == null) return $"{e.text} | {pv.Camp.Force(CampLife.UseOfStory(id))}{skipped}{dry}";
+            skipped += dry;
             return PlayHeldNow(sim, m, e, skipped);
         }
 
@@ -109,8 +126,8 @@ namespace AquariumCiv.View
             return started.Exists(x => x.id == m.id) ? $"playing: {e.text}{skipped}" : $"queued: {e.text} ({stage.LastWhy ?? LastWhy}){skipped}";
         }
 
-        /// <summary>"Trait: the singer's song" (2.2): a singer and a kept ritual (eased), and the ritual plays now as its held moment; the song's
-        /// line is written as it plays. Its own scene is not built yet: the line is a card (the next return), not a moment.</summary>
+        /// <summary>"Trait: the singer's song" (2.2, B80.d): a singer and a kept ritual (eased), and the ritual plays now as its held moment; the
+        /// song's line is written as it plays and rides that moment: the singer's notes first, everyone's by the end, its line on the caption.</summary>
         public static string DebugSingerSong()
         {
             var sim = Sim;
@@ -118,7 +135,7 @@ namespace AquariumCiv.View
             if (!sim.DebugSingerReady(out string ritual, out string why)) return "not now: " + why;
             string r = StagedMoments.DebugPlayRitualNow(ritual);
             var song = sim.State.chronicle.LastOrDefault(x => x.kind == StoryEvent.Kind(StoryEvent.SingerSong));
-            return song != null ? $"{song.text} (a card) | {r}" : "the song wasn't made | " + r;
+            return song != null ? $"{song.text} | {r}" : "the song wasn't made | " + r;
         }
 
         /// <summary>"People: the Keeper's child marries" (5.2): a grown-up the Keeper named weds now; the wedding moment plays with its line on

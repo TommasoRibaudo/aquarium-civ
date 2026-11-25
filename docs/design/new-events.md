@@ -75,6 +75,7 @@ play once per person). The pacing director (research 16) picks the slot, and the
   - the seat's history in the book;
   - {new}'s person card.
 - **Cheat:** "Chief: pass the antlers".
+- **Built (2026-11-25, batch 3, B80.b):** the gate is either kind of antlers (the first stag's or the white stag's), the line as written. The line is written as the leader's seat changes; its moment plays right after the new-leader moment (the cheat plays it alone). Later passes are silent: the antlers follow the seat.
 - **Rating:** N5 M3 R4 S4 W5.
 
 ### 1.5 A wedding across the pond (22)
@@ -104,6 +105,7 @@ The traits are already in the sim (`NameData.Traits`). Each event fires once per
 - **Stays:** the crooked bucket at the pond. The water carriers use it, and the pour goes sideways.
 - **Read later:** the water carry (a prop variant); {0}'s card.
 - **Cheat:** "Trait: the tinkerer's bucket".
+- **Built (2026-11-25, batch 3, B80.c):** "fetching water" is the living land's pond holding water (the scene is at its edge); the tinkerer carries the crooked bucket (their eldest child after them); the sideways pour shows in the watering uses (the water run has no pour of its own).
 - **Rating:** N5 M3 R4 S4 W5.
 
 ### 2.2 The singer's song (22)
@@ -115,6 +117,7 @@ The traits are already in the sim (`NameData.Traits`). Each event fires once per
 - **Cheat:** "Trait: the singer's song".
 - **Built (2026-11-25, batch 2):** the sim side only. The line is a card: the scene waits for its own animation spec. The song's
   name (4.3) shows on the ritual's caption, not in a bubble: ritual bubbles stay wordless (#276).
+- **Built (2026-11-25, batch 3, B80.d):** the scene rides the ritual's own held moment: the singer's music notes first, everyone's by the end; the line is that moment's caption, and a card only if the ritual's moment is.
 - **Rating:** N5 M3 R5 S4 W5.
 
 ### 2.3 The gardener's flowers (22)
@@ -126,6 +129,7 @@ The traits are already in the sim (`NameData.Traits`). Each event fires once per
   - a morning use: someone pours a cup of water on them.
 - **Read later:** the remembering visit stops at the flowers.
 - **Cheat:** "Trait: the gardener's flowers".
+- **Built (2026-11-25, batch 3, B80.e):** six flowers in a ring; the morning water is a life use ("Stone: water the flowers"). Not wired yet: the remembering visit stopping at the flowers.
 - **Rating:** N4 M3 R5 S5 W5.
 
 ### 2.4 The joker's face (21)
@@ -135,6 +139,7 @@ The traits are already in the sim (`NameData.Traits`). Each event fires once per
 - **Stays:** the face log at the front of the woodpile. When the pile is stacked again it goes back on top.
 - **Read later:** kids pat it as they pass; the woodpile ritual.
 - **Cheat:** "Trait: the joker's face".
+- **Built (2026-11-25, batch 3, B80.f):** the face is a look on the woodpile under its roof; it goes on top when logs are laid; kids pat it ("Woodpile: a kid pats the face"). Not wired yet: the woodpile ritual reading it.
 - **Rating:** N5 M2 R4 S5 W5.
 
 ## 3. Weather that happens in the box, told once
@@ -163,6 +168,7 @@ The traits are already in the sim (`NameData.Traits`). Each event fires once per
   - {who}'s card: "Waters the Keeper's tree in a dry spell";
   - the book.
 - **Cheat:** "Weather: the dry spell" (the "Dry spell now" cheat plus the start).
+- **Built (2026-11-25, batch 3, B80.g):** the dry spell is the thirst signs' own threshold (`SimCore.ThirstyBox`); the evening repeat is a life use ("Tree: the waterer's evening bucket").
 - **Rating:** N5 M3 R4 S5 W5. It changes no sim numbers: the look only, as the thirst signs.
 
 ### 3.3 The first snow (20)
@@ -173,6 +179,7 @@ The traits are already in the sim (`NameData.Traits`). Each event fires once per
 - **Stays:** the snow figure, until the thaw.
 - **Read later:** the snowball game (it exists) starts near it.
 - **Cheat:** "Weather: the first snow".
+- **Built (2026-11-25, batch 3, B80.h):** the old first-snow line (kind "snow", which the weather reads) says this line with a kid and is a Story moment; with no kid it keeps a plain line and no scene. It comes when the snow does (its dice unchanged), so it is never held back, but it takes the year's slot from the other new events.
 - **Rating:** N5 M2 R3 S5 W5.
 
 ## 4. Small owned choices

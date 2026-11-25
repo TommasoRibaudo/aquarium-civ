@@ -154,8 +154,9 @@ namespace AquariumCiv.Sim
         Notable Singer() => State.notables.Where(n => n.alive && n.age >= AdultAge && n.trait == "the singer").OrderBy(n => n.id).FirstOrDefault();
 
         /// <summary>From <see cref="PlayRitual"/>: the first ritual played while a singer lives gets their song, once a box (at most one new event a
-        /// game year). Its scene is not built yet: the line is a card (<see cref="StoryEvent.Staged"/>).</summary>
-        ChronicleEntry SingerSongAfter(string ritual)
+        /// game year). B80.d: it rides the ritual line's held moment (<paramref name="ritualLine"/>): the singer's notes first, everyone's by the
+        /// end, the song's line on the caption; a card only if that moment is (<see cref="HeldEntryOf"/>).</summary>
+        ChronicleEntry SingerSongAfter(string ritual, ChronicleEntry ritualLine = null)
         {
             var m = StoryMarks;
             if (StoryHappened(StoryEvent.SingerSong) || m.songOwnerId >= 0) return null;
@@ -164,7 +165,9 @@ namespace AquariumCiv.Sim
             if (singer == null) return null;
             songForced = false;
             m.songRitual = ritual; m.songOwnerId = singer.id; m.songName = "";
-            return StoryLine(StoryEvent.SingerSong, $"{singer.name} made up a song for {StoryChoices.RitualWords(ritual)}. After that, everyone called it {singer.name}'s song.", 0.6f, singer.id, -1);
+            var e = StoryLine(StoryEvent.SingerSong, $"{singer.name} made up a song for {StoryChoices.RitualWords(ritual)}. After that, everyone called it {singer.name}'s song.", 0.6f, singer.id, -1);
+            m.songLineId = e.id; m.songRideId = ritualLine?.id ?? -1;
+            return e;
         }
 
         /// <summary>#721 + #722 (4.3): the caption the view shows over a ritual's held moment: its name, and the song's name once it has one
@@ -368,7 +371,7 @@ namespace AquariumCiv.Sim
             ritual = !string.IsNullOrEmpty(m.songRitual) ? m.songRitual : Rituals.FirstOrDefault() ?? RitualKind.Feast;
             if (!State.customs.Contains(RitualKind.CustomOf(ritual))) State.customs.Add(RitualKind.CustomOf(ritual));
             State.storyFlags.Remove("story:" + StoryEvent.SingerSong);
-            m.songOwnerId = -1; m.songRitual = ""; m.songName = "";
+            m.songOwnerId = -1; m.songRitual = ""; m.songName = ""; m.songLineId = m.songRideId = -1;
             songForced = true;
             return true;
         }

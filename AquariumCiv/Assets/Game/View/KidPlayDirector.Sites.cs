@@ -53,11 +53,20 @@ namespace AquariumCiv.View
         }
 
         /// <summary>The site a game plays on (null for the B2 games), and where its group stands.</summary>
+        /// <summary>#722 (3.3, B80.h "Read later"): the snow figure by the fire while it stands (CampLife sets it each frame), else null.</summary>
+        public static Vector2? SnowFigure;
+        /// <summary>B80.h: a snowball game within this of the figure starts beside it, this far off it [est].</summary>
+        public const float FigureReach = 1.5f, FigureOff = 0.25f;
+
         PlaySite SiteFor(LifePlanner planner, PlayGame game, Place real, ref Vector2 centre, ViewTime viewNow)
         {
             var season = LifeClock.SeasonOf(viewNow.day);
             switch (game)
             {
+                case PlayGame.Snowball: // #722 (3.3): it starts near the snow figure
+                    if (SnowFigure is Vector2 fig && (fig - centre).magnitude < FigureReach)
+                        centre = fig + ((centre - fig).sqrMagnitude > 1e-6f ? (centre - fig).normalized : Vector2.down) * FigureOff;
+                    return null;
                 case PlayGame.Splash:
                     return WaterSite(planner, real, centre, out var w) ? w : null;
                 case PlayGame.FishGrab: // #708 (B39.c): the pond's own edge only (no fish in a puddle)

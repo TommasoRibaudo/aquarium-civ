@@ -171,7 +171,7 @@ namespace AquariumCiv.Sim
             if (first) State.storyFlags.Add(RitualFlag(kind));
             var e = Record(first ? RitualFirstKind(kind) : RitualYearKind(kind), RitualLine(kind, lead, first), first ? 0.7f : 0.3f, lead?.id ?? -1, -1);
             RitualPlayed?.Invoke(kind, lead, e);
-            SingerSongAfter(kind); // #722 (2.2): the first ritual played while a singer lives gets their song
+            SingerSongAfter(kind, e); // #722 (2.2): the first ritual played while a singer lives gets their song (B80.d: it rides this line's moment)
             return e;
         }
 

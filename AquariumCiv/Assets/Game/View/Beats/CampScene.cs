@@ -293,6 +293,25 @@ namespace AquariumCiv.View
         FruitPick,
         /// <summary>B80.a (#722 5.1): the Keeper's child comes of age: at the fire an elder hands them their work's tool.</summary>
         KeeperChildGrown,
+        // #722 batch 3 (View/Beats/StoryScenes.Batch3.cs, View/CampLife.Stories3.cs). Appended: keep these last.
+        /// <summary>B80.b (1.4): the old chief (or their family) carries the antlers from the old post to the new chief's door.</summary>
+        AntlersPass,
+        /// <summary>B80.c (2.1): the tinkerer bends a spout onto a bucket at the fire and tries it at the pond: it pours to the left.</summary>
+        TinkererBucket,
+        /// <summary>B80.e (2.3): the gardener kneels at the name stone and presses a ring of flowers into the ground round it.</summary>
+        GardenerFlowers,
+        /// <summary>B80.e (2.3 "Stays", life): in the morning someone pours a little water on the flowers at the stone.</summary>
+        FlowerWater,
+        /// <summary>B80.f (2.4): the joker carves a grin into a log's end on the woodpile; two kids peek and laugh.</summary>
+        JokerFace,
+        /// <summary>B80.f (2.4 "Read later", life): a kid pats the face log as they pass.</summary>
+        FacePat,
+        /// <summary>B80.g (3.2): in the dry spell one carries a bucket from the pond to the Keeper's tree; the others look up for rain.</summary>
+        DrySpell,
+        /// <summary>B80.g (3.2 "Stays", life): in a later dry spell, at evening, the same one (or their child) waters the Keeper's tree.</summary>
+        TreeWater,
+        /// <summary>B80.h (3.3): the first snow: a kid catches a flake on the tongue, the others copy, they roll a snow figure by the fire.</summary>
+        FirstSnow,
     }
 
     /// <summary>#694: what a dog or a visiting wolf does in a <see cref="QuadPart"/> (P0's moves; CampLife.Dogs poses them).</summary>

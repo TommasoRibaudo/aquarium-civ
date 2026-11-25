@@ -11,7 +11,7 @@ using static AquariumCiv.View.CampScenes5;
 
 namespace AquariumCiv.View
 {
-    public static class StoryScenes
+    public static partial class StoryScenes
     {
         const int Nobody = VillageScenes.Nobody;
         static Vector2 Across(Vector2 toCam) => new Vector2(-toCam.y, toCam.x);

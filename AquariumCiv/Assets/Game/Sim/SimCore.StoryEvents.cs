@@ -11,23 +11,33 @@ namespace AquariumCiv.Sim
         public const string FirstFruit = "first_fruit", TwoMarks = "two_marks", SecondStone = "second_stone";
         /// <summary>2.2 the singer's song (a card: its scene is not built yet) and 5.1 the Keeper's child comes of age (once per person).</summary>
         public const string SingerSong = "singer_song", KeeperChildGrown = "keeper_child_grown";
-        public static readonly string[] All = { FirstFruit, TwoMarks, SecondStone, SingerSong, KeeperChildGrown };
+        /// <summary>Batch 3 (B80.b-h): 1.4 the antlers passed, 2.1 the tinkerer's bucket, 2.3 the gardener's flowers, 2.4 the joker's face,
+        /// 3.2 the dry spell, 3.3 the first snow (its line keeps the old kind "snow": the weather reads it).</summary>
+        public const string AntlersPassed = "antlers_passed", TinkererBucket = "tinkerer_bucket", GardenerFlowers = "gardener_flowers",
+            JokerFace = "joker_face", DrySpell = "dry_spell", FirstSnow = "first_snow";
+        public static readonly string[] All = { FirstFruit, TwoMarks, SecondStone, SingerSong, KeeperChildGrown,
+            AntlersPassed, TinkererBucket, GardenerFlowers, JokerFace, DrySpell, FirstSnow };
         /// <summary>The events told once a box: the ones the yearly pacing counts (a person's callback, 5.1, is not one).</summary>
-        public static readonly string[] OncePerBox = { FirstFruit, TwoMarks, SecondStone, SingerSong };
+        public static readonly string[] OncePerBox = { FirstFruit, TwoMarks, SecondStone, SingerSong,
+            AntlersPassed, TinkererBucket, GardenerFlowers, JokerFace, DrySpell, FirstSnow };
 
-        /// <summary>The event has a staged scene (a held <see cref="MomentKind.Story"/> moment). 2.2's scene is not built yet: its line is
-        /// a card (the Keeper reads it on the next return), never a moment that would wait for a scene that does not exist.</summary>
+        /// <summary>The event has a staged scene of its own (a held <see cref="MomentKind.Story"/> moment). 2.2 rides the ritual's own held
+        /// moment (B80.d: the singer's notes first, its line on the ritual's caption), so it is never a Story moment of its own.</summary>
         public static bool Staged(string id) => id != null && id != SingerSong && Array.IndexOf(All, id) >= 0;
 
-        /// <summary>The chronicle kind of an event's line: "story_first_fruit". Its moment is <see cref="MomentKind.Story"/>.</summary>
-        public static string Kind(string id) => "story_" + id;
+        /// <summary>The old first-snow line's kind (SimCore.Story.cs), kept: LifePlanner reads it for the snow day.</summary>
+        public const string SnowKind = "snow";
 
-        /// <summary>The event a chronicle kind tells ("story_two_marks" → "two_marks"), or null.</summary>
+        /// <summary>The chronicle kind of an event's line: "story_first_fruit" (3.3: "snow"). Its moment is <see cref="MomentKind.Story"/>.</summary>
+        public static string Kind(string id) => id == FirstSnow ? SnowKind : "story_" + id;
+
+        /// <summary>The event a chronicle kind tells ("story_two_marks" → "two_marks", "snow" → "first_snow"), or null.</summary>
         public static string OfKind(string kind)
         {
+            if (kind == SnowKind) return FirstSnow;
             if (kind == null || !kind.StartsWith("story_")) return null;
             string id = kind.Substring(6);
-            return Array.IndexOf(All, id) >= 0 ? id : null;
+            return id != FirstSnow && Array.IndexOf(All, id) >= 0 ? id : null;
         }
     }
 
@@ -52,6 +62,20 @@ namespace AquariumCiv.Sim
         public int pupDogId = -1, pupKidA = -1, pupKidB = -1, pupAskedDog = -1;
         /// <summary>5.2: the wedding lines told as "named by the Keeper" (their chronicle ids): the wedding moment says them on its caption.</summary>
         public List<int> keeperWeddings = new();
+        /// <summary>2.2 (B80.d): the song's line and the ritual line it rides on (their chronicle ids; -1 none): the ritual's held moment says it.</summary>
+        public int songLineId = -1, songRideId = -1;
+        /// <summary>1.4: whose door the antlers hang at (-1: they follow the leader, as before the first pass) and whose post stands empty.</summary>
+        public int antlersAtId = -1, antlersFromId = -1;
+        /// <summary>2.1: the tinkerer who made the crooked bucket (-1 none). They carry it; after them their eldest child.</summary>
+        public int bucketOwnerId = -1;
+        /// <summary>2.3: the stone the flower ring is round (a consequence prop's id; -1 none) and the gardener.</summary>
+        public int flowersStoneId = -1, gardenerId = -1;
+        /// <summary>2.4: the woodpile with the face log (a consequence prop's id; -1 none) and the joker.</summary>
+        public int faceLogPropId = -1, jokerId = -1;
+        /// <summary>3.2: who carries water to the Keeper's tree in a dry spell (-1 none); after them their eldest child.</summary>
+        public int treeWatererId = -1;
+        /// <summary>3.3: the month the first snow came (-1 never): its snow figure stands by the fire until the thaw.</summary>
+        public long snowFigureMonth = -1;
     }
 
     /// <summary>
@@ -87,6 +111,7 @@ namespace AquariumCiv.Sim
             if (StoryFirstThisYear()) return;
             if (TryFirstFruit(false) != null) return;
             if (TrySecondStone(false) != null) return;
+            StoryStep3(); // batch 3: the trait moments (2.1, 2.3, 2.4) and the dry spell (3.2); 1.4 follows the seat, 3.3 the snow
         }
 
         /// <summary>A first-time story line was written this game year.</summary>
@@ -234,6 +259,10 @@ namespace AquariumCiv.Sim
                 }
                 case StoryEvent.KeeperChildGrown: // #722 (5.1)
                     e = DebugKeeperChildGrown(out why);
+                    break;
+                case StoryEvent.AntlersPassed: case StoryEvent.TinkererBucket: case StoryEvent.GardenerFlowers:
+                case StoryEvent.JokerFace: case StoryEvent.DrySpell: case StoryEvent.FirstSnow:
+                    e = DebugStory3(id, out why); // batch 3 (SimCore.StoryEvents3.cs)
                     break;
                 default: why = "unknown event " + id; break;
             }

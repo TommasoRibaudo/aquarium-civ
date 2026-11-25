@@ -17,7 +17,7 @@ namespace AquariumCiv.View
 {
     public sealed partial class CampLife
     {
-        static bool IsStoryUse(CampUse u) => u is CampUse.FirstFruit or CampUse.TwoMarks or CampUse.SecondStone or CampUse.FruitPick or CampUse.KeeperChildGrown;
+        static bool IsStoryUse(CampUse u) => u is CampUse.FirstFruit or CampUse.TwoMarks or CampUse.SecondStone or CampUse.FruitPick or CampUse.KeeperChildGrown || IsStory3Use(u);
 
         /// <summary>The scenes a held moment plays (meals and bedtime don't take their people).</summary>
         readonly HashSet<CampScene> storyHeld = new();
@@ -49,6 +49,7 @@ namespace AquariumCiv.View
             foreach (var m in new[] { fruitMesh, notchMesh, rollStoneMesh }) if (m != null) UnityEngine.Object.Destroy(m);
             fruitMesh = notchMesh = rollStoneMesh = null;
             ConsequencePropsView.HeldBack.Clear();
+            DestroyStories3(); // batch 3
         }
 
         // ================================================================== the held moment's scene
@@ -78,7 +79,7 @@ namespace AquariumCiv.View
         {
             StoryEvent.FirstFruit => CampUse.FirstFruit, StoryEvent.TwoMarks => CampUse.TwoMarks, StoryEvent.SecondStone => CampUse.SecondStone,
             StoryEvent.KeeperChildGrown => CampUse.KeeperChildGrown, // B80.a
-            _ => CampUse.None, // 2.2 the singer's song: no scene yet (a card)
+            _ => UseOfStory3(id), // batch 3 (B80.b-h); 2.2 the singer's song rides the ritual's moment: None
         };
 
         /// <summary>The scene is still playing.</summary>
@@ -107,7 +108,8 @@ namespace AquariumCiv.View
             var acts = pv.Activities; float time = clock;
             if (use == CampUse.SecondStone) return TrySecondStoneScene(acts, time, a, b, force);
             if (use == CampUse.KeeperChildGrown) return TryComeOfAgeScene(acts, time, a, force);
-            if (use == CampUse.None) return "this story has no scene (a card)";
+            if (IsStory3Use(use)) return TryStory3(use, acts, time, a, b, force); // batch 3 (CampLife.Stories3.cs)
+            if (use == CampUse.None) return "this story has no scene of its own";
             if (!TreeAt(out var tree, out int stage) || stage < 4) return "the Keeper's tree isn't grown ('Grow the Keeper's tree' first)";
             switch (use)
             {
@@ -230,6 +232,7 @@ namespace AquariumCiv.View
         string ForceStory(CampUse use)
         {
             if (sim == null || planner == null || meals == null) return "no camp yet";
+            if (IsStory3Use(use)) return ForceStory3(use);
             var mk = sim.StoryMarks;
             int a = -1, b = -1;
             switch (use)
@@ -289,6 +292,7 @@ namespace AquariumCiv.View
         // ================================================================== each frame (every era)
         void StepStories(IReadOnlyList<PersonActivity> acts, float time)
         {
+            StepStories3(acts, time); // batch 3: the antlers' hold, the face log, the snow figure, their life uses
             // B78.c: the second stone stays off its spot while it is rolled in and stood up, and while its moment still waits for the Keeper
             var held = ConsequencePropsView.HeldBack;
             held.Clear();
@@ -425,6 +429,7 @@ namespace AquariumCiv.View
                     }
                 }
             }
+            used = DrawStories3(root, material, time, groundAt, used); // batch 3: the carried antlers, the stone's flowers, the snow figure
             for (int i = used; i < storyPool.Count; i++) if (storyPool[i] != null) storyPool[i].gameObject.SetActive(false);
         }
     }

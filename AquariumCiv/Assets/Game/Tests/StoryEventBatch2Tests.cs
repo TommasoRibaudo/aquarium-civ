@@ -120,7 +120,7 @@ namespace AquariumCiv.Tests
             StringAssert.Contains(singer.name + " made up a song for the harvest feast.", lines[0].text);
             Assert.AreEqual(singer.id, sim.StoryMarks.songOwnerId);
             Assert.AreEqual(RitualKind.Feast, sim.StoryMarks.songRitual);
-            Assert.IsNull(sim.MomentOfEntry(lines[0].id), "no scene yet: no held moment");
+            Assert.IsNull(sim.MomentOfEntry(lines[0].id), "no moment of its own: it rides the ritual's (B80.d)");
             Assert.AreEqual(CardTone.Good, SimCore.ToneOf(lines[0].kind));
         }
 

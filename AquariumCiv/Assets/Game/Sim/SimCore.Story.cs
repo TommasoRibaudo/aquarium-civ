@@ -180,11 +180,10 @@ namespace AquariumCiv.Sim
             }
             if (season == 0 && year > 0 && year % 25 == 0)
                 Chronicle("anniversary", $"{Place} celebrated {year} years in the glass with a feast.", 0.65f);
+            // #722 (3.3): the first snow is a story event: the spec's line with a kid, a Story moment. It comes when the snow does (the dice as
+            // before, so the sim is unchanged): it is never held back for the year's slot, but it takes the slot from the other new events
             if (winter && !s.storyFlags.Contains(FlagSnow) && year >= 2 && r.Chance(0.25f))
-            {
-                s.storyFlags.Add(FlagSnow);
-                Chronicle("snow", "Snow fell inside the glass for the first time. " + SnowKidClause(), 0.6f);
-            }
+                FirstSnowLine();
 
             if (!r.Chance(Config.storyChancePerMonth)) return;
 

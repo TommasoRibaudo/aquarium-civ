@@ -199,6 +199,93 @@ namespace AquariumCiv.View.PlayTests
             CloseSlice();
         }
 
+        // ================================================================== batch 3 (B80.b-h)
+        static Vector2? PropSpot(int id) { var p = id >= 0 ? Sim?.FindConsequenceProp(id) : null; return p != null ? new Vector2(p.x, p.z) : (Vector2?)null; }
+        static Vector2? Door(int id) => DeerHuntStage.DoorSpot(Sim, id, out var at) ? at : (Vector2?)null;
+        static Vector2? Fire() { var c = PeopleView.Find()?.Camp; return c != null && c.FocusNow() is Vector2 f ? f : TreeSpot(); }
+
+        /// <summary>B80.b: the antlers carried from the old post to the new chief's door (the cheat plays it alone).</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator B80b_AntlersPassed() => Story("b80b-antlers", StoryEvent.AntlersPassed, CampUse.AntlersPass, 10f, 2, null,
+            () => Door(Sim.StoryMarks.antlersAtId), 6f, 2f, 9f, 14f);
+
+        /// <summary>B80.c: the tinkerer's spout, tried at the pond: it pours to the left.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator B80c_TinkererBucket() => Story("b80c-tinkerer", StoryEvent.TinkererBucket, CampUse.TinkererBucket, 10f, 2, null, () => null, 6f, 2f, 10f, 15f);
+
+        /// <summary>B80.e: the gardener's ring of flowers at the name stone; then its morning water (a life use).</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator B80e_GardenerFlowers() => Story("b80e-gardener", StoryEvent.GardenerFlowers, CampUse.GardenerFlowers, 10f, 2,
+            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone)), () => PropSpot(Sim.StoryMarks.flowersStoneId), 7f, 3f, 9f, 12f);
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator B80e_FlowerWater() => Life("b80e-flower-water", CampUse.FlowerWater, 8f, () =>
+        {
+            Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone));
+            Debug.Log("[722 shots] " + Sim.DebugStory(StoryEvent.GardenerFlowers, out string why)?.text + why);
+        }, CampCheats.FlowerWater);
+
+        /// <summary>B80.f: the joker's grin on the woodpile, two kids peek; then a kid's pat (a life use).</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator B80f_JokerFace() => Story("b80f-joker", StoryEvent.JokerFace, CampUse.JokerFace, 10f, 3,
+            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof)), () => PropSpot(Sim.StoryMarks.faceLogPropId), 7f, 3f, 9f);
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator B80f_FacePat() => Life("b80f-face-pat", CampUse.FacePat, 11f, () =>
+        {
+            Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof));
+            Debug.Log("[722 shots] " + Sim.DebugStory(StoryEvent.JokerFace, out string why)?.text + why);
+        }, CampCheats.FacePat);
+
+        /// <summary>B80.g: the dry spell's bucket to the Keeper's tree, the others look up for rain; then the evening repeat.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator B80g_DrySpell() => Story("b80g-dry-spell", StoryEvent.DrySpell, CampUse.DrySpell, 10f, 2, null, TreeSpot, 8f, 3f, 12f, 16f);
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator B80g_TreeWater() => Life("b80g-tree-water", CampUse.TreeWater, 16.5f, () =>
+        {
+            Debug.Log("[722 shots] " + EcoDebug.DrySpell());
+            Debug.Log("[722 shots] " + Sim.DebugStory(StoryEvent.DrySpell, out string why)?.text + why);
+        }, CampCheats.TreeWater);
+
+        /// <summary>B80.h: the first snow: a flake on the tongue, the others copy, a snow figure by the fire.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator B80h_FirstSnow() => Story("b80h-first-snow", StoryEvent.FirstSnow, CampUse.FirstSnow, 10f, 3, null, Fire, 4f, 2f, 9f, 14f);
+
+        /// <summary>B80.d: the singer's song rides the ritual's moment: its line is the caption, the singer's notes first.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator B80d_SingerSong_OnTheRitualsCaption()
+        {
+            yield return FreshCamp(10f);
+            string r = StoryMoment.DebugSingerSong();
+            Debug.Log("[722 shots] b80d-song: " + r + " | caption: " + StagedMoments.LastCaption);
+            var song = Sim.State.chronicle.LastOrDefault(x => x.kind == StoryEvent.Kind(StoryEvent.SingerSong));
+            Assert.IsNotNull(song, r);
+            Assert.AreEqual(song.text, StagedMoments.LastCaption, "the song's line is the ritual's caption");
+            yield return new WaitForSeconds(2f);
+            yield return Shot("722/b80d-song_2.0s");
+            yield return new WaitForSeconds(8f);
+            yield return Shot("722/b80d-song_10.0s");
+            CloseSlice();
+        }
+
+        /// <summary>A life use a batch-3 event leaves: a fresh camp at <paramref name="hour"/>, the event had (the setup), the use's cheat, shots.</summary>
+        IEnumerator Life(string name, CampUse use, float hour, Action setup, Func<string> cheat)
+        {
+            yield return FreshCamp(hour);
+            setup?.Invoke();
+            yield return new WaitForSeconds(2f);
+            var pv = PeopleView.Find();
+            string r = cheat();
+            Debug.Log($"[722 shots] {name}: {r}");
+            Assert.IsTrue(pv.Camp.Playing(use), r);
+            yield return new WaitForSeconds(2f);
+            yield return Shot($"722/{name}_default_2.0s");
+            if (pv.Camp.FocusNow() is Vector2 f) yield return Zoomed($"722/{name}_zoom_2.5s", f);
+            Debug.Log($"[722 shots] {name}: flowers {pv.Camp.FlowersDrawn}, figure {pv.Camp.FigureDrawn}; {pv.Camp.PropMarks()}");
+            CloseSlice();
+        }
+
         /// <summary>5.2: the Keeper's child's wedding, its line on the caption as it starts.</summary>
         [UnityTest, Timeout(300000)]
         public IEnumerator KeeperChildWed()

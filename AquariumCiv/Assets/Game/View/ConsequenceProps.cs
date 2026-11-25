@@ -53,8 +53,12 @@ namespace AquariumCiv.View
                     }
                     break;
                 case ConsequenceKind.WoodpileRoof: // a tall woodpile under its own little roof
+                {
                     Pieces.Woodpile(mb, Vector3.zero, 0f);
-                    for (int i = 0; i < Mathf.Clamp(variant, 0, WoodSlots); i++) Pieces.Log(mb, WoodSlot(i), 0.026f, 0.26f, 90f, i % 2 == 0 ? Palette.WoodLight : Palette.Bark); // #693 notes: the logs laid across its top
+                    int laid = Mathf.Clamp(variant & ~FaceLook, 0, WoodSlots);
+                    for (int i = 0; i < laid; i++) Pieces.Log(mb, WoodSlot(i), 0.026f, 0.26f, 90f, i % 2 == 0 ? Palette.WoodLight : Palette.Bark); // #693 notes: the logs laid across its top
+                    if ((variant & FaceLook) != 0) FaceLog(mb, laid); // #722 (2.4, B80.f): the joker's grin, on top
+                }
                     foreach (int s in new[] { -1, 1 }) mb.Box(new Vector3(s * 0.15f, 0.12f, 0f), new Vector3(0.02f, 0.24f, 0.02f), Palette.Timber);
                     foreach (int s in new[] { -1, 1 })
                         mb.Box(new Vector3(0f, 0.26f, s * 0.05f), new Vector3(0.36f, 0.015f, 0.12f), Palette.Thatch, Quaternion.Euler(s * 28f, 0f, 0f), true);
@@ -573,6 +577,25 @@ namespace AquariumCiv.View
         /// <summary>#693 notes (B54.c): the woodpile's free slots for a laid log (local, before <see cref="Scale"/>): three side by side, crosswise, on
         /// top of the top row (the pile's logs run along z).</summary>
         public const int WoodSlots = 3;
+        /// <summary>#722 (2.4, B80.f): the woodpile's look bit for the joker's face log (the low bits are the logs laid on top).</summary>
+        public const int FaceLook = 16;
+
+        /// <summary>#722 (2.4, B80.f "FaceLog"): a grin carved into a log's ends: two dark eyes and a curved mouth on each end, on the top row's
+        /// front log (its ends face local ±z), or once logs are laid across the top, on the top one's ends (±x): "it goes back on top".</summary>
+        static void FaceLog(MeshBuilder mb, int laid)
+        {
+            var cut = new Color(0.30f, 0.20f, 0.12f);
+            Vector3 c; bool alongX;
+            if (laid > 0) { c = WoodSlot(laid - 1); alongX = true; }
+            else { c = new Vector3(-0.0275f, 0.124f, 0f); alongX = false; }
+            foreach (float e in new[] { -1f, 1f })
+            {
+                Vector3 At(float across, float up) => alongX ? c + new Vector3(e * 0.131f, up, across) : c + new Vector3(across, up, e * 0.131f);
+                var size = alongX ? new Vector3(0.004f, 0.006f, 0.006f) : new Vector3(0.006f, 0.006f, 0.004f);
+                mb.Box(At(-0.008f, 0.007f), size, cut); mb.Box(At(0.008f, 0.007f), size, cut); // the eyes
+                for (int i = -2; i <= 2; i++) mb.Box(At(i * 0.0045f, -0.007f + 0.0012f * i * i), size, cut); // the grin
+            }
+        }
         public static Vector3 WoodSlot(int i) => new Vector3(0f, 0.124f + 0.052f, 0.06f * (Mathf.Clamp(i, 0, 2) - 1)); // across the top, carried crosswise so it never pokes into the pile
 
         /// <summary>#693 (B54.a/b): where basket <paramref name="i"/> of the three stands (local, before <see cref="Scale"/>), and which are gone when

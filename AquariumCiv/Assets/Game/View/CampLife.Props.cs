@@ -560,7 +560,7 @@ namespace AquariumCiv.View
                 }
                 case PropFx.Offered: offeredDay = now.day; break;
                 case PropFx.Swing: ConsequencePropsView.Swing(id); break;
-                case PropFx.Stack: { int n = Mathf.Min(ConsequenceMeshes.WoodSlots, (woodStacked.TryGetValue(id, out int w0) ? w0 : 0) + 1); woodStacked[id] = n; ConsequencePropsView.SetLook(id, n); break; }
+                case PropFx.Stack: { int n = Mathf.Min(ConsequenceMeshes.WoodSlots, (woodStacked.TryGetValue(id, out int w0) ? w0 : 0) + 1); woodStacked[id] = n; ConsequencePropsView.SetLook(id, n | (ConsequencePropsView.LookOf(id) & ConsequenceMeshes.FaceLook)); break; } // #722 (2.4): the face log stays
                 case PropFx.Unstack: { int n = Mathf.Max(0, (woodStacked.TryGetValue(id, out int w0) ? w0 : 0) - 1); woodStacked[id] = n; ConsequencePropsView.SetLook(id, n); break; }
                 case PropFx.Recut: postRecut[id] = now.day; ConsequencePropsView.SetLook(id, PostLook(id)); break;
                 case PropFx.Measure: postScratches[id] = Mathf.Min(3, (postScratches.TryGetValue(id, out int m0) ? m0 : 0) + 1); ConsequencePropsView.SetLook(id, PostLook(id)); break;
