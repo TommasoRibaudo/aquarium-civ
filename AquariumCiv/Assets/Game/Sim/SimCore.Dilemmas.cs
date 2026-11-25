@@ -220,6 +220,7 @@ namespace AquariumCiv.Sim
             ApartStep(); // the people who live apart age even if the switch is turned off later (nothing when there are none)
             RitualStep(); // #721: the kept rituals, each in its season (no dice). B3 tester fixes: a kept custom is the box's, not the choice
                           // switch's: with the switch off (every Editor run, OnInBuilds) the rituals never played on their own
+            StoryStep(); // #722: the story events, at most one new one a game year (no dice)
             if (!Config.dilemmas) return;
             CallbackStep(); // no dice: one due callback per month
             var open = OpenDilemma;

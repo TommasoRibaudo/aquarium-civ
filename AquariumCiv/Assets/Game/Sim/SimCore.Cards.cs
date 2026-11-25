@@ -132,16 +132,18 @@ namespace AquariumCiv.Sim
             ["wish"] = (CardTone.Good, "wish"), ["dilemma"] = (CardTone.Neutral, "dilemma"), ["relic"] = (CardTone.Good, "relic"),
             ["tapback"] = (CardTone.Good, "keeper"), // a scholar taps back (SimCore.Relics.cs, #74)
             ["coming_of_age"] = (CardTone.Neutral, "hidden"),
+            ["story_marks_year"] = (CardTone.Good, "hidden"), // #722: later couples' marks are History only
         };
 
         /// <summary>Good, neutral or sad, by story kind (§2.2: from the table, never the text). Unknown kinds are neutral.</summary>
         public static CardTone ToneOf(string kind) =>
-            KindTable.TryGetValue(kind ?? "", out var k) ? k.tone : kind != null && (kind.StartsWith("role_") || kind.StartsWith("term_") || kind.StartsWith("ritual_")) ? CardTone.Good : CardTone.Neutral;
+            KindTable.TryGetValue(kind ?? "", out var k) ? k.tone : kind != null && (kind.StartsWith("role_") || kind.StartsWith("term_") || kind.StartsWith("ritual_") || kind.StartsWith("story_")) ? CardTone.Good : CardTone.Neutral;
 
         /// <summary>The kind group: cards of the same group already chosen cost −0.15 each. "hidden" is never a card.</summary>
         public static string GroupOf(string kind) =>
             KindTable.TryGetValue(kind ?? "", out var k) ? k.group : kind == null ? "other" : kind.StartsWith("role_") ? "role" : kind.StartsWith("term_") ? "office"
             : kind.StartsWith("ritual_") ? (Array.IndexOf(RitualKind.All, kind.Substring(7)) >= 0 ? "custom" : "hidden") // #721: a ritual is a card the first time only
+            : StoryEvent.OfKind(kind) != null ? "story" // #722: a story event not watched is a card
             : "other";
 
         /// <summary>§2.2 step 1: never a card: came of age, job changes under 0.5.</summary>

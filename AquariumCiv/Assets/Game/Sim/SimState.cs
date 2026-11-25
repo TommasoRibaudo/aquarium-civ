@@ -421,6 +421,7 @@ namespace AquariumCiv.Sim
         /// <summary>#717: the teller the Keeper picked (or "Let them decide" did) for tonight's story (-1 none), the month (the view day)
         /// it was picked and how they tell it (StoryManner: 0 slow, with all the voices; 1 short, for a laugh).</summary>
         public int storyTellerId = -1; public long storyTellerMonth = -1; public int storyTellerManner;
+        public StoryMarks storyMarks = new(); // #722: what the story events left in the box (SimCore.StoryEvents.cs)
         public List<ConsequenceProp> consequenceProps = new(); // #371: the things the Keeper's choices left in the box
         public bool featherPoleSet; public float featherPoleX, featherPoleZ; // fb4 #566: the one feather pole's spot (SimCore.FeatherPole.cs); an old save has none until asked
         public List<PoleFeather> poleFeathers = new(); // #692 (B31.a): the feathers tied on the pole after good events (SimCore.PoleFeathers.cs)

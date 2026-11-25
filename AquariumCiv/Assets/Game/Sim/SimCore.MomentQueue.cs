@@ -158,6 +158,10 @@ namespace AquariumCiv.Sim
                 case MomentKind.Ritual:
                     if (age > MomentRules.RitualHoldMonths) return MomentCardReason.HeldTooLong; // #721: its season is over
                     break;
+                case MomentKind.Story:
+                    if (age > MomentRules.StoryHoldMonths) return MomentCardReason.HeldTooLong; // #722
+                    if (m.personA >= 0 && Alive(m.personA) == null) return MomentCardReason.PeopleGone;
+                    break;
             }
             return MomentCardReason.None;
         }

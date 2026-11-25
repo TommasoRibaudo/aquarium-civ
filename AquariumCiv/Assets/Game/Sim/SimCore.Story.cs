@@ -282,6 +282,7 @@ namespace AquariumCiv.Sim
             Chronicle("wedding", first
                 ? $"The first wedding in the glass: {a.FullName} married {b.FullName} {when}."
                 : $"{a.FullName} married {b.FullName} {when}.", first ? 0.8f : 0.7f, a.id, b.id);
+            MarksAfterWedding(a, b); // #722 (1.2): with the Keeper's tree grown, the couple's marks on it
         }
 
         /// <summary>Record this game year (the time-lapse history). Also called at founding, so year 0 exists.</summary>
