@@ -131,6 +131,47 @@ namespace AquariumCiv.View.PlayTests
             CloseSlice();
         }
 
+        /// <summary>2026-11-24 (tester: two village kids at play fused into one body; two story listeners 0.008 u apart): through a village evening
+        /// at play speed, no two settled people stay closer than 0.03 u for half a second.</summary>
+        [UnityTest, Timeout(900000)]
+        public IEnumerator Village_NobodyStandsInsideAnybody()
+        {
+            UseLivingLand(true);
+            GameUiPanel.AcceptInputUnfocused(true);
+            yield return OpenSlice(750, 1334, seed: 4242);
+            Debug.Log("[apart] " + CampCheats.StageVillage(15.5f, false, 6, onlyCheats: false));
+            yield return Frames(10);
+            var pv = PeopleView.Find();
+            pv.timeScale = 1f;
+            var close = new Dictionary<(int, int), float>();
+            var worst = new List<string>();
+            float t0 = Time.realtimeSinceStartup;
+            while (pv.Now.hour < 19f && Time.realtimeSinceStartup - t0 < 600f)
+            {
+                yield return null;
+                var pts = new List<(int k, Vector2 p, string what)>();
+                foreach (var a in pv.Activities)
+                {
+                    if (a.moving || pv.IsWalking(a.who) || a.kind == ActivityKind.Sleep || pv.Planner.StageOf(a.who) == LifeStage.Baby) continue;
+                    if (pv.TryGetDollPosition(a.who, out var q)) pts.Add((a.who.Key, q, pv.Describe(a)));
+                }
+                var seenNow = new HashSet<(int, int)>();
+                for (int i = 0; i < pts.Count; i++)
+                    for (int j = i + 1; j < pts.Count; j++)
+                    {
+                        if ((pts[i].p - pts[j].p).magnitude >= 0.03f) continue;
+                        var key = (Mathf.Min(pts[i].k, pts[j].k), Mathf.Max(pts[i].k, pts[j].k));
+                        seenNow.Add(key);
+                        close[key] = (close.TryGetValue(key, out float f) ? f : 0f) + Time.deltaTime;
+                        if (close[key] >= 0.5f && worst.Count < 8) { worst.Add($"{pv.Now} {pts[i].what} | {pts[j].what}"); close[key] = -999f; }
+                    }
+                foreach (var k in new List<(int, int)>(close.Keys)) if (!seenNow.Contains(k) && close[k] > 0f) close[k] = 0f;
+            }
+            Debug.Log("[apart] " + (worst.Count == 0 ? "nobody inside anybody" : string.Join(" || ", worst)));
+            CloseSlice();
+            Assert.IsEmpty(worst, "two people inside each other for half a second: " + string.Join(" || ", worst));
+        }
+
         [UnityTest, Timeout(1800000)]
         public IEnumerator VillageNatural_HouseLanternsAndDoorstepSitStartByThemselves()
         {

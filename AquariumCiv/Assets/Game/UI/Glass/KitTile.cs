@@ -29,6 +29,14 @@ namespace AquariumCiv.GameUI
         {
             AddToClassList(TileClass);
             AddToClassList(SquareClass);
+            // 2026-11-24 (the user: the kit's tiles still look flat): the tools' depth (#668, the bottom bar): a soft shadow, a darker lip under
+            // the face, the shaded face (ToolFace.png); the states' rings go on the face. Shut tiles keep a flat face (no shadow, no lip).
+            foreach (var layer in new[] { "kit-tile-shade", "kit-tile-lip", "kit-tile-face" })
+            {
+                var l = new VisualElement { pickingMode = PickingMode.Ignore };
+                l.AddToClassList(layer);
+                Add(l);
+            }
             Add(glyph = new GlassIcon(icon, "kit-tile-glyph"));
             Add(nameLabel = Part(name, "kit-tile-name"));
             Add(lineLabel = Part(line, "kit-tile-line"));
