@@ -93,6 +93,22 @@ namespace AquariumCiv.Sim
 
         public StoryMarks StoryMarks => State.storyMarks ??= new StoryMarks();
 
+        /// <summary>The cheats only (SimDebugPanel's "Stories (#722)"): who the view can cast now (drawn, awake, not on a hunt or at a tent). Set by
+        /// the view around a cheat's <see cref="DebugStory"/> call, null in play: the events' picks prefer these people, so a cheat's scene plays
+        /// with the one its line names. Not saved.</summary>
+        public Func<Notable, bool> DebugCastable { get; set; }
+
+        /// <summary><paramref name="pick"/>, or (a cheat with <see cref="DebugCastable"/> set, when the view can't cast them now) the first of
+        /// <paramref name="pool"/> it can; <paramref name="pick"/> when none can.</summary>
+        Notable DebugPick(IEnumerable<Notable> pool, Notable pick)
+        {
+            var ok = DebugCastable;
+            if (ok == null || pick != null && ok(pick)) return pick;
+            return pool.FirstOrDefault(ok) ?? pick;
+        }
+
+        bool DebugOk(Notable n) => n != null && (DebugCastable == null || DebugCastable(n));
+
         static string StoryFlag(string id) => "story:" + id;
         public bool StoryHappened(string id) => State.storyFlags.Contains(StoryFlag(id));
 
@@ -131,7 +147,7 @@ namespace AquariumCiv.Sim
         Notable FruitKid()
         {
             var kids = State.notables.Where(n => n.alive && n.age >= 4f && n.age < AdultAge).OrderBy(n => n.id).ToList();
-            return kids.Count == 0 ? null : kids[(int)(RitualYear % kids.Count)];
+            return kids.Count == 0 ? null : DebugPick(kids, kids[(int)(RitualYear % kids.Count)]);
         }
 
         ChronicleEntry TryFirstFruit(bool force)
@@ -200,6 +216,7 @@ namespace AquariumCiv.Sim
             if (dead == null) return null;
             var who = State.notables.Where(n => n.alive && n.age >= AdultAge && n.age < 50f).OrderBy(n => Math.Abs(n.age - 28f)).ThenBy(n => n.id).FirstOrDefault()
                       ?? State.notables.Where(n => n.alive && n.age >= AdultAge).OrderBy(n => n.id).FirstOrDefault();
+            who = DebugPick(State.notables.Where(n => n.alive && n.age >= AdultAge).OrderBy(n => Math.Abs(n.age - 28f)).ThenBy(n => n.id), who);
             if (who == null) return null;
             var list = State.consequenceProps ??= new List<ConsequenceProp>();
             // beside the first stone, on the side away from the pond's middle [est]
@@ -233,9 +250,15 @@ namespace AquariumCiv.Sim
                 {
                     if (!KeeperTreeGrown) { why = "the Keeper's tree isn't grown"; break; }
                     var adults = State.notables.Where(n => n.alive && n.age >= AdultAge).OrderBy(n => n.id).ToList();
-                    var a = adults.FirstOrDefault(n => Alive(n.partnerId) != null);
+                    // a couple the view can cast now first (a cheat), else any couple, else two grown-ups
+                    var a = adults.FirstOrDefault(n => DebugOk(n) && DebugOk(Alive(n.partnerId))) ?? adults.FirstOrDefault(n => Alive(n.partnerId) != null);
                     var b = a != null ? Alive(a.partnerId) : null;
-                    if (a == null) { a = adults.ElementAtOrDefault(0); b = adults.ElementAtOrDefault(1); }
+                    if (a == null)
+                    {
+                        var free = adults.Where(DebugOk).ToList();
+                        if (free.Count < 2) free = adults;
+                        a = free.ElementAtOrDefault(0); b = free.ElementAtOrDefault(1);
+                    }
                     if (a == null || b == null) { why = "two grown-ups needed"; break; }
                     MarksAfterWedding(a, b);
                     e = State.chronicle.LastOrDefault(x => x.kind == StoryEvent.Kind(StoryEvent.TwoMarks) || x.kind == "story_marks_year");

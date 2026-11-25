@@ -1,13 +1,20 @@
-// #722 (B78.a-c): the story events in the real box. StoryEventShots (Explicit): in a fresh lived-in camp each cheat of SimDebugPanel's
-// "Stories (#722)" block (the event happens now and its held moment plays while watched), phone shots (750x1334) at the default camera and
-// zoomed onto the scene during it, then one of what it left (the fruit on the tree, the marks on the trunk, the second stone). They land in
-// Temp/agent/722/.
+// #722 (B78.a-c, B80.a-h): the story events in a lived-in camp box, for sign-off. StoryEventShots (Explicit): each test opens a fresh box at
+// phone size (750x1334): the camp era, a fire, tents, 7 grown-ups and 4 kids, grass grown over the land, the Keeper's tree grown (a pond where a
+// scene needs one). Then the SimDebugPanel "Stories (#722)" cheat the user presses on a phone (it sets the season, frees the cast, ends what
+// plays), and the scene filmed: the camera follows the scene's people (CampLife.FocusNow, the AnimLab "camp" follow), close enough that a
+// person is about 80 px tall, one frame every 0.5 s of the whole scene to Temp/agent/722/<event>/f###.png (for a GIF), then one "after" still
+// of what stays. Each test asserts the scene started, its cast has the people the line names, and the caption said the line.
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
+using AquariumCiv.Life;
+using AquariumCiv.Lighting;
 using AquariumCiv.Sim;
+using AquariumCiv.View.ShowMe;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -17,288 +24,464 @@ namespace AquariumCiv.View.PlayTests
     [Explicit, Category("StoryEventShots")]
     public class StoryEventShots : PlayTestBase
     {
-        static SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : null;
+        const int W = 750, H = 1334;
+        /// <summary>Seconds of game time between two frames, and the person's height on screen the camera eases to (px).</summary>
+        const float FrameEvery = 0.5f, DollPx = 80f, Pitch = 36f;
+        /// <summary>The longest any scene is filmed (s): B78.c, the longest story scene, is ~45 s.</summary>
+        const float MaxScene = 100f;
 
-        IEnumerator Zoomed(string name, Vector2 f)
+        static SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : null;
+        static PeopleView Pv => PeopleView.Find();
+
+        [TearDown]
+        public void Restore()
         {
-            var rig = Camera.main.GetComponent<BoxCamera>();
-            var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
-            Vector3 tgt0 = rig.target; float z0 = rig.zoom, p0 = rig.pitch, m0 = rig.minZoom;
-            var w = box.Root.TransformPoint(new Vector3(f.x, box.SurfaceHeight(f.x, f.y) + 0.08f, f.y));
-            for (int i = 0; i < 14; i++) { rig.CancelFlight(); rig.minZoom = 0.05f; rig.target = w; rig.zoom = 0.1f; rig.pitch = 38f; rig.Apply(); yield return null; }
-            yield return Shot(name);
-            for (int i = 0; i < 4; i++) { rig.CancelFlight(); rig.target = tgt0; rig.zoom = z0; rig.pitch = p0; rig.minZoom = m0; rig.Apply(); yield return null; }
+            CampLife.CheatFruit = false;
+            CampLife.OnlyCheats = false;
+            var pv = Pv;
+            if (pv != null && pv.Planner != null) pv.Planner.ForcedWeather = null;
+            var rig = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
+            if (rig != null) rig.minZoom = CameraReach.MinZoom;
         }
 
-        /// <summary>A fresh box: a lived-in camp at <paramref name="hour"/> with <paramref name="kids"/> kids, the Keeper's tree grown, the setup,
-        /// then the cheat; a shot at the default camera at each of <paramref name="at"/> seconds, one zoomed at <paramref name="zoomAt"/>, and once
-        /// the scene is over a zoomed shot of what it left.</summary>
-        IEnumerator Story(string name, string id, CampUse use, float hour, int kids, Action setup, Func<Vector2?> left, float zoomAt, params float[] at)
+        // ================================================================== the box
+
+        /// <summary>A lived-in camp: the camp era with its fire, tents and stock; grass misted over the land and grown (four seasons); grown-ups
+        /// to <paramref name="grownUps"/> and <paramref name="kids"/> kids; the far wood; the Keeper's tree grown; a pond if
+        /// <paramref name="pond"/>. No natural camp use starts (CampLife.OnlyCheats), the staged moments the skips left are ended, the view
+        /// at <paramref name="hour"/>. The recipe of Fb5PassShots.Stage and CampCheats.StageCamp.</summary>
+        IEnumerator LivedCamp(float hour, bool pond = false, int grownUps = 7, int kids = 4)
         {
             UseLivingLand(true);
             GameUiPanel.AcceptInputUnfocused(true);
-            yield return OpenSlice(750, 1334, seed: 4242);
+            ShowMeDirector.BubblesOn = false;
+            yield return OpenSlice(W, H, seed: 4242);
             GameUiPanel.AcceptInputUnfocused(true);
-            Debug.Log("[722 shots] " + CampCheats.StageCamp(hour, kids));
-            yield return new WaitForSeconds(2f);
+            ShowMeDirector.BubblesOn = false;
+            var sim = Sim;
+            Assert.IsNotNull(sim, "a living box");
+            PeopleView.DebugSetHour(hour);
+            foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f), (0.8f, -0.9f) }) EcoDebug.MistBig(x, z);
+            EcoDebug.SkipSeasons(1);
+            EcoDebug.OpenCampGate();
+            for (int i = 0; i < 12 && sim.State.era != Era.Camp; i++) { EcoDebug.MistCamp(); EcoDebug.SkipSeasons(1); }
+            for (int k = 0; k < 6; k++)
+                foreach (var (x, z) in new[] { (-2.4f, 1.2f), (0f, 1.4f), (2.4f, -1f), (0.5f, -1.6f), (-0.5f, 0.2f), (2f, 1.5f) }) EcoDebug.MistBig(x, z);
+            int adults = sim.State.notables.Count(n => n.alive && n.age >= SimCore.AdultAge);
+            if (adults < grownUps) sim.DebugAddKids(grownUps - adults, 21f); // grown-ups who join a family (a fresh land has five)
+            EcoDebug.SkipSeasons(4); // the grass grows in, the newcomers find work
+            if (pond) Debug.Log("[722 shots] " + EcoDebug.WaterBreaksNow());
+            sim.DebugGrowFarWood();
+            sim.MarkFirstWildWoodSeen();
+            if (!sim.StockSetDown) sim.SetDownStock();
+            sim.DebugFireStage(2);
+            UnityEngine.Object.FindAnyObjectByType<BoxView>().Rebuild();
             Debug.Log("[722 shots] " + CampCheats.GrowTree());
-            yield return new WaitForSeconds(2f);
-            setup?.Invoke();
-            yield return new WaitForSeconds(2f);
-            string r = StoryMoment.DebugPlayNow(id);
-            Debug.Log($"[722 shots] {name}: {r}");
-            var pv = PeopleView.Find();
-            for (float w = 0f; w < 5f && !pv.Camp.Playing(use); w += 0.25f) yield return new WaitForSeconds(0.25f); // the stage looks every second
-            Assert.IsTrue(pv.Camp.Playing(use), $"{name}: the scene plays ({r}; {StoryMoment.LastWhy})");
-            Debug.Log($"[722 shots] {name}: caption \"{StoryMoment.LastCaption}\"");
-            var times = at.Concat(new[] { zoomAt }).OrderBy(x => x).ToList();
-            float t = 0f;
-            foreach (float s in times)
+            if (kids > 0) sim.DebugAddKids(kids, 7f);
+            CampLife.OnlyCheats = true; // a clip shows its one scene: no natural use starts over it
+            // the skips leave staged moments (a wedding, a new chief, the newborns) holding people: end them until none comes for 2 s
+            for (int calm = 0, f = 0; calm < 120 && f < 1500; f++) { calm = HeldMomentStage.DebugEndPlaying() == 0 ? calm + 1 : 0; yield return null; }
+            if (pond) yield return Until(() => FirstWaterView.Instance == null || !FirstWaterView.Instance.Playing, 60f);
+            PeopleView.DebugSetHour(hour);
+            yield return new WaitForSecondsRealtime(2f);
+            int people = sim.State.notables.Count(n => n.alive);
+            Debug.Log($"[722 shots] box: era {sim.State.era}, {LifeClock.SeasonOf(sim.State.month)}, people {people}, meadow {sim.EcoMeadowShare:0.00}, pond cells {sim.EcoPondCells}, tree stage {sim.EcoTree.stage}");
+            Assert.GreaterOrEqual(people, 8, "a lived-in camp (8-12 people)");
+            Assert.AreEqual(Era.Camp, sim.State.era);
+        }
+
+        // ================================================================== the camera and the frames
+
+        static BoxCamera Rig => Camera.main.GetComponent<BoxCamera>();
+        static BoxView Box => UnityEngine.Object.FindAnyObjectByType<BoxView>();
+
+        /// <summary>A standing person's height on screen at box spot <paramref name="at"/> (px), with the doll's own growth with the zoom.</summary>
+        static float PersonPx(BoxCamera rig, BoxView box, Vector2 at)
+        {
+            var cam = Camera.main;
+            float h = CampFrame.DollHeight * CameraReach.DollScale(rig.zoom, PeopleView.DollScaleAmount);
+            float y = box.SurfaceHeight(at.x, at.y);
+            var a = cam.WorldToScreenPoint(box.Root.TransformPoint(new Vector3(at.x, y, at.y)));
+            var b = cam.WorldToScreenPoint(box.Root.TransformPoint(new Vector3(at.x, y + h, at.y)));
+            return Mathf.Abs(b.y - a.y);
+        }
+
+        /// <summary>One frame of the follow: the camera's target eases to <paramref name="at"/> (a snap on the first), the zoom to a person
+        /// ~<see cref="DollPx"/> tall there. Returns that height now.</summary>
+        static float Aim(Vector2 at, bool snap)
+        {
+            var rig = Rig; var box = Box;
+            rig.CancelFlight();
+            rig.minZoom = 0.03f;
+            var w = box.Root.TransformPoint(new Vector3(at.x, box.SurfaceHeight(at.x, at.y) + 0.06f, at.y));
+            rig.target = snap ? w : Vector3.Lerp(rig.target, w, 0.12f);
+            rig.pitch = Pitch;
+            rig.Apply();
+            float px = PersonPx(rig, box, at);
+            if (px > 1f) rig.zoom = Mathf.Clamp(rig.zoom * Mathf.Clamp(px / DollPx, snap ? 0.5f : 0.9f, snap ? 2f : 1.12f), 0.03f, rig.maxZoom);
+            rig.Apply();
+            return PersonPx(rig, box, at);
+        }
+
+        static string Dir(string ev) => $"722/{ev}";
+
+        /// <summary>Clears the event's folder (a GIF from a stale run must not mix in).</summary>
+        static void Fresh(string ev)
+        {
+            string d = Shots + Dir(ev);
+            try { if (Directory.Exists(d)) Directory.Delete(d, true); } catch (Exception e) { Debug.LogWarning("[722 shots] " + e.Message); }
+        }
+
+        /// <summary>Films while <paramref name="playing"/>: the camera follows <paramref name="focus"/>, a frame every <see cref="FrameEvery"/> s
+        /// of game time (f000, f001, ...), at most <paramref name="max"/> s. The frames filmed.</summary>
+        IEnumerator Film(string ev, Func<bool> playing, Func<Vector2?> focus, float max, List<int> frames)
+        {
+            int f = 0; float t = 0f, next = 0f, px = 0f; bool snap = true;
+            Vector2 last = Vector2.zero;
+            for (int settle = 0; settle < 8 && focus() is Vector2 s0; settle++) { px = Aim(s0, settle == 0); yield return null; } // the zoom lands first
+            snap = false;
+            while (t < max && playing())
             {
-                yield return new WaitForSeconds(Mathf.Max(0f, s - t));
-                t = s;
-                if (Mathf.Approximately(s, zoomAt) && pv.Camp.FocusNow() is Vector2 f) { yield return Zoomed($"722/{name}_zoom_{s:0.0}s", f); t += 18f / 60f; }
-                else yield return Shot($"722/{name}_default_{s:0.0}s");
+                if (focus() is Vector2 at) last = at;
+                px = Aim(last, snap);
+                if (t >= next - 1e-4f) { yield return Shot($"{Dir(ev)}/f{f:000}"); f++; next += FrameEvery; }
+                else yield return null;
+                t += Time.deltaTime;
             }
-            for (float w = 0f; w < 60f && pv.Camp.Playing(use); w += 0.5f) yield return new WaitForSeconds(0.5f);
-            Assert.IsFalse(pv.Camp.Playing(use), name + ": the scene ends");
-            yield return new WaitForSeconds(1f);
-            if (left() is Vector2 l) yield return Zoomed($"722/{name}_left", l);
-            Debug.Log($"[722 shots] {name}: fruit drawn {pv.Camp.FruitDrawn}, marks {pv.Camp.MarksDrawn}; {pv.Camp.PropMarks()}");
-            CloseSlice();
+            frames.Add(f);
+            Debug.Log($"[722 shots] {ev}: {f} frames over {t:0.0} s, a person {px:0} px tall");
+        }
+
+        /// <summary>The "after" still: the camera on <paramref name="spot"/> (eased in over ~1.5 s), then the shot.</summary>
+        IEnumerator After(string ev, Vector2? spot)
+        {
+            if (!(spot is Vector2 at)) { Debug.Log($"[722 shots] {ev}: no spot for the after still"); yield break; }
+            float px = 0f;
+            for (int i = 0; i < 45; i++) { px = Aim(at, i == 0); yield return null; }
+            yield return Shot($"{Dir(ev)}/after");
+            Debug.Log($"[722 shots] {ev}: after still at ({at.x:0.00}, {at.y:0.00}), a person {px:0} px tall");
+        }
+
+        static bool Where(int key, out Vector2 at)
+        {
+            at = default;
+            var pv = Pv;
+            if (pv == null || key < 0) return false;
+            var who = new List<PersonRef>(); var xs = new List<float>(); var zs = new List<float>();
+            pv.StandingNow(who, xs, zs);
+            for (int i = 0; i < who.Count; i++) if (who[i].Key == key) { at = new Vector2(xs[i], zs[i]); return true; }
+            return false;
+        }
+
+        /// <summary>The middle of the people drawn of <paramref name="keys"/>, or null.</summary>
+        static Vector2? Middle(params int[] keys)
+        {
+            var sum = Vector2.zero; int n = 0;
+            foreach (int k in keys) if (Where(k, out var p)) { sum += p; n++; }
+            return n == 0 ? (Vector2?)null : sum / n;
+        }
+
+        static Vector2? Fire()
+        {
+            var pv = Pv; var l = new List<Vector2>();
+            pv?.FireMiddles(l);
+            return l.Count > 0 ? l[0] : TreeSpot();
         }
 
         static Vector2? TreeSpot() { var s = Sim; if (s == null || !s.EcologyOn) return null; var t = s.EcoTree; return new Vector2(t.x, t.z); }
+        static Vector2? PropSpot(int id) { var p = id >= 0 ? Sim?.FindConsequenceProp(id) : null; return p != null ? new Vector2(p.x, p.z) : (Vector2?)null; }
+        static Vector2? Door(int id) => DeerHuntStage.DoorSpot(Sim, id, out var at) ? at : (Vector2?)null;
+        static Vector2? Person(int id) => Where(id, out var at) ? at : (Vector2?)null;
 
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B78a_FirstFruit() => Story("b78a-first-fruit", StoryEvent.FirstFruit, CampUse.FirstFruit, 10f, 3, null, TreeSpot, 4.5f, 2f, 7f, 11f);
+        static ChronicleEntry LineOf(string id) => Sim.State.chronicle.LastOrDefault(x => x.kind == StoryEvent.Kind(id));
 
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B78b_TwoMarks() => Story("b78b-two-marks", StoryEvent.TwoMarks, CampUse.TwoMarks, 16.5f, 2, null, TreeSpot, 9f, 3f, 8f, 12f);
+        static CampScene SceneOf(CampUse use) => Pv.Camp.Scenes.LastOrDefault(s => s.use == use);
 
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B78c_SecondStone() => Story("b78c-second-stone", StoryEvent.SecondStone, CampUse.SecondStone, 10f, 2, () =>
+        // ================================================================== a story event: its cheat, its scene filmed, what stays
+
+        /// <summary>
+        /// A lived-in camp at <paramref name="hour"/>, the <paramref name="setup"/>, then the event's cheat (StoryMoment.DebugPlayNow, the panel's
+        /// button); the scene must start, cast <paramref name="named"/>(its line) and say the line on the caption; it is filmed to its end, then
+        /// <paramref name="before"/> (what stays, for the still) and the after still at <paramref name="left"/>.
+        /// </summary>
+        IEnumerator Story(string ev, string id, CampUse use, float hour, Action setup, Func<ChronicleEntry, int[]> named, Func<Vector2?> left,
+            bool pond = false, Action before = null)
+        {
+            Fresh(ev);
+            yield return LivedCamp(hour, pond);
+            setup?.Invoke();
+            yield return new WaitForSecondsRealtime(1.5f);
+            int started = StoryMoment.Started;
+            string r = StoryMoment.DebugPlayNow(id);
+            Debug.Log($"[722 shots] {ev}: {r}");
+            var pv = Pv;
+            yield return Until(() => pv.Camp.Playing(use), 15f); // the stage looks every second (a welcome greeting, 10 s, goes first)
+            Assert.IsTrue(pv.Camp.Playing(use), $"{ev}: the scene plays ({r}; {StoryMoment.LastWhy})");
+            Assert.Greater(StoryMoment.Started, started, ev + ": its held moment started");
+            var e = LineOf(id);
+            Assert.IsNotNull(e, ev + ": its line");
+            var sc = SceneOf(use);
+            Debug.Log($"[722 shots] {ev}: line \"{e.text}\"; cast {string.Join(",", sc.keys)}; season {LifeClock.SeasonOf(pv.Now.day)}, snow {SeasonLook.Snow:0.00}");
+            foreach (int k in named(e)) Assert.Contains(k, sc.keys, $"{ev}: {Sim.FindNotable(k)?.name ?? k.ToString()}, whom the line names, is in the scene");
+            Assert.AreEqual(e.text, StoryMoment.LastCaption, ev + ": the caption says the line");
+            var frames = new List<int>();
+            yield return Film(ev, () => pv.Camp.Playing(use), () => pv.Camp.FocusNow(), MaxScene, frames);
+            Assert.IsFalse(pv.Camp.Playing(use), ev + ": the scene ends");
+            Assert.Greater(frames[0], 4, ev + ": frames of the scene");
+            yield return new WaitForSecondsRealtime(1f);
+            before?.Invoke();
+            yield return After(ev, left());
+            Debug.Log($"[722 shots] {ev}: fruit {pv.Camp.FruitDrawn}, marks {pv.Camp.MarksDrawn}, flowers {pv.Camp.FlowersDrawn}, figure {pv.Camp.FigureDrawn}; {pv.Camp.PropMarks()}");
+            CloseSlice();
+        }
+
+        static int[] Named(ChronicleEntry e) => new[] { e.notableId };
+        static int[] Both(ChronicleEntry e) => new[] { e.notableId, e.otherNotableId };
+
+        /// <summary>B78.a in summer: the kid the line names picks the fruit and it goes round. After: the fruit every summer after the first
+        /// (that summer's one was picked, so the still shows the next summers' look: CampLife.CheatFruit).</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B78a_FirstFruit() => Story("b78a-first-fruit", StoryEvent.FirstFruit, CampUse.FirstFruit, 10f, null, Named, TreeSpot,
+            before: () => CampLife.CheatFruit = true);
+
+        /// <summary>B78.b toward dusk: the couple cut their marks. After: the two notches on the trunk.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B78b_TwoMarks() => Story("b78b-two-marks", StoryEvent.TwoMarks, CampUse.TwoMarks, 16.5f, null, Both, TreeSpot);
+
+        /// <summary>B78.c: the name stone full, the second rolled in. After: the second stone beside the first.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B78c_SecondStone() => Story("b78c-second-stone", StoryEvent.SecondStone, CampUse.SecondStone, 10f, () =>
         {
             Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone));
             var sim = Sim;
             var stone = sim?.FirstNameStone;
             if (stone != null) stone.dueMonth = sim.State.month - 1; // a death after the stone stood
             Debug.Log("[722 shots] " + ConsequenceCheats.OneMoreDeath());
-        }, () => { var s = Sim?.FindConsequenceProp(Sim.StoryMarks.secondStoneId); return s != null ? new Vector2(s.x, s.z) : (Vector2?)null; }, 8f, 3f, 7f, 12f, 18f);
+        }, Named, () => PropSpot(Sim.StoryMarks.secondStoneId));
 
-        /// <summary>The fruit's life use: after the first fruit, a kid picks one from the tree.</summary>
-        [UnityTest, Timeout(300000)]
-        public IEnumerator FruitPick()
+        /// <summary>B80.a: the Keeper's child handed their work's tool at the fire. After: the child with the tool.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B80a_KeeperChildGrown()
         {
-            UseLivingLand(true);
-            GameUiPanel.AcceptInputUnfocused(true);
-            yield return OpenSlice(750, 1334, seed: 4242);
-            GameUiPanel.AcceptInputUnfocused(true);
-            Debug.Log("[722 shots] " + CampCheats.StageCamp(11f, 2));
-            yield return new WaitForSeconds(2f);
-            Debug.Log("[722 shots] " + CampCheats.GrowTree());
-            yield return new WaitForSeconds(2f);
-            string r = CampCheats.FruitPick();
-            Debug.Log("[722 shots] fruit-pick: " + r);
-            var pv = PeopleView.Find();
-            Assert.IsTrue(pv.Camp.Playing(CampUse.FruitPick), r);
-            yield return new WaitForSeconds(1f);
-            Assert.Greater(pv.Camp.FruitDrawn, 0, "the fruit hangs on the tree");
-            yield return Shot("722/fruit-pick_default_1.0s");
-            yield return new WaitForSeconds(2.5f);
-            if (pv.Camp.FocusNow() is Vector2 f) yield return Zoomed("722/fruit-pick_zoom_3.5s", f);
-            CampLife.CheatFruit = false;
+            int child = -1;
+            yield return Story("b80a-keeper-child-grown", StoryEvent.KeeperChildGrown, CampUse.KeeperChildGrown, 10f, null,
+                e => { child = e.notableId; return Named(e); }, () => Person(child) ?? Fire());
+        }
+
+        /// <summary>B80.b: the antlers carried from the old door to the new chief's. After: the antlers at the new door.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B80b_AntlersPassed() => Story("b80b-antlers", StoryEvent.AntlersPassed, CampUse.AntlersPass, 10f, null,
+            e => new[] { e.otherNotableId }, () => Door(Sim.StoryMarks.antlersAtId));
+
+        /// <summary>B80.c at the pond: the spout pours to the left. After: the tinkerer with the crooked bucket.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B80c_TinkererBucket()
+        {
+            int who = -1;
+            yield return Story("b80c-tinkerer", StoryEvent.TinkererBucket, CampUse.TinkererBucket, 10f, null,
+                e => { who = e.notableId; return Named(e); }, () => Person(who), pond: true);
+        }
+
+        /// <summary>B80.e: the ring of flowers at the name stone. After: the flowers.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B80e_GardenerFlowers() => Story("b80e-gardener", StoryEvent.GardenerFlowers, CampUse.GardenerFlowers, 10f,
+            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone)), Named, () => PropSpot(Sim.StoryMarks.flowersStoneId));
+
+        /// <summary>B80.f: the joker's grin on the woodpile, two kids peek. After: the face log.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B80f_JokerFace() => Story("b80f-joker", StoryEvent.JokerFace, CampUse.JokerFace, 10f,
+            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof)), Named, () => PropSpot(Sim.StoryMarks.faceLogPropId));
+
+        /// <summary>B80.g in a dry spell: the bucket from the pond to the Keeper's tree, the others look up for rain. After: the tree.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B80g_DrySpell() => Story("b80g-dry-spell", StoryEvent.DrySpell, CampUse.DrySpell, 10f, null, Named, TreeSpot, pond: true);
+
+        /// <summary>B80.h in winter, snow on the ground and falling: tongues out, then the snow figure. After: the snow figure by the fire.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B80h_FirstSnow() => Story("b80h-first-snow", StoryEvent.FirstSnow, CampUse.FirstSnow, 10f, null, Named,
+            () => Fire() is Vector2 f ? StoryScenes.FigureSpot(f) : (Vector2?)null);
+
+        // ================================================================== the life uses the events leave
+
+        /// <summary>A life use: a lived-in camp, the event it follows played through by its cheat (unfilmed), the view at
+        /// <paramref name="hour"/>, then the use's cheat, filmed to its end, and an after still on its thing.</summary>
+        IEnumerator Life(string ev, CampUse use, float hour, string after, Action setup, Func<string> cheat, Func<Vector2?> thing, bool pond = false,
+            Func<int> named = null)
+        {
+            Fresh(ev);
+            yield return LivedCamp(hour, pond);
+            setup?.Invoke();
+            var pv = Pv;
+            if (after != null)
+            {
+                string r0 = StoryMoment.DebugPlayNow(after);
+                var u0 = CampLife.UseOfStory(after);
+                Debug.Log($"[722 shots] {ev}: first {r0}");
+                yield return Until(() => pv.Camp.Playing(u0), 15f);
+                Assert.IsTrue(pv.Camp.Playing(u0), $"{ev}: {after} plays first ({r0}; {StoryMoment.LastWhy})");
+                yield return Until(() => !pv.Camp.Playing(u0), MaxScene);
+                yield return new WaitForSecondsRealtime(1f);
+            }
+            PeopleView.DebugSetHour(hour);
+            yield return new WaitForSecondsRealtime(1f);
+            string r = cheat();
+            Debug.Log($"[722 shots] {ev}: {r}");
+            yield return Until(() => pv.Camp.Playing(use), 3f);
+            Assert.IsTrue(pv.Camp.Playing(use), $"{ev}: the use plays ({r})");
+            var sc = SceneOf(use);
+            Debug.Log($"[722 shots] {ev}: cast {string.Join(",", sc.keys)}");
+            Assert.Greater(sc.keys.Count, 0, ev + ": someone plays it");
+            if (named != null && named() is int n && n >= 0 && pv.Camp.CanCastNow(n)) Assert.Contains(n, sc.keys, $"{ev}: {Sim.FindNotable(n)?.name}, who keeps it, plays it");
+            var frames = new List<int>();
+            yield return Film(ev, () => pv.Camp.Playing(use), () => pv.Camp.FocusNow(), MaxScene, frames);
+            Assert.Greater(frames[0], 2, ev + ": frames of the use");
+            yield return new WaitForSecondsRealtime(0.5f);
+            yield return After(ev, thing());
+            Debug.Log($"[722 shots] {ev}: fruit {pv.Camp.FruitDrawn}, flowers {pv.Camp.FlowersDrawn}, figure {pv.Camp.FigureDrawn}; {pv.Camp.PropMarks()}");
             CloseSlice();
         }
 
-        // ================================================================== batch 2 (2.2, 4.1-4.4, 5.1, 5.2)
-        /// <summary>B80.a: the Keeper's child comes of age; an elder hands them their work's tool at the fire.</summary>
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B80a_KeeperChildGrown() => Story("b80a-keeper-child-grown", StoryEvent.KeeperChildGrown, CampUse.KeeperChildGrown, 10f, 3, null,
-            () => null, 5f, 2f, 8f, 11f);
+        /// <summary>The fruit's life use: a summer day after the first fruit, a kid picks one from the tree.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator FruitPick() => Life("fruit-pick", CampUse.FruitPick, 11f, null,
+            () => Debug.Log("[722 shots] " + StoryMoment.ReadyForCheat(Sim, Pv, Season.Summer, false, 11f)), CampCheats.FruitPick, TreeSpot);
 
-        /// <summary>A fresh lived-in camp (3 kids, the Keeper's tree grown) for the batch-2 cheats.</summary>
-        IEnumerator FreshCamp(float hour)
-        {
-            UseLivingLand(true);
-            GameUiPanel.AcceptInputUnfocused(true);
-            yield return OpenSlice(750, 1334, seed: 4242);
-            GameUiPanel.AcceptInputUnfocused(true);
-            Debug.Log("[722 shots] " + CampCheats.StageCamp(hour, 3));
-            yield return new WaitForSeconds(2f);
-            Debug.Log("[722 shots] " + CampCheats.GrowTree());
-            yield return new WaitForSeconds(2f);
-        }
+        /// <summary>B80.e's morning water on the gardener's flowers.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B80e_FlowerWater() => Life("b80e-flower-water", CampUse.FlowerWater, 8f, StoryEvent.GardenerFlowers,
+            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone)), CampCheats.FlowerWater, () => PropSpot(Sim.StoryMarks.flowersStoneId));
 
-        /// <summary>A story ask's cheat: raised now and staged by the choice scene (shots at 2 s and 6 s), then answered (option 2) and a shot after.</summary>
-        IEnumerator Ask(string name, string kind, Action<SimCore> check)
+        /// <summary>B80.f's life use: a kid pats the face log as they pass.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B80f_FacePat() => Life("b80f-face-pat", CampUse.FacePat, 11f, StoryEvent.JokerFace,
+            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof)), CampCheats.FacePat, () => PropSpot(Sim.StoryMarks.faceLogPropId));
+
+        /// <summary>B80.g's evening repeat in a later dry spell: the waterer's bucket from the pond to the Keeper's tree (the pond is the spec's: the
+        /// bucket is dipped at its edge, so the box has one).</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator B80g_TreeWater() => Life("b80g-tree-water", CampUse.TreeWater, 16.5f, StoryEvent.DrySpell,
+            () => Debug.Log("[722 shots] " + EcoDebug.DrySpell()), CampCheats.TreeWater, TreeSpot, pond: true, named: () => Sim.TreeWaterer?.id ?? -1);
+
+        // ================================================================== batch 2: the asks, the song, the Keeper's child's wedding
+
+        /// <summary>A story ask's cheat: raised now and staged by the choice scene, filmed for 6 s on its two candidates, answered (option 2), and a
+        /// still after.</summary>
+        IEnumerator Ask(string ev, string kind, Action<SimCore> check)
         {
-            yield return FreshCamp(10f);
+            Fresh(ev);
+            yield return LivedCamp(10f);
             string r = StoryMoment.DebugAskNow(kind);
-            Debug.Log($"[722 shots] {name}: {r}");
+            Debug.Log($"[722 shots] {ev}: {r}");
             Assert.IsTrue(r.StartsWith("raised"), r);
             var sim = Sim;
             var d = sim.OpenDilemma;
             Assert.IsNotNull(d, "the ask is open");
-            yield return new WaitForSeconds(2f);
-            yield return Shot($"722/{name}_ask_2.0s");
-            yield return new WaitForSeconds(4f);
-            yield return Shot($"722/{name}_ask_6.0s");
+            var frames = new List<int>();
+            float t0 = Time.time;
+            yield return Film(ev, () => Time.time - t0 < 6f, () => Middle(d.PersonOf(0), d.PersonOf(1)) ?? Fire(), 6f, frames);
             Assert.IsTrue(sim.AnswerDilemma(d.id, 1, DilemmaPath.Card), "answered");
             GameClock.DilemmaAnswered(d);
             check?.Invoke(sim);
-            yield return new WaitForSeconds(3f);
-            yield return Shot($"722/{name}_after");
+            yield return new WaitForSecondsRealtime(3f);
+            yield return After(ev, Middle(d.PersonOf(1)) ?? Fire());
             CloseSlice();
         }
 
-        [UnityTest, Timeout(300000)]
+        [UnityTest, Timeout(600000)]
         public IEnumerator Ask_OfferingCarrier() => Ask("ask-offering", StoryChoices.Offering, s =>
             Assert.AreEqual(s.StoryMarks.offeringCarrierId, s.RitualLead(RitualKind.Offering)?.id, "the pick leads the offering"));
 
-        [UnityTest, Timeout(300000)]
+        [UnityTest, Timeout(600000)]
         public IEnumerator Ask_FirstLog() => Ask("ask-first-log", StoryChoices.FirstLog, s =>
             Assert.AreEqual(s.StoryMarks.firstLogId, s.RitualLead(RitualKind.Woodpile)?.id, "the pick leads the woodpile"));
 
-        [UnityTest, Timeout(300000)]
+        [UnityTest, Timeout(600000)]
         public IEnumerator Ask_PupHolder() => Ask("ask-pup", StoryChoices.PupHolder, s =>
             Assert.AreEqual(s.StoryMarks.pupKidB, s.FindDog(s.StoryMarks.pupDogId)?.keeperId, "the pup's keeper is the pick"));
 
-        /// <summary>4.3 with 2.2 first: the song's ask, then its ritual played with the name on the caption.</summary>
-        [UnityTest, Timeout(300000)]
+        /// <summary>4.3 with 2.2 first: the song's ask raised (its ritual, the song's first year, plays as it is made) and answered; then its
+        /// ritual's cheat (what plays is ended) plays it again with the name on the caption ("The harvest feast: The Long Table"), filmed.</summary>
+        [UnityTest, Timeout(600000)]
         public IEnumerator Ask_SongName_ThenTheRitualsCaption()
         {
-            yield return Ask("ask-song-name", StoryChoices.SongName, null);
-            yield return FreshCamp(10f);
+            const string ev = "ask-song-name";
+            Fresh(ev);
+            yield return LivedCamp(10f);
             Debug.Log("[722 shots] song: " + StoryMoment.DebugAskNow(StoryChoices.SongName));
             var sim = Sim;
             var d = sim.OpenDilemma;
-            Assert.IsNotNull(d);
+            Assert.IsNotNull(d, "the song's ask is open");
+            yield return new WaitForSecondsRealtime(2f);
             Assert.IsTrue(sim.AnswerDilemma(d.id, 0, DilemmaPath.Card));
             GameClock.DilemmaAnswered(d);
-            yield return new WaitForSeconds(2f);
-            string ritual = sim.StoryMarks.songRitual;
+            string ritual = sim.StoryMarks.songRitual, name = sim.StoryMarks.songName;
+            Assert.IsNotEmpty(name, "the song has its name");
+            yield return new WaitForSecondsRealtime(1f);
             string r = StagedMoments.DebugPlayRitualNow(ritual);
             Debug.Log("[722 shots] song caption: " + r + " | " + StagedMoments.LastCaption);
-            StringAssert.Contains(sim.StoryMarks.songName, StagedMoments.LastCaption ?? "", "the song's name on the ritual's caption");
-            yield return new WaitForSeconds(1.5f);
-            yield return Shot("722/song-caption_1.5s");
+            Assert.IsFalse(r.StartsWith("nothing started"), r);
+            Assert.AreEqual($"{RitualKind.Caption(ritual)}: {name}", StagedMoments.LastCaption, "the song's name on the ritual's caption");
+            var pv = Pv; var frames = new List<int>();
+            yield return Film(ev, () => StagedMoments.Playing > 0, () => pv.Camp.FocusNow() ?? Fire(), MaxScene, frames);
             CloseSlice();
         }
 
-        /// <summary>2.2: the singer's song is made as a ritual plays (its line a card: no scene yet).</summary>
-        [UnityTest, Timeout(300000)]
+        /// <summary>2.2: the singer's song is made as a ritual plays: its line on the caption, filmed for 10 s.</summary>
+        [UnityTest, Timeout(600000)]
         public IEnumerator SingerSong()
         {
-            yield return FreshCamp(10f);
+            const string ev = "singer-song";
+            Fresh(ev);
+            yield return LivedCamp(10f);
             string r = StoryMoment.DebugSingerSong();
             Debug.Log("[722 shots] singer-song: " + r);
             Assert.IsTrue(Sim.StoryHappened(StoryEvent.SingerSong), r);
-            yield return new WaitForSeconds(3f);
-            yield return Shot("722/singer-song_ritual_3.0s");
+            var pv = Pv; var frames = new List<int>(); float t0 = Time.time;
+            yield return Film(ev, () => StagedMoments.Playing > 0 && Time.time - t0 < 10f, () => pv.Camp.FocusNow() ?? Fire(), 10f, frames);
             CloseSlice();
         }
 
-        // ================================================================== batch 3 (B80.b-h)
-        static Vector2? PropSpot(int id) { var p = id >= 0 ? Sim?.FindConsequenceProp(id) : null; return p != null ? new Vector2(p.x, p.z) : (Vector2?)null; }
-        static Vector2? Door(int id) => DeerHuntStage.DoorSpot(Sim, id, out var at) ? at : (Vector2?)null;
-        static Vector2? Fire() { var c = PeopleView.Find()?.Camp; return c != null && c.FocusNow() is Vector2 f ? f : TreeSpot(); }
-
-        /// <summary>B80.b: the antlers carried from the old post to the new chief's door (the cheat plays it alone).</summary>
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B80b_AntlersPassed() => Story("b80b-antlers", StoryEvent.AntlersPassed, CampUse.AntlersPass, 10f, 2, null,
-            () => Door(Sim.StoryMarks.antlersAtId), 6f, 2f, 9f, 14f);
-
-        /// <summary>B80.c: the tinkerer's spout, tried at the pond: it pours to the left.</summary>
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B80c_TinkererBucket() => Story("b80c-tinkerer", StoryEvent.TinkererBucket, CampUse.TinkererBucket, 10f, 2, null, () => null, 6f, 2f, 10f, 15f);
-
-        /// <summary>B80.e: the gardener's ring of flowers at the name stone; then its morning water (a life use).</summary>
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B80e_GardenerFlowers() => Story("b80e-gardener", StoryEvent.GardenerFlowers, CampUse.GardenerFlowers, 10f, 2,
-            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone)), () => PropSpot(Sim.StoryMarks.flowersStoneId), 7f, 3f, 9f, 12f);
-
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B80e_FlowerWater() => Life("b80e-flower-water", CampUse.FlowerWater, 8f, () =>
-        {
-            Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone));
-            Debug.Log("[722 shots] " + Sim.DebugStory(StoryEvent.GardenerFlowers, out string why)?.text + why);
-        }, CampCheats.FlowerWater);
-
-        /// <summary>B80.f: the joker's grin on the woodpile, two kids peek; then a kid's pat (a life use).</summary>
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B80f_JokerFace() => Story("b80f-joker", StoryEvent.JokerFace, CampUse.JokerFace, 10f, 3,
-            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof)), () => PropSpot(Sim.StoryMarks.faceLogPropId), 7f, 3f, 9f);
-
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B80f_FacePat() => Life("b80f-face-pat", CampUse.FacePat, 11f, () =>
-        {
-            Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof));
-            Debug.Log("[722 shots] " + Sim.DebugStory(StoryEvent.JokerFace, out string why)?.text + why);
-        }, CampCheats.FacePat);
-
-        /// <summary>B80.g: the dry spell's bucket to the Keeper's tree, the others look up for rain; then the evening repeat.</summary>
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B80g_DrySpell() => Story("b80g-dry-spell", StoryEvent.DrySpell, CampUse.DrySpell, 10f, 2, null, TreeSpot, 8f, 3f, 12f, 16f);
-
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B80g_TreeWater() => Life("b80g-tree-water", CampUse.TreeWater, 16.5f, () =>
-        {
-            Debug.Log("[722 shots] " + EcoDebug.DrySpell());
-            Debug.Log("[722 shots] " + Sim.DebugStory(StoryEvent.DrySpell, out string why)?.text + why);
-        }, CampCheats.TreeWater);
-
-        /// <summary>B80.h: the first snow: a flake on the tongue, the others copy, a snow figure by the fire.</summary>
-        [UnityTest, Timeout(300000)]
-        public IEnumerator B80h_FirstSnow() => Story("b80h-first-snow", StoryEvent.FirstSnow, CampUse.FirstSnow, 10f, 3, null, Fire, 4f, 2f, 9f, 14f);
-
-        /// <summary>B80.d: the singer's song rides the ritual's moment: its line is the caption, the singer's notes first.</summary>
-        [UnityTest, Timeout(300000)]
+        /// <summary>B80.d: the singer's song rides the ritual's moment: its line is the caption, the singer's notes first; the whole ritual filmed.</summary>
+        [UnityTest, Timeout(600000)]
         public IEnumerator B80d_SingerSong_OnTheRitualsCaption()
         {
-            yield return FreshCamp(10f);
+            const string ev = "b80d-song";
+            Fresh(ev);
+            yield return LivedCamp(10f);
             string r = StoryMoment.DebugSingerSong();
             Debug.Log("[722 shots] b80d-song: " + r + " | caption: " + StagedMoments.LastCaption);
             var song = Sim.State.chronicle.LastOrDefault(x => x.kind == StoryEvent.Kind(StoryEvent.SingerSong));
             Assert.IsNotNull(song, r);
             Assert.AreEqual(song.text, StagedMoments.LastCaption, "the song's line is the ritual's caption");
-            yield return new WaitForSeconds(2f);
-            yield return Shot("722/b80d-song_2.0s");
-            yield return new WaitForSeconds(8f);
-            yield return Shot("722/b80d-song_10.0s");
+            Assert.Greater(StagedMoments.Playing, 0, "the ritual plays");
+            var pv = Pv; var frames = new List<int>();
+            yield return Film(ev, () => StagedMoments.Playing > 0, () => Middle(song.notableId) ?? pv.Camp.FocusNow() ?? Fire(), MaxScene, frames);
+            Assert.Greater(frames[0], 4, "frames of the ritual");
             CloseSlice();
         }
 
-        /// <summary>A life use a batch-3 event leaves: a fresh camp at <paramref name="hour"/>, the event had (the setup), the use's cheat, shots.</summary>
-        IEnumerator Life(string name, CampUse use, float hour, Action setup, Func<string> cheat)
-        {
-            yield return FreshCamp(hour);
-            setup?.Invoke();
-            yield return new WaitForSeconds(2f);
-            var pv = PeopleView.Find();
-            string r = cheat();
-            Debug.Log($"[722 shots] {name}: {r}");
-            Assert.IsTrue(pv.Camp.Playing(use), r);
-            yield return new WaitForSeconds(2f);
-            yield return Shot($"722/{name}_default_2.0s");
-            if (pv.Camp.FocusNow() is Vector2 f) yield return Zoomed($"722/{name}_zoom_2.5s", f);
-            Debug.Log($"[722 shots] {name}: flowers {pv.Camp.FlowersDrawn}, figure {pv.Camp.FigureDrawn}; {pv.Camp.PropMarks()}");
-            CloseSlice();
-        }
-
-        /// <summary>5.2: the Keeper's child's wedding, its line on the caption as it starts.</summary>
-        [UnityTest, Timeout(300000)]
+        /// <summary>5.2: the Keeper's child's wedding: the wedding moment plays now with its line on the caption; filmed on the couple.</summary>
+        [UnityTest, Timeout(600000)]
         public IEnumerator KeeperChildWed()
         {
-            yield return FreshCamp(10f);
+            const string ev = "keeper-child-wed";
+            Fresh(ev);
+            yield return LivedCamp(10f);
             string r = StoryMoment.DebugKeeperChildWed();
             Debug.Log("[722 shots] keeper-child-wed: " + r + " | caption: " + StagedMoments.LastCaption);
             Assert.IsTrue(r.StartsWith("playing"), r);
-            StringAssert.Contains("named by the Keeper, married", StagedMoments.LastCaption ?? "");
-            yield return new WaitForSeconds(2f);
-            yield return Shot("722/keeper-child-wed_2.0s");
-            yield return new WaitForSeconds(10f);
-            yield return Shot("722/keeper-child-wed_12.0s");
+            var e = Sim.State.chronicle.LastOrDefault(x => x.kind == "wedding");
+            Assert.IsNotNull(e);
+            StringAssert.Contains("named by the Keeper, married", e.text);
+            Assert.AreEqual(e.text, StagedMoments.LastCaption, "the line on the wedding's caption");
+            var sc = StagedMoments.LastScene;
+            Assert.IsNotNull(sc, "the wedding is staged");
+            Assert.AreEqual(MomentKind.Wedding, sc.kind);
+            Assert.IsNotNull(sc.plan.Member(e.notableId), "the Keeper's child is in the wedding");
+            Assert.IsNotNull(sc.plan.Member(e.otherNotableId), "and the one they marry");
+            var frames = new List<int>();
+            yield return Film(ev, () => StagedMoments.Playing > 0, () => Middle(e.notableId, e.otherNotableId) ?? Fire(), MaxScene, frames);
+            Assert.Greater(frames[0], 4, "frames of the wedding");
             CloseSlice();
         }
     }

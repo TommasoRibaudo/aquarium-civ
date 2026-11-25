@@ -359,11 +359,17 @@ namespace AquariumCiv.View
     public static partial class CampCheats
     {
         /// <summary>"Stone: water the flowers": the morning water on the gardener's flowers, now.</summary>
-        public static string FlowerWater() => Do(CampUse.FlowerWater);
+        public static string FlowerWater() => Free(CampUse.FlowerWater);
         /// <summary>"Woodpile: a kid pats the face": a kid pats the joker's face log as they pass, now.</summary>
-        public static string FacePat() => Do(CampUse.FacePat);
-        /// <summary>"Tree: the waterer's evening bucket": the dry spell's repeat (the waterer, or any grown-up), now.</summary>
-        public static string TreeWater() => Do(CampUse.TreeWater);
+        public static string FacePat() => Free(CampUse.FacePat);
+        /// <summary>"Tree: the waterer's evening bucket": the dry spell's repeat (the waterer, or any grown-up), now; the pond made first if the
+        /// box has none (B80.g's bucket is dipped at its edge).</summary>
+        public static string TreeWater()
+        {
+            var sim = AquariumCiv.Game.GameClock.Instance != null ? AquariumCiv.Game.GameClock.Instance.Sim : null;
+            string water = sim != null && sim.EcologyOn && sim.EcoPondCells == 0 ? EcoDebug.WaterBreaksNow() + " | " : "";
+            return water + Free(CampUse.TreeWater);
+        }
         public static string AntlersPassAgain() => Do(CampUse.AntlersPass);
         public static string TinkererBucketAgain() => Do(CampUse.TinkererBucket);
         public static string GardenerFlowersAgain() => Do(CampUse.GardenerFlowers);

@@ -295,5 +295,75 @@ namespace AquariumCiv.Tests
             var next = sim.DebugPlayRitual(ritual);
             Assert.IsNull(sim.SongLineOn(next.id), "the line is said once (its first year)");
         }
+
+        /// <summary>4.3 over 2.2 (the shot test's failure: the song's line overrode the name): once the Keeper names the song, the ritual's
+        /// caption has the name, the first year's moment too.</summary>
+        [Test]
+        public void OnceTheSongIsNamed_TheNameIsOnTheCaption_TheFirstYearsMomentToo()
+        {
+            var sim = Camp(42);
+            Assert.IsTrue(sim.DebugSingerReady(out string ritual, out string why), why);
+            var ritualLine = sim.DebugPlayRitual(ritual);
+            Assert.IsNotNull(sim.SongLineOn(ritualLine.id), "unnamed: the first year's caption is the song's line");
+            var d = sim.DebugRaiseStoryAsk(StoryChoices.SongName, out why);
+            Assert.IsNotNull(d, why);
+            Assert.IsTrue(sim.AnswerDilemma(d.id, 0, DilemmaPath.Card));
+            string name = StoryChoices.SongNames(ritual).a;
+            Assert.AreEqual(name, sim.StoryMarks.songName);
+            Assert.IsNull(sim.SongLineOn(ritualLine.id), "named: the name wins over the song's line");
+            Assert.AreEqual($"{RitualKind.Caption(ritual)}: {name}", sim.RitualCaption(ritual));
+            Assert.IsNull(sim.SongLineOn(sim.DebugPlayRitual(ritual).id));
+        }
+
+        // ---------- the cheats: a scene that can play now ----------
+
+        /// <summary>The view's cast filter (<see cref="SimCore.DebugCastable"/>): each cheat's pick is someone the view can cast now.</summary>
+        [Test]
+        public void TheCheats_PickPeopleTheViewCanCastNow()
+        {
+            var sim = Camp(43);
+            sim.DebugAddKids(3, 8f);
+            var kids = sim.State.notables.Where(n => n.alive && n.age >= 4f && n.age < SimCore.AdultAge).OrderBy(n => n.id).ToList();
+            var grown = sim.State.notables.Where(n => n.alive && n.age >= SimCore.AdultAge && n.age < 50f).OrderBy(n => n.id).ToList();
+            var kid = kids[^1]; var adult = grown[^1];
+            sim.DebugCastable = n => n == kid || n == adult;
+            Assert.AreEqual(kid.id, sim.DebugStory(StoryEvent.FirstSnow, out string why)?.notableId, why);
+            Assert.AreEqual(kid.id, sim.DebugStory(StoryEvent.FirstFruit, out why)?.notableId ?? kid.id, why); // (the tree may not be grown: no line)
+            foreach (var id in new[] { StoryEvent.DrySpell, StoryEvent.JokerFace })
+            {
+                var e = sim.DebugStory(id, out why);
+                if (e == null) continue; // its thing isn't in this box
+                Assert.AreEqual(adult.id, e.notableId, id + ": the one the view can cast");
+            }
+            sim.DebugCastable = null;
+        }
+
+        /// <summary>5.1's cheat on a land that gives no work yet: the child still comes of age with work (they help make the tools), so the
+        /// line and its scene happen.</summary>
+        [Test]
+        public void TheKeepersChildCheat_AlwaysComesOfAgeWithWork()
+        {
+            var sim = Camp(44);
+            sim.DebugAddKids(1, 12f);
+            var e = sim.DebugKeeperChildGrown(out string why);
+            Assert.IsNotNull(e, why);
+            var child = sim.FindNotable(e.notableId);
+            Assert.IsFalse(string.IsNullOrEmpty(child.job), "work");
+            StringAssert.Contains("came of age and took up work as", e.text);
+            Assert.AreEqual(MomentKind.Story, sim.MomentOfEntry(e.id)?.kind);
+        }
+
+        /// <summary>5.2's cheat makes its gate true: with fewer than two unwed grown-ups a grown-up joins, and the wedding is told.</summary>
+        [Test]
+        public void TheWeddingCheat_WithEveryoneWed_StillMarries()
+        {
+            var sim = Camp(45, 0);
+            for (int i = 0; i < 8 && sim.State.notables.Count(n => n.alive && n.age >= SimCore.AdultAge && !(sim.FindNotable(n.partnerId)?.alive ?? false)) >= 2; i++)
+                Assert.IsNotNull(sim.DebugKeeperChildWed(out _));
+            var e = sim.DebugKeeperChildWed(out string why);
+            Assert.IsNotNull(e, why);
+            StringAssert.Contains("named by the Keeper, married", e.text);
+            Assert.AreEqual(MomentKind.Wedding, sim.MomentOfEntry(e.id)?.kind);
+        }
     }
 }

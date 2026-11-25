@@ -307,9 +307,9 @@ namespace AquariumCiv.Sim
         static string PersonFlag(string id, int notableId) => "story:" + id + ":" + notableId;
 
         /// <summary>A notable turns grown-up: the hidden coming-of-age line (their first job), and the Keeper's child's story (5.1).</summary>
-        void ComeOfAge(Notable n)
+        void ComeOfAge(Notable n, bool cheatWork = false)
         {
-            Chronicle("coming_of_age", ComingOfAgeLine(n), 0.4f, n.id);
+            Chronicle("coming_of_age", ComingOfAgeLine(n, cheatWork), 0.4f, n.id);
             KeeperChildGrown(n);
         }
 
@@ -377,29 +377,42 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>Debug ("People: the Keeper's child grows up"): the oldest kid the Keeper named (a kid is named so first if none is; a kid
-        /// joins if there is none) comes of age now. The 5.1 line, or null and why.</summary>
+        /// joins if there is none; with <see cref="DebugCastable"/> set, one the view can cast now) comes of age now, with work: on a land that
+        /// gives none yet they help make the tools. The 5.1 line, or null and why.</summary>
         public ChronicleEntry DebugKeeperChildGrown(out string why)
         {
             why = "";
+            var kids = State.notables.Where(n => n.alive && n.age >= 4f && n.age < AdultAge).OrderByDescending(n => n.namedByKeeper).ThenByDescending(n => n.age).ThenBy(n => n.id).ToList();
             var kid = State.notables.Where(n => n.alive && n.age < AdultAge && n.namedByKeeper).OrderByDescending(n => n.age).ThenBy(n => n.id).FirstOrDefault()
-                      ?? State.notables.Where(n => n.alive && n.age >= 4f && n.age < AdultAge).OrderByDescending(n => n.age).ThenBy(n => n.id).FirstOrDefault();
+                      ?? kids.FirstOrDefault();
+            kid = DebugPick(kids, kid);
             if (kid == null) { DebugAddKids(1, AdultAge - 1f); kid = State.notables.Where(n => n.alive && n.age < AdultAge).OrderByDescending(n => n.age).ThenBy(n => n.id).FirstOrDefault(); }
             if (kid == null) { why = "no kid in the box"; return null; }
             kid.namedByKeeper = true;
             State.storyFlags.Remove(PersonFlag(StoryEvent.KeeperChildGrown, kid.id));
             kid.age = AdultAge;
-            ComeOfAge(kid);
+            ComeOfAge(kid, true);
             var e = State.chronicle.LastOrDefault(x => x.kind == StoryEvent.Kind(StoryEvent.KeeperChildGrown) && x.notableId == kid.id);
-            if (e == null) why = $"{kid.name} came of age with no work open (the land gives none yet)";
+            if (e == null) why = $"{kid.name} came of age with no work ({kid.job})";
             return e;
         }
 
         /// <summary>Debug ("People: the Keeper's child marries"): a grown-up the Keeper named (the youngest unwed grown-up is named so first if
-        /// none is) marries another unwed grown-up now. The wedding line, or null and why.</summary>
+        /// none is) marries another unwed grown-up now; with <see cref="DebugCastable"/> set, two the view can cast now. With fewer than two
+        /// unwed grown-ups a newcomer joins first (the gate made true). The wedding line, or null and why.</summary>
         public ChronicleEntry DebugKeeperChildWed(out string why)
         {
             why = "";
-            var free = State.notables.Where(n => n.alive && n.age >= AdultAge && Alive(n.partnerId) == null).OrderBy(n => n.age).ThenBy(n => n.id).ToList();
+            List<Notable> Unwed() => State.notables.Where(n => n.alive && n.age >= AdultAge && Alive(n.partnerId) == null).OrderBy(n => n.age).ThenBy(n => n.id).ToList();
+            var free = Unwed();
+            for (int i = free.Count; i < 2 && State.notables.Any(n => n.alive && n.age >= AdultAge); i++)
+            {
+                var nu = AddNotable(AdultAge + 3f + i, -1, null);
+                nu.job = ChooseJob(nu, null); // a cheat's grown-up (no line of their own)
+            }
+            free = Unwed();
+            var ready = free.Where(DebugOk).ToList();
+            if (ready.Count >= 2) free = ready;
             var child = free.FirstOrDefault(n => n.namedByKeeper) ?? free.FirstOrDefault();
             var other = free.FirstOrDefault(n => n != child);
             if (child == null || other == null) { why = "two unwed grown-ups needed"; return null; }

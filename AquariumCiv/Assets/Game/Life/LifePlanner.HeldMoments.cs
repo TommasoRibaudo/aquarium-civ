@@ -228,6 +228,15 @@ namespace AquariumCiv.Life
             return sc;
         }
 
+        /// <summary>#722 cheats: this notable could be cast in a held moment at <paramref name="at"/> (awake, not on a hunt or at a tent, not in
+        /// the Keeper's ask or another moment), as <see cref="StageHeldMoment"/> asks of a wedding's couple.</summary>
+        public bool FreeForHeldMoment(int key, ViewTime at)
+        {
+            Sync();
+            EnsureDay(at.day);
+            return Free(Alive(key), at);
+        }
+
         /// <summary>Why <see cref="StageHeldMoment"/> last returned null.</summary>
         public string LastHeldWhyNot { get; private set; } = "";
 

@@ -95,6 +95,26 @@ namespace AquariumCiv.View
 
         bool Castable(IReadOnlyList<PersonActivity> acts, int k, bool force) => k > 0 && Shown(acts, k) && (force || FreeKey(acts, k));
 
+        /// <summary>#722 cheats: a cheat's scene can cast this person now (drawn, not held by a tent or a hunt; a camp use they are in is cut by
+        /// <see cref="CutForCheat"/>). The sim's picks prefer them (<see cref="SimCore.DebugCastable"/>).</summary>
+        public bool CanCastNow(int key) => pv != null && key > 0 && At(key).HasValue && !Tied(pv.Activities, key);
+
+        /// <summary>#722 cheats ("Stories (#722)"): free the camp's people for a cheat's scene: every camp use playing now ends (its people go
+        /// back to their plans; a held story's scene is ended by its moment). How many ended.</summary>
+        public int CutForCheat()
+        {
+            int n = 0;
+            for (int i = scenes.Count - 1; i >= 0; i--)
+            {
+                if (StoryHeld(scenes[i])) continue;
+                scenes.RemoveAt(i);
+                n++;
+            }
+            if (forced != null && !scenes.Contains(forced)) forced = null;
+            Index();
+            return n;
+        }
+
         bool KeyIs(IReadOnlyList<PersonActivity> acts, int k, Func<PersonActivity, bool> ok)
         {
             foreach (var a in acts) if (a.who.Key == k) return ok(a);
@@ -441,7 +461,16 @@ namespace AquariumCiv.View
     public static partial class CampCheats
     {
         /// <summary>"Tree: a kid picks a fruit": the tree shows its fruit, and the nearest kid picks one now.</summary>
-        public static string FruitPick() => Do(CampUse.FruitPick);
+        public static string FruitPick() => Free(CampUse.FruitPick);
+
+        /// <summary>#722's life-use cheats: the camp's uses are cut first, so the use's people are free and it plays now.</summary>
+        static string Free(CampUse use)
+        {
+            var c = Camp;
+            if (c == null) return "no PeopleView";
+            c.CutForCheat();
+            return c.Force(use);
+        }
         /// <summary>An event's scene again, with the people the box has for it (no new line).</summary>
         public static string FirstFruitAgain() => Do(CampUse.FirstFruit);
         public static string TwoMarksAgain() => Do(CampUse.TwoMarks);

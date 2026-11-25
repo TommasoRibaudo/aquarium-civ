@@ -76,11 +76,11 @@ namespace AquariumCiv.Sim
 
         // ---------- 2.1 the tinkerer's bucket ----------
 
-        ChronicleEntry TryTinkererBucket(bool force)
+        ChronicleEntry TryTinkererBucket(bool force, Notable who = null)
         {
             if (StoryHappened(StoryEvent.TinkererBucket) || StoryMarks.bucketOwnerId >= 0) return null;
             if (!PondFetched) return null; // people fetch water from the pond (its scene is at the pond's edge)
-            var t = FirstWithTrait("the tinkerer");
+            var t = who ?? FirstWithTrait("the tinkerer");
             if (t == null) return null;
             StoryMarks.bucketOwnerId = t.id;
             return StoryLine(StoryEvent.TinkererBucket, $"{t.name} made a bucket with a spout. It poured to the left, so everyone stood to the right.", 0.6f, t.id, -1);
@@ -94,12 +94,12 @@ namespace AquariumCiv.Sim
 
         // ---------- 2.3 the gardener's flowers ----------
 
-        ChronicleEntry TryGardenerFlowers(bool force)
+        ChronicleEntry TryGardenerFlowers(bool force, Notable who = null)
         {
             if (StoryHappened(StoryEvent.GardenerFlowers) || StoryMarks.flowersStoneId >= 0) return null;
             var stone = FirstNameStone;
             if (stone == null) return null;
-            var g = FirstWithTrait("the gardener");
+            var g = who ?? FirstWithTrait("the gardener");
             if (g == null) return null;
             StoryMarks.flowersStoneId = stone.id; StoryMarks.gardenerId = g.id;
             return StoryLine(StoryEvent.GardenerFlowers, $"{g.name} planted flowers round the name stone, and someone watered them every morning.", 0.6f, g.id, -1);
@@ -113,12 +113,12 @@ namespace AquariumCiv.Sim
         /// <summary>The woodpile under its roof, standing (a choice's thing), or null.</summary>
         public ConsequenceProp WoodpileProp => WoodpileStands ? ConsequenceProps.FirstOrDefault(p => p.kind == ConsequenceKind.WoodpileRoof && p.placed) : null;
 
-        ChronicleEntry TryJokerFace(bool force)
+        ChronicleEntry TryJokerFace(bool force, Notable who = null)
         {
             if (StoryHappened(StoryEvent.JokerFace) || StoryMarks.faceLogPropId >= 0) return null;
             var pile = WoodpileProp;
             if (pile == null) return null;
-            var j = FirstWithTrait("the joker");
+            var j = who ?? FirstWithTrait("the joker");
             if (j == null) return null;
             StoryMarks.faceLogPropId = pile.id; StoryMarks.jokerId = j.id;
             return StoryLine(StoryEvent.JokerFace, $"{j.name} carved a grinning face into a log on the woodpile. Nobody would burn it.", 0.55f, j.id, -1);
@@ -140,6 +140,7 @@ namespace AquariumCiv.Sim
             var adults = State.notables.Where(n => n.alive && n.age >= AdultAge && n.age < 50f).OrderBy(n => n.id).ToList();
             var who = adults.Count > 0 ? adults[(int)(RitualYear % adults.Count)]
                 : State.notables.Where(n => n.alive && n.age >= AdultAge).OrderByDescending(n => n.age).ThenBy(n => n.id).FirstOrDefault();
+            who = DebugPick(State.notables.Where(n => n.alive && n.age >= AdultAge).OrderBy(n => n.id), who);
             if (who == null) return null;
             StoryMarks.treeWatererId = who.id;
             return StoryLine(StoryEvent.DrySpell, $"The grass went brown in the dry spell. {who.name} carried water to the Keeper's tree every evening.", 0.6f, who.id, -1);
@@ -159,7 +160,7 @@ namespace AquariumCiv.Sim
         Notable SnowKid()
         {
             var kids = State.notables.Where(n => n.alive && n.age >= 4f && n.age < AdultAge).OrderBy(n => n.id).ToList();
-            return kids.Count == 0 ? null : kids[(int)((RitualYear + 1) % kids.Count)];
+            return kids.Count == 0 ? null : DebugPick(kids, kids[(int)((RitualYear + 1) % kids.Count)]);
         }
 
         /// <summary>From the story stream (SimCore.Story.cs, its dice unchanged): the box's first snow. With a kid it is the event (the spec's
@@ -185,11 +186,13 @@ namespace AquariumCiv.Sim
 
         // ---------- 2.2 the song rides the ritual's moment ----------
 
-        /// <summary>B80.d: the line a held moment's caption says for its ritual line: the singer's song made at it (its first year), else null.</summary>
+        /// <summary>B80.d: the line a held moment's caption says for its ritual line: the singer's song made at it (its first year, while the song
+        /// has no name), else null. Once the Keeper has named it (4.3) the name wins: the caption is <see cref="RitualCaption"/>'s
+        /// "The harvest feast: The Long Table", that first year too.</summary>
         public string SongLineOn(int ritualEntryId)
         {
             var m = StoryMarks;
-            if (m.songRideId < 0 || m.songRideId != ritualEntryId) return null;
+            if (m.songRideId < 0 || m.songRideId != ritualEntryId || !string.IsNullOrEmpty(m.songName)) return null;
             for (int i = State.chronicle.Count - 1; i >= 0; i--)
                 if (State.chronicle[i].id == m.songLineId) return State.chronicle[i].text;
             return null;
@@ -207,14 +210,16 @@ namespace AquariumCiv.Sim
 
         // ---------- debug (SimDebugPanel's "Stories (#722)" block) ----------
 
-        /// <summary>A grown-up with <paramref name="trait"/>: the first one, else the youngest grown-up becomes one (a cheat). Null: no grown-up.</summary>
+        /// <summary>A grown-up with <paramref name="trait"/>: the first one, else the youngest grown-up becomes one (a cheat); with
+        /// <see cref="DebugCastable"/> set, one the view can cast now (they take the trait). Null: no grown-up.</summary>
         Notable DebugTrait(string trait)
         {
             var n = FirstWithTrait(trait);
-            if (n != null) return n;
-            n = State.notables.Where(x => x.alive && x.age >= AdultAge).OrderBy(x => x.age).ThenBy(x => x.id).FirstOrDefault();
-            if (n != null) n.trait = trait;
-            return n;
+            if (n != null && DebugOk(n)) return n;
+            var grown = State.notables.Where(x => x.alive && x.age >= AdultAge).OrderBy(x => x.age).ThenBy(x => x.id).ToList();
+            var pick = grown.FirstOrDefault(DebugOk) ?? n ?? grown.FirstOrDefault();
+            if (pick != null) pick.trait = trait;
+            return pick;
         }
 
         /// <summary>Debug: a batch-3 event happens now, its gate eased where a cheat must (a trait given, the antlers hung, the seat passed, the
@@ -232,9 +237,15 @@ namespace AquariumCiv.Sim
                     var seat = SeatOf(LeaderOf(State.era));
                     if (seat == null) { why = "no leader's seat"; return null; }
                     var adults = State.notables.Where(n => n.alive && n.age >= AdultAge).OrderBy(n => n.id).ToList();
-                    var old = Alive(m.antlersAtId) ?? Alive(seat.holderId) ?? adults.FirstOrDefault();
-                    var nu = adults.Where(n => n != old && RoleOf(n) == null).OrderByDescending(n => n.age < Config.retireAge).ThenBy(n => n.id).FirstOrDefault()
-                             ?? adults.FirstOrDefault(n => n != old);
+                    // a cheat (DebugCastable set): two the view can cast now, each with a home of their own (the antlers go door to door)
+                    bool cheat = DebugCastable != null;
+                    var home = Settlement;
+                    bool Home(Notable n) => home != null && home.HomeOf(n) != null;
+                    var old0 = Alive(m.antlersAtId) ?? Alive(seat.holderId) ?? adults.FirstOrDefault();
+                    var old = !cheat ? old0 : new[] { old0 }.Concat(adults).Where(n => n != null).OrderByDescending(n => DebugOk(n) && Home(n)).ThenByDescending(DebugOk).FirstOrDefault();
+                    bool OtherHome(Notable n) => Home(n) && !ReferenceEquals(home.HomeOf(n), home.HomeOf(old));
+                    var nu = adults.Where(n => n != old).OrderByDescending(n => RoleOf(n) == null).ThenByDescending(n => !cheat || OtherHome(n)).ThenByDescending(DebugOk)
+                        .ThenByDescending(n => n.age < Config.retireAge).ThenBy(n => n.id).FirstOrDefault();
                     if (old == null || nu == null) { why = "two grown-ups needed"; return null; }
                     if (seat.holderId != old.id) { if (seat.holderId >= 0) Vacate(seat); Assign(seat, old); }
                     m.antlersAtId = old.id;
@@ -248,18 +259,20 @@ namespace AquariumCiv.Sim
                 case StoryEvent.TinkererBucket:
                 {
                     if (!PondFetched) { why = "no water in the pond (the pond first)"; return null; }
-                    if (DebugTrait("the tinkerer") == null) { why = "no grown-up"; return null; }
+                    var who = DebugTrait("the tinkerer");
+                    if (who == null) { why = "no grown-up"; return null; }
                     m.bucketOwnerId = -1;
-                    var e = TryTinkererBucket(true);
+                    var e = TryTinkererBucket(true, who);
                     if (e == null) why = "the bucket wasn't made";
                     return e;
                 }
                 case StoryEvent.GardenerFlowers:
                 {
                     if (FirstNameStone == null) { why = "no name stone stands (answer 'camp_remember' with the stone first)"; return null; }
-                    if (DebugTrait("the gardener") == null) { why = "no grown-up"; return null; }
+                    var who = DebugTrait("the gardener");
+                    if (who == null) { why = "no grown-up"; return null; }
                     m.flowersStoneId = -1;
-                    var e = TryGardenerFlowers(true);
+                    var e = TryGardenerFlowers(true, who);
                     if (e == null) why = "the flowers weren't planted";
                     return e;
                 }
@@ -267,9 +280,10 @@ namespace AquariumCiv.Sim
                 {
                     if (!WoodpileStands) DebugFirstWildWoodNow(); // a living land's woodpile comes with its first wild wood
                     if (WoodpileProp == null) { why = "no woodpile stands (answer 'camp_winter' with the woodpile roof first)"; return null; }
-                    if (DebugTrait("the joker") == null) { why = "no grown-up"; return null; }
+                    var who = DebugTrait("the joker");
+                    if (who == null) { why = "no grown-up"; return null; }
                     m.faceLogPropId = -1;
-                    var e = TryJokerFace(true);
+                    var e = TryJokerFace(true, who);
                     if (e == null) why = "the face wasn't carved";
                     return e;
                 }

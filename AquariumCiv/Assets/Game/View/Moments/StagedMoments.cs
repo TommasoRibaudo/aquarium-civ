@@ -320,11 +320,12 @@ namespace AquariumCiv.View
             if (sim == null) return "no living box";
             if (!sim.MomentsOn && GameClock.Instance != null) GameClock.Instance.config.moments = true;
             if (!sim.MomentsOn) return "moments off";
-            if (sim.PlayingMoments().Count > 0) return "a moment is playing: wait, or End staged moments";
             var pv = PeopleView.Find();
             if (pv == null || pv.Planner == null) return "no people";
             string skipped = "";
-            if (!Fits(MomentKind.Ritual, pv.Now)) { PeopleView.DebugSetHour(9.5f); skipped = " (skipped to the morning)"; }
+            int ended = HeldMomentStage.DebugEndPlaying(); // #722: the cheat plays now: what plays is ended (its people back to their day)
+            if (ended > 0) skipped += $" (ended {ended} moment{(ended == 1 ? "" : "s")})";
+            if (!Fits(MomentKind.Ritual, pv.Now)) { PeopleView.DebugSetHour(9.5f); skipped += " (skipped to the morning)"; }
             var e = sim.DebugPlayRitual(ritual);
             if (e == null) return "no such ritual: " + ritual;
             var m = sim.MomentOfEntry(e.id);
