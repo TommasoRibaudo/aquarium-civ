@@ -30,7 +30,7 @@ namespace AquariumCiv.View
         BoxView box;
         BoxCamera cam;
         GameHud hud;
-        ParticleSystem mist, splash, haze;
+        ParticleSystem mist, splash, haze, ripples;
         Material dropMat;
         MistSound sound;
         bool pressed, misting;
@@ -84,9 +84,9 @@ namespace AquariumCiv.View
         void WarmUp()
         {
             if (mist != null) return;
-            mist = MakeSpray(false); splash = MakeSpray(true); haze = MakeHaze();
+            mist = MakeSpray(false); splash = MakeSpray(true); haze = MakeHaze(); ripples = MakeRipples();
             var at = box != null && box.land != null ? box.transform.TransformPoint(box.land.OnGround(0f, 0f) + Vector3.up * 0.2f) : transform.position;
-            foreach (var ps in new[] { mist, splash, haze })
+            foreach (var ps in new[] { mist, splash, haze, ripples })
             {
                 ps.transform.position = at;
                 ps.Emit(new ParticleSystem.EmitParams { position = at, applyShapeToPosition = false, startColor = new Color32(255, 255, 255, 0), startSize = 0.001f, startLifetime = 0.05f, velocity = Vector3.zero }, 1);
@@ -107,7 +107,8 @@ namespace AquariumCiv.View
             if (mist != null) Destroy(mist.gameObject);
             if (splash != null) Destroy(splash.gameObject);
             if (haze != null) Destroy(haze.gameObject);
-            mist = splash = haze = null;
+            if (ripples != null) Destroy(ripples.gameObject);
+            mist = splash = haze = ripples = null;
         }
 
         bool Usable(SimCore sim)
@@ -249,6 +250,7 @@ namespace AquariumCiv.View
             if (mist != null) mist.Stop(true, ParticleSystemStopBehavior.StopEmitting);
             if (splash != null) splash.Stop(true, ParticleSystemStopBehavior.StopEmitting);
             if (haze != null) haze.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            if (ripples != null) ripples.Stop(true, ParticleSystemStopBehavior.StopEmitting);
             sound?.SetSpray(0f);
             // The finger is up: the AO the stroke skipped is baked now, a chunk a frame (BoxView.CatchUp).
             if (box != null && box.deferAO) { box.deferAO = false; box.FlushAo(); box.CatchUp(); dirty = true; }
@@ -293,14 +295,24 @@ namespace AquariumCiv.View
             if (mist == null) WarmUp();
             var nozzle = box.transform.TransformPoint(at + Vector3.up * NozzleHeight);
             mist.transform.position = nozzle;
-            splash.transform.position = box.transform.TransformPoint(at + Vector3.up * 0.01f);
+            // #687 (the user, 2026-11-15: "water thrown over the pond shows water hitting water, a splash"): over the drawn pond the flecks
+            // land on the water's surface and hop a little higher, and small rings spread and fade where the drops land
+            OverWater = box.layout.eco.on && box.WaterDrawnAt(at.x, at.z);
+            var landAt = OverWater ? new Vector3(at.x, box.layout.eco.waterY, at.z) : at;
+            splash.transform.position = box.transform.TransformPoint(landAt + Vector3.up * (OverWater ? 0.003f : 0.01f));
+            var hop = splash.velocityOverLifetime;
+            hop.y = OverWater ? new ParticleSystem.MinMaxCurve(0.22f, 0.45f) : new ParticleSystem.MinMaxCurve(0.1f, 0.3f);
+            ripples.transform.position = box.transform.TransformPoint(landAt + Vector3.up * 0.002f);
             haze.transform.position = box.transform.TransformPoint(at + Vector3.up * 0.10f);
             // The droplets land across most of the reach: the cone opens as the mist widens with the dwell.
             float spread = Mathf.Max(0.2f, SprayRadius * 0.62f);
             var sh = mist.shape; sh.angle = Mathf.Clamp(Mathf.Atan(spread / NozzleHeight) * Mathf.Rad2Deg, 8f, 55f);
             var sp = splash.shape; sp.radius = spread * 0.9f;
             var hz = haze.shape; hz.radius = spread * 0.75f;
+            var rs = ripples.shape; rs.radius = spread * 0.8f;
             if (!mist.isEmitting) { mist.Play(); splash.Play(); haze.Play(); }
+            if (OverWater && !ripples.isEmitting) ripples.Play();
+            else if (!OverWater && ripples.isEmitting) ripples.Stop(true, ParticleSystemStopBehavior.StopEmitting);
             sound?.SetSpray(Mathf.Lerp(0.7f, 1f, Mathf.InverseLerp(0.7f, 1f, SprayRadius)));
         }
 
@@ -363,6 +375,42 @@ namespace AquariumCiv.View
             g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
                       new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(ground ? 0f : 0.85f, 1f) });
             col.color = g;
+            return ps;
+        }
+
+        /// <summary>#687: the spray lands on the pond now (tests, the shots).</summary>
+        public bool OverWater { get; private set; }
+
+        /// <summary>#687: where drops hit the pond, small flat rings on the water: each starts small, spreads and fades in about half a second.</summary>
+        ParticleSystem MakeRipples()
+        {
+            var go = new GameObject("MistRipples") { hideFlags = HideFlags.DontSave };
+            go.transform.SetParent(transform, false);
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.loop = true; main.duration = 1f;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.45f, 0.7f);
+            main.startSpeed = 0f;
+            main.startSize = new ParticleSystem.MinMaxCurve(0.018f, 0.026f);
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.86f, 0.95f, 1f, 0.7f), new Color(1f, 1f, 1f, 0.85f));
+            main.maxParticles = 60;
+            var em = ps.emission; em.rateOverTime = 12f;
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.3f; sh.radiusThickness = 1f; sh.rotation = new Vector3(-90f, 0f, 0f);
+            var size = ps.sizeOverLifetime; size.enabled = true; size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 1f, 1f, 5f));
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                      new[] { new GradientAlphaKey(0.9f, 0f), new GradientAlphaKey(0.45f, 0.4f), new GradientAlphaKey(0f, 1f) });
+            col.color = g;
+            var r = go.GetComponent<ParticleSystemRenderer>();
+            dropMat ??= EcoSurface.MakeMaterial("EcoDrop", 4, 5, 10);
+            r.sharedMaterial = dropMat;
+            r.renderMode = ParticleSystemRenderMode.HorizontalBillboard;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
             return ps;
         }
 

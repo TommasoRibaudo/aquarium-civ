@@ -326,6 +326,15 @@ namespace AquariumCiv.View
             return Refresh($"{n} pond cells dried; ducks {s.EcoDucks}, fish {s.EcoFish}");
         }
 
+        /// <summary>#687 cheat: a dry spell now (the grass pales and wilts, the people look up for rain); the box shows it at once.</summary>
+        public static string DrySpell()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int n = s.DebugDrySpell();
+            return Refresh($"dry spell: {n} cells dry, thirst {s.EcoThirst:0.00}");
+        }
+
         public static string Table(float aboveFlood)
         {
             var s = Sim;

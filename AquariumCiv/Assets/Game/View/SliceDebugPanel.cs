@@ -439,6 +439,8 @@ namespace AquariumCiv.View
             if (Btn("Light the lanterns now")) last = CampCheats.LightLanterns(); // #692 B52.a (houses only: the village's round)
             if (Btn("All house lanterns lit")) last = CampCheats.HouseLanternsLit(); // 2026-11-24
             if (Btn("Kids chase moths")) last = CampCheats.ChaseMoths(); // #692 B52.b
+            if (Btn("Dry spell now")) last = EcoDebug.DrySpell(); // #687 the thirst signs
+            if (Btn("Look up for rain")) last = CampCheats.SkyLook(); // #687
             if (Btn("Pull a weed in the camp")) last = CampCheats.PullWeed(); // #692 B53.a
             if (Btn("Kids make a crown")) last = CampCheats.Crown(); // #692 B53.c
             if (Btn("Hang the swing")) last = CampCheats.HangSwing(); // #692 B53.d

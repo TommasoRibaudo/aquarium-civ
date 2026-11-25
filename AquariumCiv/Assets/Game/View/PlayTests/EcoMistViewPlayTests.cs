@@ -109,6 +109,48 @@ namespace AquariumCiv.View.PlayTests
             yield return null;
         }
 
+        /// <summary>#687 (the user, 2026-11-15: water thrown over the pond shows water hitting water): misting over the pond, the flecks land on
+        /// the water and small rings spread. Shots and frames for the user's look (Explicit).</summary>
+        [UnityTest, Explicit("Shots for the user's sign-off (#687)")]
+        public IEnumerator MistOverThePond_WaterHitsWater_Shots()
+        {
+            yield return Open();
+            try
+            {
+                yield return Barren();
+                var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+                var mist = EcoMistView.Instance;
+                Debug.Log("[687] " + EcoDebug.WaterBreaksNow());
+                for (float t = 0f; t < 12f; t += Time.unscaledDeltaTime) yield return null; // the first water's moment plays
+                // a pond point well inside the drawn water: the drawn water's middle
+                float sx = 0f, sz = 0f; int n = 0;
+                for (int c = 0; c < Sim.Settle.SiteMap.N; c++) { float cx = Sim.Settle.SiteMap.CXc(c), cz = Sim.Settle.SiteMap.CZc(c); if (box.WaterDrawnAt(cx, cz)) { sx += cx; sz += cz; n++; } }
+                Assert.Greater(n, 10, "a pond is drawn");
+                float x = sx / n, z = sz / n;
+                if (!box.WaterDrawnAt(x, z)) for (int c = 0; c < Sim.Settle.SiteMap.N; c++) { float cx = Sim.Settle.SiteMap.CXc(c), cz = Sim.Settle.SiteMap.CZc(c); if (box.WaterDrawnAt(cx, cz)) { x = cx; z = cz; break; } }
+                var rig = Camera.main.GetComponent<BoxCamera>();
+                rig.FlyTo(box.transform.TransformPoint(box.land.OnGround(x, z)), Mathf.Max(rig.minZoom * 1.1f, 0.22f), 0.4f);
+                for (int i = 0; i < 200 && rig.IsFlying; i++) yield return null;
+                for (int i = 0; i < 20; i++) yield return null;
+                var at = ScreenOf(box, x, z);
+                Directory.CreateDirectory(Shots + "687/");
+                int id = touchId++;
+                BeginTouch(id, at, queueEventOnly: true);
+                float t0 = Time.unscaledTime; int f = 0; bool over = false;
+                while (Time.unscaledTime - t0 < 2.6f)
+                {
+                    MoveTouch(id, at + new Vector2(Mathf.Sin(Time.unscaledTime * 9f), 0f), delta: Vector2.zero, queueEventOnly: true);
+                    yield return null;
+                    over |= mist.OverWater;
+                    if ((f++ % 3) == 0 && Time.unscaledTime - t0 > 0.3f) ScreenCapture.CaptureScreenshot(Shots + $"687/mist_pond_{f:000}.png");
+                }
+                yield return Shot("687/mist_pond_held");
+                EndTouch(id, at, delta: Vector2.zero, queueEventOnly: true);
+                Assert.IsTrue(over, "the spray landed on the pond (OverWater)");
+            }
+            finally { Close(); }
+        }
+
         [UnityTest]
         public IEnumerator Spray_Sound_WetAtOnce_ALittleGreen_ThenPuddlesAndVisitors()
         {

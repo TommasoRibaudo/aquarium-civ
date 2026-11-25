@@ -46,6 +46,11 @@ namespace AquariumCiv.View
             return false;
         }
 
+        /// <summary>#687 (the thirst signs, the user 2026-11-24): dry grass's colour, and how thirsty a cell reads from its moisture, 0 (at or over
+        /// <see cref="AquariumCiv.Sim.SimCore.ThirstMoist"/> + a little) to 1 (dust).</summary>
+        static readonly Color Straw = new Color(0.80f, 0.72f, 0.44f);
+        public static float Thirst(float moist) => Mathf.Clamp01((AquariumCiv.Sim.SimCore.ThirstMoist + 0.05f - moist) / (AquariumCiv.Sim.SimCore.ThirstMoist + 0.02f));
+
         /// <summary>The ground under the living land: dry cracked dirt, darker when wet, turning to the box's grass as the cover greens.</summary>
         Color EcoGround(float x, float z, float y, float n)
         {
@@ -63,6 +68,7 @@ namespace AquariumCiv.View
             if (EcoLayer.Wooded(cv)) grass = Color.Lerp(grass, Co.moss, 0.35f);          // the forest floor
             else if (cv == EcoLayer.Tall) grass = Color.Lerp(grass, Co.grassC, 0.3f);
             grass = Color.Lerp(grass, grass * 0.82f, Mathf.Clamp01(m - 0.4f));         // wet grass is a little darker
+            grass = Color.Lerp(grass, Straw, 0.5f * Thirst(m));                          // #687: thirsty grass pales to straw
             return Color.Lerp(dry, grass, g);
         }
 
@@ -247,7 +253,11 @@ namespace AquariumCiv.View
                             float h = cv == EcoLayer.Tall ? Mathf.Lerp(0.08f, 0.13f, H(c, 30 + t)) : Mathf.Lerp(0.035f, 0.065f, H(c, 30 + t));
                             float c3 = H(c, 32 + t);
                             var g = land.OnGround(q);
-                            Pieces.GrassTuft(ib, g, h, c3 < 0.33f ? co.tuftA : c3 < 0.66f ? co.tuftB : co.tuftC, cv == EcoLayer.Tall);
+                            // #687: a thirsty cell's tufts wilt: lower and limper, and straw-coloured
+                            float th = Thirst(ec.moist[c]);
+                            h *= 1f - 0.4f * th;
+                            var tuft = Color.Lerp(c3 < 0.33f ? co.tuftA : c3 < 0.66f ? co.tuftB : co.tuftC, Straw, 0.6f * th);
+                            Pieces.GrassTuft(ib, g, h, tuft, cv == EcoLayer.Tall);
                             if (cv == EcoLayer.Tall && H(c, 34 + t) < 0.12f)
                             {
                                 ib.Ico(g + Vector3.up * h * 0.8f, 0.014f, Vector3.one, Palette.Flowers[Mathf.Min(Palette.Flowers.Length - 1, (int)(H(c, 36) * Palette.Flowers.Length))], 0.1f);

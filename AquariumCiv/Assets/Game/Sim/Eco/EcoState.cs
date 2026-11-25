@@ -29,6 +29,13 @@ namespace AquariumCiv.Sim.Eco
         /// <summary>The water table (terrain height units), its peak so far, and the pond's level (-1000 = no pond yet).</summary>
         public float table, tablePeak, pondLevel = -1000f;
         public float soaked;            // water the Keeper's mist has sent down since the last step
+        /// <summary>#687: the water the table took since the last season step (the monthly soaks and the strokes that fed the pond; the
+        /// season's cap holds over it), and the monthly soaks done since then (0 in a run stepped by seasons only: the season step then
+        /// soaks the old way). Both 0 in an old save.</summary>
+        public float soakTaken;
+        public int soakMonths;
+        /// <summary>#687, not saved: all the water the table has taken since this state was loaded (the paired-run totals read it).</summary>
+        [NonSerialized] public double soakedIn;
         public float rabbits, birds;
         /// <summary>#282: the cells where rabbit tracks show (chosen once, at the meadow's edge, when the tracks come), the cell
         /// the first rabbit hops in at (-1 = none yet), whether the view has played that arrival, and rabbits caught so far.</summary>
