@@ -69,7 +69,7 @@ namespace AquariumCiv.View
 
         public void Reset()
         {
-            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree(); ResetLand(); ResetAnimals(); ResetCamp(); ResetProps(); ResetDogs(); ResetVillage();
+            scenes.Clear(); byKey.Clear(); nextWarm.Clear(); doneToday.Clear(); lastAt.Clear(); ResetTree(); ResetLand(); ResetAnimals(); ResetCamp(); ResetProps(); ResetDogs(); ResetVillage(); ResetStories();
             fxDone = float.NaN; potState = PotState.Cold; potDay = long.MinValue; spitDay = long.MinValue;
         }
 
@@ -99,6 +99,7 @@ namespace AquariumCiv.View
             if (sim != null && planner != null) StepRituals(acts, time); // S-ritual: the offering basket's look, the table's boards, purple hands, the boat
             StepTeller(acts); // B76: the Keeper's pick tells tonight's story
             if (sim != null && planner != null && sim.State.era != Era.Camp) StepVillage(acts, time); // #695: the village's and the town's things
+            if (sim != null && planner != null) StepStories(acts, time); // #722: the story events' things (the fruit, the marks, the second stone), every era
             if (sim == null || planner == null || sim.State.era != Era.Camp) { StepPot(acts, time, false); return; }
             StepTree(acts, time); // #692 part 2: the Keeper's tree visits (no fire needed)
             StepLand(acts, time); // #692 part 3: grass, saplings, rocks, fallen branches
@@ -140,7 +141,7 @@ namespace AquariumCiv.View
             foreach (var a in acts)
             {
                 bool sleep = a.kind is ActivityKind.Sleep or ActivityKind.Nap, eat = a.kind == ActivityKind.Eat && !OnlyCheats;
-                if (!sleep && !eat || !byKey.TryGetValue(a.who.Key, out var s) || s == forced) continue;
+                if (!sleep && !eat || !byKey.TryGetValue(a.who.Key, out var s) || s == forced || StoryHeld(s)) continue; // #722: a held moment's scene keeps its people
                 if (sleep && WakesForWolves(s.use) || eat && MealUse(s.use)) continue;
                 int m = s.IndexOf(a.who.Key);
                 if (m >= 0 && s.parts[m].Count > 0) { s.parts[m].Clear(); MealBedCut++; cut = true; }
@@ -731,6 +732,7 @@ namespace AquariumCiv.View
             DrawDogs(root, material, time, groundAt); // #694: the dogs, the visiting wolf, the fetch stick
             DrawVillage(root, material, time, groundAt); // #695: the scarecrow, a home's things, the ladder, the buckets, the grid, the posts
             DrawRituals(root, material, time, groundAt); // S-ritual: the log heap, the ladder, the board, the small basket, the empty basket carried, the rod on the boat
+            DrawStories(root, material, time, groundAt); // #722: the fruit on the tree, the marks on its trunk, the second stone rolled in
         }
 
         void FireFx(Transform root, float time, Func<float, float, float> groundAt)
@@ -835,7 +837,7 @@ namespace AquariumCiv.View
                     t.localRotation = Quaternion.identity;
                     var at = Anchor(v, CampAnchor.TwigTip);
                     t.position = at;
-                    float size = (tip.kind == CampTipKind.Ember ? 0.018f : 0.022f) * grow * sc0;
+                    float size = (tip.kind == CampTipKind.Ember ? 0.018f : 0.022f) * grow * sc0 * (tip.scale > 0f ? tip.scale : 1f); // #722: the first fruit, bigger
                     if (tip.kind == CampTipKind.Ember) size *= 0.8f + 0.25f * Mathf.Sin(time * 11f);
                     t.localScale = Vector3.one * size;
                     t.gameObject.SetActive(true);
@@ -951,6 +953,7 @@ namespace AquariumCiv.View
             DestroyProps();
             DestroyDogs();
             DestroyVillage();
+            DestroyStories();
         }
 
         // ================================================================== cheats (SliceDebugPanel "#692")
@@ -960,7 +963,7 @@ namespace AquariumCiv.View
             int before = scenes.Count;
             forcing = true;
             string r;
-            try { r = IsRitualUse(use) ? ForceRitual(use) : IsVillageUse(use) ? ForceVillage(use) : IsDogUse(use) ? ForceDog(use) : IsPropUse(use) ? ForceProp(use) : IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : IsCampUse(use) ? ForceCamp(use) : ForceUse(use); }
+            try { r = IsStoryUse(use) ? ForceStory(use) : IsRitualUse(use) ? ForceRitual(use) : IsVillageUse(use) ? ForceVillage(use) : IsDogUse(use) ? ForceDog(use) : IsPropUse(use) ? ForceProp(use) : IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : IsCampUse(use) ? ForceCamp(use) : ForceUse(use); }
             finally { forcing = false; }
             if (scenes.Count > before) forced = scenes[^1];
             return r;

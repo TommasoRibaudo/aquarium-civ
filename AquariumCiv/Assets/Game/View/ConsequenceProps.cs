@@ -384,7 +384,18 @@ namespace AquariumCiv.View
 
         /// <summary>The runestone's footprint (local half-sizes before <see cref="Scale"/>): people stand outside it (tests: NoOneInsideTheStone).</summary>
         public const float StoneHalfX = 0.07f, StoneHalfZ = 0.035f, StoneH = 0.36f;
-        static void RuneStone(MeshBuilder mb, int variant)
+        /// <summary>#722 (1.3, B78.c): the second name stone: the same runestone with another seed (its own rough shape), and only the rows cut
+        /// on it so far (<paramref name="rows"/>, 0-3: the first name, then the next; the newest pale), not the first stone's four old rows.</summary>
+        public static Mesh SecondStone(int rows)
+        {
+            var mb = new MeshBuilder(3710 + System.Array.IndexOf(ConsequenceKind.All, ConsequenceKind.NameStone) + 7220) { jitter = 0.025f };
+            RuneStone(mb, rows, 0);
+            var mesh = mb.ToMesh("Consequence_" + ConsequenceKind.NameStone + "_second");
+            mesh.hideFlags = HideFlags.DontSave;
+            return mesh;
+        }
+
+        static void RuneStone(MeshBuilder mb, int variant, int oldRows = 4)
         {
             var grey = new Color(0.56f, 0.55f, 0.52f); var dark = new Color(0.33f, 0.32f, 0.31f);
             // the slab: one rough piece of stone, an uneven five-sided section squashed thin, narrowing a little to an uneven cut top, leaning a
@@ -396,7 +407,7 @@ namespace AquariumCiv.View
             mb.M = saved;
             mb.Ico(new Vector3(0.05f, 0.005f, 0.03f), 0.025f, new Vector3(1.2f, 0.4f, 1f), dark, 0.2f); // a stone at its foot
             // the runes on both faces: rows of short strokes and slants (the newest row pale: freshly cut)
-            int rows = 4 + Mathf.Clamp(variant, 0, 3); float gap = rows <= 4 ? 0.045f : 0.17f / (rows - 1);
+            int rows = oldRows + Mathf.Clamp(variant, 0, 3); float gap = rows <= 4 ? 0.045f : 0.17f / (rows - 1);
             foreach (float face in new[] { -1f, 1f })
                 for (int i = 0; i < rows; i++)
                 {
@@ -658,6 +669,9 @@ namespace AquariumCiv.View
         public static int HeldCharms;
         /// <summary>Real seconds a pulse lasts.</summary>
         public const float PulseSeconds = 1.6f;
+        /// <summary>#722 (B78.c): things not drawn at their spot for now (the second stone while it is rolled in and stood up: CampLife draws it
+        /// in the rollers' hands). CampLife.Stories sets it each frame.</summary>
+        public static readonly HashSet<int> HeldBack = new();
 
         sealed class Made { public Transform t; public Mesh mesh; public string kind; public float yaw; public Vector3 at; }
 
@@ -955,6 +969,11 @@ namespace AquariumCiv.View
                     if (made.TryGetValue(p.id, out var early) && early.t != null && early.t.gameObject.activeSelf) early.t.gameObject.SetActive(false);
                     continue;
                 }
+                if (HeldBack.Contains(p.id)) // #722: the second stone is still being rolled in
+                {
+                    if (made.TryGetValue(p.id, out var held) && held.t != null && held.t.gameObject.activeSelf) held.t.gameObject.SetActive(false);
+                    continue;
+                }
                 if (p.kind == ConsequenceKind.Feather && p != pole)
                 {
                     if (made.TryGetValue(p.id, out var gone)) { Kill(gone.mesh); if (gone.t != null) Kill(gone.t.gameObject); made.Remove(p.id); }
@@ -1014,6 +1033,7 @@ namespace AquariumCiv.View
                     }
                     else if (p.anchor == PropAnchor.Tree) mesh = ConsequenceMeshes.PoleWithCharms(charms); // tester: the pole always drew four
                     else if (featherSlots != null && featherSlots.Length > 0) mesh = ConsequenceMeshes.FeatherPole(featherSlots);
+                    else if (p.kind == ConsequenceKind.NameStone && p.id == sim.StoryMarks.secondStoneId) mesh = ConsequenceMeshes.SecondStone(look); // #722: its own shape, its own rows
                     else mesh = ConsequenceMeshes.Build(p.kind, look);
                     m = new Made { kind = key, mesh = mesh };
                     var go = new GameObject("Consequence_" + p.kind + "_" + p.id) { hideFlags = HideFlags.DontSave };

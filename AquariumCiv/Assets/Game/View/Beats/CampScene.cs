@@ -282,6 +282,15 @@ namespace AquariumCiv.View
         BoatHouse,
         /// <summary>#687 (the thirst signs): in a dry spell a grown-up stops, looks up at the glass for rain and shakes their head (life).</summary>
         SkyLook,
+        // #722 the story events (View/Beats/StoryScenes.cs, View/CampLife.Stories.cs). Appended: keep these last.
+        /// <summary>B78.a: the Keeper's tree's first fruit: a kid picks it and runs it to the fire, everyone has a bite.</summary>
+        FirstFruit,
+        /// <summary>B78.b: a newly-wed couple cut their two marks into the Keeper's tree.</summary>
+        TwoMarks,
+        /// <summary>B78.c: the second name stone rolled in, stood up beside the first, the first name cut.</summary>
+        SecondStone,
+        /// <summary>#722 (1.1 "Read later"): in summer a kid picks a fruit from the Keeper's tree and eats it (life).</summary>
+        FruitPick,
     }
 
     /// <summary>#694: what a dog or a visiting wolf does in a <see cref="QuadPart"/> (P0's moves; CampLife.Dogs poses them).</summary>
@@ -443,6 +452,8 @@ namespace AquariumCiv.View
         public CampTipKind kind;
         /// <summary>How it changes over its life: grows from 1 to <see cref="grow"/>, and darkens toward <see cref="darken"/> (0..1).</summary>
         public float grow, darken;
+        /// <summary>#722: drawn this many times its usual size all its life (0 = 1: as before; the first fruit is a berry drawn bigger).</summary>
+        public float scale;
     }
 
     /// <summary>

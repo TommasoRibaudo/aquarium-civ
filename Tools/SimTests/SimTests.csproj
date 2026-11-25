@@ -42,6 +42,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ConsequencePropTests.cs" /><!-- visit loop C4 #371 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ConsequencePropRoomTests.cs" /><!-- B3 tester fixes: things apart, no lot over one -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CharmTreeTests.cs" /><!-- #635 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/StoryEventTests.cs" /><!-- #722 the story events (sim) -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/KeeperChoicesTests.cs" /><!-- visit loop C6 #373 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/MomentQueueTests.cs" /><!-- visit loop C2 #369 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaCallbackTests.cs" /><!-- P7 #221 -->

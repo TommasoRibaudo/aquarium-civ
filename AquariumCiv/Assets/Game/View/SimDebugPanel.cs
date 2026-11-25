@@ -330,6 +330,19 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
             }
             // ---- end #721 ----
+            // ---- #722: the story events (each happens now and plays while watched) ----
+            if (Section("Stories (#722)"))
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Tree: first fruit")) last = StoryMoment.DebugPlayNow(StoryEvent.FirstFruit);
+                if (GUILayout.Button("Tree: a couple's marks")) last = StoryMoment.DebugPlayNow(StoryEvent.TwoMarks);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Stone: fill it")) last = StoryMoment.DebugPlayNow(StoryEvent.SecondStone);
+                if (GUILayout.Button("Tree: a kid picks a fruit")) last = CampCheats.FruitPick(); // the life use the fruit leaves
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #722 ----
             // ---- fb4 #540: camp props ----
             if (Section("Camp props (fb4 #540)"))
                 if (GUILayout.Button("Camp props: show all (rack, every prop)")) last = ConsequenceCheats.ShowCampProps();

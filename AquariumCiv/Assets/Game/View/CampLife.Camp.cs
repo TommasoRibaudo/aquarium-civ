@@ -332,15 +332,16 @@ namespace AquariumCiv.View
         bool StoneAt(out Vector2 at, out bool nameStone) => StoneAt(out at, out nameStone, out _);
 
         /// <summary>#692 p5 notes: also the stone's drawn half-width (its renderers' bounds, box units; 0.03 for the remembering spot).</summary>
-        bool StoneAt(out Vector2 at, out bool nameStone, out float halfW)
+        bool StoneAt(out Vector2 at, out bool nameStone, out float halfW, bool second = false)
         {
             at = default; nameStone = false; halfW = 0.03f;
             var cv = ConsequencePropsView.Instance;
             if (sim != null && cv != null)
             {
                 var standing = cv.Standing;
+                int secondId = sim.StoryMarks.secondStoneId; // #722: the first stone, or (asked) the second one
                 foreach (var p in sim.ConsequenceProps)
-                    if (p.placed && p.kind == ConsequenceKind.NameStone && standing.TryGetValue(p.id, out var t) && t != null && t.gameObject.activeInHierarchy)
+                    if (p.placed && p.kind == ConsequenceKind.NameStone && (p.id == secondId) == second && standing.TryGetValue(p.id, out var t) && t != null && t.gameObject.activeInHierarchy)
                     {
                         at = new Vector2(t.localPosition.x, t.localPosition.z); nameStone = true;
                         var rs = t.GetComponentsInChildren<Renderer>();
@@ -975,7 +976,9 @@ namespace AquariumCiv.View
 
         string TryGift(IReadOnlyList<PersonActivity> acts, float time, bool force)
         {
-            if (!StoneAt(out var stone, out bool named, out float stoneR)) return "no remembering stone";
+            // #722 (1.3 "Read later"): once the second stone stands the gift goes to either (by the day) [est]
+            bool toSecond = sim.StoryMarks.secondStoneId >= 0 && BeatHash.Pick(2, (int)(today & 0x7fffffff), 1, 7222) == 1;
+            if (!StoneAt(out var stone, out bool named, out float stoneR, toSecond) && !(toSecond && StoneAt(out stone, out named, out stoneR))) return "no remembering stone";
             // a family member of a name on the stone (a dead one's child, parent or partner), else (the cheat) any grown-up
             int who = Nobody, second = Nobody;
             foreach (var d in sim.State.notables)

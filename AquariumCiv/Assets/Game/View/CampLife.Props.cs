@@ -66,8 +66,25 @@ namespace AquariumCiv.View
         bool PropOf(string kind, out PropSpot spot)
         {
             spot = default;
-            foreach (var p in Props()) if (p.kind == kind) { spot = p; return true; }
+            int second = kind == ConsequenceKind.NameStone && sim != null ? sim.StoryMarks.secondStoneId : -1; // #722: the name stone is the first one (its uses keep to it)
+            foreach (var p in Props()) if (p.kind == kind && p.id != second) { spot = p; return true; }
             return false;
+        }
+
+        /// <summary>#722: the thing <paramref name="id"/> as drawn now (false: not standing or not drawn).</summary>
+        bool PropById(int id, out PropSpot spot)
+        {
+            spot = default;
+            foreach (var p in Props()) if (p.id == id) { spot = p; return true; }
+            return false;
+        }
+
+        /// <summary>#722 (1.3 "Read later"): a remembering use goes to either name stone once the second stands (by the day: one day the first, the
+        /// next the second) [est].</summary>
+        PropSpot EitherStone(in PropSpot first)
+        {
+            if (sim == null || sim.StoryMarks.secondStoneId < 0 || BeatHash.Pick(2, (int)(today & 0x7fffffff), 0, 7221) == 0) return first;
+            return PropById(sim.StoryMarks.secondStoneId, out var second) && !ThingBusy(ThingOf(second)) ? second : first;
         }
 
         static int ThingOf(in PropSpot p) => ThingPropBase + p.id;
@@ -174,7 +191,7 @@ namespace AquariumCiv.View
             if (wet) return;
             // the life uses (kids at play, idle grown-ups)
             if (Go(CampUse.WoodShelter, Sometimes, ConsequenceKind.WoodpileRoof, out q) && TryShelter(acts, time, false, q, false) == null) return;
-            if (Go(CampUse.NameTrace, Sometimes, ConsequenceKind.NameStone, out q) && TryNameTrace(acts, time, false, q) == null) return;
+            if (Go(CampUse.NameTrace, Sometimes, ConsequenceKind.NameStone, out q) && TryNameTrace(acts, time, false, EitherStone(q)) == null) return; // #722: either stone
             if (Go(CampUse.CharmFlick, Sometimes, ConsequenceKind.CharmPole, out q) && TryCharmFlick(acts, time, false, q) == null) return;
             if ((season == Season.Winter || weather == Weather.Snow) && Go(CampUse.PotDrum, Sometimes, ConsequenceKind.StewPot, out q) && TryPotDrum(acts, time, false, q) == null) return;
             if (Go(CampUse.StumpSit, Sometimes, ConsequenceKind.AxeStump, out q) && TryStumpSit(acts, time, false, q) == null) return;
