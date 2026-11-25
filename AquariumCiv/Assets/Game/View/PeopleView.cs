@@ -645,11 +645,13 @@ namespace AquariumCiv.View
             // #358: a play group has them: its game says where they stand, what they face and the move (KidPlayDirector).
             PlayCue playCue = default; KidGame playGame = null; int playIx = -1;
             bool playing = !hidden && !hunting && !tenting && KidPlay.TryCue(a.who.Key, time, out playCue, out playGame, out playIx);
-            bool dryBed = playing && BallGame.PondAt != null && land.IsWater(playCue.pos.x, playCue.pos.y) && !BallGame.PondAt(playCue.pos); // #744 (tester): a dried pond's hollow (still 'pond' to the paths)
-            if (playing && (playCue.sink > 0f || dryBed)) { target = playCue.pos; face = playCue.face; playSpots.Add(target); } // #744 (tester): wading in for the ball, or down in a dry hollow: where the game says (the lot/crowd nudges would put it back ashore)
-            else if (playing) { var cueAt = PlayOffLots(playCue.pos, spot); target = FreeOfPeople(cueAt, false) ? cueAt : Standable(cueAt, cueAt, true, false, false); face = playCue.face; playSpots.Add(target); } // batch 2: never on top of a still grown-up (nor in a lot)
+            if (playing) { var cueAt = PlayOffLots(playCue.pos, spot); target = FreeOfPeople(cueAt, false) ? cueAt : Standable(cueAt, cueAt, true, false, false); face = playCue.face; playSpots.Add(target); } // batch 2: never on top of a still grown-up (nor in a lot)
             // #692: a camp use has them (borrowed from their free time, or inside their own work): its part says where, what they face, the move, the prop
             CampPart campPart = null; float campInto = 0f;
+            // #744 (tester): wading in for the ball, or down in a dried pond's hollow (still 'pond' to the paths): where the game says,
+            // past the lot, crowd and ashore nudges above, which would put the fetcher back on the shore
+            if (playing && (playCue.sink > 0f || (BallGame.PondAt != null && land.IsWater(playCue.pos.x, playCue.pos.y) && !BallGame.PondAt(playCue.pos))))
+            { target = playCue.pos; playSpots[playSpots.Count - 1] = target; }
             bool camping = !hidden && !hunting && !tenting && Camp.Busy(a.who.Key) && !PairStage.TryCue(a.who.Key, time, out _, out _) && Camp.TryCue(a.who.Key, time, out campPart, out campInto);
             bool campMoves = camping && !campPart.keepSpot;
             if (camping)
