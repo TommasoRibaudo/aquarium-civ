@@ -330,7 +330,12 @@ namespace AquariumCiv.View.PlayTests
             var stone = sim?.FirstNameStone;
             if (stone != null) stone.dueMonth = sim.State.month - 1; // a death after the stone stood
             Debug.Log("[722 shots] " + ConsequenceCheats.OneMoreDeath());
-        }, Named, () => PropSpot(Sim.StoryMarks.secondStoneId), thing: ConsequenceKind.NameStone);
+        }, Named, () =>
+        {
+            var sim = Sim; var e = sim.State.eco; var a = sim.FirstNameStone; var b = sim.FindConsequenceProp(sim.StoryMarks.secondStoneId);
+            Debug.Log($"[722 shots] b78c places: first ({a?.x:0.00}, {a?.z:0.00}), second ({b?.x:0.00}, {b?.z:0.00}), eco {sim.EcologyOn}, tree cell {e?.treeCell} at ({(e != null && e.treeCell >= 0 ? AquariumCiv.Sim.Settle.SiteMap.CXc(e.treeCell) : 0f):0.00}, {(e != null && e.treeCell >= 0 ? AquariumCiv.Sim.Settle.SiteMap.CZc(e.treeCell) : 0f):0.00}), tree spot {TreeSpot()}");
+            return PropSpot(sim.StoryMarks.secondStoneId);
+        }, thing: ConsequenceKind.NameStone);
 
         /// <summary>B80.a: the Keeper's child handed their work's tool at the fire. After: the child with the tool.</summary>
         [UnityTest, Timeout(600000)]
