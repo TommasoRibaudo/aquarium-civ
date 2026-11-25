@@ -387,9 +387,9 @@ namespace AquariumCiv.View
                     fruitMesh ??= FruitMesh();
                     if (FruitOnTree)
                         for (int i = 0; i < StoryScenes.TreeFruits; i++) { var t = StoryPiece(root, material, used++, fruitMesh); t.localPosition = On(StoryScenes.TreeFruit(tree, stage, i)); FruitDrawn++; }
-                    // the low one a kid picks: until the hit (and the first one while its moment waits for the Keeper)
+                    // the one a kid picks: up in the crown, then falling to their feet, until the hit (and the first one while its moment waits)
                     Vector3? low = null;
-                    if (fruitScene != null) { if (time - fruitScene.t0 < fruitScene.a) low = new Vector3(fruitScene.p0.x, fruitScene.p1.x, fruitScene.p0.y); }
+                    if (fruitScene != null) { if (StoryScenes.FruitNow(fruitScene, time - fruitScene.t0, out var fp)) low = fp; }
                     else if (StoryWaiting(StoryEvent.FirstFruit) != null) low = StoryScenes.LowFruit(tree, stage, TreeDir(tree));
                     if (low is Vector3 lp) { var t = StoryPiece(root, material, used++, fruitMesh); t.localPosition = On(lp); FruitDrawn++; }
                     // B78.b: the couples' marks on the trunk, a pair each, stacked; a pair still to be cut (its moment waits, or its scene's strokes) is not

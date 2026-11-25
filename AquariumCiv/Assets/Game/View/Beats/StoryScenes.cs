@@ -17,8 +17,12 @@ namespace AquariumCiv.View
         static Vector2 Across(Vector2 toCam) => new Vector2(-toCam.y, toCam.x);
 
         // ================================================================== B78.a the tree's first fruit
-        /// <summary>The low fruit's height over the ground: a kid up on its toes reaches it with both arms up (x 150) [est].</summary>
-        public const float LowFruitY = 0.15f;
+        /// <summary>The user's review (2026-11-25): a fruit hanging at a kid's reach looked wrong, so it hangs up in the crown and falls. It
+        /// falls for <see cref="FallFor"/> s (gravity), bounces once (<see cref="BounceH"/> u, <see cref="BounceFor"/> s) and lies at the kid's
+        /// feet until picked up.</summary>
+        public const float FallFor = 0.45f, BounceH = 0.012f, BounceFor = 0.22f;
+        /// <summary>The bend and pick up.</summary>
+        public const float PickFor = 1.1f;
         /// <summary>The fruit (B78.a "Fruit": a red ball 0.018 u, a leaf).</summary>
         public const float FruitR = 0.018f;
         /// <summary>The fruit in the hands: the berry tip drawn this much bigger (a kid's berry is 0.015 u: the fruit is 0.018).</summary>
@@ -33,11 +37,59 @@ namespace AquariumCiv.View
         /// <summary>Where a kid stands under the tree to pick: out from the trunk on <paramref name="dir"/>'s side (the camera's).</summary>
         public static Vector2 PickSpot(Vector2 tree, int stage, Vector2 dir) => tree + Unit(dir, Vector2.down) * (TreeGeo.TrunkR(stage) + 0.11f);
 
-        /// <summary>The low fruit (box x, height over the ground, box z): over the pick spot, a little in toward the trunk.</summary>
+        /// <summary>The fruit that falls (box x, height over the ground, box z): up in the crown at the fruits' height, over the pick spot.</summary>
         public static Vector3 LowFruit(Vector2 tree, int stage, Vector2 dir)
         {
             var p = tree + Unit(dir, Vector2.down) * (TreeGeo.TrunkR(stage) + 0.08f);
-            return new Vector3(p.x, LowFruitY, p.y);
+            return new Vector3(p.x, HangY(stage), p.y);
+        }
+
+        /// <summary>How high the fruits hang on a crown of <paramref name="stage"/> (the first of <see cref="TreeFruit"/>'s ring).</summary>
+        public static float HangY(int stage) => TreeFruit(Vector2.zero, stage, 0).y;
+
+        /// <summary>Where it lands: on the ground just in front of the kid's feet, toward the trunk.</summary>
+        public static Vector2 FruitLands(Vector2 under, Vector2 tree) => under + Dir(under, tree, Vector2.up) * 0.045f;
+
+        /// <summary>The falling fruit <paramref name="u"/> scene seconds in (box x, height over the ground, box z), or false once picked up
+        /// (<see cref="CampScene.a"/>). It hangs at <see cref="CampScene.p0"/> until <see cref="CampScene.b"/>, falls to <see cref="CampScene.p1"/>,
+        /// bounces, lies there. <see cref="CampScene.kind"/>: the tree's stage.</summary>
+        public static bool FruitNow(CampScene s, float u, out Vector3 at)
+        {
+            at = default;
+            if (u >= s.a) return false;
+            float hang = HangY(s.kind);
+            if (u < s.b) { at = new Vector3(s.p0.x, hang, s.p0.y); return true; }
+            float f = (u - s.b) / FallFor;
+            if (f < 1f) { var h = Vector2.Lerp(s.p0, s.p1, f); at = new Vector3(h.x, Mathf.Lerp(hang, FruitR, f * f), h.y); return true; }
+            float b = (u - s.b - FallFor) / BounceFor;
+            at = new Vector3(s.p1.x, FruitR + (b < 1f ? BounceH * Mathf.Sin(b * Mathf.PI) : 0f), s.p1.y);
+            return true;
+        }
+
+        /// <summary>Looks up (<paramref name="look"/> s) as the fruit lets go with a leaf, looks down as it lands at the feet, bends and picks it up
+        /// (the hit <see cref="CampScene.a"/>, in the hand), stands. Sets <see cref="CampScene.b"/> (it lets go). Returns the time after.</summary>
+        static float DropAndPick(CampScene s, int k, Vector2 under, Vector2 tree, Vector3 low, float t, float look)
+        {
+            var land = FruitLands(under, tree);
+            s.Part(k, t, t + look, under, tree, DollStyle.LookUp);
+            s.b = t + look * 0.55f;
+            s.Fx(s.b, CampFxKind.Leaves, G(new Vector2(low.x, low.z), low.y), 0.35f, 1); // a leaf comes down with it
+            t += look;
+            float landed = s.b + FallFor + BounceFor;
+            if (landed > t) { s.Part(k, t, landed, under, land, DollStyle.Stand); t = landed; } // watches it land
+            s.Part(k, t, t + PickFor, under, land, DollStyle.Stand, PickUp);
+            s.a = t + PickFor * 0.5f;
+            return t + PickFor;
+        }
+
+        /// <summary>Bends down to the fruit at the feet (squash 0.8, lean 35, the arms down to it), then up with it held in front (x 90).</summary>
+        static void PickUp(ref DollPose p, float t, float len)
+        {
+            float down = In(t, 0f, 0.3f) * (1f - In(t, len * 0.5f, 0.3f));
+            p.squash = Mathf.Lerp(1f, 0.8f, down); p.offset.y -= 0.012f * down; p.lean += 35f * down;
+            float hold = In(t, len * 0.5f, 0.3f);
+            p.armL = Lerp(Lerp(p.armL, new Vector3(55f, 0f, -8f), down), new Vector3(90f, 0f, -8f), hold);
+            p.armR = Lerp(Lerp(p.armR, new Vector3(60f, 0f, 8f), down), new Vector3(90f, 0f, 8f), hold);
         }
 
         /// <summary>Fruit <paramref name="i"/> of <see cref="TreeFruits"/> on the Keeper's crown (box x, height, z): round the ring the charms hang
@@ -48,14 +100,6 @@ namespace AquariumCiv.View
             float k = TreeGeo.CrownY(stage) / TreeGeo.CrownY(4);
             float a = (i + 0.37f) / TreeFruits * Mathf.PI * 2f, rr = r * (1.1f + 0.25f * (i % 2));
             return new Vector3(tree.x + Mathf.Cos(a) * rr, (y - 0.015f * (i % 3)) * k, tree.y + Mathf.Sin(a) * rr);
-        }
-
-        /// <summary>Up on the toes (+0.02 u), both arms up (x 150), the right plucks (a small pull down at 0.5 s, the hit).</summary>
-        static void TiptoePick(ref DollPose p, float t, float len)
-        {
-            float u = In(t, 0f, 0.25f), pluck = Bump(t, 0.5f, 0.3f);
-            p.offset.y += Toes * u;
-            p.armL = Lerp(p.armL, new Vector3(150f, 0f, -10f), u); p.armR = Lerp(p.armR, new Vector3(150f - 20f * pluck, 0f, 10f), u);
         }
 
         /// <summary>B75.b's held-high run: both arms x 150.</summary>
@@ -92,16 +136,12 @@ namespace AquariumCiv.View
         {
             dir = Unit(dir, Vector2.down); toCam = Unit(toCam, Vector2.down); var acr = Across(toCam);
             var low = LowFruit(tree, stage, dir);
-            var s = new CampScene(CampUse.FirstFruit, t0, (tree + fire) * 0.5f) { followReach = 2.5f, p0 = new Vector2(low.x, low.z), p1 = new Vector2(low.y, 0f) };
-            int k = s.Add(kid);
             var under = PickSpot(tree, stage, dir);
+            var s = new CampScene(CampUse.FirstFruit, t0, (tree + fire) * 0.5f) { followReach = 2.5f, p0 = new Vector2(low.x, low.z), p1 = FruitLands(under, tree), kind = stage };
+            int k = s.Add(kid);
             float t = WalkTime(kidAt, under, KidWalk);
             s.Part(k, 0f, t, under, tree, DollStyle.Stand, null, PropKind.None, KidWalk);
-            s.Part(k, t, t + 1f, under, tree, DollStyle.LookUp); t += 1f; // spots the one red fruit
-            s.Part(k, t, t + 0.9f, under, tree, DollStyle.Stand, TiptoePick);
-            s.a = t + 0.6f;
-            s.Fx(s.a, CampFxKind.Leaves, G(s.p0, low.y + 0.02f), 0.35f, 1); // a leaf shakes loose as it comes off
-            t += 0.9f;
+            t = DropAndPick(s, k, under, tree, low, t, 1f); // spots the one red fruit; it falls to their feet
             var atFire = fire + toCam * 0.3f;
             float run = WalkTime(under, atFire, KidRun);
             var r = s.Part(k, t, t + run, atFire, fire, DollStyle.Stand, HeldHigh, PropKind.None, KidRun); r.run = true; r.poseWalking = true;
@@ -171,15 +211,11 @@ namespace AquariumCiv.View
             dir = Unit(dir, Vector2.down); toCam = Unit(toCam, Vector2.down);
             var low = LowFruit(tree, stage, dir);
             var under = PickSpot(tree, stage, dir);
-            var s = new CampScene(CampUse.FruitPick, t0, under) { holdFocus = true, p0 = new Vector2(low.x, low.z), p1 = new Vector2(low.y, 0f) };
+            var s = new CampScene(CampUse.FruitPick, t0, under) { holdFocus = true, p0 = new Vector2(low.x, low.z), p1 = FruitLands(under, tree), kind = stage };
             int k = s.Add(kid);
             float t = WalkTime(kidAt, under, KidWalk);
             s.Part(k, 0f, t, under, tree, DollStyle.Stand, null, PropKind.None, KidWalk);
-            s.Part(k, t, t + 0.7f, under, tree, DollStyle.LookUp); t += 0.7f;
-            s.Part(k, t, t + 0.9f, under, tree, DollStyle.Stand, TiptoePick);
-            s.a = t + 0.6f;
-            s.Fx(s.a, CampFxKind.Leaves, G(s.p0, low.y + 0.02f), 0.3f, 1);
-            t += 0.9f;
+            t = DropAndPick(s, k, under, tree, low, t, 1f);
             const float eat = 2.8f; // two bites' worth of chewing
             s.Part(k, t, t + eat, under, under + toCam, DollStyle.Taste);
             s.tips.Add(new CampTip { member = k, from = s.a, to = t + eat, kind = CampTipKind.Berry, grow = 0.35f, scale = HeldScale });

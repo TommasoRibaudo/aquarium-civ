@@ -406,7 +406,7 @@ namespace AquariumCiv.View
             // touch and sunk in the ground (the props' jitter roughens it further)
             var saved = mb.M;
             mb.M = saved * Matrix4x4.TRS(new Vector3(0f, -0.02f, 0f), Quaternion.identity, new Vector3(1f, 1f, StoneHalfZ / (StoneHalfX * 0.866f)));
-            mb.Prism(Vector3.zero, StoneHalfX, StoneHalfX * 0.96f, StoneH - 0.02f, 6, grey, topCol: Color.Lerp(grey, dark, 0.25f)); // flat faces at +-z
+            mb.Prism(Vector3.zero, StoneHalfX, StoneHalfX * 0.96f, StoneH - 0.02f, 6, grey, capBottom: true, topCol: Color.Lerp(grey, dark, 0.25f)); // flat faces at +-z; the foot closed (the user: it lay open when rolled in)
             mb.Prism(new Vector3(-0.02f, StoneH - 0.04f, 0f), StoneHalfX * 0.62f, StoneHalfX * 0.4f, 0.05f, 6, grey, topCol: Color.Lerp(grey, dark, 0.25f)); // an uneven, broken-off top
             mb.M = saved;
             mb.Ico(new Vector3(0.05f, 0.005f, 0.03f), 0.025f, new Vector3(1.2f, 0.4f, 1f), dark, 0.2f); // a stone at its foot

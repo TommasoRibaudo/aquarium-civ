@@ -63,9 +63,7 @@ namespace AquariumCiv.View.Tests
             Assert.LessOrEqual(Highest(s, 0), StoryScenes.Toes + 1e-4f, "on the toes, never more (the kid never climbs)");
             Assert.LessOrEqual(Highest(s, 4), StoryScenes.Toes + 1e-4f);
             Assert.IsFalse(s.parts[0].Any(p => p.carried), "never carried up");
-            var low = StoryScenes.LowFruit(Tree, 4, ToCam);
-            Assert.AreEqual(low.x, s.p0.x, 1e-4f); Assert.AreEqual(low.y, s.p1.x, 1e-4f, "the low fruit's height");
-            Assert.Less(low.y, 0.2f, "hangs within a kid's reach on the toes");
+            FruitFalls(s, 1f);
         }
 
         [Test]
@@ -90,6 +88,36 @@ namespace AquariumCiv.View.Tests
             var tip = s.tips.Single();
             Assert.Less(tip.grow, 1f, "the fruit gets smaller as it is eaten");
             Assert.LessOrEqual(Highest(s, 0), StoryScenes.Toes + 1e-4f, "never climbs");
+            FruitFalls(s, 1f);
+        }
+
+        /// <summary>The user's review: the fruit hangs up in the crown, out of reach; it lets go while the kid looks up, falls (never going up),
+        /// bounces once, lies at the kid's feet, and is picked up from there while the kid bends down (the hit), and is gone from the ground after.</summary>
+        static void FruitFalls(CampScene s, float lookFor)
+        {
+            var low = StoryScenes.LowFruit(Tree, 4, ToCam);
+            Assert.Greater(low.y, 0.2f, "it hangs in the crown, out of a kid's reach");
+            var look = s.parts[0].First(p => p.style == DollStyle.LookUp);
+            Assert.AreEqual(lookFor, look.Len, 1e-3f);
+            Assert.That(s.b, Is.InRange(look.from, look.to), "it lets go while the kid looks up");
+            Assert.IsTrue(StoryScenes.FruitNow(s, s.b - 0.05f, out var hang)); Assert.AreEqual(low.y, hang.y, 1e-4f, "hanging until then");
+            float landed = s.b + StoryScenes.FallFor + StoryScenes.BounceFor;
+            Assert.Less(landed, s.a, "it lies on the ground before it is picked up");
+            float prev = hang.y;
+            for (float u = s.b; u < s.b + StoryScenes.FallFor; u += 0.02f)
+            {
+                Assert.IsTrue(StoryScenes.FruitNow(s, u, out var f));
+                Assert.LessOrEqual(f.y, prev + 1e-4f, "it only falls"); prev = f.y;
+            }
+            Assert.IsTrue(StoryScenes.FruitNow(s, landed + 0.05f, out var lying));
+            Assert.AreEqual(StoryScenes.FruitR, lying.y, 1e-4f, "lying on the ground");
+            var under = s.parts[0].First(p => p.style == DollStyle.LookUp).pos;
+            Assert.Less((new Vector2(lying.x, lying.z) - under).magnitude, 0.07f, "at the kid's feet");
+            Assert.IsFalse(StoryScenes.FruitNow(s, s.a + 0.01f, out _), "picked up: in the hand, not on the ground");
+            var pick = s.parts[0].Single(p => p.pose != null && s.a > p.from && s.a < p.to);
+            var d = DollPose.Rest; pick.pose(ref d, s.a - pick.from - 0.25f, pick.Len);
+            Assert.Greater(d.lean, 20f, "bends down to it");
+            Assert.Less(d.squash, 0.9f);
         }
 
         [Test]
