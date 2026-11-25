@@ -122,8 +122,8 @@ namespace AquariumCiv.Tests
             var water = Enumerable.Range(0, EcoLand.N).Where(c => (EcoCover)e.cover[c] == EcoCover.Water || land.InBasin(c)).ToList(); // the pond and its hollow
             int far = -1;
             for (int c = 0; c < EcoLand.N && far < 0; c++)
-                if (!land.InBasin(c) && Terrain.InZ(SiteMap.CZc(c), 0.3f) && MathF.Abs(SiteMap.CXc(c)) < Terrain.HX - 0.3f
-                    && water.All(w => Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), SiteMap.CXc(w), SiteMap.CZc(w)) > 1.6f)) far = c;
+                if (!land.InBasin(c) && AquariumCiv.Sim.Settle.Terrain.InZ(SiteMap.CZc(c), 0.3f) && MathF.Abs(SiteMap.CXc(c)) < AquariumCiv.Sim.Settle.Terrain.HX - 0.3f
+                    && water.All(w => AquariumCiv.Sim.Settle.Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), SiteMap.CXc(w), SiteMap.CZc(w)) > 1.6f)) far = c;
             Assert.GreaterOrEqual(far, 0);
             sim.Mist(SiteMap.CXc(far), SiteMap.CZc(far), 2f);
             Assert.AreEqual(0, fed);
