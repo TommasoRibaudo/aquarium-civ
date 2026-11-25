@@ -21,6 +21,12 @@ namespace AquariumCiv.Sim
         public event Action<string> EcoMilestone;
         /// <summary>A gate opened: "camp" or "village".</summary>
         public event Action<string> EcoGateOpened;
+        /// <summary>#687: a stroke fed the pond (it fell on the water or the hollow round it) at (x, z): its share went down at once, and the pond's
+        /// level rose by the last argument (box height units; 0 when the table was still refilling under its peak or the month's soak
+        /// was already full). The view's cue for the splash and the edge rising a little.</summary>
+        public event Action<float, float, float> EcoPondFed;
+        /// <summary>#687: the pond's level rose (from, to): at a stroke that fed it, or at the monthly soak. The view eases its edge.</summary>
+        public event Action<float, float> EcoPondRose;
 
         public bool EcologyOn => State.eco != null && State.eco.on;
 
@@ -108,7 +114,9 @@ namespace AquariumCiv.Sim
             var s = State;
             int cal = CalendarMonth; // the land steps by the calendar, not the raw month (#603)
             int season = (cal / 3 + 3) % 4;
-            EcoM.Month(season, s.month); // the surface, every month: the wet area dries, shoots grow (#266, #271)
+            float level = e.pondLevel;
+            EcoM.Month(season, s.month); // the surface, every month: the wet area dries, shoots grow (#266, #271); the soak lands (#687)
+            if (e.pondLevel > level && level > -999f) EcoPondRose?.Invoke(level, e.pondLevel);
             if (EcoM.EarnLandscape((int)s.era, s.population, BuildingKinds()) > 0) // #726: the civ grew a step: more seed and bushes to plant
                 Chronicle("eco_pouch", "More seed came down from the sky, and a few young bushes with it. The people were glad.", 0.5f);
             if (cal % 3 == 0)
@@ -177,8 +185,11 @@ namespace AquariumCiv.Sim
             float amount = Math.Min(cfg.mistMaxAmount, seconds / cfg.mistSecondsPerUnit);
             var greened = new List<int>();
             float holdAmount = holdSeconds < 0f ? -1f : Math.Min(cfg.mistMaxAmount, holdSeconds / cfg.mistSecondsPerUnit);
+            float level = State.eco.pondLevel;
             EcoM.Mist(x, z, amount, State.month, greened, holdAmount);
             CountKeeperAction(KeeperAction.Mist, true);
+            if (EcoM.lastStrokeFedPond) EcoPondFed?.Invoke(x, z, EcoM.lastPondRise);
+            if (State.eco.pondLevel > level) EcoPondRose?.Invoke(level, State.eco.pondLevel);
             EcoTell();
             if (greened.Count > 0) EcoGreened?.Invoke(greened);
             return greened;

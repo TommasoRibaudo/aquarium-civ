@@ -144,6 +144,9 @@ namespace AquariumCiv.Sim.Eco
             int j0 = Math.Max(0, (int)((z - r - SiteMap.Z0) / SiteMap.Cell)), j1 = Math.Min(SiteMap.NZ - 1, (int)((z + r - SiteMap.Z0) / SiteMap.Cell));
             int nearGreen = 0;
             var bare = new List<(float d, int c)>();
+            bool pond = t.pondAnswers && st.pondLevel > -999f;
+            float wAll = 0f, wFed = 0f; // #687: the stroke's weight, and the part of it on the water or its shore
+            shore.Clear();
             for (int j = j0; j <= j1; j++)
                 for (int i = i0; i <= i1; i++)
                 {
@@ -152,6 +155,12 @@ namespace AquariumCiv.Sim.Eco
                     if (d > r) continue;
                     float f = 1f - d / r;
                     st.moisture[c] = MathF.Min(1f, st.moisture[c] + t.mistWet * amount * f);
+                    if (pond)
+                    {
+                        wAll += f;
+                        if (Cv(c) == EcoCover.Water) wFed += f;
+                        else if (land.InBasin(c)) { wFed += f; shore.Add(c); } // the hollow's ground drains to its pond
+                    }
                     if (Cv(c) == EcoCover.Water) continue;
                     st.watered[c] = MathF.Max(st.watered[c], t.wateredAt * MathF.Sqrt(f) * Terrain.Clamp01(0.5f + amount * 0.5f)); // #569: the ground remembers
                     st.wet[c] = MathF.Min(1f, MathF.Max(st.wet[c], t.mistShow * MathF.Sqrt(f) * Terrain.Clamp01(0.5f + amount * 0.5f)));
@@ -182,8 +191,42 @@ namespace AquariumCiv.Sim.Eco
                 }
             }
             st.humidity = MathF.Min(1f, st.humidity + t.mistAir * amount);
-            st.soaked += t.mistDeep * amount;
+            float deep = t.mistDeep * amount;
+            lastStrokeFedPond = wFed > 0f; lastPondRise = 0f;
+            if (lastStrokeFedPond)
+            {
+                deep -= AnswerStroke(deep * wFed / wAll);
+                greened?.RemoveAll(c => Cv(c) == EcoCover.Water); // a shore cell the risen water took is not green
+            }
+            st.soaked += deep;
             if (st.treeCell >= 0 && Terrain.Dist(SiteMap.CXc(st.treeCell), SiteMap.CZc(st.treeCell), x, z) < r * 0.5f) st.keeperMistings++;
+        }
+
+        readonly List<int> shore = new List<int>();
+
+        /// <summary>#687, the pond answers the stroke: a stroke that fell on the water or the hollow round it sends its share down now instead
+        /// of at the next months. <paramref name="deepFed"/> is the part of its deep water that fell there; the hollow's ground it wetted gives
+        /// the season's share of its excess now too. Both come out of the coming monthly soak (the shore's moisture is lower, the month's cap is
+        /// booked in <see cref="EcoState.soakTaken"/>), so it is the same water, sooner. Returns the deep water taken.</summary>
+        float AnswerStroke(float deepFed)
+        {
+            float room = SoakRoom;
+            if (room <= 0f) return 0f;
+            float take = MathF.Min(deepFed, room), from = take;
+            for (int k = 0; k < shore.Count && from < room; k++)
+            {
+                int c = shore[k];
+                float m = st.moisture[c];
+                if (m <= t.fieldCap) continue;
+                float sk = MathF.Min((m - t.fieldCap) * t.soakShare, room - from); // a season's share, the months it would have soaked in
+                st.moisture[c] = m - sk; from += sk;
+            }
+            st.soakTaken += from;
+            float before = st.pondLevel;
+            TableTakes(from, 0f);
+            Flood();
+            lastPondRise = st.pondLevel - before;
+            return take;
         }
 
         /// <summary>How far a mist reaches after being held this much (<paramref name="amount"/>: 1 = the lab's "spot", capped at
@@ -254,6 +297,7 @@ namespace AquariumCiv.Sim.Eco
                 }
                 sp[c] = MathF.Min(prog, 1f);
             }
+            SoakMonth(s); // #687: the soak reaches the table and the pond every month
         }
 
         /// <summary>The cells holding a puddle of at least <paramref name="minStrength"/>, strongest first (into <paramref name="into"/>).</summary>
@@ -451,24 +495,22 @@ namespace AquariumCiv.Sim.Eco
                 scratch[c] -= mv; scratch[low] += mv;
             }
             float soaked = st.soaked;
+            bool seasonal = !t.soakMonthly || st.soakMonths == 0; // #687: the months soaked already (a run stepped by seasons only soaks here)
             float dry = t.drySeason[s] * (1f - t.humidSlowsDrying * st.humidity);
             for (int c = 0; c < EcoLand.N; c++)
             {
                 float m = scratch[c];
-                if (m > t.fieldCap) { float sk = (m - t.fieldCap) * t.soakShare; m -= sk; soaked += sk; }
+                if (seasonal && m > t.fieldCap) { float sk = (m - t.fieldCap) * t.soakShare; m -= sk; soaked += sk; }
                 bool veg = Cv(c) != EcoCover.Bare;
                 m *= 1f - dry * (veg ? t.vegHolds : 1f);
                 moist[c] = Terrain.Clamp01(m);
             }
-            soaked = MathF.Min(soaked, t.soakCapPerSeason); // the soil takes only so much a season; the rest fogs the air
-            // The table: rises with what soaks down, a bigger pond takes more per unit, a little lost in summer.
-            st.table += soaked * t.tablePerSoak / (1f + st.cPond / t.tablePondDamp);
-            if (s == 1) st.table -= t.tableSummerLoss;
-            float cap = land.main.spill - 0.005f;
-            if (st.table > cap) st.table = cap;
-            st.tablePeak = MathF.Max(st.tablePeak, st.table);
-            st.table = MathF.Max(st.table, st.tablePeak - t.tableSwing); // never below what the box already has
-            st.pondLevel = MathF.Max(st.pondLevel, MathF.Min(st.tablePeak, cap));
+            if (seasonal)
+            {
+                soaked = MathF.Min(soaked, t.soakCapPerSeason - st.soakTaken); // the soil takes only so much a season; the rest fogs the air
+                // The table: rises with what soaks down, a bigger pond takes more per unit, a little lost in summer.
+                TableTakes(MathF.Max(0f, soaked), s == 1 ? t.tableSummerLoss : 0f);
+            }
             // The pond: basin cells under the level are water (an established pond never shrinks). Near the table, wet soil.
             for (int c = 0; c < EcoLand.N; c++)
             {
@@ -478,8 +520,65 @@ namespace AquariumCiv.Sim.Eco
                 if (depth < t.capillaryWet) moist[c] = MathF.Max(moist[c], t.fieldCap - 0.03f); // wet from below, but never soaks back (no loop)
                 else if (depth < t.capillaryDamp) moist[c] = MathF.Max(moist[c], 0.45f);
             }
-            st.soaked = 0f; // taken: what the Keeper's mist sends down counts once
+            if (seasonal) st.soaked = 0f; // taken: what the Keeper's mist sends down counts once
+            st.soakMonths = 0; st.soakTaken = 0f; // #687: a new season, a new cap
         }
+
+        /// <summary>The table takes <paramref name="soaked"/> (already capped) and loses <paramref name="loss"/>: a bigger pond takes more
+        /// per unit of rise; never above the spill, never below its peak less the swing; the pond's level follows the peak.</summary>
+        void TableTakes(float soaked, float loss)
+        {
+            st.soakedIn += soaked;
+            st.table += soaked * t.tablePerSoak / (1f + st.cPond / t.tablePondDamp);
+            st.table -= loss;
+            float cap = land.main.spill - 0.005f;
+            if (st.table > cap) st.table = cap;
+            st.tablePeak = MathF.Max(st.tablePeak, st.table);
+            st.table = MathF.Max(st.table, st.tablePeak - t.tableSwing); // never below what the box already has
+            st.pondLevel = MathF.Max(st.pondLevel, MathF.Min(st.tablePeak, cap));
+        }
+
+        /// <summary>#687: the hollow's cells under the pond's level are water (between season steps: the monthly soak, a stroke's answer).</summary>
+        void Flood()
+        {
+            if (st.pondLevel <= -999f) return;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                float h = land.height[c];
+                if (land.InBasin(c) && h < st.pondLevel && h < land.fill[c]) { st.cover[c] = (byte)EcoCover.Water; st.moisture[c] = 1f; }
+            }
+        }
+
+        /// <summary>#687: what the table can still take before the coming month's soak: the season's cap in thirds, a month's third
+        /// left unused carried on to the next month of the season (the old seasonal step: the whole cap).</summary>
+        float SoakRoom => MathF.Max(0f, (t.soakMonthly ? t.soakCapPerSeason * MathF.Min(3, st.soakMonths + 1) / 3f : t.soakCapPerSeason) - st.soakTaken);
+
+        /// <summary>#687: one game month of the soak. The soil above field capacity (the pond's own cells too, as the season's soak
+        /// took them) gives <see cref="EcoTuning.soakShareMonth"/> of its excess; with what the mist sent down this month it reaches
+        /// the table now, within the season's cap taken a third a month (what a stroke's answer took counts); summer loses a third of its
+        /// loss a month. The season step then only drains and dries.</summary>
+        void SoakMonth(int s)
+        {
+            if (!t.soakMonthly) return;
+            var moist = st.moisture;
+            float soaked = st.soaked;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                float m = moist[c];
+                if (m > t.fieldCap) { float sk = (m - t.fieldCap) * t.soakShareMonth; moist[c] = m - sk; soaked += sk; }
+            }
+            soaked = MathF.Min(soaked, SoakRoom);
+            st.soakTaken += soaked;
+            TableTakes(soaked, s == 1 ? t.tableSummerLoss / 3f : 0f);
+            Flood();
+            st.soaked = 0f;
+            st.soakMonths++;
+        }
+
+        /// <summary>#687: how much the pond's level rose at the last stroke (0 when the stroke did not feed the pond, or the table
+        /// was still refilling under its peak), and whether that stroke fed it at all.</summary>
+        public float lastPondRise;
+        public bool lastStrokeFedPond;
 
         void Air()
         {
