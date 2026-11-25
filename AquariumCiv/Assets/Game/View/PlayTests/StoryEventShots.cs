@@ -285,6 +285,7 @@ namespace AquariumCiv.View.PlayTests
             var e = LineOf(id);
             Assert.IsNotNull(e, ev + ": its line");
             var sc = SceneOf(use);
+            Debug.Log($"[722 shots] {ev}: beats a {sc.a:0.0} b {sc.b:0.0} c {sc.c:0.0} d {sc.d:0.0} of {sc.Length:0.0} s; starts " + string.Join(" ", System.Linq.Enumerable.Select(sc.parts, l => l.Count > 0 ? $"{l[0].from:0.0}-{l[0].to:0.0}" : "-")));
             Debug.Log($"[722 shots] {ev}: line \"{e.text}\"; cast {string.Join(",", sc.keys)}; season {LifeClock.SeasonOf(pv.Now.day)}, snow {SeasonLook.Snow:0.00}");
             foreach (int k in named(e)) Assert.Contains(k, sc.keys, $"{ev}: {Sim.FindNotable(k)?.name ?? k.ToString()}, whom the line names, is in the scene");
             Assert.AreEqual(e.text, StoryMoment.LastCaption, ev + ": the caption says the line");
