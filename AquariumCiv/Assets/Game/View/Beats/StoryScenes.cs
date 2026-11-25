@@ -297,6 +297,8 @@ namespace AquariumCiv.View
         public const float RollFrom = 0.6f;
         /// <summary>The heave: the rollers bend for <see cref="HeaveBend"/> s, then the stone tips up on its foot over <see cref="HeaveLift"/> s.</summary>
         public const float HeaveBend = 0.45f, HeaveLift = 1.3f;
+        /// <summary>The longest the rollers take to reach the stone: from further they hurry [est].</summary>
+        public const float ApproachFor = 3.5f;
 
         /// <summary>The rolled stone's section (box units: the runestone's width and depth at the props' scale) and its length.</summary>
         public static float StoneW => 2f * ConsequenceMeshes.StoneHalfX * ConsequenceMeshes.Scale;
@@ -462,14 +464,19 @@ namespace AquariumCiv.View
             // behind it, both hands on its side, spread along its length
             Vector2 Push(Vector2 foot, int i) => foot - dir * Behind + len * (StoneLen * (rollers.Length == 1 ? 0.5f : i == 0 ? 0.3f : 0.72f));
             // to the stone at the camp's edge
-            var walks = new float[rollers.Length];
-            walks[0] = WalkTime(whoAt, Push(from, 0), Walk);
-            if (mh >= 0) walks[1] = WalkTime(helperAt, Push(from, 1), Walk);
+            // from across the camp they hurry, so the stone doesn't wait long in the held camera (the review: 9 s of a still stone)
+            var walks = new float[rollers.Length]; var speeds = new float[rollers.Length];
+            var ats = mh >= 0 ? new[] { whoAt, helperAt } : new[] { whoAt };
+            for (int i = 0; i < rollers.Length; i++)
+            {
+                speeds[i] = Mathf.Max(Walk, (Push(from, i) - ats[i]).magnitude / ApproachFor);
+                walks[i] = WalkTime(ats[i], Push(from, i), speeds[i]);
+            }
             float t = 0f;
             foreach (float w in walks) t = Mathf.Max(t, w);
             for (int i = 0; i < rollers.Length; i++)
             {
-                s.Part(rollers[i], 0f, walks[i], Push(from, i), Push(from, i) + dir, DollStyle.Stand, null, PropKind.None, Walk);
+                s.Part(rollers[i], 0f, walks[i], Push(from, i), Push(from, i) + dir, DollStyle.Stand, null, PropKind.None, speeds[i]);
                 if (walks[i] < t) s.Part(rollers[i], walks[i], t, Push(from, i), Push(from, i) + dir, DollStyle.Stand);
                 s.Part(rollers[i], t, t + 0.5f, Push(from, i), Push(from, i) + dir, DollStyle.Stand, Brace);
             }
