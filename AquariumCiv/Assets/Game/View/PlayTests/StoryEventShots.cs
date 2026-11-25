@@ -179,10 +179,13 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>Films while <paramref name="playing"/>: the camera frames <paramref name="cast"/> (their middle, all of them in the frame; the
         /// <paramref name="fallback"/> spot when none is drawn), a frame every <see cref="FrameEvery"/> s of game time (f000, f001, ...), at most
         /// <paramref name="max"/> s. The frames filmed.</summary>
-        IEnumerator Film(string ev, Func<bool> playing, Func<IEnumerable<int>> cast, Func<Vector2?> fallback, float max, List<int> frames)
+        /// <summary>How far from a held scene's thing its staged spots still count for the still frame [est].</summary>
+        const float HoldReach = 0.7f;
+
+        IEnumerator Film(string ev, Func<bool> playing, Func<IEnumerable<int>> cast, Func<Vector2?> fallback, float max, List<int> frames, List<Vector2> hold = null)
         {
             int f = 0; float t = 0f, next = 0f, px = 0f, lo = float.MaxValue, hi = 0f;
-            List<Vector2> Pts() { var p = Spots(cast()); if (p.Count == 0 && fallback() is Vector2 fb) p.Add(fb); return p; }
+            List<Vector2> Pts() { if (hold != null) return hold; var p = Spots(cast()); if (p.Count == 0 && fallback() is Vector2 fb) p.Add(fb); return p; }
             var last = Pts();
             for (int settle = 0; settle < 10 && last.Count > 0; settle++) { px = Frame(last, settle == 0); yield return null; } // the zoom lands first
             while (t < max && playing())
@@ -286,7 +289,15 @@ namespace AquariumCiv.View.PlayTests
             foreach (int k in named(e)) Assert.Contains(k, sc.keys, $"{ev}: {Sim.FindNotable(k)?.name ?? k.ToString()}, whom the line names, is in the scene");
             Assert.AreEqual(e.text, StoryMoment.LastCaption, ev + ": the caption says the line");
             var frames = new List<int>();
-            yield return Film(ev, () => pv.Camp.Playing(use), CastOf(sc), () => pv.Camp.FocusNow(), MaxScene, frames);
+            // a scene that holds the game's camera on its thing (holdFocus) is filmed the same way: one still frame round the spots it stages
+            // near the thing, not chasing whoever walks in from across the camp (the user: the stone's camera wandered)
+            List<Vector2> hold = null;
+            if (sc.holdFocus)
+            {
+                hold = new List<Vector2> { sc.focus };
+                foreach (var l in sc.parts) foreach (var pt in l) if ((pt.pos - sc.focus).magnitude < HoldReach) hold.Add(pt.pos);
+            }
+            yield return Film(ev, () => pv.Camp.Playing(use), CastOf(sc), () => pv.Camp.FocusNow(), MaxScene, frames, hold);
             Assert.IsFalse(pv.Camp.Playing(use), ev + ": the scene ends");
             Assert.Greater(frames[0], 4, ev + ": frames of the scene");
             yield return new WaitForSecondsRealtime(1f);

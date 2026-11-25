@@ -292,7 +292,7 @@ namespace AquariumCiv.View
         // ================================================================== B78.c the second stone
         /// <summary>B78.c: the roll's pace (box units a second; the stone turns a quarter each 0.8 s), the pushers' lean, how far behind the stone
         /// they push, how long the heave takes, and how far the kids keep from the roll.</summary>
-        public const float QuarterEvery = 0.8f, PushLean = 25f, Behind = 0.155f, HeaveFor = 2.2f, KidsBack = 0.3f;
+        public const float QuarterEvery = 0.8f, PushLean = 25f, Behind = 0.125f, HeaveFor = 2.2f, KidsBack = 0.3f;
         /// <summary>How far from the stone's spot the roll starts (the camp's edge) [est].</summary>
         public const float RollFrom = 0.6f;
         /// <summary>The heave: the rollers bend for <see cref="HeaveBend"/> s, then the stone tips up on its foot over <see cref="HeaveLift"/> s.</summary>
