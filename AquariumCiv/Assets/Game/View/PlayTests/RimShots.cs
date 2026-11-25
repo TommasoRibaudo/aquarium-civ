@@ -125,6 +125,47 @@ namespace AquariumCiv.View.PlayTests
             File.WriteAllText(Shots + Dir + "log.txt", log.ToString());
         }
 
+        /// <summary>#708 (the user 2026-11-25: "the water level just stops horizontally on the left"): the pond's section through the glass
+        /// at a small phone, from the default camera and closer, by day in summer and in winter. The section must slope down from the bank,
+        /// no straight cut at its end: at the bank the foot is within 1 cm of the water line. Shots to Temp/agent/708b/.</summary>
+        [UnityTest, Timeout(900000), Category("Basin708")]
+        public IEnumerator BasinSection()
+        {
+            const string Dir = "708b/";
+            Directory.CreateDirectory(Shots + Dir);
+            GameClock.EcologyPref = true;
+            yield return OpenSlice(750, 1334, seed: 4242);
+            GameUiPanel.AcceptInputUnfocused(true);
+            ShowMeDirector.BubblesOn = false;
+            PeopleView.DebugSetHour(12f);
+            foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f), (0.8f, -0.9f) }) EcoDebug.MistBig(x, z);
+            EcoDebug.SkipSeasons(1);
+            yield return new WaitForSecondsRealtime(1f);
+            var box = Object.FindAnyObjectByType<BoxView>();
+            EcoDebug.WaterBreaksNow();
+            yield return new WaitForSecondsRealtime(12f);
+            PondIce.Force = false;
+            float y = box.DebugWaterMesh.vertices.Max(v => v.y); // the water line (the sheet's top)
+            Assert.Greater(BoxView.WallFoot(y - 0.002f, y, 0f), y - 0.01f, "at the bank the section is a sliver, not a cut");
+            Assert.Less(BoxView.WallFoot(y - 0.002f, y, BoxView.BankRamp), y - BoxView.BasinBelow + 0.001f, "away from the bank it is the full basin");
+            var cells = WaterCells(box);
+            var glass = cells.OrderBy(p => Mathf.Min(Land.HX - Mathf.Abs(p.x), Land.GlassGapZ(p.y))).First();
+            var edge = glass;
+            if (Land.HX - Mathf.Abs(glass.x) < Land.GlassGapZ(glass.y)) edge.x = Mathf.Sign(glass.x) * (Land.HX - 0.02f); else edge.y = Land.CZ + Mathf.Sign(glass.y - Land.CZ) * (Land.HZ - 0.02f);
+            float yaw = Rig.Home.yaw;
+            for (int season = 0; season < 2; season++)
+            {
+                string tag = season == 0 ? "summer" : "winter";
+                if (season == 1) { for (int i = 0; i < 4 && SeasonLook.Word(Sim.State.month) != "Winter"; i++) EcoDebug.SkipToNextSeason(); PondIce.Force = false; yield return new WaitForSecondsRealtime(2f); }
+                else { for (int i = 0; i < 4 && SeasonLook.Word(Sim.State.month) != "Summer"; i++) EcoDebug.SkipToNextSeason(); yield return new WaitForSecondsRealtime(2f); }
+                PeopleView.DebugSetHour(12f);
+                Rig.GoHome(0.01f); yield return new WaitForSecondsRealtime(1.5f); yield return Shot(Dir + tag + "_default");
+                yield return Frame(box, edge, yaw, 30f, 0.22f); yield return new WaitForSecondsRealtime(0.5f); yield return Shot(Dir + tag + "_side");
+                yield return Frame(box, edge, yaw, 18f, 0.12f); yield return new WaitForSecondsRealtime(0.5f); yield return Shot(Dir + tag + "_low");
+            }
+            PondIce.Force = null;
+        }
+
         /// <summary>#701 round 2: the pond at the nearest pane from the walkthrough's camera and the default view, with each renderer toggled off in turn.</summary>
         [UnityTest, Timeout(900000), Category("Rim701b")]
         public IEnumerator GlassShots()
