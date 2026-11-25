@@ -360,22 +360,40 @@ namespace AquariumCiv.View
         /// <summary>One cell's face of the pond against a pane: its top edge at the water level, its foot on the soil cut's top,
         /// lighter at the top and deeper below, drawn facing out (to the eye behind the glass). <paramref name="a"/>/<paramref name="b"/>
         /// are the points on the land's edge (their height gives the foot); the wall stands at <paramref name="glassAt"/> on its axis.</summary>
+        /// <summary>#708 (the user 2026-11-15: "the deeper basin after the deeper box"): where the pond meets a pane, the water's section seen
+        /// through the glass reaches <see cref="BasinBelow"/> under the pond's floor there (view only: the sim's pond is as it was), tapering
+        /// to the old 3 cm where the bank comes up to the water line, so no water hangs under the dry bank. The fish swim down into it.</summary>
+        public const float BasinBelow = 0.16f, SiltBand = 0.012f;
+        public static float WallFoot(float ground, float y)
+        {
+            float under = Mathf.Clamp01((y - ground) / 0.01f); // 0 at the water line, full a centimetre below it (the bank stays dry above)
+            return Mathf.Min(ground - Mathf.Lerp(0.03f, BasinBelow, under), y - 0.01f);
+        }
+
         void WaterWall(MeshBuilder mb, Vector2 a, Vector2 b, float glassAt, Vector3 outward, float y, LandColors co)
         {
             bool alongX = outward.x != 0f;
             Vector3 P(Vector2 q, float h) => alongX ? new Vector3(glassAt, h, q.y) : new Vector3(q.x, h, glassAt);
             // The foot sits just under the soil cut's top so no gap shows between the ground and the wall.
-            float ha = land.Height(a.x, a.y) - 0.03f, hb = land.Height(b.x, b.y) - 0.03f;
-            if (ha >= y && hb >= y) return;
-            ha = Mathf.Min(ha, y - 0.01f); hb = Mathf.Min(hb, y - 0.01f);
+            float ga = land.Height(a.x, a.y), gb = land.Height(b.x, b.y);
+            if (ga >= y && gb >= y) return;
+            float ha = WallFoot(ga, y), hb = WallFoot(gb, y);
             var top = Color.Lerp(co.water, Color.white, 0.12f);
-            var da = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01((y - ha) / 0.3f));
-            var db = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01((y - hb) / 0.3f));
-            Vector3 fa = P(a, ha), fb = P(b, hb), ta = P(a, y), tb = P(b, y);
+            // #708: a deeper section darkens slower, so it still reads as water near the floor (at most 55 % of the deep colour)
+            var da = Color.Lerp(co.water, co.waterDeep, 0.55f * Mathf.Clamp01((y - ha) / 0.25f));
+            var db = Color.Lerp(co.water, co.waterDeep, 0.55f * Mathf.Clamp01((y - hb) / 0.25f));
+            // #708 (the deeper basin): the floor of the section is a band of silt over the soil, so the water's bottom reads
+            float sa = Mathf.Min(ha + SiltBand, y - 0.005f), sb = Mathf.Min(hb + SiltBand, y - 0.005f);
+            var silt = Color.Lerp(co.waterDeep, co.pondBed, 0.55f);
+            Vector3 fa = P(a, sa), fb = P(b, sb), ta = P(a, y), tb = P(b, y), ua = P(a, ha), ub = P(b, hb);
             // Front faces are the ones whose cross product points at the viewer (as QuadUp has it).
-            if (Vector3.Dot(Vector3.Cross(ta - fa, tb - fa), outward) > 0f) { mb.TriC(fa, ta, tb, da, top, top); mb.TriC(fa, tb, fb, da, top, db); }
-            else { mb.TriC(fa, tb, ta, da, top, top); mb.TriC(fa, fb, tb, da, db, top); }
+            bool front = Vector3.Dot(Vector3.Cross(ta - fa, tb - fa), outward) > 0f;
+            float emWas = mb.emission; mb.emission = SectionLight; // #708: the side face catches little light; a little of its own so it reads as water
+            if (front) { mb.TriC(fa, ta, tb, da, top, top); mb.TriC(fa, tb, fb, da, top, db); mb.TriC(ua, fa, fb, silt, silt, silt); mb.TriC(ua, fb, ub, silt, silt, silt); }
+            else { mb.TriC(fa, tb, ta, da, top, top); mb.TriC(fa, fb, tb, da, db, top); mb.TriC(ua, fb, fa, silt, silt, silt); mb.TriC(ua, ub, fb, silt, silt, silt); }
+            mb.emission = emWas;
         }
+        const float SectionLight = 0.35f;
 
         /// <summary>The meshes as drawn, for the tests and the shots (#269, #270).</summary>
         public Mesh DebugWaterMesh => waterFilter != null ? waterFilter.sharedMesh : null;
