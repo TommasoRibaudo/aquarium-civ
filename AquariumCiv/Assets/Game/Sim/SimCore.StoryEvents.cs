@@ -219,8 +219,15 @@ namespace AquariumCiv.Sim
             who = DebugPick(State.notables.Where(n => n.alive && n.age >= AdultAge).OrderBy(n => Math.Abs(n.age - 28f)).ThenBy(n => n.id), who);
             if (who == null) return null;
             var list = State.consequenceProps ??= new List<ConsequenceProp>();
-            // beside the first stone, on the side away from the pond's middle [est]
+            // beside the first stone, on the side away from the pond's middle [est]; away from the Keeper's tree when it stands near, so the tree
+            // doesn't hide the new stone and its cut (the review of the clip)
             float side = first.x >= 0f ? 1f : -1f;
+            var e = State.eco;
+            if (EcologyOn && e != null && e.treeCell >= 0 && e.treeCell < AquariumCiv.Sim.Eco.EcoLand.N)
+            {
+                float tx = Settle.SiteMap.CXc(e.treeCell), tz = Settle.SiteMap.CZc(e.treeCell);
+                if ((tx - first.x) * (tx - first.x) + (tz - first.z) * (tz - first.z) < 0.8f * 0.8f) side = tx <= first.x ? 1f : -1f;
+            }
             var p = new ConsequenceProp
             {
                 id = list.Count == 0 ? 1 : list.Max(x => x.id) + 1, dilemmaId = 991000, option = 0, kind = ConsequenceKind.NameStone,
