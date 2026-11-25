@@ -504,6 +504,10 @@ namespace AquariumCiv.View
             "The ground is bare. When it greens, maybe something we can eat will grow.",
             "Nothing grows here yet. We wait for the green.",
         };
+        /// <summary>#722 shots: the land lines say the ground is bare, so they are said only while most of it is (<see cref="BareLandShare"/>); on
+        /// a land that has greened with nothing to eat in it yet, the line that is true there.</summary>
+        public static readonly string[] HungryGreenLines = { HungryJarLines[0] };
+        public const float BareLandShare = 0.5f;
         /// <summary>Real seconds into a visit before the hunger line (so it never lands on the return's own beats).</summary>
         public const float HungerLineAfter = 6f;
         public int HungerLinesSaid { get; private set; }
@@ -520,7 +524,7 @@ namespace AquariumCiv.View
             if (sim == null || !sim.NewStartOn || !sim.Hungry || sim.LandGivesFood) return null;
             var thicket = AquariumCiv.Sim.Eco.LifeSpecies.Thicket;
             if (sim.LifeIsPlaced(thicket)) return null;
-            var lines = sim.JarReady(thicket) ? HungryJarLines : HungryLandLines;
+            var lines = sim.JarReady(thicket) ? HungryJarLines : sim.EcologyOn && sim.EcoBareShare < BareLandShare ? HungryGreenLines : HungryLandLines;
             return lines[(sim.State.seed & int.MaxValue) % lines.Length];
         }
 

@@ -155,6 +155,7 @@ namespace AquariumCiv.View
             try { e = sim.DebugStory(id, out why); }
             finally { sim.DebugCastable = null; }
             if (e == null) return "not now: " + why + skipped;
+            if (id == StoryEvent.AntlersPassed) UnityEngine.Object.FindAnyObjectByType<BoxView>()?.Refresh(); // a second home may have gone up for the new door
             var m = sim.MomentOfEntry(e.id);
             if (m == null) return $"{e.text} | {pv.Camp.Force(CampLife.UseOfStory(id))}{skipped}{dry}";
             skipped += dry;

@@ -409,6 +409,7 @@ namespace AquariumCiv.Sim
             {
                 var nu = AddNotable(AdultAge + 3f + i, -1, null);
                 nu.job = ChooseJob(nu, null); // a cheat's grown-up (no line of their own)
+                State.population++;
             }
             free = Unwed();
             var ready = free.Where(DebugOk).ToList();

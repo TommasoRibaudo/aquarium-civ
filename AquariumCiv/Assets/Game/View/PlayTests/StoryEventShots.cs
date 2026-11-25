@@ -26,7 +26,7 @@ namespace AquariumCiv.View.PlayTests
     {
         const int W = 750, H = 1334;
         /// <summary>Seconds of game time between two frames, and the person's height on screen the camera eases to (px).</summary>
-        const float FrameEvery = 0.5f, DollPx = 80f, Pitch = 36f;
+        const float FrameEvery = 0.5f, DollPx = 80f, MinPx = 60f, MaxPx = 100f, Pitch = 36f;
         /// <summary>The longest any scene is filmed (s): B78.c, the longest story scene, is ~45 s.</summary>
         const float MaxScene = 100f;
 
@@ -72,12 +72,14 @@ namespace AquariumCiv.View.PlayTests
             EcoDebug.SkipSeasons(4); // the grass grows in, the newcomers find work
             if (pond) Debug.Log("[722 shots] " + EcoDebug.WaterBreaksNow());
             sim.DebugGrowFarWood();
+            if (!sim.WoodpileStands) Debug.Log("[722 shots] " + NewStartView.DebugFirstWildWoodNow()); // a lived camp has reached its first wild wood
             sim.MarkFirstWildWoodSeen();
             if (!sim.StockSetDown) sim.SetDownStock();
             sim.DebugFireStage(2);
             UnityEngine.Object.FindAnyObjectByType<BoxView>().Rebuild();
             Debug.Log("[722 shots] " + CampCheats.GrowTree());
             if (kids > 0) sim.DebugAddKids(kids, 7f);
+            sim.State.food = Mathf.Max(sim.State.food, 4f * sim.State.notables.Count(n => n.alive)); // a lived camp eats (a hungry one says the new start's hunger line)
             CampLife.OnlyCheats = true; // a clip shows its one scene: no natural use starts over it
             // the skips leave staged moments (a wedding, a new chief, the newborns) holding people: end them until none comes for 2 s
             for (int calm = 0, f = 0; calm < 120 && f < 1500; f++) { calm = HeldMomentStage.DebugEndPlaying() == 0 ? calm + 1 : 0; yield return null; }
@@ -85,8 +87,10 @@ namespace AquariumCiv.View.PlayTests
             PeopleView.DebugSetHour(hour);
             yield return new WaitForSecondsRealtime(2f);
             int people = sim.State.notables.Count(n => n.alive);
-            Debug.Log($"[722 shots] box: era {sim.State.era}, {LifeClock.SeasonOf(sim.State.month)}, people {people}, meadow {sim.EcoMeadowShare:0.00}, pond cells {sim.EcoPondCells}, tree stage {sim.EcoTree.stage}");
+            Debug.Log($"[722 shots] box: era {sim.State.era}, {LifeClock.SeasonOf(sim.State.month)}, people {people} (counted {sim.State.population}), food {sim.State.food:0}, bare {sim.EcoBareShare:0.00}, meadow {sim.EcoMeadowShare:0.00}, pond cells {sim.EcoPondCells}, tree stage {sim.EcoTree.stage}");
             Assert.GreaterOrEqual(people, 8, "a lived-in camp (8-12 people)");
+            if (sim.State.population < people) { Debug.Log($"[722 shots] the count was {sim.State.population} (the season skips' crowd deaths): {people}"); sim.State.population = people; }
+            Assert.IsNull(NewStartView.HungerLineFor(sim), "a lived camp isn't hungry");
             Assert.AreEqual(Era.Camp, sim.State.era);
         }
 
@@ -106,22 +110,62 @@ namespace AquariumCiv.View.PlayTests
             return Mathf.Abs(b.y - a.y);
         }
 
-        /// <summary>One frame of the follow: the camera's target eases to <paramref name="at"/> (a snap on the first), the zoom to a person
-        /// ~<see cref="DollPx"/> tall there. Returns that height now.</summary>
-        static float Aim(Vector2 at, bool snap)
+        /// <summary>One frame of the framing: the camera's target eases to the middle of <paramref name="pts"/> (a snap on the first), and the
+        /// zoom to the one that holds them all with a margin (inside the middle 80 % across, 70 % up and down), a person ~<see cref="DollPx"/>
+        /// tall when they are close together, never under <see cref="MinPx"/> or over <see cref="MaxPx"/>. Returns the person's height now.</summary>
+        static float Frame(IReadOnlyList<Vector2> pts, bool snap)
         {
-            var rig = Rig; var box = Box;
+            var rig = Rig; var box = Box; var cam = Camera.main;
             rig.CancelFlight();
             rig.minZoom = 0.03f;
-            var w = box.Root.TransformPoint(new Vector3(at.x, box.SurfaceHeight(at.x, at.y) + 0.06f, at.y));
-            rig.target = snap ? w : Vector3.Lerp(rig.target, w, 0.12f);
+            var c = Vector2.zero; foreach (var p in pts) c += p; c /= Mathf.Max(1, pts.Count);
+            var w = box.Root.TransformPoint(new Vector3(c.x, box.SurfaceHeight(c.x, c.y) + 0.06f, c.y));
+            rig.target = snap ? w : Vector3.Lerp(rig.target, w, 0.1f);
             rig.pitch = Pitch;
             rig.Apply();
-            float px = PersonPx(rig, box, at);
-            if (px > 1f) rig.zoom = Mathf.Clamp(rig.zoom * Mathf.Clamp(px / DollPx, snap ? 0.5f : 0.9f, snap ? 2f : 1.12f), 0.03f, rig.maxZoom);
+            float px = PersonPx(rig, box, c);
+            if (px <= 1f) return px;
+            float h = CampFrame.DollHeight * CameraReach.DollScale(rig.zoom, PeopleView.DollScaleAmount);
+            float ex = 0f, ey = 0f;
+            foreach (var p in pts)
+            {
+                float y = box.SurfaceHeight(p.x, p.y);
+                foreach (float up in new[] { 0f, h })
+                {
+                    var v = cam.WorldToViewportPoint(box.Root.TransformPoint(new Vector3(p.x, y + up, p.y)));
+                    ex = Mathf.Max(ex, Mathf.Abs(v.x - 0.5f) * 2f); ey = Mathf.Max(ey, Mathf.Abs(v.y - 0.5f) * 2f);
+                }
+            }
+            float z = rig.zoom;
+            float fit = z * Mathf.Max(ex / 0.8f, ey / 0.7f), near = z * px / DollPx; // a zoom further out holds more, a person smaller
+            float want = Mathf.Clamp(Mathf.Max(fit, near), z * px / MaxPx, z * px / MinPx);
+            rig.zoom = Mathf.Clamp(snap ? want : Mathf.Lerp(z, want, 0.12f), 0.03f, rig.maxZoom);
             rig.Apply();
-            return PersonPx(rig, box, at);
+            return PersonPx(rig, box, c);
         }
+
+        static float Aim(Vector2 at, bool snap) => Frame(new[] { at }, snap);
+
+        /// <summary>Where the drawn ones of <paramref name="keys"/> stand now.</summary>
+        static List<Vector2> Spots(IEnumerable<int> keys)
+        {
+            var r = new List<Vector2>();
+            if (keys == null) return r;
+            foreach (int k in keys.Distinct()) if (Where(k, out var p)) r.Add(p);
+            return r;
+        }
+
+        /// <summary>A camp scene's cast to frame: its members a part holds now (the ones still in it), else all its members.</summary>
+        static Func<IEnumerable<int>> CastOf(CampScene sc) => () =>
+        {
+            var pv = Pv;
+            var on = sc.keys.Where(k => pv != null && pv.Camp.Cued(k)).ToList();
+            return on.Count > 0 ? on : sc.keys;
+        };
+
+        /// <summary>A staged moment's cast: its plan's members, the named ones (the couple, the leader) first.</summary>
+        static Func<IEnumerable<int>> CastOf(HeldMomentScene sc, params int[] named) => () =>
+            named.Length > 0 ? named.Where(k => k >= 0) : sc.plan.members.Select(m => m.key);
 
         static string Dir(string ev) => $"722/{ev}";
 
@@ -132,24 +176,30 @@ namespace AquariumCiv.View.PlayTests
             try { if (Directory.Exists(d)) Directory.Delete(d, true); } catch (Exception e) { Debug.LogWarning("[722 shots] " + e.Message); }
         }
 
-        /// <summary>Films while <paramref name="playing"/>: the camera follows <paramref name="focus"/>, a frame every <see cref="FrameEvery"/> s
-        /// of game time (f000, f001, ...), at most <paramref name="max"/> s. The frames filmed.</summary>
-        IEnumerator Film(string ev, Func<bool> playing, Func<Vector2?> focus, float max, List<int> frames)
+        /// <summary>Films while <paramref name="playing"/>: the camera frames <paramref name="cast"/> (their middle, all of them in the frame; the
+        /// <paramref name="fallback"/> spot when none is drawn), a frame every <see cref="FrameEvery"/> s of game time (f000, f001, ...), at most
+        /// <paramref name="max"/> s. The frames filmed.</summary>
+        IEnumerator Film(string ev, Func<bool> playing, Func<IEnumerable<int>> cast, Func<Vector2?> fallback, float max, List<int> frames)
         {
-            int f = 0; float t = 0f, next = 0f, px = 0f; bool snap = true;
-            Vector2 last = Vector2.zero;
-            for (int settle = 0; settle < 8 && focus() is Vector2 s0; settle++) { px = Aim(s0, settle == 0); yield return null; } // the zoom lands first
-            snap = false;
+            int f = 0; float t = 0f, next = 0f, px = 0f, lo = float.MaxValue, hi = 0f;
+            List<Vector2> Pts() { var p = Spots(cast()); if (p.Count == 0 && fallback() is Vector2 fb) p.Add(fb); return p; }
+            var last = Pts();
+            for (int settle = 0; settle < 10 && last.Count > 0; settle++) { px = Frame(last, settle == 0); yield return null; } // the zoom lands first
             while (t < max && playing())
             {
-                if (focus() is Vector2 at) last = at;
-                px = Aim(last, snap);
-                if (t >= next - 1e-4f) { yield return Shot($"{Dir(ev)}/f{f:000}"); f++; next += FrameEvery; }
+                var now = Pts();
+                if (now.Count > 0) last = now;
+                if (last.Count > 0) px = Frame(last, false);
+                if (t >= next - 1e-4f)
+                {
+                    yield return Shot($"{Dir(ev)}/f{f:000}");
+                    f++; next += FrameEvery; lo = Mathf.Min(lo, px); hi = Mathf.Max(hi, px);
+                }
                 else yield return null;
                 t += Time.deltaTime;
             }
             frames.Add(f);
-            Debug.Log($"[722 shots] {ev}: {f} frames over {t:0.0} s, a person {px:0} px tall");
+            Debug.Log($"[722 shots] {ev}: {f} frames over {t:0.0} s, a person {lo:0}-{hi:0} px tall, framing {last.Count}");
         }
 
         /// <summary>The "after" still: the camera on <paramref name="spot"/> (eased in over ~1.5 s), then the shot.</summary>
@@ -193,6 +243,16 @@ namespace AquariumCiv.View.PlayTests
         static Vector2? Door(int id) => DeerHuntStage.DoorSpot(Sim, id, out var at) ? at : (Vector2?)null;
         static Vector2? Person(int id) => Where(id, out var at) ? at : (Vector2?)null;
 
+        /// <summary>The setup's thing (a choice's prop of <paramref name="kind"/>) is drawn in the box, so a scene at it can be cast (bounded).</summary>
+        static IEnumerator UntilThing(string kind)
+        {
+            var sim = Sim; var pv = Pv;
+            var p = sim.State.consequenceProps?.FirstOrDefault(x => x.kind == kind && x.placed);
+            Assert.IsNotNull(p, kind + " is placed");
+            yield return Until(() => pv.Camp.PropStands(p.id), 8f);
+            Assert.IsTrue(pv.Camp.PropStands(p.id), kind + " stands in the box");
+        }
+
         static ChronicleEntry LineOf(string id) => Sim.State.chronicle.LastOrDefault(x => x.kind == StoryEvent.Kind(id));
 
         static CampScene SceneOf(CampUse use) => Pv.Camp.Scenes.LastOrDefault(s => s.use == use);
@@ -205,11 +265,12 @@ namespace AquariumCiv.View.PlayTests
         /// <paramref name="before"/> (what stays, for the still) and the after still at <paramref name="left"/>.
         /// </summary>
         IEnumerator Story(string ev, string id, CampUse use, float hour, Action setup, Func<ChronicleEntry, int[]> named, Func<Vector2?> left,
-            bool pond = false, Action before = null)
+            bool pond = false, Action before = null, string thing = null)
         {
             Fresh(ev);
             yield return LivedCamp(hour, pond);
             setup?.Invoke();
+            if (thing != null) yield return UntilThing(thing);
             yield return new WaitForSecondsRealtime(1.5f);
             int started = StoryMoment.Started;
             string r = StoryMoment.DebugPlayNow(id);
@@ -225,7 +286,7 @@ namespace AquariumCiv.View.PlayTests
             foreach (int k in named(e)) Assert.Contains(k, sc.keys, $"{ev}: {Sim.FindNotable(k)?.name ?? k.ToString()}, whom the line names, is in the scene");
             Assert.AreEqual(e.text, StoryMoment.LastCaption, ev + ": the caption says the line");
             var frames = new List<int>();
-            yield return Film(ev, () => pv.Camp.Playing(use), () => pv.Camp.FocusNow(), MaxScene, frames);
+            yield return Film(ev, () => pv.Camp.Playing(use), CastOf(sc), () => pv.Camp.FocusNow(), MaxScene, frames);
             Assert.IsFalse(pv.Camp.Playing(use), ev + ": the scene ends");
             Assert.Greater(frames[0], 4, ev + ": frames of the scene");
             yield return new WaitForSecondsRealtime(1f);
@@ -257,7 +318,7 @@ namespace AquariumCiv.View.PlayTests
             var stone = sim?.FirstNameStone;
             if (stone != null) stone.dueMonth = sim.State.month - 1; // a death after the stone stood
             Debug.Log("[722 shots] " + ConsequenceCheats.OneMoreDeath());
-        }, Named, () => PropSpot(Sim.StoryMarks.secondStoneId));
+        }, Named, () => PropSpot(Sim.StoryMarks.secondStoneId), thing: ConsequenceKind.NameStone);
 
         /// <summary>B80.a: the Keeper's child handed their work's tool at the fire. After: the child with the tool.</summary>
         [UnityTest, Timeout(600000)]
@@ -285,12 +346,12 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>B80.e: the ring of flowers at the name stone. After: the flowers.</summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator B80e_GardenerFlowers() => Story("b80e-gardener", StoryEvent.GardenerFlowers, CampUse.GardenerFlowers, 10f,
-            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone)), Named, () => PropSpot(Sim.StoryMarks.flowersStoneId));
+            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone)), Named, () => PropSpot(Sim.StoryMarks.flowersStoneId), thing: ConsequenceKind.NameStone);
 
         /// <summary>B80.f: the joker's grin on the woodpile, two kids peek. After: the face log.</summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator B80f_JokerFace() => Story("b80f-joker", StoryEvent.JokerFace, CampUse.JokerFace, 10f,
-            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof)), Named, () => PropSpot(Sim.StoryMarks.faceLogPropId));
+            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof)), Named, () => PropSpot(Sim.StoryMarks.faceLogPropId), thing: ConsequenceKind.WoodpileRoof);
 
         /// <summary>B80.g in a dry spell: the bucket from the pond to the Keeper's tree, the others look up for rain. After: the tree.</summary>
         [UnityTest, Timeout(600000)]
@@ -306,11 +367,13 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>A life use: a lived-in camp, the event it follows played through by its cheat (unfilmed), the view at
         /// <paramref name="hour"/>, then the use's cheat, filmed to its end, and an after still on its thing.</summary>
         IEnumerator Life(string ev, CampUse use, float hour, string after, Action setup, Func<string> cheat, Func<Vector2?> thing, bool pond = false,
-            Func<int> named = null)
+            Func<int> named = null, string prop = null)
         {
             Fresh(ev);
             yield return LivedCamp(hour, pond);
             setup?.Invoke();
+            if (prop != null) yield return UntilThing(prop); // the stone or the woodpile drawn before its event's scene is cast at it
+            yield return new WaitForSecondsRealtime(1f);
             var pv = Pv;
             if (after != null)
             {
@@ -333,7 +396,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.Greater(sc.keys.Count, 0, ev + ": someone plays it");
             if (named != null && named() is int n && n >= 0 && pv.Camp.CanCastNow(n)) Assert.Contains(n, sc.keys, $"{ev}: {Sim.FindNotable(n)?.name}, who keeps it, plays it");
             var frames = new List<int>();
-            yield return Film(ev, () => pv.Camp.Playing(use), () => pv.Camp.FocusNow(), MaxScene, frames);
+            yield return Film(ev, () => pv.Camp.Playing(use), CastOf(sc), () => pv.Camp.FocusNow(), MaxScene, frames);
             Assert.Greater(frames[0], 2, ev + ": frames of the use");
             yield return new WaitForSecondsRealtime(0.5f);
             yield return After(ev, thing());
@@ -349,12 +412,12 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>B80.e's morning water on the gardener's flowers.</summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator B80e_FlowerWater() => Life("b80e-flower-water", CampUse.FlowerWater, 8f, StoryEvent.GardenerFlowers,
-            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone)), CampCheats.FlowerWater, () => PropSpot(Sim.StoryMarks.flowersStoneId));
+            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone)), CampCheats.FlowerWater, () => PropSpot(Sim.StoryMarks.flowersStoneId), prop: ConsequenceKind.NameStone);
 
         /// <summary>B80.f's life use: a kid pats the face log as they pass.</summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator B80f_FacePat() => Life("b80f-face-pat", CampUse.FacePat, 11f, StoryEvent.JokerFace,
-            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof)), CampCheats.FacePat, () => PropSpot(Sim.StoryMarks.faceLogPropId));
+            () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof)), CampCheats.FacePat, () => PropSpot(Sim.StoryMarks.faceLogPropId), prop: ConsequenceKind.WoodpileRoof);
 
         /// <summary>B80.g's evening repeat in a later dry spell: the waterer's bucket from the pond to the Keeper's tree (the pond is the spec's: the
         /// bucket is dipped at its edge, so the box has one).</summary>
@@ -378,7 +441,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsNotNull(d, "the ask is open");
             var frames = new List<int>();
             float t0 = Time.time;
-            yield return Film(ev, () => Time.time - t0 < 6f, () => Middle(d.PersonOf(0), d.PersonOf(1)) ?? Fire(), 6f, frames);
+            yield return Film(ev, () => Time.time - t0 < 6f, () => new[] { d.PersonOf(0), d.PersonOf(1) }, Fire, 6f, frames);
             Assert.IsTrue(sim.AnswerDilemma(d.id, 1, DilemmaPath.Card), "answered");
             GameClock.DilemmaAnswered(d);
             check?.Invoke(sim);
@@ -422,7 +485,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsFalse(r.StartsWith("nothing started"), r);
             Assert.AreEqual($"{RitualKind.Caption(ritual)}: {name}", StagedMoments.LastCaption, "the song's name on the ritual's caption");
             var pv = Pv; var frames = new List<int>();
-            yield return Film(ev, () => StagedMoments.Playing > 0, () => pv.Camp.FocusNow() ?? Fire(), MaxScene, frames);
+            var rs = StagedMoments.LastScene;
+            yield return Film(ev, () => StagedMoments.Playing > 0, CastOf(rs), Fire, MaxScene, frames);
             CloseSlice();
         }
 
@@ -437,7 +501,8 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log("[722 shots] singer-song: " + r);
             Assert.IsTrue(Sim.StoryHappened(StoryEvent.SingerSong), r);
             var pv = Pv; var frames = new List<int>(); float t0 = Time.time;
-            yield return Film(ev, () => StagedMoments.Playing > 0 && Time.time - t0 < 10f, () => pv.Camp.FocusNow() ?? Fire(), 10f, frames);
+            var rs = StagedMoments.LastScene;
+            yield return Film(ev, () => StagedMoments.Playing > 0 && Time.time - t0 < 10f, CastOf(rs, Sim.StoryMarks.songOwnerId), Fire, 10f, frames);
             CloseSlice();
         }
 
@@ -455,7 +520,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(song.text, StagedMoments.LastCaption, "the song's line is the ritual's caption");
             Assert.Greater(StagedMoments.Playing, 0, "the ritual plays");
             var pv = Pv; var frames = new List<int>();
-            yield return Film(ev, () => StagedMoments.Playing > 0, () => Middle(song.notableId) ?? pv.Camp.FocusNow() ?? Fire(), MaxScene, frames);
+            var rs = StagedMoments.LastScene;
+            yield return Film(ev, () => StagedMoments.Playing > 0, CastOf(rs), Fire, MaxScene, frames);
             Assert.Greater(frames[0], 4, "frames of the ritual");
             CloseSlice();
         }
@@ -480,7 +546,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsNotNull(sc.plan.Member(e.notableId), "the Keeper's child is in the wedding");
             Assert.IsNotNull(sc.plan.Member(e.otherNotableId), "and the one they marry");
             var frames = new List<int>();
-            yield return Film(ev, () => StagedMoments.Playing > 0, () => Middle(e.notableId, e.otherNotableId) ?? Fire(), MaxScene, frames);
+            yield return Film(ev, () => StagedMoments.Playing > 0, CastOf(sc, e.notableId, e.otherNotableId), Fire, MaxScene, frames);
             Assert.Greater(frames[0], 4, "frames of the wedding");
             CloseSlice();
         }

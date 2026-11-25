@@ -250,15 +250,17 @@ namespace AquariumCiv.Sim
                 {
                     if (!KeeperTreeGrown) { why = "the Keeper's tree isn't grown"; break; }
                     var adults = State.notables.Where(n => n.alive && n.age >= AdultAge).OrderBy(n => n.id).ToList();
-                    // a couple the view can cast now first (a cheat), else any couple, else two grown-ups
-                    var a = adults.FirstOrDefault(n => DebugOk(n) && DebugOk(Alive(n.partnerId))) ?? adults.FirstOrDefault(n => Alive(n.partnerId) != null);
+                    // a cheat: a couple the view can cast and the planner walk now, else two such grown-ups (a couple out of reach can't walk to
+                    // the tree: "the couple isn't free"); in play order: any couple, else two grown-ups
+                    var a = adults.FirstOrDefault(n => DebugOk(n) && DebugOk(Alive(n.partnerId)));
                     var b = a != null ? Alive(a.partnerId) : null;
-                    if (a == null)
+                    if (a == null && DebugCastable != null)
                     {
-                        var free = adults.Where(DebugOk).ToList();
-                        if (free.Count < 2) free = adults;
-                        a = free.ElementAtOrDefault(0); b = free.ElementAtOrDefault(1);
+                        var ready = adults.Where(DebugOk).ToList();
+                        if (ready.Count >= 2) { a = ready[0]; b = ready[1]; }
                     }
+                    if (a == null) { a = adults.FirstOrDefault(n => Alive(n.partnerId) != null); b = a != null ? Alive(a.partnerId) : null; }
+                    if (a == null) { a = adults.ElementAtOrDefault(0); b = adults.ElementAtOrDefault(1); }
                     if (a == null || b == null) { why = "two grown-ups needed"; break; }
                     MarksAfterWedding(a, b);
                     e = State.chronicle.LastOrDefault(x => x.kind == StoryEvent.Kind(StoryEvent.TwoMarks) || x.kind == "story_marks_year");

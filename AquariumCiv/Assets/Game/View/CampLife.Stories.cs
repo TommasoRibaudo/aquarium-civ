@@ -95,6 +95,9 @@ namespace AquariumCiv.View
 
         bool Castable(IReadOnlyList<PersonActivity> acts, int k, bool force) => k > 0 && Shown(acts, k) && (force || FreeKey(acts, k));
 
+        /// <summary>Tests: this choice's thing (a consequence prop) is drawn in the box now, so a scene at it can be cast.</summary>
+        public bool PropStands(int id) => id >= 0 && PropById(id, out _);
+
         /// <summary>#722 cheats: a cheat's scene can cast this person now (drawn, not held by a tent or a hunt; a camp use they are in is cut by
         /// <see cref="CutForCheat"/>). The sim's picks prefer them (<see cref="SimCore.DebugCastable"/>).</summary>
         public bool CanCastNow(int key) => pv != null && key > 0 && At(key).HasValue && !Tied(pv.Activities, key);

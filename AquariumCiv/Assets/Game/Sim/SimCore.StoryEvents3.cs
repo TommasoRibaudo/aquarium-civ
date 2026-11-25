@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using AquariumCiv.Sim.Settle;
 
 namespace AquariumCiv.Sim
 {
@@ -222,6 +223,23 @@ namespace AquariumCiv.Sim
             return pick;
         }
 
+        /// <summary>Debug (the antlers' cheat): <paramref name="n"/>'s household gets a home of its own: a new tent (a home in the camp) is put
+        /// up and given to them. False when no home could be placed.</summary>
+        bool DebugOwnHome(Notable n)
+        {
+            var st = Settlement;
+            if (st == null || n == null) return false;
+            var mine = st.HomeOf(n);
+            DebugBuild(BuildingType.Hut);
+            Lot fresh = null;
+            foreach (var l in st.Homes()) if (!ReferenceEquals(l, mine) && !State.settle.homes.Exists(h => h.lot == l.id) && (fresh == null || l.id > fresh.id)) fresh = l;
+            if (fresh == null) return false;
+            int head = st.HouseholdHead(n).id;
+            int i = State.settle.homes.FindIndex(h => h.head == head);
+            if (i >= 0) State.settle.homes[i].lot = fresh.id; else State.settle.homes.Add(new HomeAssign { head = head, lot = fresh.id });
+            return true;
+        }
+
         /// <summary>Debug: a batch-3 event happens now, its gate eased where a cheat must (a trait given, the antlers hung, the seat passed, the
         /// grass dried, the season). The line, or null and why. Its mark is forgotten first so the cheat can play it again.</summary>
         ChronicleEntry DebugStory3(string id, out string why)
@@ -244,9 +262,15 @@ namespace AquariumCiv.Sim
                     var old0 = Alive(m.antlersAtId) ?? Alive(seat.holderId) ?? adults.FirstOrDefault();
                     var old = !cheat ? old0 : new[] { old0 }.Concat(adults).Where(n => n != null).OrderByDescending(n => DebugOk(n) && Home(n)).ThenByDescending(DebugOk).FirstOrDefault();
                     bool OtherHome(Notable n) => Home(n) && !ReferenceEquals(home.HomeOf(n), home.HomeOf(old));
-                    var nu = adults.Where(n => n != old).OrderByDescending(n => RoleOf(n) == null).ThenByDescending(n => !cheat || OtherHome(n)).ThenByDescending(DebugOk)
+                    var nu = adults.Where(n => n != old).OrderByDescending(n => RoleOf(n) == null).ThenByDescending(n => !cheat || n.partnerId != old.id && old.partnerId != n.id).ThenByDescending(n => !cheat || OtherHome(n)).ThenByDescending(DebugOk)
                         .ThenByDescending(n => n.age < Config.retireAge).ThenBy(n => n.id).FirstOrDefault();
                     if (old == null || nu == null) { why = "two grown-ups needed"; return null; }
+                    if (cheat && home != null && (!Home(old) || !OtherHome(nu))) // the gate made true: the two doors are two homes
+                    {
+                        if (!Home(old)) DebugOwnHome(old);
+                        if (!OtherHome(nu)) DebugOwnHome(nu);
+                        if (!Home(old) || !OtherHome(nu)) { why = "no room for a second home (the antlers go door to door)"; return null; }
+                    }
                     if (seat.holderId != old.id) { if (seat.holderId >= 0) Vacate(seat); Assign(seat, old); }
                     m.antlersAtId = old.id;
                     // the seat passes now, with no role line: the cheat plays the antlers alone (in play they follow the new-leader moment)

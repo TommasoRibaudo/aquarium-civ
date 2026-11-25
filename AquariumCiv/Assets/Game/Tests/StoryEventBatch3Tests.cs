@@ -353,6 +353,33 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(MomentKind.Story, sim.MomentOfEntry(e.id)?.kind);
         }
 
+        /// <summary>1.4's cheat makes its gate true: the antlers go from one door to another, so the old and the new chief live in two homes (a
+        /// tent goes up for one if they shared one: "one home: the antlers stay").</summary>
+        [Test]
+        public void TheAntlersCheat_TheTwoChiefsHaveTwoHomes()
+        {
+            var sim = Camp(46);
+            Assume.That(sim.Settlement, Is.Not.Null, "a settlement");
+            sim.DebugCastable = n => true;
+            var e = sim.DebugStory(StoryEvent.AntlersPassed, out string why);
+            sim.DebugCastable = null;
+            Assert.IsNotNull(e, why);
+            var nu = sim.FindNotable(e.notableId); var old = sim.FindNotable(e.otherNotableId);
+            var a = sim.Settlement.HomeOf(old); var b = sim.Settlement.HomeOf(nu);
+            Assert.IsNotNull(a, "the old chief has a home"); Assert.IsNotNull(b, "the new chief has a home");
+            Assert.AreNotSame(a, b, "two homes, two doors");
+        }
+
+        /// <summary>The cheats' people are counted: the box's header says as many people as are drawn.</summary>
+        [Test]
+        public void PeopleACheatAdds_AreCounted()
+        {
+            var sim = Camp(47, 0);
+            int before = sim.State.population;
+            Assert.AreEqual(3, sim.DebugAddKids(3, 8f));
+            Assert.AreEqual(before + 3, sim.State.population);
+        }
+
         /// <summary>5.2's cheat makes its gate true: with fewer than two unwed grown-ups a grown-up joins, and the wedding is told.</summary>
         [Test]
         public void TheWeddingCheat_WithEveryoneWed_StillMarries()

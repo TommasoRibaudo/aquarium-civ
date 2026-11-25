@@ -384,6 +384,7 @@ namespace AquariumCiv.Sim
                 Chronicle("birth", $"{child.FullName} came to live with {parent.FullName}.", 0.2f, child.id);
                 made++;
             }
+            State.population += made; // #722 shots: the people counted are the people drawn (the header said 5 with 11 in the box)
             return made;
         }
 
