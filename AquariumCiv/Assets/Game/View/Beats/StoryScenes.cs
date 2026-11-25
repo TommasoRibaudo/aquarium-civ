@@ -45,11 +45,14 @@ namespace AquariumCiv.View
         public static Vector3 LowFruit(Vector2 tree, int stage, Vector2 dir)
         {
             var p = tree + Unit(dir, Vector2.down) * HangOut(stage);
-            return new Vector3(p.x, HangY(stage) - 0.04f, p.y); // dangling just under the leaves
+            return new Vector3(p.x, FallFromY(stage), p.y);
         }
 
         /// <summary>How high the fruits hang on a crown of <paramref name="stage"/> (the first of <see cref="TreeFruit"/>'s ring).</summary>
         public static float HangY(int stage) => TreeFruit(Vector2.zero, stage, 0).y;
+
+        /// <summary>The fruit that falls hangs a little lower than the crown's ring: dangling just under the leaves.</summary>
+        public static float FallFromY(int stage) => HangY(stage) - 0.04f;
 
         /// <summary>Where it lands: on the ground just in front of the kid's feet, toward the trunk.</summary>
         public static Vector2 FruitLands(Vector2 under, Vector2 tree) => under + Dir(under, tree, Vector2.up) * 0.045f;
@@ -61,7 +64,7 @@ namespace AquariumCiv.View
         {
             at = default;
             if (u >= s.a) return false;
-            float hang = HangY(s.kind);
+            float hang = FallFromY(s.kind);
             if (u < s.b) { at = new Vector3(s.p0.x, hang, s.p0.y); return true; }
             float f = (u - s.b) / FallFor;
             if (f < 1f) { var h = Vector2.Lerp(s.p0, s.p1, f); at = new Vector3(h.x, Mathf.Lerp(hang, FruitR, f * f), h.y); return true; }
