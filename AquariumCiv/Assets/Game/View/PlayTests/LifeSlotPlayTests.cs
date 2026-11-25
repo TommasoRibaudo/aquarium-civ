@@ -28,7 +28,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         /// <summary>A living box with a meadow, after the first run, at 10 h, with nothing on screen.</summary>
-        IEnumerator LivingMeadow(int w = 1179, int h = 2556, bool mist = true)
+        IEnumerator LivingMeadow(int w = 1179, int h = 2556, bool mist = true, bool tree = true)
         {
             UseLivingLand(true);
             GameUiPanel.AcceptInputUnfocused(true);
@@ -38,7 +38,7 @@ namespace AquariumCiv.View.PlayTests
             PeopleView.DebugSetHour(10f);
             if (mist) foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f), (0.8f, -0.9f) }) EcoDebug.MistBig(x, z);
             // 2026-11-14: seed, then bushes: the thicket's jar opens only once the Keeper's tree is in the ground
-            if (mist && Sim.CanPlantTree) Assert.IsTrue(Sim.PlantTree(Sim.EcoGround.campX + 0.9f, Sim.EcoGround.campZ), "the seed goes in by the camp");
+            if (mist && tree && Sim.CanPlantTree) Assert.IsTrue(Sim.PlantTree(Sim.EcoGround.campX + 0.9f, Sim.EcoGround.campZ), "the seed goes in by the camp");
             yield return Frames(10);
         }
 
@@ -345,7 +345,9 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(600000)]
         public IEnumerator JarOpens_OneToast_KitDotPulses_WiggleEachVisit()
         {
-            yield return LivingMeadow();
+            // No tree: with the Keeper's tree in, the land can open the thicket's jar by itself during setup, and then the cheat
+            // below found it already open (it failed in some batch runs). Without the tree only the cheat opens it.
+            yield return LivingMeadow(tree: false);
             var hud = GameHud.Instance;
             yield return Frames(10);
             int toasts0 = hud.ReadyToasts, wiggles0 = hud.LifeWiggles;
