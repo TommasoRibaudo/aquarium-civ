@@ -145,7 +145,7 @@ namespace AquariumCiv.View.PlayTests
             EcoDebug.WaterBreaksNow();
             yield return new WaitForSecondsRealtime(12f);
             PondIce.Force = false;
-            float y = Sim.State.eco.waterY;
+            float y = box.DebugWaterMesh.vertices.Max(v => v.y); // the water line (the sheet's top)
             Assert.Greater(BoxView.WallFoot(y - 0.002f, y, 0f), y - 0.01f, "at the bank the section is a sliver, not a cut");
             Assert.Less(BoxView.WallFoot(y - 0.002f, y, BoxView.BankRamp), y - BoxView.BasinBelow + 0.001f, "away from the bank it is the full basin");
             var cells = WaterCells(box);
