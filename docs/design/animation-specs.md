@@ -2636,3 +2636,24 @@ Answered 2026-11-15 (decisions.md "Batch 3 approvals"). Added with S-ritual (app
     4 grown-ups in the camp and village; the whole town behind the priest.
 15. **The unpicked evening teller** (B76): give the eldest's winter story the slow manner's gestures too, or keep `Speech`?
     My pick: keep `Speech`.
+
+## B78. New events (#722): the first three, for sign-off (2026-11-24)
+
+Draft specs for the three events suggested first in `docs/design/new-events.md` (§1.1–1.3). Each one is staged by
+CampLife (a `CampScene`, like the rituals' uses). Each gets a cheat and an AnimLab clip, and is built only after the user
+picks it. Every number is [est] until the clip.
+
+| # | Who · when · how often | Beats | Props · reuse | Cheat |
+|---|---|---|---|---|
+| B78.a The tree's first fruit | the nearest free kid, a summer day once the Keeper's tree is grown; **once** a box | the kid stops under the tree and looks up (`LookUp`, 1 s); goes up on their toes (+0.02 u, arms x 150) and picks the one red fruit (`Pick`, `hit` → the fruit leaves the branch); runs to the fire holding it up (both arms x 150, `KidRun`); at the fire it goes round: each grown-up there bends and takes a bite (`Nod`, 0.6 s each), the last bite to the youngest. Reads: a kid holding up something red, people leaning in to it | `Fruit` (new: a red sphere 0.018 u, a leaf); R `LookUp`, `Pick`, B75.b's held-high run | **"Tree: first fruit"** |
+| B78.b Two marks on the tree | the newly-weds, the dusk after a wedding while the tree is grown; **once** per couple, up to 8 pairs | the couple walk to the tree side by side; one cuts a short mark at hand height (arm x 70, the `Knife`, three small strokes → `hit` each, a `Chip` puff); the other cuts one beside it; they step back together and look at the two marks (`Stand`, 1.5 s); kids watch from a step back (`Peek`). Reads: two people at the trunk with a small knife, then two pale notches | `TreeMark` (new: a pale notch 0.012 × 0.004 u on the bark, a pair per couple, stacked); R the knife and the strokes from the name cut (#693) | **"Tree: a couple's marks"** |
+| B78.c The second stone | two grown-ups and the family of the one lost, when the name stone is full (nine names) and a tenth is due; **once** | two grown-ups roll a rough stone in from the camp's edge (both push, lean 25°, the stone turns a quarter each 0.8 s, `Push`); they stand it upright beside the first (a heave, `Lift`, the stone `Jolt`s up); the cutter cuts the new name (the runestone's cut, #693 `NameCut`); the family stands round with heads down (`Mourn`, as B32.a). Reads: a stone rolled in, set up, a name cut | `Runestone` (the #693 runestone, a second one, a different seed); R `NameCut`, `Push`, B32.a's mourners | **"Stone: fill it"** |
+
+**Assets needed:**
+- `Fruit` and `TreeMark`: built in code in the house style.
+- The second stone: the existing runestone mesh with another seed.
+
+**Kids safe:**
+- the fruit is picked from the ground, never by climbing;
+- the knife stays with the grown-ups;
+- the stone is rolled only by grown-ups, with the kids kept back 0.3 u.
