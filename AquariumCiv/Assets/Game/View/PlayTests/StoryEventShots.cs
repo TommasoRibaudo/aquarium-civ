@@ -386,6 +386,36 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsEmpty(fails, string.Join(" | ", fails));
         }
 
+        /// <summary>The #722 tester's run: in one lived-in camp (a pond, natural uses on) every event's cheat in turn, each scene to its end,
+        /// the first snow last. Each must start (or its cheat say why not, for a gate the box lacks), and the first snow must still cast a kid
+        /// (the tester: after the others it never did).</summary>
+        [UnityTest, Timeout(1800000)]
+        public IEnumerator LivedCamp_AllInTurn_SnowLast()
+        {
+            yield return LivedCamp(10f, pond: true);
+            CampLife.OnlyCheats = false;
+            yield return new WaitForSecondsRealtime(10f);
+            var sim = Sim;
+            Debug.Log("[722 turn] " + CampCheats.OnlyThing(ConsequenceKind.NameStone));
+            var stone = sim.FirstNameStone; if (stone != null) stone.dueMonth = sim.State.month - 1;
+            Debug.Log("[722 turn] " + ConsequenceCheats.OneMoreDeath());
+            yield return UntilThing(ConsequenceKind.NameStone);
+            foreach (string id in StoryEvent.All)
+            {
+                if (id == StoryEvent.FirstSnow || id == StoryEvent.SingerSong) continue;
+                int started = StoryMoment.Started;
+                Debug.Log($"[722 turn] {id}: {StoryMoment.DebugPlayNow(id)}");
+                yield return Until(() => StoryMoment.Started > started, 20f);
+                if (StoryMoment.Started == started) { Debug.Log($"[722 turn] {id} did not start: {StoryMoment.LastWhy}"); continue; }
+                yield return Until(() => sim.PlayingMoments().Count == 0, MaxScene);
+                yield return new WaitForSecondsRealtime(2f);
+            }
+            int before = StoryMoment.Started;
+            Debug.Log("[722 turn] snow: " + StoryMoment.DebugPlayNow(StoryEvent.FirstSnow));
+            yield return Until(() => StoryMoment.Started > before, 20f);
+            Assert.Greater(StoryMoment.Started, before, "the first snow after the others: " + StoryMoment.LastWhy);
+        }
+
         /// <summary>B80.a: the Keeper's child handed their work's tool at the fire. After: the child with the tool.</summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator B80a_KeeperChildGrown()
