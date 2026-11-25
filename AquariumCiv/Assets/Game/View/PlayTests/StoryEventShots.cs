@@ -400,20 +400,24 @@ namespace AquariumCiv.View.PlayTests
             var stone = sim.FirstNameStone; if (stone != null) stone.dueMonth = sim.State.month - 1;
             Debug.Log("[722 turn] " + ConsequenceCheats.OneMoreDeath());
             yield return UntilThing(ConsequenceKind.NameStone);
+            var fails = new List<string>();
             foreach (string id in StoryEvent.All)
             {
                 if (id == StoryEvent.FirstSnow || id == StoryEvent.SingerSong) continue;
                 int started = StoryMoment.Started;
-                Debug.Log($"[722 turn] {id}: {StoryMoment.DebugPlayNow(id)}");
+                string r = StoryMoment.DebugPlayNow(id);
+                Debug.Log($"[722 turn] {id}: {r}");
+                if (r.StartsWith("not now")) continue; // a gate this box lacks (the cheat says which step comes first)
                 yield return Until(() => StoryMoment.Started > started, 20f);
-                if (StoryMoment.Started == started) { Debug.Log($"[722 turn] {id} did not start: {StoryMoment.LastWhy}"); continue; }
+                if (StoryMoment.Started == started) { fails.Add($"{id}: {StoryMoment.LastWhy}"); continue; }
                 yield return Until(() => sim.PlayingMoments().Count == 0, MaxScene);
                 yield return new WaitForSecondsRealtime(2f);
             }
             int before = StoryMoment.Started;
             Debug.Log("[722 turn] snow: " + StoryMoment.DebugPlayNow(StoryEvent.FirstSnow));
             yield return Until(() => StoryMoment.Started > before, 20f);
-            Assert.Greater(StoryMoment.Started, before, "the first snow after the others: " + StoryMoment.LastWhy);
+            if (StoryMoment.Started == before) fails.Add("first_snow (last): " + StoryMoment.LastWhy);
+            Assert.IsEmpty(fails, "every queued story starts in an ordinary box: " + string.Join(" | ", fails));
         }
 
         /// <summary>B80.a: the Keeper's child handed their work's tool at the fire. After: the child with the tool.</summary>

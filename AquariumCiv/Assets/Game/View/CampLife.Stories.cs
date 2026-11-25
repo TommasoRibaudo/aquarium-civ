@@ -71,7 +71,13 @@ namespace AquariumCiv.View
             int before = scenes.Count;
             string why;
             forcing = true;
-            try { why = TryStory(use, m.personA, m.personB, m.cheat); }
+            try
+            {
+                why = TryStory(use, m.personA, m.personB, m.cheat);
+                // #722 tester: in an ordinary box everyone may be in a camp use (the kids at play), and a story's cast never takes them from
+                // one: the story outranks the camp's everyday uses, so they end (their people go back to their plans) and it is cast again
+                if ((why != null || scenes.Count == before) && CutForCheat() > 0) why = TryStory(use, m.personA, m.personB, m.cheat);
+            }
             finally { forcing = false; }
             if (why != null || scenes.Count == before) { LastStoryWhy = why ?? "not cast"; return null; }
             var sc = scenes[^1];
