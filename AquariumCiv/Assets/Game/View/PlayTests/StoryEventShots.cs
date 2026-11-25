@@ -196,12 +196,12 @@ namespace AquariumCiv.View.PlayTests
                 if (t >= next - 1e-4f)
                 {
                     yield return Shot($"{Dir(ev)}/f{f:000}");
-                    f++; next += FrameEvery; lo = Mathf.Min(lo, px); hi = Mathf.Max(hi, px);
+                    f++; next += every; lo = Mathf.Min(lo, px); hi = Mathf.Max(hi, px);
                 }
                 else yield return null;
                 t += Time.deltaTime;
             }
-            frames.Add(f);
+            frames.Add(f); every = FrameEvery;
             Debug.Log($"[722 shots] {ev}: {f} frames over {t:0.0} s, a person {lo:0}-{hi:0} px tall, framing {last.Count}");
         }
 
@@ -314,8 +314,13 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>B78.a in summer: the kid the line names picks the fruit and it goes round. After: the fruit every summer after the first
         /// (that summer's one was picked, so the still shows the next summers' look: CampLife.CheatFruit).</summary>
         [UnityTest, Timeout(600000)]
-        public IEnumerator B78a_FirstFruit() => Story("b78a-first-fruit", StoryEvent.FirstFruit, CampUse.FirstFruit, 10f, null, Named, TreeSpot,
-            before: () => CampLife.CheatFruit = true);
+        public IEnumerator B78a_FirstFruit() => Fast(0.15f, () => Story("b78a-first-fruit", StoryEvent.FirstFruit, CampUse.FirstFruit, 10f, null, Named, TreeSpot,
+            before: () => CampLife.CheatFruit = true));
+
+        /// <summary>The frame interval of the next clip (the fruit's fall is 0.45 s: those clips film every 0.15 s); back to
+        /// <see cref="FrameEvery"/> after each clip.</summary>
+        static float every = FrameEvery;
+        static IEnumerator Fast(float e, Func<IEnumerator> clip) { every = e; return clip(); }
 
         /// <summary>B78.b toward dusk: the couple cut their marks. After: the two notches on the trunk.</summary>
         [UnityTest, Timeout(600000)]
@@ -334,7 +339,11 @@ namespace AquariumCiv.View.PlayTests
         {
             var sim = Sim; var e = sim.State.eco; var a = sim.FirstNameStone; var b = sim.FindConsequenceProp(sim.StoryMarks.secondStoneId);
             Debug.Log($"[722 shots] b78c places: first ({a?.x:0.00}, {a?.z:0.00}), second ({b?.x:0.00}, {b?.z:0.00}), eco {sim.EcologyOn}, tree cell {e?.treeCell} at ({(e != null && e.treeCell >= 0 ? AquariumCiv.Sim.Settle.SiteMap.CXc(e.treeCell) : 0f):0.00}, {(e != null && e.treeCell >= 0 ? AquariumCiv.Sim.Settle.SiteMap.CZc(e.treeCell) : 0f):0.00}), tree spot {TreeSpot()}");
-            return PropSpot(sim.StoryMarks.secondStoneId);
+            var stands = PropSpot(sim.StoryMarks.secondStoneId);
+            Assert.IsTrue(Pv.Camp.StoneRaisedAt.HasValue, "the scene raised it");
+            Assert.IsTrue(ConsequencePropsView.Instance.DrawnSpot(sim.StoryMarks.secondStoneId, out var drawn), "it stands");
+            Assert.Less((drawn - Pv.Camp.StoneRaisedAt.Value).magnitude, 0.01f, $"it stands where it was raised (the user: it slid aside once up): raised {Pv.Camp.StoneRaisedAt.Value}, drawn {drawn}, saved {stands}");
+            return stands;
         }, thing: ConsequenceKind.NameStone);
 
         /// <summary>B80.a: the Keeper's child handed their work's tool at the fire. After: the child with the tool.</summary>
@@ -423,8 +432,8 @@ namespace AquariumCiv.View.PlayTests
 
         /// <summary>The fruit's life use: a summer day after the first fruit, a kid picks one from the tree.</summary>
         [UnityTest, Timeout(600000)]
-        public IEnumerator FruitPick() => Life("fruit-pick", CampUse.FruitPick, 11f, null,
-            () => Debug.Log("[722 shots] " + StoryMoment.ReadyForCheat(Sim, Pv, Season.Summer, false, 11f)), CampCheats.FruitPick, TreeSpot);
+        public IEnumerator FruitPick() => Fast(0.15f, () => Life("fruit-pick", CampUse.FruitPick, 11f, null,
+            () => Debug.Log("[722 shots] " + StoryMoment.ReadyForCheat(Sim, Pv, Season.Summer, false, 11f)), CampCheats.FruitPick, TreeSpot));
 
         /// <summary>B80.e's morning water on the gardener's flowers.</summary>
         [UnityTest, Timeout(600000)]

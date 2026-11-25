@@ -714,6 +714,9 @@ namespace AquariumCiv.View
         /// <summary>#722 (B78.c): things not drawn at their spot for now (the second stone while it is rolled in and stood up: CampLife draws it
         /// in the rollers' hands). CampLife.Stories sets it each frame.</summary>
         public static readonly HashSet<int> HeldBack = new();
+        /// <summary>#722: where a fire prop is drawn (the camp's spot for it, off its saved spot when that one is taken), or false before it
+        /// has one.</summary>
+        public bool DrawnSpot(int id, out Vector2 at) => settledSpot.TryGetValue(id, out at);
 
         sealed class Made { public Transform t; public Mesh mesh; public string kind; public float yaw; public Vector3 at; }
 
@@ -1011,11 +1014,6 @@ namespace AquariumCiv.View
                     if (made.TryGetValue(p.id, out var early) && early.t != null && early.t.gameObject.activeSelf) early.t.gameObject.SetActive(false);
                     continue;
                 }
-                if (HeldBack.Contains(p.id)) // #722: the second stone is still being rolled in
-                {
-                    if (made.TryGetValue(p.id, out var held) && held.t != null && held.t.gameObject.activeSelf) held.t.gameObject.SetActive(false);
-                    continue;
-                }
                 if (p.kind == ConsequenceKind.Feather && p != pole)
                 {
                     if (made.TryGetValue(p.id, out var gone)) { Kill(gone.mesh); if (gone.t != null) Kill(gone.t.gameObject); made.Remove(p.id); }
@@ -1051,6 +1049,13 @@ namespace AquariumCiv.View
                     spots.Add(new CampSpots.Disc(px, pz, p.kind == ConsequenceKind.ShoreBoat ? BoatRadius : p.kind == ConsequenceKind.GoatPen ? PenRadius : own));
                 }
                 else if (haveFire) spots.Add(new CampSpots.Disc(px, pz, own));
+                // #722: the second stone is still being rolled in: hidden, but its spot is worked out (and kept clear) like any other's, so the
+                // scene raises it where it will stand (the user: it slid aside once it was up)
+                if (HeldBack.Contains(p.id))
+                {
+                    if (made.TryGetValue(p.id, out var held) && held.t != null && held.t.gameObject.activeSelf) held.t.gameObject.SetActive(false);
+                    continue;
+                }
                 // #635: charms on a tree hang from the drawn crown (no post, not scaled up); a tree not drawn yet: wait a frame
                 bool onTree = p.anchor == PropAnchor.Tree && p.treeCell >= 0;
                 Vector3 treeAt = default; float treeR = 0f;

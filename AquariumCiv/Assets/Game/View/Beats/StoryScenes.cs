@@ -34,14 +34,18 @@ namespace AquariumCiv.View
         /// <summary>"Stays": the fruits on the tree each summer after the first.</summary>
         public const int TreeFruits = 5;
 
-        /// <summary>Where a kid stands under the tree to pick: out from the trunk on <paramref name="dir"/>'s side (the camera's).</summary>
-        public static Vector2 PickSpot(Vector2 tree, int stage, Vector2 dir) => tree + Unit(dir, Vector2.down) * (TreeGeo.TrunkR(stage) + 0.11f);
+        /// <summary>Where a kid stands under the tree to pick: under the fruit that falls, on <paramref name="dir"/>'s side (the camera's).</summary>
+        public static Vector2 PickSpot(Vector2 tree, int stage, Vector2 dir) => tree + Unit(dir, Vector2.down) * (HangOut(stage) + 0.03f);
+
+        /// <summary>How far out from the trunk the fruit that falls hangs: under the crown's edge, clear of the trunk (the review of the clip: at
+        /// the ring it looked stuck to the bark) [est].</summary>
+        public static float HangOut(int stage) => Mathf.Max(TreeGeo.TrunkR(stage) + 0.1f, 0.17f * TreeGeo.CrownY(stage) / TreeGeo.CrownY(4));
 
         /// <summary>The fruit that falls (box x, height over the ground, box z): up in the crown at the fruits' height, over the pick spot.</summary>
         public static Vector3 LowFruit(Vector2 tree, int stage, Vector2 dir)
         {
-            var p = tree + Unit(dir, Vector2.down) * (TreeGeo.TrunkR(stage) + 0.08f);
-            return new Vector3(p.x, HangY(stage), p.y);
+            var p = tree + Unit(dir, Vector2.down) * HangOut(stage);
+            return new Vector3(p.x, HangY(stage) - 0.04f, p.y); // dangling just under the leaves
         }
 
         /// <summary>How high the fruits hang on a crown of <paramref name="stage"/> (the first of <see cref="TreeFruit"/>'s ring).</summary>

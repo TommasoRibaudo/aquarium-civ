@@ -30,6 +30,8 @@ namespace AquariumCiv.View
         public int FruitDrawn { get; private set; }
         public int MarksDrawn { get; private set; }
         public bool StoneRolling { get; private set; }
+        /// <summary>B78.c: where the last scene raised the second stone (tests: the standing stone is drawn there, no slide aside).</summary>
+        public Vector2? StoneRaisedAt { get; private set; }
 
         readonly List<Transform> storyPool = new();
         Mesh fruitMesh, notchMesh, rollStoneMesh;
@@ -184,7 +186,9 @@ namespace AquariumCiv.View
             int id = sim.StoryMarks.secondStoneId;
             var stone = id >= 0 ? sim.FindConsequenceProp(id) : null;
             if (stone == null) return "no second stone ('Stone: fill it' first)";
-            var spot = new Vector2(stone.x, stone.z);
+            // where the view stands it (the camp moves a fire prop off a taken spot): the scene raises it there, so it doesn't slide aside after
+            var spot = ConsequencePropsView.Instance != null && ConsequencePropsView.Instance.DrawnSpot(id, out var drawn) ? drawn : new Vector2(stone.x, stone.z);
+            StoneRaisedAt = spot;
             var first = sim.FirstNameStone;
             var firstAt = first == null ? spot + Vector2.left * 0.24f : PropById(first.id, out var fp) ? fp.at : new Vector2(first.x, first.z);
             // the one the line names rolls it (a cheat: any grown-up if they aren't drawn); a helper and the family come as they are free
