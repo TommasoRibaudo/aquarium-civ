@@ -34,6 +34,17 @@ namespace AquariumCiv.View
         /// <summary>"Stays": the fruits on the tree each summer after the first.</summary>
         public const int TreeFruits = 5;
 
+        /// <summary>The side of the tree the fruit falls on: off to the side of the trunk as the camera sees it (the review of the clip: straight in
+        /// front it hung against the bark and the trunk hid its fall), a little toward the camera, away from <paramref name="awayFrom"/> (the
+        /// fire's side, where the camp's things stand; zero: either).</summary>
+        public static Vector2 FruitDir(Vector2 toCam, Vector2 awayFrom)
+        {
+            toCam = Unit(toCam, Vector2.down);
+            var acr = Across(toCam);
+            if (Vector2.Dot(acr, awayFrom) > 0f) acr = -acr;
+            return (acr * 0.9f + toCam * 0.45f).normalized;
+        }
+
         /// <summary>Where a kid stands under the tree to pick: under the fruit that falls, on <paramref name="dir"/>'s side (the camera's).</summary>
         public static Vector2 PickSpot(Vector2 tree, int stage, Vector2 dir) => tree + Unit(dir, Vector2.down) * (HangOut(stage) + 0.03f);
 

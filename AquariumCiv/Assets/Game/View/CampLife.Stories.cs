@@ -148,6 +148,9 @@ namespace AquariumCiv.View
             return "not a story use: " + use;
         }
 
+        /// <summary>B78.a: the side of the Keeper's tree the fruit falls on (beside the trunk as seen, away from the fire).</summary>
+        Vector2 FruitSide(Vector2 tree) => StoryScenes.FruitDir(TreeDir(tree), meals != null && meals.HasFire ? meals.Fire - tree : Vector2.zero);
+
         string TryFirstFruitScene(IReadOnlyList<PersonActivity> acts, float time, int named, bool force, Vector2 tree, int stage)
         {
             var dir = TreeDir(tree);
@@ -157,7 +160,7 @@ namespace AquariumCiv.View
             var fire = meals.HasFire ? meals.Fire : tree + dir * 0.8f;
             var grown = Pick(acts, fire, x => IsGrown(x), 3, force, new[] { kid });
             int young = Youngest(acts, force, kid, grown);
-            Add(Thing(StoryScenes.FirstFruit(kid, At(kid).Value, grown, AtAll(grown), young, young != Nobody ? At(young).Value : default, tree, stage, dir, fire, ToCam(fire), time), ThingTree));
+            Add(Thing(StoryScenes.FirstFruit(kid, At(kid).Value, grown, AtAll(grown), young, young != Nobody ? At(young).Value : default, tree, stage, FruitSide(tree), fire, ToCam(fire), time), ThingTree));
             return null;
         }
 
@@ -241,7 +244,7 @@ namespace AquariumCiv.View
             if (!force && !FruitOnTree) return "the tree has no fruit now (summer, after the first fruit)";
             int kid = Kid1(acts, tree, force);
             if (kid == Nobody) return "no kid free near the tree ('Two kids join the camp' first)";
-            Add(Thing(StoryScenes.FruitPick(kid, At(kid).Value, tree, stage, TreeDir(tree), ToCam(tree), time), ThingTree));
+            Add(Thing(StoryScenes.FruitPick(kid, At(kid).Value, tree, stage, FruitSide(tree), ToCam(tree), time), ThingTree));
             doneToday.Add(CampUse.FruitPick);
             return null;
         }
@@ -398,7 +401,7 @@ namespace AquariumCiv.View
                     // the one a kid picks: up in the crown, then falling to their feet, until the hit (and the first one while its moment waits)
                     Vector3? low = null;
                     if (fruitScene != null) { if (StoryScenes.FruitNow(fruitScene, time - fruitScene.t0, out var fp)) low = fp; }
-                    else if (StoryWaiting(StoryEvent.FirstFruit) != null) low = StoryScenes.LowFruit(tree, stage, TreeDir(tree));
+                    else if (StoryWaiting(StoryEvent.FirstFruit) != null) low = StoryScenes.LowFruit(tree, stage, FruitSide(tree));
                     if (low is Vector3 lp) { var t = StoryPiece(root, material, used++, fruitMesh); t.localPosition = On(lp); FruitDrawn++; }
                     // B78.b: the couples' marks on the trunk, a pair each, stacked; a pair still to be cut (its moment waits, or its scene's strokes) is not
                     notchMesh ??= NotchMesh();
