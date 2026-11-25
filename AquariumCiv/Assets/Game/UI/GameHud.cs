@@ -559,7 +559,7 @@ namespace AquariumCiv.GameUI
             {
                 if (n.Contains("seed in the ground")) return "needs the tree";
                 int a = n.IndexOf(" need the ", StringComparison.Ordinal);
-                if (a >= 0) return "needs " + n.Substring(a + 10).Replace(" first", "");
+                if (a >= 0) return "needs " + n.Substring(a + 10).Replace(" first", "").Replace(" set down", "");
             }
             if (n.Contains("bigger meadow")) return "more meadow";
             if (n.Contains("meadow")) return "needs a meadow";
@@ -654,7 +654,7 @@ namespace AquariumCiv.GameUI
         {
             bool any = sim.AnyJarReady;
             lifeShown = any;
-            bool dot = any && hand != KitTool.Life;
+            bool dot = any && hand == KitTool.None; // tester 11-24: no dot (nor its halo) on "Put away" while any tool is in hand
             if (cleanButton != null && cleanButton.ClassListContains("kg-tool--life") != dot) { cleanButton.EnableInClassList("kg-tool--life", dot); ShowToolWord(); }
             SetKitPulse(dot && !hidden && !cameraMode);
             if (hand == KitTool.Life && !sim.JarReady(heldLife)) SetHand(KitTool.None); // placed (or gone): the tool is put down

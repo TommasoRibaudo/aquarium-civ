@@ -456,7 +456,7 @@ namespace AquariumCiv.View
             // B58.j (work): a leaning fence post fixed (sometimes), mornings
             if (h >= 8f && h < 11.5f && !wet && Go(CampUse.FenceFix, Sometimes, 0) && Tried(CampUse.FenceFix, TryFenceFix(acts, time, false))) return;
             // B52.a / B40.c at the houses (2026-11-24: houses only, so the village plays them): the lamplighter's round at dusk, the doorway sit
-            if (h >= 17.4f && Go(CampUse.LightLanterns, 1f, 0) && Tried(CampUse.LightLanterns, TryHouseLanterns(acts, time, false))) return;
+            if (h >= 16.8f && Go(CampUse.LightLanterns, 1f, 0) && Tried(CampUse.LightLanterns, TryHouseLanterns(acts, time, false))) return;
             if (h >= 17f && Go(CampUse.TentDoorSit, Often, 0) && Tried(CampUse.TentDoorSit, TryHouseDoorSit(acts, time, false))) return;
             // B58.g: two who meet in a street stop to talk (often, as B50.b)
             if (h >= 8f && h < 18f && Go(CampUse.StreetChat, Often, ThingStreet) && Tried(CampUse.StreetChat, TryStreetChat(acts, time, false))) return;
@@ -706,12 +706,13 @@ namespace AquariumCiv.View
         {
             var mid = VillageMiddle();
             var left = new List<PieceData>();
-            foreach (var hm in ShownHomes(mid, force ? 0.35f : -0.2f))
+            // tester 11-24: every home's lantern (the far side too, the player orbits), the cheat's clip only the ones facing the camera
+            foreach (var hm in force ? ShownHomes(mid, 0.35f) : PiecesOf(PieceKind.Home, mid))
                 if ((force || !HouseLit(hm.seed)) && !ThingBusy(ThingHomeBase + Mathf.Abs(hm.seed) % 100)) left.Add(hm); // the cheat: homes that face the camera; never a home whose step is in use (the doorstep sit: 2026-11-24, the ADay test)
             if (left.Count == 0) return PiecesOf(PieceKind.Home, mid).Count == 0 ? "no home in the box" : "the lanterns are lit";
             var lanterns = new List<Vector2>(); var stands = new List<Vector2>();
             var from = mid;
-            while (left.Count > 0 && lanterns.Count < (force ? 1 : 4)) // the cheat (its clip): one, so the lighting stays in frame
+            while (left.Count > 0 && lanterns.Count < (force ? 1 : 6)) // tester 11-24: six, so the round ends before supper (a longer one was refused at dusk) // the cheat (its clip): one, so the lighting stays in frame
             {
                 int bi = 0;
                 for (int i = 1; i < left.Count; i++) { HouseDoor(left[i], out _, out _, out var li); HouseDoor(left[bi], out _, out _, out var lb); if ((li - from).sqrMagnitude < (lb - from).sqrMagnitude) bi = i; }
@@ -720,7 +721,7 @@ namespace AquariumCiv.View
             }
             int who = VGrown(acts, stands[0], force);
             if (who == Nobody) return "no grown-up free";
-            if (Playing(CampUse.TentDoorSit)) return "a doorstep sit is on (the lamplighter comes after)"; // 2026-11-24: never past a sitter's step
+            // tester 11-24: a doorstep sit no longer keeps the round away (the houses stayed dark all night); the sitter's home is skipped above
             return StartV(CampScenes5b.LightLanterns(who, At(who).Value, lanterns, ToCam(lanterns[0]), time, stands), 0, CampUse.LightLanterns);
         }
 
