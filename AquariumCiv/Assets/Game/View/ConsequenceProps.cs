@@ -970,6 +970,10 @@ namespace AquariumCiv.View
             Instance.pulses[propId] = Time.unscaledTime;
         }
 
+        /// <summary>#722: places and draws the props now, not at the end of the frame (a cheat that makes a prop and stages its scene at once:
+        /// the scene needs the prop's camp spot).</summary>
+        public void Settle() => LateUpdate();
+
         void LateUpdate()
         {
             var sim = Sim;

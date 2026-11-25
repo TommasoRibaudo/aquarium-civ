@@ -48,6 +48,13 @@ namespace AquariumCiv.View
                 LastWhy = "after the new leader's moment";
                 return null;
             }
+            // #722 (1.3): a second stone made this frame has no camp spot yet; it gets one next frame (the scene raises it there): a wait, not a try
+            if (sim.StoryOfEntry(m.entryId) == StoryEvent.SecondStone && !camp.SecondStoneHasSpot)
+            {
+                sim.NightWaitMoment(m.id);
+                LastWhy = "the second stone's camp spot comes next frame";
+                return null;
+            }
             var scene = camp.StartStory(sim, m);
             if (scene == null) { LastWhy = camp.LastStoryWhy; return null; }
             var entry = Entry(sim, m.entryId);
@@ -156,6 +163,11 @@ namespace AquariumCiv.View
             finally { sim.DebugCastable = null; }
             if (e == null) return "not now: " + why + skipped;
             if (id == StoryEvent.AntlersPassed) UnityEngine.Object.FindAnyObjectByType<BoxView>()?.Refresh(); // a second home may have gone up for the new door
+            if (id == StoryEvent.SecondStone && sim.StoryMarks.secondStoneId >= 0 && ConsequencePropsView.Instance != null)
+            {   // the stone was made just now: it gets its camp spot before the scene starts (hidden: it is rolled in)
+                ConsequencePropsView.HeldBack.Add(sim.StoryMarks.secondStoneId);
+                ConsequencePropsView.Instance.Settle();
+            }
             var m = sim.MomentOfEntry(e.id);
             if (m == null) return $"{e.text} | {pv.Camp.Force(CampLife.UseOfStory(id))}{skipped}{dry}";
             skipped += dry;

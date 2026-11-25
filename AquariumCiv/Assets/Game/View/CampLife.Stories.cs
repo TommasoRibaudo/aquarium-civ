@@ -32,6 +32,9 @@ namespace AquariumCiv.View
         public bool StoneRolling { get; private set; }
         /// <summary>B78.c: where the last scene raised the second stone (tests: the standing stone is drawn there, no slide aside).</summary>
         public Vector2? StoneRaisedAt { get; private set; }
+        /// <summary>B78.c: the second stone has its camp spot (the frame after it is made): its scene can start.</summary>
+        public bool SecondStoneHasSpot => sim != null && sim.StoryMarks.secondStoneId >= 0 && ConsequencePropsView.Instance != null
+                                          && ConsequencePropsView.Instance.DrawnSpot(sim.StoryMarks.secondStoneId, out _);
 
         readonly List<Transform> storyPool = new();
         Mesh fruitMesh, notchMesh, rollStoneMesh;
@@ -187,7 +190,8 @@ namespace AquariumCiv.View
             var stone = id >= 0 ? sim.FindConsequenceProp(id) : null;
             if (stone == null) return "no second stone ('Stone: fill it' first)";
             // where the view stands it (the camp moves a fire prop off a taken spot): the scene raises it there, so it doesn't slide aside after
-            var spot = ConsequencePropsView.Instance != null && ConsequencePropsView.Instance.DrawnSpot(id, out var drawn) ? drawn : new Vector2(stone.x, stone.z);
+            // (a stone made this frame has no camp spot yet: the scene waits a frame for it rather than raise it on the saved one)
+            if (ConsequencePropsView.Instance == null || !ConsequencePropsView.Instance.DrawnSpot(id, out var spot)) return "the second stone has no spot in the camp yet";
             StoneRaisedAt = spot;
             var first = sim.FirstNameStone;
             var firstAt = first == null ? spot + Vector2.left * 0.24f : PropById(first.id, out var fp) ? fp.at : new Vector2(first.x, first.z);
