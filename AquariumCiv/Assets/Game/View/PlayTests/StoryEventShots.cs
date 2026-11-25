@@ -346,6 +346,46 @@ namespace AquariumCiv.View.PlayTests
             return stands;
         }, thing: ConsequenceKind.NameStone);
 
+        /// <summary>The #722 tester's box: a lived-in camp WITH a pond and the natural camp uses ON (the clips switch them off). The first snow
+        /// and the second stone must each start their scene from the cheat (the tester: the snow never cast a kid; the stone, anchored at the
+        /// pond, waited for a camp spot that never came and held every later story back).</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator LivedCamp_SnowAndStonePlay()
+        {
+            yield return LivedCamp(10f, pond: true);
+            CampLife.OnlyCheats = false; // an ordinary box: kids play, people go about the camp
+            yield return new WaitForSecondsRealtime(20f);
+            var fails = new List<string>();
+            int started = StoryMoment.Started;
+            Debug.Log("[722 lived] snow: " + StoryMoment.DebugPlayNow(StoryEvent.FirstSnow));
+            yield return Until(() => StoryMoment.Started > started, 20f);
+            if (StoryMoment.Started == started) fails.Add("the first snow: " + StoryMoment.LastWhy);
+            for (int calm = 0, f = 0; calm < 60 && f < 3000; f++) { calm = HeldMomentStage.DebugEndPlaying() == 0 ? calm + 1 : 0; yield return null; }
+            Pv.Planner.ForcedWeather = null;
+            Debug.Log("[722 lived] " + CampCheats.OnlyThing(ConsequenceKind.NameStone));
+            var sim = Sim;
+            var stone = sim.FirstNameStone;
+            Assert.IsNotNull(stone, "the name stone stands");
+            Debug.Log($"[722 lived] the name stone: anchor {stone.anchor} at ({stone.x:0.00}, {stone.z:0.00})");
+            stone.dueMonth = sim.State.month - 1;
+            Debug.Log("[722 lived] " + ConsequenceCheats.OneMoreDeath());
+            yield return UntilThing(ConsequenceKind.NameStone);
+            yield return new WaitForSecondsRealtime(1.5f);
+            started = StoryMoment.Started;
+            Debug.Log("[722 lived] stone: " + StoryMoment.DebugPlayNow(StoryEvent.SecondStone));
+            yield return Until(() => StoryMoment.Started > started, 20f);
+            if (StoryMoment.Started == started) fails.Add("the second stone: " + StoryMoment.LastWhy);
+            else
+            {
+                yield return Until(() => sim.PlayingMoments().Count == 0, MaxScene);
+                yield return new WaitForSecondsRealtime(2f);
+                Assert.IsTrue(ConsequencePropsView.Instance.DrawnSpot(sim.StoryMarks.secondStoneId, out var drawn), "the second stone stands");
+                Assert.IsTrue(Pv.Camp.StoneRaisedAt.HasValue, "the scene raised it");
+                Assert.Less((drawn - Pv.Camp.StoneRaisedAt.Value).magnitude, 0.01f, $"it stands where it was raised: raised {Pv.Camp.StoneRaisedAt.Value}, drawn {drawn}");
+            }
+            Assert.IsEmpty(fails, string.Join(" | ", fails));
+        }
+
         /// <summary>B80.a: the Keeper's child handed their work's tool at the fire. After: the child with the tool.</summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator B80a_KeeperChildGrown()

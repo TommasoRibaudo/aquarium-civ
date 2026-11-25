@@ -49,7 +49,7 @@ namespace AquariumCiv.View
                 return null;
             }
             // #722 (1.3): a second stone made this frame has no camp spot yet; it gets one next frame (the scene raises it there): a wait, not a try
-            if (sim.StoryOfEntry(m.entryId) == StoryEvent.SecondStone && !camp.SecondStoneHasSpot)
+            if (sim.StoryOfEntry(m.entryId) == StoryEvent.SecondStone && !camp.SecondStoneHasSpot && SpotWait(m.id))
             {
                 sim.NightWaitMoment(m.id);
                 LastWhy = "the second stone's camp spot comes next frame";
@@ -67,6 +67,16 @@ namespace AquariumCiv.View
             Started++;
             return new MomentStaging { Done = () => !camp.StoryPlaying(scene), Stop = () => camp.StopStory(scene) };
         }
+
+        /// <summary>The second stone's spot comes the next frame; a moment waits for it at most <see cref="SpotWaitFor"/> s (real time),
+        /// then its tries count (the #722 tester: an endless wait held every later story back).</summary>
+        static bool SpotWait(int momentId)
+        {
+            if (!spotWaitFrom.TryGetValue(momentId, out float t0)) spotWaitFrom[momentId] = t0 = Time.realtimeSinceStartup;
+            return Time.realtimeSinceStartup - t0 < SpotWaitFor;
+        }
+        const float SpotWaitFor = 5f;
+        static readonly System.Collections.Generic.Dictionary<int, float> spotWaitFrom = new();
 
         static bool NewLeaderPending(SimCore sim)
         {

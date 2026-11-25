@@ -1052,7 +1052,13 @@ namespace AquariumCiv.View
                     settledSpot[p.id] = new Vector2(px, pz);
                     spots.Add(new CampSpots.Disc(px, pz, p.kind == ConsequenceKind.ShoreBoat ? BoatRadius : p.kind == ConsequenceKind.GoatPen ? PenRadius : own));
                 }
-                else if (haveFire) spots.Add(new CampSpots.Disc(px, pz, own));
+                else
+                {
+                    if (haveFire) spots.Add(new CampSpots.Disc(px, pz, own));
+                    // #722 tester: a thing at the pond (the name stone) stands at its own spot; DrawnSpot knows it too, or the second stone's
+                    // scene waited for a spot that never came (and every later story with it)
+                    settledSpot[p.id] = new Vector2(px, pz);
+                }
                 // #722: the second stone is still being rolled in: hidden, but its spot is worked out (and kept clear) like any other's, so the
                 // scene raises it where it will stand (the user: it slid aside once it was up)
                 if (HeldBack.Contains(p.id))

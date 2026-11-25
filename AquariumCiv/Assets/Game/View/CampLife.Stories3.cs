@@ -180,12 +180,30 @@ namespace AquariumCiv.View
         }
 
         /// <summary>B80.h: the kid named (else the nearest free kid), up to three free people near them, by the fire.</summary>
+        /// <summary>Why each kid can't be cast now (the cheats' status line).</summary>
+        string WhyNotKids(IReadOnlyList<PersonActivity> acts)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var a in acts)
+            {
+                if (!IsKid(a)) continue;
+                var why = new List<string>();
+                if (!At(a.who.Key).HasValue) why.Add("not drawn");
+                if (a.moving) why.Add("moving"); if (a.enRoute) why.Add("en route");
+                if (a.tent != TentPhase.None) why.Add("tent " + a.tent); if (a.hunt != HuntPhase.None) why.Add("hunt " + a.hunt);
+                if (byKey.TryGetValue(a.who.Key, out var sc)) why.Add("in " + sc.use);
+                if (!FreeKind(a.kind)) why.Add("doing " + a.kind);
+                sb.Append($"{a.who.Key}[{string.Join(",", why)}] ");
+            }
+            return sb.Length == 0 ? "no kids" : sb.ToString();
+        }
+
         string TryFirstSnowScene(IReadOnlyList<PersonActivity> acts, float time, int named, bool force)
         {
             if (!meals.HasFire) return "no fire";
             var fire = meals.Fire;
             int kid = NamedOr(acts, named, force, x => IsKid(x), () => Kid1(acts, fire, force));
-            if (kid == Nobody) return "no kid free ('Two kids join the camp' first)";
+            if (kid == Nobody) return "no kid free ('Two kids join the camp' first): " + WhyNotKids(acts);
             var others = Pick(acts, At(kid).Value, x => IsKid(x) || IsGrown(x), 3, force, new[] { kid });
             var isKid = new List<bool>();
             foreach (int o in others) isKid.Add(KeyIs(acts, o, x => IsKid(x)));
