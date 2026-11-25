@@ -130,6 +130,7 @@ namespace AquariumCiv.View
                 if (dimGo != null && dimGo.activeSelf) dimGo.SetActive(false); // the moment the tool is put down
                 HideGhost();
                 GlowCells = 0; glowStamp = -1; press.Reset(); framedFor = (LifeSpecies)(-1);
+                if (saidRefusal != null) { GameUiPanel.Toasts.Withdraw(saidRefusal); saidRefusal = null; } // tester 11-24: no "no" left up for a tool put away
                 DrawNo();
                 return;
             }

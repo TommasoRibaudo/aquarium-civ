@@ -55,7 +55,13 @@ namespace AquariumCiv.Sim
         {
             if (!EcologyOn) return 0;
             var e = State.eco; int n = 0;
-            for (int c = 0; c < e.cover.Length; c++) if ((Eco.EcoCover)e.cover[c] != Eco.EcoCover.Water) { e.moisture[c] = 0.03f; n++; }
+            for (int c = 0; c < e.cover.Length; c++)
+                if ((Eco.EcoCover)e.cover[c] != Eco.EcoCover.Water)
+                {
+                    e.moisture[c] = 0.03f; n++;
+                    if (e.puddle != null && c < e.puddle.Length) e.puddle[c] = 0f; // tester 11-24: no shining puddles on the straw
+                    if (e.wet != null && c < e.wet.Length) e.wet[c] = 0f;
+                }
             CoverEdits++;
             return n;
         }

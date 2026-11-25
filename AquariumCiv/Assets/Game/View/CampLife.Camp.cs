@@ -1277,6 +1277,9 @@ namespace AquariumCiv.View
             lock (box.TreeSpots) return box.TreeSpots.TryGetValue(swingCell, out var v) ? v.r : 0.16f;
         }
 
+        /// <summary>Tester 11-24: a house lantern drawn bigger than the tent's, so its light reads from the home view.</summary>
+        const float HouseLanternScale = 1.6f;
+
         /// <summary>The house lantern's arm: as far out as the lantern hangs (<see cref="HouseLanternOut"/>).</summary>
         const float VillageLanternArm = HouseLanternOut;
 
@@ -1342,6 +1345,7 @@ namespace AquariumCiv.View
                     arm.localRotation = Quaternion.LookRotation(new Vector3(outw.x, 0f, outw.y));
                     var l = Next(HouseLit(home.seed) ? MLanternLit : MLantern);
                     l.localPosition = new Vector3(lan.x, gy + CampGeo5.PoleH - 0.004f, lan.y);
+                    l.localScale = Vector3.one * HouseLanternScale; // tester 11-24: the glow read as a sliver at the door
                 }
 
             // ---- B42: meat strips on the fish rack (on the far face of the bar from the fish [est])

@@ -608,7 +608,12 @@ namespace AquariumCiv.View
             var spot = new Vector2(x, z);
             var target = spot;
             Vector2? face = null;
-            if (hunting || tenting) { face = huntFace; claimed.Add(target); }
+            if (hunting || tenting)
+            {
+                // 2026-11-24 (tester: two listeners 0.008 u apart): a listener's spot round the teller keeps a body's width from the others'
+                if (!hunting && a.kind == ActivityKind.ListenStory) target = Apart(target, claimed);
+                face = huntFace; claimed.Add(target);
+            }
             else if (!a.moving && !a.enRoute && !hidden && pins.TryGetValue(a.who.Key, out var pin)) // #224: the choice scene stands them on their own spot
             {
                 target = pin; // the scene chose it clear of the others
@@ -645,7 +650,7 @@ namespace AquariumCiv.View
             // #358: a play group has them: its game says where they stand, what they face and the move (KidPlayDirector).
             PlayCue playCue = default; KidGame playGame = null; int playIx = -1;
             bool playing = !hidden && !hunting && !tenting && KidPlay.TryCue(a.who.Key, time, out playCue, out playGame, out playIx);
-            if (playing) { var cueAt = PlayOffLots(playCue.pos, spot); target = FreeOfPeople(cueAt, false) ? cueAt : Standable(cueAt, cueAt, true, false, false); face = playCue.face; playSpots.Add(target); } // batch 2: never on top of a still grown-up (nor in a lot)
+            if (playing) { var cueAt = OutOfFire(PlayOffLots(playCue.pos, spot), CrowdAvoid.FireKeep + 0.01f); target = FreeOfPeople(cueAt, false) ? cueAt : Standable(cueAt, cueAt, true, false, false); target = Apart(target, playSpots); face = playCue.face; playSpots.Add(target); } // batch 2: never on top of a still grown-up (nor in a lot); 2026-11-24 (tester): nor inside another kid at play
             // #692: a camp use has them (borrowed from their free time, or inside their own work): its part says where, what they face, the move, the prop
             CampPart campPart = null; float campInto = 0f;
             bool camping = !hidden && !hunting && !tenting && Camp.Busy(a.who.Key) && !PairStage.TryCue(a.who.Key, time, out _, out _) && Camp.TryCue(a.who.Key, time, out campPart, out campInto);
@@ -1418,6 +1423,25 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Batch 2: no still doll (and, with <paramref name="players"/>, no kid at play) within <see cref="Personal"/>.</summary>
+        /// <summary>2026-11-24 (tester: two village kids at play fused into one body, 0.000-0.023 u apart for over a second): a spot within a body's
+        /// width (<see cref="BodyGap"/>) of one already taken this frame is pushed out to that width, away from it (sideways when they coincide).</summary>
+        static Vector2 Apart(Vector2 t, List<Vector2> taken)
+        {
+            for (int pass = 0; pass < 6; pass++)
+            {
+                int near = -1; float nd = BodyGap;
+                for (int i = 0; i < taken.Count; i++) { float d = (taken[i] - t).magnitude; if (d < nd) { nd = d; near = i; } }
+                if (near < 0) return t;
+                var away = t - taken[near];
+                away = away.sqrMagnitude > 1e-8f ? away.normalized : new Vector2(Mathf.Cos(pass * 2.4f), Mathf.Sin(pass * 2.4f));
+                t = taken[near] + away * BodyGap;
+            }
+            return t;
+        }
+
+        /// <summary>The least distance between two people's spots (the ADay test's "one doll per spot" is 0.05).</summary>
+        const float BodyGap = 0.055f;
+
         bool FreeOfPeople(Vector2 q, bool players = true)
         {
             foreach (var o in claimed) if ((o - q).sqrMagnitude < Personal * Personal) return false;
