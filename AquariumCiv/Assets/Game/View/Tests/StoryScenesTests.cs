@@ -135,17 +135,20 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void B78c_SecondStone_RolledInByGrownUps_StoodUp_TheNameCut_TheFamilyRound()
         {
-            var spot = Tree; var from = spot + new Vector2(0.6f, 0f); var first = spot - new Vector2(0.24f, 0f);
+            var spot = Tree; var first = spot - new Vector2(0.24f, 0f); const float yaw = 12f;
+            StoryScenes.RollPath(spot, first, yaw, false, out var dir, out var from, out var end, out int quarters);
+            Assert.Greater(Vector2.Dot(first - spot, dir), 0f, "it comes from the side away from the first stone");
+            Assert.AreEqual(0, quarters % 4, "whole turns: it arrives as it lay");
             var fam = new[] { 3, 4, 5 }; var famAt = new[] { from + new Vector2(0.1f, -0.2f), from + new Vector2(0.05f, 0.05f), Far3 };
             var kid = new[] { false, true, true };
-            var s = StoryScenes.SecondStone(1, Far, 2, Far2, fam, famAt, kid, from, spot, first, ToCam, 0f);
+            var s = StoryScenes.SecondStone(1, Far, 2, Far2, fam, famAt, kid, spot, first, yaw, false, ToCam, 0f);
+            Assert.IsTrue(s.holdFocus, "the camera holds on the stones");
             Ok(s);
             Assert.AreEqual(CampUse.SecondStone, s.use);
             Assert.AreEqual(5, s.Count, "two to roll it, and the family");
             Assert.That(new[] { s.a, s.b, s.c, s.d }, Is.Ordered, "the roll, the heave, the name");
             Assert.Greater(s.b - s.a, 1f);
-            float quarters = (s.b - s.a) / StoryScenes.QuarterEvery;
-            Assert.AreEqual(Mathf.Round(quarters), quarters, 1e-3f, "whole quarter turns: it arrives flat");
+            Assert.AreEqual(quarters * StoryScenes.QuarterEvery, s.b - s.a, 1e-3f, "a quarter turn each 0.8 s, whole turns: it arrives flat");
             // only grown-ups roll it: the pushes are the two rollers'
             for (int m = 0; m < s.Count; m++)
             {
@@ -166,17 +169,31 @@ namespace AquariumCiv.View.Tests
                 Assert.IsTrue(s.parts[m].Any(p => p.style == DollStyle.Mourn), "heads down (Mourn)");
                 Assert.GreaterOrEqual(s.parts[m].Min(p => p.from), s.b - 1e-3f, "they come once the stone has stopped");
                 if (!kid[i]) continue;
-                foreach (var p in s.parts[m]) Assert.GreaterOrEqual(StoryScenes.ToSegment(p.pos, from, spot), StoryScenes.KidsBack - 1e-3f, "a kid keeps 0.3 u from the roll");
+                foreach (var p in s.parts[m]) Assert.GreaterOrEqual(StoryScenes.ToSegment(p.pos, from, end), StoryScenes.KidsBack - 1e-3f, "a kid keeps 0.3 u from the roll");
             }
             foreach (var p in s.parts.Skip(1).SelectMany(l => l)) Assert.GreaterOrEqual((p.pos - first).magnitude, 0.15f, "nobody stands in the first stone");
-            // the stone: at its start until pushed, at its spot after the roll, lying until the heave, upright at the jolt
-            StoryScenes.StoneNow(s, 0f, out var at0, out _, out float up0);
-            Assert.Less((at0 - from).magnitude, 1e-4f); Assert.AreEqual(0f, up0, 1e-4f);
-            StoryScenes.StoneNow(s, s.b, out var at1, out float turn1, out float up1);
-            Assert.Less((at1 - spot).magnitude, 1e-4f); Assert.AreEqual(0f, up1, 1e-4f);
-            Assert.AreEqual(0f, Mathf.Repeat(turn1 + 45f, 90f) - 45f, 0.05f, "a quarter turn each 0.8 s: it lies flat");
-            StoryScenes.StoneNow(s, s.c, out _, out _, out float up2);
-            Assert.AreEqual(1f, up2, 1e-3f, "upright as it jolts");
+            // the stone: lying at its start until pushed, at the path's end after the roll, lying until the heave, upright in its own turn at the jolt
+            var stand = Quaternion.Euler(0f, yaw, 0f); var lie = stand * Quaternion.Euler(90f, 0f, 0f);
+            StoryScenes.StoneNow(s, 0f, yaw, out var at0, out float h0, out var q0, out float up0);
+            Assert.Less((at0 - from).magnitude, 1e-4f); Assert.AreEqual(StoryScenes.StoneT * 0.5f, h0, 1e-4f, "flat on its face"); Assert.Less(Quaternion.Angle(q0, lie), 0.5f); Assert.AreEqual(0f, up0, 1e-4f);
+            StoryScenes.StoneNow(s, s.b, yaw, out var at1, out float h1, out var q1, out float up1);
+            Assert.Less((at1 - end).magnitude, 1e-4f); Assert.AreEqual(StoryScenes.StoneT * 0.5f, h1, 1e-4f); Assert.Less(Quaternion.Angle(q1, lie), 0.5f, "the same face down"); Assert.AreEqual(0f, up1, 1e-4f);
+            StoryScenes.StoneNow(s, s.a + StoryScenes.QuarterEvery, yaw, out _, out float hq, out _, out _);
+            Assert.AreEqual(StoryScenes.StoneW * 0.5f, hq, 1e-3f, "a quarter turn: up on its edge");
+            StoryScenes.StoneNow(s, s.c, yaw, out var at2, out float h2, out var q2, out float up2);
+            Assert.AreEqual(1f, up2, 1e-3f, "upright as it jolts"); Assert.Less((at2 - spot).magnitude, 1e-3f, "on its spot"); Assert.AreEqual(0f, h2, 1e-3f);
+            Assert.Less(Quaternion.Angle(q2, stand), 0.5f, "in the standing stone's own turn: no snap when the prop takes over");
+            Assert.GreaterOrEqual(s.c - (s.b + 0f), StoryScenes.HeaveLift, "the heave takes its time: no pop up");
+            // smooth all the way: no jump in place or turn between frames (the user: it slid, then popped up)
+            StoryScenes.StoneNow(s, 0f, yaw, out var pa, out float ph, out var pq, out _);
+            for (float u = 0.02f; u <= s.c; u += 0.02f)
+            {
+                StoryScenes.StoneNow(s, u, yaw, out var a, out float h, out var q, out _);
+                Assert.Less((new Vector3(a.x, h, a.y) - new Vector3(pa.x, ph, pa.y)).magnitude, 0.02f, $"a jump at {u:F2} s");
+                Assert.Less(Quaternion.Angle(q, pq), 6f, $"a snap at {u:F2} s");
+                Assert.GreaterOrEqual(h, -1e-4f, "never under the ground");
+                pa = a; ph = h; pq = q;
+            }
             Assert.AreEqual(90f, StoryScenes.RollTurn(StoryScenes.QuarterEvery), 1e-3f);
             Assert.AreEqual(180f, StoryScenes.RollTurn(2f * StoryScenes.QuarterEvery), 1e-3f);
         }

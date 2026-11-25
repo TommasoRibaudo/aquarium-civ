@@ -393,13 +393,13 @@ namespace AquariumCiv.View
         public static Mesh SecondStone(int rows)
         {
             var mb = new MeshBuilder(3710 + System.Array.IndexOf(ConsequenceKind.All, ConsequenceKind.NameStone) + 7220) { jitter = 0.025f };
-            RuneStone(mb, rows, 0);
+            RuneStone(mb, rows, 0, 7220);
             var mesh = mb.ToMesh("Consequence_" + ConsequenceKind.NameStone + "_second");
             mesh.hideFlags = HideFlags.DontSave;
             return mesh;
         }
 
-        static void RuneStone(MeshBuilder mb, int variant, int oldRows = 4)
+        static void RuneStone(MeshBuilder mb, int variant, int oldRows = 4, int seed = 693)
         {
             var grey = new Color(0.56f, 0.55f, 0.52f); var dark = new Color(0.33f, 0.32f, 0.31f);
             // the slab: one rough piece of stone, an uneven five-sided section squashed thin, narrowing a little to an uneven cut top, leaning a
@@ -410,21 +410,40 @@ namespace AquariumCiv.View
             mb.Prism(new Vector3(-0.02f, StoneH - 0.04f, 0f), StoneHalfX * 0.62f, StoneHalfX * 0.4f, 0.05f, 6, grey, topCol: Color.Lerp(grey, dark, 0.25f)); // an uneven, broken-off top
             mb.M = saved;
             mb.Ico(new Vector3(0.05f, 0.005f, 0.03f), 0.025f, new Vector3(1.2f, 0.4f, 1f), dark, 0.2f); // a stone at its foot
-            // the runes on both faces: rows of short strokes and slants (the newest row pale: freshly cut)
+            // the names on both faces, one row each: cut in (dark grooves, never painted on), each name its own runes (RuneRow)
             int rows = oldRows + Mathf.Clamp(variant, 0, 3); float gap = rows <= 4 ? 0.045f : 0.17f / (rows - 1);
+            var groove = new Color(0.16f, 0.15f, 0.15f);
             foreach (float face in new[] { -1f, 1f })
                 for (int i = 0; i < rows; i++)
+                    RuneRow(mb, 0.1f + i * gap, face * (StoneHalfZ + 0.002f), seed + i * 7919, groove);
+        }
+
+        /// <summary>#722 (user, the second stone): one name cut in a row: 3-5 runes, each a stave with its own branches, chosen by
+        /// <paramref name="seed"/> (the stone and the row), so no two names read the same.</summary>
+        static void RuneRow(MeshBuilder mb, float y, float z, int seed, Color col)
+        {
+            uint h = (uint)seed * 2654435761u;
+            uint Next() { h ^= h << 13; h ^= h >> 17; h ^= h << 5; return h; }
+            int n = 3 + (int)(Next() % 3);
+            float step = 0.024f, x0 = -(n - 1) * step * 0.5f;
+            const float sh = 0.022f, th = 0.0035f;
+            for (int k = 0; k < n; k++)
+            {
+                float x = x0 + k * step;
+                int shape = (int)(Next() % 7);
+                if (shape != 6) mb.Box(new Vector3(x, y, z), new Vector3(th, sh, th), col); // the stave
+                void Branch(float dx, float dy, float len, float deg) => mb.Box(new Vector3(x + dx, y + dy, z), new Vector3(th, len, th), col, Quaternion.Euler(0f, 0f, deg));
+                switch (shape)
                 {
-                    bool fresh = variant > 0 && i == rows - 1;
-                    var col = fresh ? new Color(0.88f, 0.86f, 0.80f) : dark;
-                    float y = 0.1f + i * gap, z = face * (StoneHalfZ + 0.002f);
-                    for (int k = 0; k < 4; k++)
-                    {
-                        float x = -0.04f + k * 0.027f;
-                        mb.Box(new Vector3(x, y, z), new Vector3(0.004f, 0.022f, 0.004f), col);
-                        mb.Box(new Vector3(x + 0.007f, y + 0.003f, z), new Vector3(0.004f, 0.016f, 0.004f), col, Quaternion.Euler(0f, 0f, (k % 2 == 0 ? 35f : -35f)));
-                    }
+                    case 0: Branch(0.004f, 0.006f, 0.011f, -40f); break;                                  // one branch up-right
+                    case 1: Branch(0.004f, 0.006f, 0.011f, -40f); Branch(0.004f, -0.001f, 0.011f, -40f); break; // two branches
+                    case 2: Branch(-0.004f, 0.006f, 0.011f, 40f); Branch(0.004f, 0.006f, 0.011f, -40f); break; // arms up both sides
+                    case 3: Branch(0f, 0f, 0.016f, 45f); break;                                           // a slash across
+                    case 4: Branch(0.004f, 0.004f, 0.01f, -45f); Branch(0.004f, -0.003f, 0.01f, 45f); break;  // a hook out and back
+                    case 5: Branch(0f, 0f, 0.016f, 45f); Branch(0f, 0f, 0.016f, -45f); break;             // a cross
+                    default: Branch(-0.0035f, 0f, 0.022f, 18f); Branch(0.0035f, 0f, 0.022f, -18f); break;  // a V, no stave
                 }
+            }
         }
 
         /// <summary>The classic flour sack: a fat cloth body, wider at the foot, pinched and tied at the neck with a cord, an ear of cloth on top

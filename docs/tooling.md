@@ -24,6 +24,10 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
     disk are what git holds, so **Reload** is usually right. If unsure, ask.
   - "Recovering Scene Backups" after a crash: ask the user. Don't guess.
   - Safe Mode (compile errors on open): fix the compile errors. CLAUDE.md says to report this.
+  - "Are you online?" and "Unity Version Control" windows (2026-11-25): they are not native dialogs, so
+    dismiss-dialogs.ps1 says NO_DIALOGS, yet the Editor stopped answering (recompile timeout, restart-editor.sh
+    "did not quit in 150 s"). Find them by listing top-level `UnityContainerWndClass` window titles. The user
+    closed both by hand and the Editor was `ready` again at once. Ask the user to close them. [verified once]
 - Common triggers: entering play mode or running PlayMode tests with a dirty scene (save it first), switching branches
   with a scene open, `editor invoke_menu` on items that open dialogs.
 

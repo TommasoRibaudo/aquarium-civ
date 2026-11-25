@@ -202,25 +202,12 @@ namespace AquariumCiv.View
                                || n.parentId >= 0 && n.parentId == dead.parentId || !string.IsNullOrEmpty(n.family) && n.family == dead.family;
                     if (kin && Castable(acts, n.id, force)) { fam.Add(n.id); kid.Add(n.age < SimCore.AdultAge); }
                 }
-            var from = RollStart(spot, firstAt);
-            var sc = StoryScenes.SecondStone(who, At(who).Value, helper, helper != Nobody ? At(helper).Value : default, fam, AtAll(fam), kid, from, spot, firstAt, ToCam(spot), time);
+            // the roll comes from the side away from the first stone, or the other side when that start is out of the box
+            StoryScenes.RollPath(spot, firstAt, stone.yaw, false, out _, out var from, out _, out _);
+            bool flip = Mathf.Abs(from.x) > Terrain.HX - 0.4f || Mathf.Abs(Terrain.ClampZ(from.y, 0.4f) - from.y) > 1e-4f;
+            var sc = StoryScenes.SecondStone(who, At(who).Value, helper, helper != Nobody ? At(helper).Value : default, fam, AtAll(fam), kid, spot, firstAt, stone.yaw, flip, ToCam(spot), time);
             Add(Thing(sc, ThingPropBase + id));
             return null;
-        }
-
-        /// <summary>B78.c: where the roll starts: out from the stone toward the camp (its fire), turned off a line that would pass the first stone,
-        /// kept in the box.</summary>
-        Vector2 RollStart(Vector2 spot, Vector2 firstAt)
-        {
-            var toCamp = meals.HasFire ? Dir2(spot, meals.Fire) : ToCam(spot);
-            foreach (float deg in new[] { 0f, 35f, -35f, 70f, -70f, 110f, -110f })
-            {
-                var d = Rotate(toCamp, deg);
-                var from = spot + d * StoryScenes.RollFrom;
-                from = new Vector2(Mathf.Clamp(from.x, -Terrain.HX + 0.4f, Terrain.HX - 0.4f), Terrain.ClampZ(from.y, 0.4f));
-                if (StoryScenes.ToSegment(firstAt, from, spot) >= 0.2f && (from - spot).magnitude > 0.3f) return from;
-            }
-            return spot + Rotate(toCamp, 90f) * StoryScenes.RollFrom;
         }
 
         /// <summary>B80.a: the one the line names (grown now: a cheat casts them if drawn), the eldest free grown-up as the elder who hands them
@@ -430,7 +417,7 @@ namespace AquariumCiv.View
                             MarksDrawn++;
                         }
                 }
-                // B78.c: the second stone rolled in on its side, then heaved up (ConsequencePropsView draws it standing from the jolt)
+                // B78.c: the second stone rolled in lying along its length, tipping over its edges, then heaved up on its foot (ConsequencePropsView draws it standing from the jolt)
                 int sid = sim.StoryMarks.secondStoneId;
                 if (stoneScene != null && sid >= 0)
                 {
@@ -438,16 +425,10 @@ namespace AquariumCiv.View
                     if (u >= 0f && u < stoneScene.c)
                     {
                         rollStoneMesh ??= ConsequenceMeshes.SecondStone(0);
-                        StoryScenes.StoneNow(stoneScene, u, out var at, out float turn, out float up);
                         float yaw = sim.FindConsequenceProp(sid)?.yaw ?? 0f;
-                        var dir = Dir2(stoneScene.p0, stoneScene.p1); var side3 = new Vector3(-dir.y, 0f, dir.x);
-                        var lie = Quaternion.AngleAxis(turn, side3) * Quaternion.FromToRotation(Vector3.up, side3);
-                        var q = Quaternion.Slerp(lie, Quaternion.Euler(0f, yaw, 0f), up);
-                        float sc = ConsequenceMeshes.Scale;
-                        var g = new Vector3(at.x, groundAt(at.x, at.y), at.y);
-                        var lying = g + Vector3.up * ((ConsequenceMeshes.StoneHalfX + ConsequenceMeshes.StoneHalfZ) * 0.5f * sc) - q * (Vector3.up * (ConsequenceMeshes.StoneH * 0.5f * sc));
+                        StoryScenes.StoneNow(stoneScene, u, yaw, out var at, out float height, out var q, out _);
                         var t = StoryPiece(root, material, used++, rollStoneMesh);
-                        t.localPosition = Vector3.Lerp(lying, g, up); t.localRotation = q; t.localScale = Vector3.one * sc;
+                        t.localPosition = new Vector3(at.x, groundAt(at.x, at.y) + height, at.y); t.localRotation = q; t.localScale = Vector3.one * ConsequenceMeshes.Scale;
                         StoneRolling = true;
                     }
                 }

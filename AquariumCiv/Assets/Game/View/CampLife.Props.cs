@@ -147,7 +147,7 @@ namespace AquariumCiv.View
                     if (p.kind == ConsequenceKind.OfferingBasket) ConsequencePropsView.SetLook(p.id, offeredDay == now.day ? 1 : 0);
                 }
                 if (p.kind == ConsequenceKind.NamePeg && !ThingBusy(ThingOf(p))) ConsequencePropsView.SetLook(p.id, PostLook(p.id)); // the fresh re-cut fades the next day
-                if (p.kind == ConsequenceKind.NameStone && !nameSeen.ContainsKey(p.id)) { int d = DeathsSince(p.id); nameSeen[p.id] = d; nameCut[p.id] = Mathf.Min(2, d); ConsequencePropsView.SetLook(p.id, nameCut[p.id]); } // [est] the rows already cut for the dead: at most 2 more, so the next one shows
+                if (p.kind == ConsequenceKind.NameStone && !nameSeen.ContainsKey(p.id)) { int d = DeathsSince(p.id); nameSeen[p.id] = d; nameCut[p.id] = p.id == sim.StoryMarks.secondStoneId ? 0 : Mathf.Min(2, d); ConsequencePropsView.SetLook(p.id, nameCut[p.id]); } // [est] the rows already cut for the dead: at most 2 more, so the next one shows; #722: the second stone comes blank, its rows are only the ones cut on it
                 // B54.p: a storm tips the bird over in the night
                 if (p.kind == ConsequenceKind.RoofBird && !birdTipped.Contains(p.id) && birdFixedDay != now.day && planner != null && planner.WeatherOn(now.day - 1) == Weather.Storm && Hour < 12f)
                 { birdTipped.Add(p.id); ConsequencePropsView.Tip(p.id, 20f); }

@@ -292,14 +292,41 @@ namespace AquariumCiv.View
         // ================================================================== B78.c the second stone
         /// <summary>B78.c: the roll's pace (box units a second; the stone turns a quarter each 0.8 s), the pushers' lean, how far behind the stone
         /// they push, how long the heave takes, and how far the kids keep from the roll.</summary>
-        public const float RollSpeed = 0.09f, QuarterEvery = 0.8f, PushLean = 25f, Behind = 0.14f, HeaveFor = 1.2f, KidsBack = 0.3f;
+        public const float QuarterEvery = 0.8f, PushLean = 25f, Behind = 0.155f, HeaveFor = 2.2f, KidsBack = 0.3f;
         /// <summary>How far from the stone's spot the roll starts (the camp's edge) [est].</summary>
         public const float RollFrom = 0.6f;
+        /// <summary>The heave: the rollers bend for <see cref="HeaveBend"/> s, then the stone tips up on its foot over <see cref="HeaveLift"/> s.</summary>
+        public const float HeaveBend = 0.45f, HeaveLift = 1.3f;
 
-        /// <summary>The roll's length: whole quarter turns, so the stone lies flat when it arrives.</summary>
-        public static float RollFor(Vector2 from, Vector2 spot) => Mathf.Max(1, Mathf.CeilToInt((spot - from).magnitude / RollSpeed / QuarterEvery)) * QuarterEvery;
+        /// <summary>The rolled stone's section (box units: the runestone's width and depth at the props' scale) and its length.</summary>
+        public static float StoneW => 2f * ConsequenceMeshes.StoneHalfX * ConsequenceMeshes.Scale;
+        public static float StoneT => 2f * ConsequenceMeshes.StoneHalfZ * ConsequenceMeshes.Scale;
+        public static float StoneLen => ConsequenceMeshes.StoneH * ConsequenceMeshes.Scale;
+        /// <summary>How far the stone goes with each quarter turn: it tips over its leading edge, flat to on edge and back.</summary>
+        public static float RollStep => (StoneW + StoneT) * 0.5f;
+        /// <summary>The roll's quarter turns: whole turns (4 quarters each), so it arrives as it lay, flat, the same face down.</summary>
+        public static int RollQuarters(float dist) => 4 * Mathf.Max(1, Mathf.RoundToInt(dist / (4f * RollStep)));
+        public static float RollFor(int quarters) => quarters * QuarterEvery;
 
-        /// <summary>How far the stone has turned (deg about the roll's cross axis) <paramref name="secs"/> into the roll: a quarter each 0.8 s.</summary>
+        /// <summary>The stone's long axis (its foot to its top) and its across (local x) in the box for a stone stood at <paramref name="yaw"/>.</summary>
+        public static Vector2 StoneUpAxis(float yaw) { float r = yaw * Mathf.Deg2Rad; return new Vector2(Mathf.Sin(r), Mathf.Cos(r)); }
+        public static Vector2 StoneAcross(float yaw) { float r = yaw * Mathf.Deg2Rad; return new Vector2(Mathf.Cos(r), -Mathf.Sin(r)); }
+
+        /// <summary>B78.c's path: the stone lies along its own length (the foot at the spot, the top away along <see cref="StoneUpAxis"/>) and rolls
+        /// across it, so the heave is one tip up on its foot into the stone's own standing turn (<paramref name="yaw"/>): no snap at the end. It comes
+        /// from the side away from the first stone (<paramref name="flip"/>: the other side, when that one is out of the box). <paramref name="end"/>:
+        /// where the foot lies when the roll ends.</summary>
+        public static void RollPath(Vector2 spot, Vector2 first, float yaw, bool flip, out Vector2 dir, out Vector2 start, out Vector2 end, out int quarters)
+        {
+            var across = StoneAcross(yaw);
+            dir = Vector2.Dot(first - spot, across) >= 0f ? across : -across;
+            if (flip) dir = -dir;
+            end = spot + StoneUpAxis(yaw) * (StoneT * 0.5f);
+            quarters = RollQuarters(RollFrom);
+            start = end - dir * (quarters * RollStep);
+        }
+
+        /// <summary>How far the stone has turned (deg about its length) <paramref name="secs"/> into the roll: a quarter each 0.8 s.</summary>
         public static float RollTurn(float secs)
         {
             if (secs <= 0f) return 0f;
@@ -307,16 +334,38 @@ namespace AquariumCiv.View
             return 90f * (q + Smooth(secs / QuarterEvery - q));
         }
 
-        /// <summary>The rolled stone <paramref name="u"/> scene seconds in: where it lies (box x, z), how far it has turned, how far it is stood up
-        /// (0 lying, 1 upright: the heave, from the roll's end to <see cref="CampScene.c"/>).</summary>
-        public static void StoneNow(CampScene s, float u, out Vector2 at, out float turn, out float up)
+        /// <summary>The rolled stone <paramref name="u"/> scene seconds in, for the mesh (its origin is the foot of its length, in the middle of its
+        /// section): where it is (box x, z; <paramref name="height"/> above the ground), how it is turned, and how far it is stood up (0 lying, 1
+        /// upright at <see cref="CampScene.c"/>, in the standing turn <paramref name="yaw"/>). The roll tips it over its leading edge each quarter
+        /// (flat, on edge, flat); the heave tips it up on the edge at its foot.</summary>
+        public static void StoneNow(CampScene s, float u, float yaw, out Vector2 at, out float height, out Quaternion rot, out float up)
         {
-            float roll = s.b - s.a;
-            float k = roll > 1e-4f ? Mathf.Clamp01((u - s.a) / roll) : 1f;
-            at = Vector2.Lerp(s.p0, s.p1, k);
-            turn = RollTurn(Mathf.Clamp(u - s.a, 0f, roll));
-            float h0 = s.b + 0.3f;
+            var stand = Quaternion.Euler(0f, yaw, 0f);
+            float h = StoneT * 0.5f;
+            float h0 = s.c - HeaveLift;
+            if (u < h0)
+            {
+                var dir = (s.p1 - s.p0).sqrMagnitude > 1e-8f ? (s.p1 - s.p0).normalized : StoneAcross(yaw);
+                int n = Mathf.Max(1, Mathf.RoundToInt((s.b - s.a) / QuarterEvery));
+                float psi = RollTurn(Mathf.Clamp(u - s.a, 0f, s.b - s.a));
+                int q = Mathf.Min(n, Mathf.FloorToInt(psi / 90f + 1e-4f));
+                float phi = q >= n ? 0f : (psi - 90f * q) * Mathf.Deg2Rad;
+                bool flat = q % 2 == 0;
+                float ha = (flat ? StoneW : StoneT) * 0.5f, hb = (flat ? StoneT : StoneW) * 0.5f; // half along the roll, half up, at the quarter's start
+                float along = q * RollStep + ha - ha * Mathf.Cos(phi) + hb * Mathf.Sin(phi);
+                at = s.p0 + dir * along;
+                height = ha * Mathf.Sin(phi) + hb * Mathf.Cos(phi);
+                var dir3 = new Vector3(dir.x, 0f, dir.y);
+                rot = Quaternion.AngleAxis(psi, Vector3.Cross(Vector3.up, dir3)) * stand * Quaternion.Euler(90f, 0f, 0f);
+                up = 0f;
+                return;
+            }
             up = Smooth((u - h0) / Mathf.Max(1e-3f, s.c - h0));
+            float tip = 90f * (1f - up);
+            rot = stand * Quaternion.Euler(tip, 0f, 0f);
+            var edge = s.p1; // the edge at its foot it tips up on (on the ground; the foot lies there at the roll's end)
+            var o = new Vector3(edge.x, 0f, edge.y) + rot * new Vector3(0f, 0f, -h);
+            at = new Vector2(o.x, o.z); height = o.y;
         }
 
         /// <summary>The shortest distance from <paramref name="p"/> to the segment <paramref name="a"/>-<paramref name="b"/>.</summary>
@@ -328,8 +377,8 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Where the family stands round the new stone: the camera's side first, each clear of the roll (a kid <see cref="KidsBack"/>, a
-        /// grown-up 0.15 u), of the first stone (0.2), of the cutter's kneel (0.12) and of each other (0.09).</summary>
-        public static List<Vector2> FamilySpots(IList<bool> kid, Vector2 from, Vector2 spot, Vector2 first, Vector2 kneel, Vector2 toCam)
+        /// grown-up 0.15 u), of where the stone lay before the heave (<paramref name="lieTop"/>: its top), of the first stone (0.2), of the cutter's kneel (0.12) and of each other (0.09).</summary>
+        public static List<Vector2> FamilySpots(IList<bool> kid, Vector2 from, Vector2 spot, Vector2 first, Vector2 kneel, Vector2 toCam, Vector2? lieTop = null)
         {
             toCam = Unit(toCam, Vector2.down);
             var got = new List<Vector2>();
@@ -343,7 +392,7 @@ namespace AquariumCiv.View
                     for (float rr = r0; rr <= r0 + 0.25f && !found; rr += 0.08f)
                     {
                         var c = spot + Rot(toCam, ang) * rr;
-                        if (ToSegment(c, from, spot) < clear || (c - first).magnitude < 0.2f || (c - kneel).magnitude < 0.12f) continue;
+                        if (ToSegment(c, from, spot) < clear || lieTop.HasValue && ToSegment(c, spot, lieTop.Value) < StoneW * 0.5f + 0.08f || (c - first).magnitude < 0.2f || (c - kneel).magnitude < 0.12f) continue;
                         bool near = false;
                         foreach (var g in got) if ((g - c).magnitude < 0.09f) { near = true; break; }
                         if (near) continue;
@@ -369,10 +418,10 @@ namespace AquariumCiv.View
             p.lean += PushLean + 5f * shove; p.armL = new Vector3(90f - 10f * shove, 0f, -6f); p.armR = new Vector3(90f - 10f * shove, 0f, 6f);
         }
 
-        /// <summary>The heave (HuntBeats.Lift's bend and lift): down to the stone (lean 32, arms x 85), then up and over (lean −10, arms x 150).</summary>
+        /// <summary>The heave (HuntBeats.Lift's bend and lift): down to the stone (lean 32, arms x 85), then up with it as it tips up (lean −10, arms x 150).</summary>
         static void Heave(ref DollPose p, float t, float len)
         {
-            float bend = In(t, 0f, 0.3f), up = In(t, 0.45f, 0.35f);
+            float bend = In(t, 0f, HeaveBend * 0.7f), up = In(t, HeaveBend, HeaveLift);
             p.squash = Mathf.Lerp(1f, 0.9f, bend * (1f - up));
             p.lean += Mathf.Lerp(32f * bend, -10f, up);
             p.armL = Lerp(new Vector3(30f, 0f, -12f), new Vector3(150f, 0f, -10f), up); p.armR = Lerp(new Vector3(85f, 0f, 8f), new Vector3(150f, 0f, 10f), up);
@@ -401,14 +450,17 @@ namespace AquariumCiv.View
         /// <see cref="CampScene.p0"/>, <see cref="CampScene.p1"/>: the roll's start and end. Only grown-ups roll it; the kids keep 0.3 u clear.
         /// </summary>
         public static CampScene SecondStone(int who, Vector2 whoAt, int helper, Vector2 helperAt, IList<int> family, IList<Vector2> familyAt, IList<bool> kid,
-            Vector2 from, Vector2 spot, Vector2 first, Vector2 toCam, float t0)
+            Vector2 spot, Vector2 first, float yaw, bool flip, Vector2 toCam, float t0)
         {
             toCam = Unit(toCam, Vector2.down); var acr = Across(toCam);
-            var dir = Dir(from, spot, Vector2.right); var side = new Vector2(-dir.y, dir.x);
-            var s = new CampScene(CampUse.SecondStone, t0, (from + spot) * 0.5f) { followReach = 1.2f, p0 = from, p1 = spot };
+            RollPath(spot, first, yaw, flip, out var dir, out var from, out var end, out int quarters);
+            var len = StoneUpAxis(yaw); // the stone's length while it lies: from its foot at the path toward its top
+            // the camera holds on the whole of it: the path, the lying length and both stones
+            var s = new CampScene(CampUse.SecondStone, t0, (from + end) * 0.5f + len * (StoneLen * 0.35f)) { holdFocus = true, p0 = from, p1 = end };
             int mw = s.Add(who), mh = helper != Nobody ? s.Add(helper) : -1;
             var rollers = mh >= 0 ? new[] { mw, mh } : new[] { mw };
-            Vector2 Push(Vector2 at, int i) => at - dir * Behind + side * (rollers.Length == 1 ? 0f : i == 0 ? 0.05f : -0.05f);
+            // behind it, both hands on its side, spread along its length
+            Vector2 Push(Vector2 foot, int i) => foot - dir * Behind + len * (StoneLen * (rollers.Length == 1 ? 0.5f : i == 0 ? 0.3f : 0.72f));
             // to the stone at the camp's edge
             var walks = new float[rollers.Length];
             walks[0] = WalkTime(whoAt, Push(from, 0), Walk);
@@ -417,30 +469,39 @@ namespace AquariumCiv.View
             foreach (float w in walks) t = Mathf.Max(t, w);
             for (int i = 0; i < rollers.Length; i++)
             {
-                s.Part(rollers[i], 0f, walks[i], Push(from, i), from, DollStyle.Stand, null, PropKind.None, Walk);
-                if (walks[i] < t) s.Part(rollers[i], walks[i], t, Push(from, i), from, DollStyle.Stand);
-                s.Part(rollers[i], t, t + 0.5f, Push(from, i), from, DollStyle.Stand, Brace);
+                s.Part(rollers[i], 0f, walks[i], Push(from, i), Push(from, i) + dir, DollStyle.Stand, null, PropKind.None, Walk);
+                if (walks[i] < t) s.Part(rollers[i], walks[i], t, Push(from, i), Push(from, i) + dir, DollStyle.Stand);
+                s.Part(rollers[i], t, t + 0.5f, Push(from, i), Push(from, i) + dir, DollStyle.Stand, Brace);
             }
             t += 0.5f;
             s.a = t;
-            float roll = RollFor(from, spot);
+            float roll = RollFor(quarters);
             for (int i = 0; i < rollers.Length; i++)
             {
-                var p = s.Part(rollers[i], t, t + roll, Push(spot, i), spot + dir, DollStyle.Stand, PushPose, PropKind.None, Mathf.Max(0.02f, (spot - from).magnitude / roll));
+                var p = s.Part(rollers[i], t, t + roll, Push(end, i), Push(end, i) + dir, DollStyle.Stand, PushPose, PropKind.None, Mathf.Max(0.02f, (end - from).magnitude / roll));
                 p.poseWalking = true;
             }
-            int quarters = Mathf.RoundToInt(roll / QuarterEvery);
-            for (int q = 1; q <= quarters; q++) s.Fx(t + q * QuarterEvery - 0.05f, CampFxKind.Dust, G(Vector2.Lerp(from, spot, q / (float)quarters), 0.005f), 0.3f, 2); // a little dust each turn
+            for (int q = 1; q <= quarters; q++) s.Fx(t + q * QuarterEvery - 0.05f, CampFxKind.Dust, G(from + dir * (q * RollStep) + len * (StoneLen * 0.5f), 0.005f), 0.3f, 2); // a little dust as each edge lands
             t += roll;
             s.b = t;
-            // the heave: up on its end beside the first
-            for (int i = 0; i < rollers.Length; i++) s.Part(rollers[i], t, t + HeaveFor, Push(spot, i), spot, DollStyle.Stand, Heave);
-            s.c = t + 0.85f;
+            // the heave: both at its top half, one each side, bend and lift it up on its foot beside the first
+            Vector2 Lift(int i) => end + len * (StoneLen * 0.62f) + dir * ((rollers.Length == 1 ? -1f : i == 0 ? -1f : 1f) * (StoneW * 0.5f + 0.07f));
+            float lw = 0f;
+            for (int i = 0; i < rollers.Length; i++) lw = Mathf.Max(lw, WalkTime(Push(end, i), Lift(i), Walk));
+            for (int i = 0; i < rollers.Length; i++)
+            {
+                float w = WalkTime(Push(end, i), Lift(i), Walk);
+                s.Part(rollers[i], t, t + w, Lift(i), end + len * (StoneLen * 0.62f), DollStyle.Stand, null, PropKind.None, Walk);
+                if (w < lw) s.Part(rollers[i], t + w, t + lw, Lift(i), end + len * (StoneLen * 0.62f), DollStyle.Stand);
+            }
+            t += lw; // the stone waits, lying, until they are at it
+            for (int i = 0; i < rollers.Length; i++) s.Part(rollers[i], t, t + HeaveFor, Lift(i), spot, DollStyle.Stand, Heave);
+            s.c = t + HeaveBend + HeaveLift;
             s.Fx(s.c, CampFxKind.Prop, Vector3.zero, 0f, (int)PropFx.Jolt); // the stone stands: it jolts (CampLife.Props)
             s.Fx(s.c, CampFxKind.Dust, G(spot, 0.01f), 0.8f, 5);
             t += HeaveFor;
             // the first name: the runestone's cut (#693), by the one who rolled it
-            var cut = CampScenes6.NameCut(who, Push(spot, 0), spot, toCam, 0f);
+            var cut = CampScenes6.NameCut(who, Lift(0), spot, toCam, 0f);
             Append(s, mw, cut, t);
             float rowAt = -1f;
             foreach (var f in cut.fx) if (f.kind == CampFxKind.Prop && f.count == (int)PropFx.NameRow) rowAt = f.time;
@@ -451,12 +512,12 @@ namespace AquariumCiv.View
             var flags = new List<bool>();
             if (mh >= 0) flags.Add(false);
             for (int i = 0; i < family.Count; i++) flags.Add(kid[i]);
-            var spots = FamilySpots(flags, from, spot, first, kneel, toCam);
+            var spots = FamilySpots(flags, from, end, first, kneel, toCam, end + len * StoneLen);
             int si = 0;
             if (mh >= 0)
             {
                 var hs = spots[si++];
-                float w = WalkTime(Push(spot, 1), hs, Walk);
+                float w = WalkTime(Lift(1), hs, Walk);
                 s.Part(mh, t, t + w, hs, spot, DollStyle.Stand, null, PropKind.None, Walk);
                 if (t + w < cutEnd) s.Part(mh, t + w, cutEnd, hs, spot, DollStyle.Mourn);
                 Go(s, mh, Mathf.Max(t + w, cutEnd), 1.2f, hs + toCam * 0.3f, hs + toCam, Walk);
