@@ -131,6 +131,22 @@ namespace AquariumCiv.View.PlayTests
             CloseSlice();
         }
 
+        [UnityTest, Timeout(1800000)]
+        public IEnumerator VillageNatural_HouseLanternsAndDoorstepSitStartByThemselves()
+        {
+            UseLivingLand(true);
+            GameUiPanel.AcceptInputUnfocused(true);
+            yield return OpenSlice(750, 1334, seed: 4242);
+            Debug.Log("[natural village] " + CampCheats.StageVillage(14f, false, 4, onlyCheats: false));
+            yield return Frames(10);
+            var pv = PeopleView.Find();
+            var want = new[] { CampUse.LightLanterns, CampUse.TentDoorSit };
+            yield return RunUntil(pv, "village", want, 6, 1500f, true);
+            var missing = want.Where(u => !pv.Camp.Started.ContainsKey(u)).ToList();
+            CloseSlice();
+            Assert.IsEmpty(missing, "never started by themselves: " + string.Join(", ", missing));
+        }
+
         /// <summary>#744 (the user, 2026-11-24, options 3 and 4): frames of a ball game at the pond's shore whose missed throw lands in the water
         /// (the fetcher wades in, shakes it, runs back), then the same spot with the pond dried (the ball rolls down into the hollow). Explicit:
         /// the clip for the user's sign-off.</summary>
@@ -193,22 +209,6 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSeconds(2f);
             yield return Play("hollow", th => th.miss && th.rolls);
             CloseSlice();
-        }
-
-        [UnityTest, Timeout(1800000)]
-        public IEnumerator VillageNatural_HouseLanternsAndDoorstepSitStartByThemselves()
-        {
-            UseLivingLand(true);
-            GameUiPanel.AcceptInputUnfocused(true);
-            yield return OpenSlice(750, 1334, seed: 4242);
-            Debug.Log("[natural village] " + CampCheats.StageVillage(14f, false, 4, onlyCheats: false));
-            yield return Frames(10);
-            var pv = PeopleView.Find();
-            var want = new[] { CampUse.LightLanterns, CampUse.TentDoorSit };
-            yield return RunUntil(pv, "village", want, 6, 1500f, true);
-            var missing = want.Where(u => !pv.Camp.Started.ContainsKey(u)).ToList();
-            CloseSlice();
-            Assert.IsEmpty(missing, "never started by themselves: " + string.Join(", ", missing));
         }
     }
 }
