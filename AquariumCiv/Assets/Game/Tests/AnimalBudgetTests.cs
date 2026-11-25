@@ -11,20 +11,20 @@ namespace AquariumCiv.Tests
     public class AnimalBudgetTests
     {
         [Test]
-        public void TheDeeperLand_DrawsAbout33()
+        public void TheDeeperLand_Draws25()
         {
-            // #658: every box is 6 x 6 now (was 6 x 4.4 = 26.4 u2, 24 animals); the budget follows the land's area.
+            // #658: every box is 6 x 6 now (was 6 x 4.4 = 26.4 u2); the budget follows the land's area. #710 2026-11-24: 33 -> 25, every kind fewer.
             Assert.AreEqual(36f, AnimalBudget.LandArea, 1e-3f);
-            Assert.AreEqual(33, AnimalBudget.Total());
+            Assert.AreEqual(25, AnimalBudget.Total());
             Assert.AreEqual(AnimalBudget.BaseTotal, AnimalBudget.Total());
         }
 
         [Test]
         public void DeeperBox_KeepsTheDensity()
         {
-            Assert.AreEqual(33, AnimalBudget.Total(36f), "6 x 6 draws about 34");
+            Assert.AreEqual(25, AnimalBudget.Total(36f), "6 x 6 draws 25");
             Assert.AreEqual(AnimalBudget.BaseTotal, AnimalBudget.Total(AnimalBudget.BaseArea));
-            Assert.AreEqual(8, AnimalBudget.Cap(AnimalBudget.Kind.Rabbits, 36f));
+            Assert.AreEqual(6, AnimalBudget.Cap(AnimalBudget.Kind.Rabbits, 36f));
         }
 
         [Test]
@@ -35,8 +35,8 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(AnimalBudget.Ducks, SimCore.DucksShownCap);
             Assert.AreEqual(AnimalBudget.Fish, SimCore.FishShownCap);
             Assert.AreEqual(AnimalBudget.Cap(AnimalBudget.Kind.Rabbits), AnimalBudget.Rabbits);
-            Assert.AreEqual(8, AnimalBudget.Rabbits); Assert.AreEqual(6, AnimalBudget.Deer); Assert.AreEqual(6, AnimalBudget.Ducks);
-            Assert.AreEqual(5, AnimalBudget.Fish); Assert.AreEqual(4, AnimalBudget.Frogs); Assert.AreEqual(4, AnimalBudget.Wolves);
+            Assert.AreEqual(6, AnimalBudget.Rabbits); Assert.AreEqual(5, AnimalBudget.Deer); Assert.AreEqual(4, AnimalBudget.Ducks);
+            Assert.AreEqual(4, AnimalBudget.Fish); Assert.AreEqual(3, AnimalBudget.Frogs); Assert.AreEqual(3, AnimalBudget.Wolves);
             Assert.AreEqual(AnimalBudget.Rabbits, RabbitHerd.Shown(50f));
             Assert.AreEqual(AnimalBudget.Deer, DeerHerd.Shown(50));
             Assert.AreEqual(3, RabbitHerd.Shown(50f, 3), "an explicit cap still wins");
@@ -48,7 +48,7 @@ namespace AquariumCiv.Tests
         public void ThePensGoatTakesNoSlotAndChangesNoHerd()
         {
             CollectionAssert.DoesNotContain(Enum.GetNames(typeof(AnimalBudget.Kind)), "Goat", "no budget row for the goat");
-            Assert.AreEqual(33, AnimalBudget.Total());
+            Assert.AreEqual(25, AnimalBudget.Total());
             Assert.AreEqual(AnimalBudget.BaseTotal, AnimalBudget.Total());
             var cfg = new SimConfig { ecology = true, dilemmas = true };
             var with = new SimCore(cfg, SimCore.NewWorld(5, cfg));
@@ -66,7 +66,7 @@ namespace AquariumCiv.Tests
                 Assert.AreEqual(without.State.food, with.State.food, 1e-4f, $"month {m}: the same food");
                 Assert.AreEqual(without.State.notables.Count(n => n.alive), with.State.notables.Count(n => n.alive), $"month {m}: the same people");
             }
-            Assert.AreEqual(33, AnimalBudget.Total(), "the budget is unchanged with the pen");
+            Assert.AreEqual(25, AnimalBudget.Total(), "the budget is unchanged with the pen");
         }
     }
 }

@@ -1478,7 +1478,7 @@ approve the animations and assets"). The checklist to answer is [batch3-approval
   means weeds and creeping seedlings.
 - Wolves: decisions.md 2026-11-07: the people never kill a wolf; they drive them off with shouts, torches and fences; wolves
   never come in among the tents. Dogs capped at 1–3.
-- Animal counts: `Sim/AnimalBudget.cs` (on the 6 × 6 land: rabbits 8, deer 6, ducks 6, fish 5, frogs 4, wolves 4). Nothing
+- Animal counts: `Sim/AnimalBudget.cs` (on the 6 × 6 land: rabbits 6, deer 5, ducks 4, fish 4, frogs 3, wolves 3 since #710, 2026-11-24). Nothing
   below adds a drawn animal except the nest's bird (B71, an open question).
 - Stew pot look: signed off in the 2026-11-15 walkthrough (#676 comment). Feather pole and feedback#79: #566 comments.
 - **S-ritual** (B72–B77, added after the 2026-11-15 approvals, row 217): the four yearly rituals (#721), the teller's manner
@@ -2224,7 +2224,7 @@ at that edge (pond water sits 0.08 u under the land). The pond reaches the glass
 glass"); the front pane faces the default camera, the side panes show at an angle.
 
 ##### B70.a The count (no new animals)
-The fish drawn are the sim's: `EcoFishShown()`, capped by `AnimalBudget.Fish` (5 on the 6 × 6 land, via `SimCore.FishShownCap`).
+The fish drawn are the sim's: `EcoFishShown()`, capped by `AnimalBudget.Fish` (4 on the 6 × 6 land since #710 2026-11-24, via `SimCore.FishShownCap`).
 **Each fish is drawn once**: as a shadow from above, or, when its swim takes it within 0.15 u of a wall, as a side fish on the
 wall. **At most 2 on the walls at once** [est], so the glass shows a glimpse, not a tank show. No fish before fish are placed (B16.e).
 
