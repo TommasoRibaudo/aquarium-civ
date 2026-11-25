@@ -168,7 +168,7 @@ namespace AquariumCiv.Sim
                 case SimCore.WhiteWolfKind: kind = MomentKind.WhiteWolf; return true; // #437: a pure moment, everyone comes out to see
                 default:
                     if (SimCore.RitualOfLine(entryKind) != null) { kind = MomentKind.Ritual; return true; } // #721: the year's ritual, while watched
-                    if (StoryEvent.OfKind(entryKind) != null) { kind = MomentKind.Story; return true; } // #722: a story event's scene
+                    if (StoryEvent.Staged(StoryEvent.OfKind(entryKind))) { kind = MomentKind.Story; return true; } // #722: a story event's scene (2.2 has none yet: a card)
                     kind = MomentKind.Wedding; return false;
             }
         }

@@ -490,8 +490,10 @@ namespace AquariumCiv.Sim
         public string KeeperHandLine(Notable n)
         {
             if (n == null) return "";
-            if (n.chosenByKeeper && n.namedByKeeper) return "Chosen and named by the Keeper.";
-            return n.chosenByKeeper ? "Chosen by the Keeper." : n.namedByKeeper ? "Named by the Keeper." : "";
+            string hand = n.chosenByKeeper && n.namedByKeeper ? "Chosen and named by the Keeper."
+                : n.chosenByKeeper ? "Chosen by the Keeper." : n.namedByKeeper ? "Named by the Keeper." : "";
+            string lead = StoryLeadCardLine(n); // #722 (4.1 / 4.2): the ritual the Keeper picked them to lead
+            return lead.Length == 0 ? hand : hand.Length == 0 ? lead : hand + " " + lead;
         }
 
         public string CardRoleLine(Notable n, string role = null)

@@ -299,7 +299,7 @@ namespace AquariumCiv.Sim
                 float before = n.age;
                 n.age += Config.notableAgeFactor;
                 if (before < AdultAge && n.age >= AdultAge)
-                    Chronicle("coming_of_age", ComingOfAgeLine(n), 0.4f, n.id);
+                    ComeOfAge(n); // the hidden line, and (#722 5.1) the Keeper's child's story
                 if (n.age >= n.lifespan)
                 {
                     n.alive = false;

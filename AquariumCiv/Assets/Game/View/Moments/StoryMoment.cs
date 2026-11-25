@@ -1,3 +1,4 @@
+using System.Linq;
 using AquariumCiv.Game;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
@@ -9,7 +10,8 @@ namespace AquariumCiv.View
     /// <summary>
     /// #722: a story event as a live moment (docs/design/new-events.md §1.1-1.3, animation-specs B78.a-c). Registered with
     /// <see cref="HeldMomentStage"/> for <see cref="MomentKind.Story"/>: CampLife casts and starts the event's scene (the first fruit, the two
-    /// marks, the second stone: <see cref="CampLife.StartStory"/>), and the line is said on the caption as it starts (as the rituals' names).
+    /// marks, the second stone, B80.a the Keeper's child: <see cref="CampLife.StartStory"/>), and the line is said on the caption as it starts
+    /// (as the rituals' names). 2.2 (the singer's song) has no scene yet: its line is a card, never a Story moment (<see cref="StoryEvent.Staged"/>).
     /// The moment is done when the scene has ended. Not castable now (its people busy or away): null, so it waits and, after a few tries, is a
     /// card; at night it waits for the morning.
     /// </summary>
@@ -74,6 +76,7 @@ namespace AquariumCiv.View
         /// </summary>
         public static string DebugPlayNow(string id)
         {
+            if (id == StoryEvent.SingerSong) return DebugSingerSong();
             var sim = Sim;
             if (sim == null) return "no living box";
             if (!sim.MomentsOn && GameClock.Instance != null) GameClock.Instance.config.moments = true;
@@ -90,13 +93,64 @@ namespace AquariumCiv.View
             if (e == null) return "not now: " + why;
             var m = sim.MomentOfEntry(e.id);
             if (m == null) return $"{e.text} | {pv.Camp.Force(CampLife.UseOfStory(id))}{skipped}";
+            return PlayHeldNow(sim, m, e, skipped);
+        }
+
+        /// <summary>A cheat's held moment to the top of the queue and staged now; the status line.</summary>
+        static string PlayHeldNow(SimCore sim, HeldMoment m, ChronicleEntry e, string skipped)
+        {
             m.priority = SimCore.DebugMomentPriority + m.priority;
             m.cheat = true;
+            PeopleView.Find()?.Planner?.Invalidate();
             sim.DebugMomentDueNow();
             var stage = HeldMomentStage.Instance;
             if (stage == null) return e.text + " (no moment stage in the scene)";
             var started = stage.Check();
             return started.Exists(x => x.id == m.id) ? $"playing: {e.text}{skipped}" : $"queued: {e.text} ({stage.LastWhy ?? LastWhy}){skipped}";
+        }
+
+        /// <summary>"Trait: the singer's song" (2.2): a singer and a kept ritual (eased), and the ritual plays now as its held moment; the song's
+        /// line is written as it plays. Its own scene is not built yet: the line is a card (the next return), not a moment.</summary>
+        public static string DebugSingerSong()
+        {
+            var sim = Sim;
+            if (sim == null) return "no living box";
+            if (!sim.DebugSingerReady(out string ritual, out string why)) return "not now: " + why;
+            string r = StagedMoments.DebugPlayRitualNow(ritual);
+            var song = sim.State.chronicle.LastOrDefault(x => x.kind == StoryEvent.Kind(StoryEvent.SingerSong));
+            return song != null ? $"{song.text} (a card) | {r}" : "the song wasn't made | " + r;
+        }
+
+        /// <summary>"People: the Keeper's child marries" (5.2): a grown-up the Keeper named weds now; the wedding moment plays with its line on
+        /// the caption.</summary>
+        public static string DebugKeeperChildWed()
+        {
+            var sim = Sim;
+            if (sim == null) return "no living box";
+            if (!sim.MomentsOn && GameClock.Instance != null) GameClock.Instance.config.moments = true;
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no people";
+            if (sim.PlayingMoments().Count > 0) return "a moment is playing: wait, or End staged moments";
+            string skipped = "";
+            if (!LifePlanner.HeldMomentFits(pv.Now, LifePlanner.HeldMomentSeconds(MomentKind.Wedding))) { PeopleView.DebugSetHour(9.5f); skipped = " (skipped to the day)"; }
+            var e = sim.DebugKeeperChildWed(out string why);
+            if (e == null) return "not now: " + why;
+            var m = sim.MomentOfEntry(e.id);
+            return m == null ? e.text + " (no held moment: moments off)" : PlayHeldNow(sim, m, e, skipped);
+        }
+
+        /// <summary>The story asks' cheats (4.1-4.4: "Ask: ..."): raised now, its gate eased (<see cref="SimCore.DebugRaiseStoryAsk"/>), staged in
+        /// the box by the choice scene and opened on its card. The status line, or why not.</summary>
+        public static string DebugAskNow(string kind)
+        {
+            var sim = Sim;
+            if (sim == null) return "no living box";
+            var d = sim.DebugRaiseStoryAsk(kind, out string why);
+            if (d == null) return "not now: " + why;
+            GameClock.Instance?.DilemmaTracker()?.MarkCheat(d.id);
+            GameClock.Instance?.DilemmaTracker()?.Observe(sim, GameClock.Tel);
+            GameClock.Instance?.Save();
+            return $"raised {d.defId} (#{d.id}): {sim.QuestionOf(d)}; {CardStackView.DebugOpenEntry(d.entryId)}";
         }
     }
 }

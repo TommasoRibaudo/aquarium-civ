@@ -292,6 +292,7 @@ namespace AquariumCiv.Sim
             {
                 int keeper = kids.Count > k ? kids[k].id : mother.keeperId;
                 var pup = NewDog(mother.gen + 1, keeper, mother.id);
+                if (k == 0) PupAskAfterLitter(pup, kids); // #722 (4.4): two kids without a dog: the Keeper may pick who holds it first
                 DogBorn?.Invoke(pup);
             }
             e.nextLitterMonth = month + LitterGap(mother.id);

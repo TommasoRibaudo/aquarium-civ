@@ -78,6 +78,9 @@ play once per person). The pacing director (research 16) picks the slot, and the
 - **Rating:** N5 M3 R4 S4 W5.
 
 ### 1.5 A wedding across the pond (22)
+
+**Cut by the user (2026-11-25).** Not built; kept here for the record.
+
 - **Gate:** the far-shore family lives across the pond (the "there" answer in `village_hill_family`), their boat is moored, and
   each side has an unmarried grown-up.
 - **Cast:** {a} from the far shore and {b} from {place}.
@@ -110,6 +113,8 @@ The traits are already in the sim (`NameData.Traits`). Each event fires once per
 - **Stays:** the song is sung at that ritual every year. It shows as a sing bubble with the song's name; see 4.3.
 - **Read later:** that ritual, every year; the book.
 - **Cheat:** "Trait: the singer's song".
+- **Built (2026-11-25, batch 2):** the sim side only. The line is a card: the scene waits for its own animation spec. The song's
+  name (4.3) shows on the ritual's caption, not in a bubble: ritual bubbles stay wordless (#276).
 - **Rating:** N5 M3 R5 S4 W5.
 
 ### 2.3 The gardener's flowers (22)
@@ -135,6 +140,9 @@ The traits are already in the sim (`NameData.Traits`). Each event fires once per
 ## 3. Weather that happens in the box, told once
 
 ### 3.1 The first storm (22)
+
+**Cut by the user (2026-11-25).** Not built; kept here for the record.
+
 - **Gate:** the box's first storm day while there are tents.
 - **Scene:**
   - in the storm, one tent's cover comes loose and flaps;
@@ -196,6 +204,8 @@ Each one is a Keeper's ask. It follows the checklist: 15 words or fewer, named, 
   - the woodpile: "The First Log" or "Snow on the Roof".
 - **Stays:** the name in the sing bubble at that ritual, and in the book.
 - **Gate:** the singer's song (2.2).
+- **Built (2026-11-25, batch 2):** "Stays" is the ritual's caption ("The harvest feast: One More Bowl") and the book, not the
+  sing bubble (#276). Done line [est]: "The Keeper named {0}'s song {name}."
 - **Rating:** N5 M2 R4 S4 W5.
 
 ### 4.4 Which child holds the new pup (24)
@@ -233,6 +243,8 @@ Each one fires once per person.
 | A rich autumn ("the baskets ran out") | Names no one, changes nothing (17 / 25). |
 | Rivals' children become friends | The sim has no rivals. |
 | The unchosen candidate's advice | It can't be shown in the box (16 / 25). |
+| 1.5 A wedding across the pond | Cut by the user (2026-11-25). |
+| 3.1 The first storm | Cut by the user (2026-11-25). |
 
 ## 7. For the user
 

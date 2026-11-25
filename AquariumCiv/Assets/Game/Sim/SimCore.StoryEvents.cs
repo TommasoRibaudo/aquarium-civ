@@ -9,7 +9,15 @@ namespace AquariumCiv.Sim
     public static class StoryEvent
     {
         public const string FirstFruit = "first_fruit", TwoMarks = "two_marks", SecondStone = "second_stone";
-        public static readonly string[] All = { FirstFruit, TwoMarks, SecondStone };
+        /// <summary>2.2 the singer's song (a card: its scene is not built yet) and 5.1 the Keeper's child comes of age (once per person).</summary>
+        public const string SingerSong = "singer_song", KeeperChildGrown = "keeper_child_grown";
+        public static readonly string[] All = { FirstFruit, TwoMarks, SecondStone, SingerSong, KeeperChildGrown };
+        /// <summary>The events told once a box: the ones the yearly pacing counts (a person's callback, 5.1, is not one).</summary>
+        public static readonly string[] OncePerBox = { FirstFruit, TwoMarks, SecondStone, SingerSong };
+
+        /// <summary>The event has a staged scene (a held <see cref="MomentKind.Story"/> moment). 2.2's scene is not built yet: its line is
+        /// a card (the Keeper reads it on the next return), never a moment that would wait for a scene that does not exist.</summary>
+        public static bool Staged(string id) => id != null && id != SingerSong && Array.IndexOf(All, id) >= 0;
 
         /// <summary>The chronicle kind of an event's line: "story_first_fruit". Its moment is <see cref="MomentKind.Story"/>.</summary>
         public static string Kind(string id) => "story_" + id;
@@ -33,6 +41,17 @@ namespace AquariumCiv.Sim
         public List<int> markA = new(), markB = new();
         /// <summary>1.3: the second name stone (a consequence prop's id; -1: none yet) and the first name cut on it.</summary>
         public int secondStoneId = -1, secondStoneFirst = -1;
+        /// <summary>4.1 / 4.2: the one the Keeper picked to carry the offering / set the first log (-1: none). They lead it every year while
+        /// they live (<see cref="SimCore.RitualLead"/>).</summary>
+        public int offeringCarrierId = -1, firstLogId = -1;
+        /// <summary>2.2: the singer's song: the ritual it was made for ("" none), its maker (-1 none) and, from 4.3, its name ("" not yet).</summary>
+        public string songRitual = "", songName = "";
+        public int songOwnerId = -1;
+        /// <summary>4.4: the litter's pup that stayed while two kids had no dog (-1 none), the two kids (the first is today's rule's keeper),
+        /// and the pup the ask was raised for (-1 none: asked once a pup).</summary>
+        public int pupDogId = -1, pupKidA = -1, pupKidB = -1, pupAskedDog = -1;
+        /// <summary>5.2: the wedding lines told as "named by the Keeper" (their chronicle ids): the wedding moment says them on its caption.</summary>
+        public List<int> keeperWeddings = new();
     }
 
     /// <summary>
@@ -71,7 +90,7 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>A first-time story line was written this game year.</summary>
-        bool StoryFirstThisYear() => KindThisYear(StoryEvent.All.Select(StoryEvent.Kind).ToArray());
+        bool StoryFirstThisYear() => KindThisYear(StoryEvent.OncePerBox.Select(StoryEvent.Kind).ToArray());
 
         ChronicleEntry StoryLine(string id, string text, float salience, int a, int b)
         {
@@ -203,6 +222,18 @@ namespace AquariumCiv.Sim
                     if (NamesSince(FirstNameStone).Count == 0) { why = "nobody has died since the stone stood"; break; }
                     e = TrySecondStone(true);
                     if (e == null) why = "no grown-up to roll it";
+                    break;
+                case StoryEvent.SingerSong: // #722 (2.2): a singer and a kept ritual, and the ritual played now (the song is its card)
+                {
+                    if (!DebugSingerReady(out string ritual, out why)) break;
+                    int before = State.chronicle.Count;
+                    DebugPlayRitual(ritual);
+                    e = State.chronicle.Skip(before).LastOrDefault(x => x.kind == StoryEvent.Kind(StoryEvent.SingerSong));
+                    if (e == null) why = "the song wasn't made";
+                    break;
+                }
+                case StoryEvent.KeeperChildGrown: // #722 (5.1)
+                    e = DebugKeeperChildGrown(out why);
                     break;
                 default: why = "unknown event " + id; break;
             }

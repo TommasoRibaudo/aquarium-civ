@@ -107,10 +107,12 @@ namespace AquariumCiv.Sim
         public int RitualTimes(string kind) =>
             Told(RitualFirstKind(kind)) + Told(RitualYearKind(kind));
 
-        /// <summary>Who leads it this year: the priest for the town's offering, else the era's leader, else the eldest adult.</summary>
+        /// <summary>Who leads it this year: the priest for the town's offering, else the one the Keeper picked for it (#722 4.1 / 4.2, while
+        /// they live), else the era's leader, else the eldest adult.</summary>
         public Notable RitualLead(string kind)
         {
             if (kind == RitualKind.Offering && State.era == Era.Town && HolderOf(RoleType.Priest) is Notable priest && priest.alive) return priest;
+            if (Alive(ChosenLeadId(kind)) is Notable chosen) return chosen; // #722 §4.1 / §4.2
             var leader = Alive(SeatOf(LeaderOf(State.era))?.holderId ?? -1);
             return leader ?? State.notables.Where(n => n.alive && n.age >= AdultAge).OrderByDescending(n => n.age).ThenBy(n => n.id).FirstOrDefault();
         }
@@ -140,6 +142,8 @@ namespace AquariumCiv.Sim
                         ? $"{who} led the berrying walk, and {kid.name} ate more than they carried."
                         : $"{who} led the berrying walk. Everyone came home with purple fingers.";
                 case RitualKind.Woodpile:
+                    if (lead != null && lead.id == StoryMarks.firstLogId) // #722 (4.2): the Keeper's pick starts the line [est]
+                        return $"{who} set the first log on the woodpile, and everyone passed the rest along the line.";
                     return y % 2 == 1 && !first
                         ? $"{who} mended the woodpile's roof, and everyone passed a log along the line."
                         : $"{who} set the last log on the woodpile before the snow.";
@@ -167,6 +171,7 @@ namespace AquariumCiv.Sim
             if (first) State.storyFlags.Add(RitualFlag(kind));
             var e = Record(first ? RitualFirstKind(kind) : RitualYearKind(kind), RitualLine(kind, lead, first), first ? 0.7f : 0.3f, lead?.id ?? -1, -1);
             RitualPlayed?.Invoke(kind, lead, e);
+            SingerSongAfter(kind); // #722 (2.2): the first ritual played while a singer lives gets their song
             return e;
         }
 

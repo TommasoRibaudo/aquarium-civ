@@ -4,7 +4,8 @@
 // View/Beats/StoryScenes.cs. (2) What the events leave, drawn from SimState.storyMarks in every era: the fruit on the Keeper's tree every
 // summer after the first, the couples' marks on its trunk (a pair each, stacked), the second stone (a ConsequenceProp: ConsequencePropsView
 // draws it; it is held back from its spot while it is rolled in, or while its moment still waits). (3) The life use the fruit leaves: a kid
-// picks one in summer. Cheats: SimDebugPanel's "Stories (#722)".
+// picks one in summer. Batch 2: B80.a (5.1), the Keeper's child handed their work's tool at the fire by an elder (B7.b's hand-over).
+// Cheats: SimDebugPanel's "Stories (#722)".
 using System;
 using System.Collections.Generic;
 using AquariumCiv.Life;
@@ -16,7 +17,7 @@ namespace AquariumCiv.View
 {
     public sealed partial class CampLife
     {
-        static bool IsStoryUse(CampUse u) => u is CampUse.FirstFruit or CampUse.TwoMarks or CampUse.SecondStone or CampUse.FruitPick;
+        static bool IsStoryUse(CampUse u) => u is CampUse.FirstFruit or CampUse.TwoMarks or CampUse.SecondStone or CampUse.FruitPick or CampUse.KeeperChildGrown;
 
         /// <summary>The scenes a held moment plays (meals and bedtime don't take their people).</summary>
         readonly HashSet<CampScene> storyHeld = new();
@@ -73,7 +74,12 @@ namespace AquariumCiv.View
             return sc;
         }
 
-        public static CampUse UseOfStory(string id) => id == StoryEvent.FirstFruit ? CampUse.FirstFruit : id == StoryEvent.TwoMarks ? CampUse.TwoMarks : CampUse.SecondStone;
+        public static CampUse UseOfStory(string id) => id switch
+        {
+            StoryEvent.FirstFruit => CampUse.FirstFruit, StoryEvent.TwoMarks => CampUse.TwoMarks, StoryEvent.SecondStone => CampUse.SecondStone,
+            StoryEvent.KeeperChildGrown => CampUse.KeeperChildGrown, // B80.a
+            _ => CampUse.None, // 2.2 the singer's song: no scene yet (a card)
+        };
 
         /// <summary>The scene is still playing.</summary>
         public bool StoryPlaying(CampScene sc) => sc != null && scenes.Contains(sc);
@@ -100,6 +106,8 @@ namespace AquariumCiv.View
             if (sim == null || planner == null || meals == null) return "no camp yet";
             var acts = pv.Activities; float time = clock;
             if (use == CampUse.SecondStone) return TrySecondStoneScene(acts, time, a, b, force);
+            if (use == CampUse.KeeperChildGrown) return TryComeOfAgeScene(acts, time, a, force);
+            if (use == CampUse.None) return "this story has no scene (a card)";
             if (!TreeAt(out var tree, out int stage) || stage < 4) return "the Keeper's tree isn't grown ('Grow the Keeper's tree' first)";
             switch (use)
             {
@@ -190,6 +198,24 @@ namespace AquariumCiv.View
             return spot + Rotate(toCamp, 90f) * StoryScenes.RollFrom;
         }
 
+        /// <summary>B80.a: the one the line names (grown now: a cheat casts them if drawn), the eldest free grown-up as the elder who hands them
+        /// their work's tool, and up to three free people at the fire watching.</summary>
+        string TryComeOfAgeScene(IReadOnlyList<PersonActivity> acts, float time, int named, bool force)
+        {
+            if (!meals.HasFire) return "no fire";
+            var who = sim.FindNotable(named);
+            if (who == null || !Castable(acts, named, force)) return (who?.name ?? "the Keeper's child") + " isn't free";
+            int elder = Nobody; float age = -1f;
+            foreach (var n in sim.State.notables)
+                if (n.alive && n.id != named && n.age >= SimCore.AdultAge && n.age > age && Castable(acts, n.id, force)) { age = n.age; elder = n.id; }
+            if (elder == Nobody) return "no elder free to hand over the tool";
+            var fire = meals.Fire;
+            var watch = Pick(acts, fire, x => IsGrown(x) || IsKid(x), 3, force, new[] { named, elder });
+            var tool = StoryScenes.ToolOf(who.job);
+            Add(Thing(StoryScenes.ComeOfAge(named, At(named).Value, elder, At(elder).Value, watch, AtAll(watch), fire, ToCam(fire), tool, time), ThingFire));
+            return null;
+        }
+
         string TryFruitPick(IReadOnlyList<PersonActivity> acts, float time, bool force, Vector2 tree, int stage)
         {
             if (!force && !FruitOnTree) return "the tree has no fruit now (summer, after the first fruit)";
@@ -216,6 +242,10 @@ namespace AquariumCiv.View
                     if (mk.secondStoneId < 0) return "no second stone ('Stone: fill it' first)";
                     a = LastStoryNotable(StoryEvent.SecondStone); b = mk.secondStoneFirst; break;
                 case CampUse.FruitPick: CheatFruit = true; break;
+                case CampUse.KeeperChildGrown:
+                    a = LastStoryNotable(StoryEvent.KeeperChildGrown);
+                    if (a < 0) return "no Keeper's child has come of age ('People: the Keeper's child grows up' first)";
+                    break;
             }
             return TryStory(use, a, b, true) ?? (use == CampUse.FruitPick ? "a kid picks a fruit from the Keeper's tree" : use + " plays");
         }
@@ -411,5 +441,6 @@ namespace AquariumCiv.View
         public static string FirstFruitAgain() => Do(CampUse.FirstFruit);
         public static string TwoMarksAgain() => Do(CampUse.TwoMarks);
         public static string SecondStoneAgain() => Do(CampUse.SecondStone);
+        public static string KeeperChildGrownAgain() => Do(CampUse.KeeperChildGrown);
     }
 }

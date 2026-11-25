@@ -111,7 +111,7 @@ namespace AquariumCiv.Tests
         public void EveryChoiceCallbackOfficeAndBankLineFollowsTheRules()
         {
             var found = new List<(string, string, List<string>)>();
-            foreach (var d in DilemmaDefs.All.Concat(SmallChoices.All).Concat(LifeChoices.All))
+            foreach (var d in DilemmaDefs.All.Concat(SmallChoices.All).Concat(LifeChoices.All).Concat(StoryChoices.All)) // #722: the story asks too
             {
                 foreach (var q in new[] { d.question }.Concat(d.askedBy?.Values ?? Enumerable.Empty<string>()))
                     found.Add((d.id + " ask", q, ContentRules.Problems(DilemmaContentTests.Fill(q), LineVoice.People, ask: true)));

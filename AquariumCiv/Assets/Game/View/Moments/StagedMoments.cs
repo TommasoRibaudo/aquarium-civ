@@ -143,8 +143,15 @@ namespace AquariumCiv.View
             if (live.moment.kind == MomentKind.Ritual && live.sim.RitualOfEntry(live.moment.entryId) is string ritual)
             {
                 // #721: the ritual's name on the caption as it begins (the people's own lines follow as the moment's bubbles).
-                LastCaption = RitualKind.Caption(ritual);
+                // #722 (4.3): with the singer's song named, its name too ("The harvest feast: One More Bowl"); never in a bubble (#276).
+                LastCaption = live.sim.RitualCaption(ritual);
                 ShowMeDirector.Instance?.Say(LastCaption, PersonRef.None, CaptionSeconds, LineKind.Echo);
+            }
+            if (live.moment.kind == MomentKind.Wedding && live.sim.KeeperWeddingLine(live.moment.entryId) is string wed)
+            {
+                // #722 (5.2): the Keeper's child's wedding says its line on the caption as it starts, the way the rituals do.
+                LastCaption = wed;
+                ShowMeDirector.Instance?.Say(wed, PersonRef.None, StoryMoment.CaptionSeconds, LineKind.Echo);
             }
             LastWhy = null;
             Started++;
@@ -153,7 +160,7 @@ namespace AquariumCiv.View
 
         /// <summary>#721: how long a ritual's name stays on the caption (real seconds) [est].</summary>
         public const float CaptionSeconds = 5f;
-        /// <summary>#721: the caption said for the last ritual staged (tests, the panel).</summary>
+        /// <summary>#721: the caption said for the last ritual staged (tests, the panel); #722: or the Keeper's child's wedding.</summary>
         public static string LastCaption { get; private set; }
 
         static bool Done(Live live)
@@ -324,8 +331,8 @@ namespace AquariumCiv.View
             if (started.Count == 0) return $"nothing started: {stage.LastWhy}";
             var sc = LastScene;
             return sc != null && sc.momentId == m.id
-                ? $"{RitualKind.Caption(ritual)}: {sc.CastCount} people, {sc.plan.Duration:0} s, led by {sim.FindNotable(m.personA)?.name ?? "nobody"}{skipped}"
-                : $"{RitualKind.Caption(ritual)}: started{skipped}; {(LastWhy ?? "waiting for the morning")}";
+                ? $"{sim.RitualCaption(ritual)}: {sc.CastCount} people, {sc.plan.Duration:0} s, led by {sim.FindNotable(m.personA)?.name ?? "nobody"}{skipped}"
+                : $"{sim.RitualCaption(ritual)}: started{skipped}; {(LastWhy ?? "waiting for the morning")}";
         }
 
         /// <summary>Cheat: the Keeper arrives now: a new visit, so the top waiting moment plays as the welcome (a wedding is queued

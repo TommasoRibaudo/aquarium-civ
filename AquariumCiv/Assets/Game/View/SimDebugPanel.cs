@@ -341,6 +341,20 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Stone: fill it")) last = StoryMoment.DebugPlayNow(StoryEvent.SecondStone);
                 if (GUILayout.Button("Tree: a kid picks a fruit")) last = CampCheats.FruitPick(); // the life use the fruit leaves
                 GUILayout.EndHorizontal();
+                // batch 2: the singer's song, the four asks, the Keeper's child (each says why on failure)
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Trait: the singer's song")) last = StoryMoment.DebugPlayNow(StoryEvent.SingerSong);
+                if (GUILayout.Button("Ask: the song's name")) last = StoryMoment.DebugAskNow(StoryChoices.SongName);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Ask: who carries the offering")) last = StoryMoment.DebugAskNow(StoryChoices.Offering);
+                if (GUILayout.Button("Ask: who sets the first log")) last = StoryMoment.DebugAskNow(StoryChoices.FirstLog);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Ask: which child holds the pup")) last = StoryMoment.DebugAskNow(StoryChoices.PupHolder);
+                if (GUILayout.Button("People: the Keeper's child grows up")) last = StoryMoment.DebugPlayNow(StoryEvent.KeeperChildGrown);
+                GUILayout.EndHorizontal();
+                if (GUILayout.Button("People: the Keeper's child marries")) last = StoryMoment.DebugKeeperChildWed();
             }
             // ---- end #722 ----
             // ---- fb4 #540: camp props ----

@@ -2657,3 +2657,18 @@ picks it. Every number is [est] until the clip.
 - the fruit is picked from the ground, never by climbing;
 - the knife stays with the grown-ups;
 - the stone is rolled only by grown-ups, with the kids kept back 0.3 u.
+
+## B80. New events (#722), batch 2
+
+The one new scene of the second batch (`docs/design/new-events.md` §5.1). It is staged by CampLife (a `CampScene`, as B78) as the
+held Story moment of its line. The other batch-2 events reuse what exists: the four asks (4.1–4.4) are the choice scene; the
+Keeper's child's wedding (5.2) is the wedding moment with its line on the caption; the singer's song (2.2) is a card until its own
+spec. Every number is [est] until the clip.
+
+| # | Who · when · how often | Beats | Props · reuse | Cheat |
+|---|---|---|---|---|
+| B80.a The Keeper's child comes of age | the child the Keeper named, the year they turn grown-up (with work), the eldest free grown-up as the elder, up to 3 free people at the fire watching; **once** per person | the two come to the fire's camera side and stand face to face across the camera, 0.22 u apart (the elder carries the tool); the elder nods (0.8 s); B7.b's hand-over (`Giver` / `Taker`: held out, the hands meet, the tool changes hands at the contact → `hit`, the taker lifts it to look); the child holds it up (right arm x 150, a small hop 0.015 u, 1.4 s) while the elder and the seated watchers nod; the child walks off with it toward work, the elder sits down at the fire (1.5 s). Reads: an old one gives a young one a tool at the fire, and the young one holds it up | the job's tool, already in the prop kit: `Rod` (fisher), `Axe` (woodcutter, hunter, toolmaker, mason, smith), `Basket` (every other job); R B7.b `PairStage.HandOver`, `NodPose`, `Sit` | **"People: the Keeper's child grows up"** |
+
+**Assets needed:** none (the tools are the existing props).
+
+**Kids safe:** the tool goes from a grown-up to a grown-up (the child has just come of age); the kids watching sit at the fire.

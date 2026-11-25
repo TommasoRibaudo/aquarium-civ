@@ -279,9 +279,12 @@ namespace AquariumCiv.Sim
             bool first = !State.storyFlags.Contains(FlagWedding);
             if (first) State.storyFlags.Add(FlagWedding);
             string when = season <= 1 || season == 11 ? "by the winter fire" : season <= 4 ? "among the spring blossoms" : season <= 7 ? "under the summer sky" : "at the harvest dance";
-            Chronicle("wedding", first
+            var keeperChild = KeeperChildWedding(a, b); // #722 (5.2): the Keeper's child's wedding has its own line, said on the moment's caption
+            var e = Chronicle("wedding", keeperChild != null ? KeeperChildWeddingLine(keeperChild, keeperChild == a ? b : a)
+                : first
                 ? $"The first wedding in the glass: {a.FullName} married {b.FullName} {when}."
                 : $"{a.FullName} married {b.FullName} {when}.", first ? 0.8f : 0.7f, a.id, b.id);
+            if (keeperChild != null) StoryMarks.keeperWeddings.Add(e.id);
             MarksAfterWedding(a, b); // #722 (1.2): with the Keeper's tree grown, the couple's marks on it
         }
 

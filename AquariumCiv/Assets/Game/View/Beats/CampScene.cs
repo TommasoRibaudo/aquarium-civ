@@ -291,6 +291,8 @@ namespace AquariumCiv.View
         SecondStone,
         /// <summary>#722 (1.1 "Read later"): in summer a kid picks a fruit from the Keeper's tree and eats it (life).</summary>
         FruitPick,
+        /// <summary>B80.a (#722 5.1): the Keeper's child comes of age: at the fire an elder hands them their work's tool.</summary>
+        KeeperChildGrown,
     }
 
     /// <summary>#694: what a dog or a visiting wolf does in a <see cref="QuadPart"/> (P0's moves; CampLife.Dogs poses them).</summary>

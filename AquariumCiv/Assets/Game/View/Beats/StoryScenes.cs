@@ -472,5 +472,100 @@ namespace AquariumCiv.View
             }
             return s;
         }
+
+        // ================================================================== B80.a the Keeper's child comes of age
+        /// <summary>B80.a: how far apart the two stand for the hand-over (B7.b's <see cref="PairStage.HandGap"/> and a little), how long the tool is
+        /// held up, and how far round the fire the watchers sit.</summary>
+        public const float GiveGap = 0.22f, ToolUpFor = 1.4f, WatchR = 0.3f;
+
+        /// <summary>The work's tool the elder hands over (the spec: an axe, a basket or a rod): a rod for a fisher, an axe for the work that
+        /// cuts or shapes (wood, the hunt, tools, stone, metal), a basket for every other job [est].</summary>
+        public static PropKind ToolOf(string job) => job switch
+        {
+            AquariumCiv.Sim.JobType.Fisher => PropKind.Rod,
+            AquariumCiv.Sim.JobType.Woodcutter or AquariumCiv.Sim.JobType.Hunter or AquariumCiv.Sim.JobType.Toolmaker
+                or AquariumCiv.Sim.JobType.Mason or AquariumCiv.Sim.JobType.Smith => PropKind.Axe,
+            _ => PropKind.Basket,
+        };
+
+        /// <summary>The new tool held up: the right arm to x 150, the left out a little, a small hop at the top (0.015 u).</summary>
+        static void ToolUp(ref DollPose p, float t, float len)
+        {
+            float u = In(t, 0f, 0.3f) * (1f - In(t, len - 0.3f, 0.3f));
+            p.armR = Lerp(p.armR, new Vector3(150f, 0f, 10f), u); p.armL = Lerp(p.armL, new Vector3(40f, 0f, -20f), u);
+            p.offset.y += 0.015f * Bump(t, 0.25f, 0.35f);
+        }
+
+        /// <summary>Seated at the fire, a nod.</summary>
+        static void SitNod(ref DollPose p, float t, float len) { Seated(ref p); NodPose(ref p, Mathf.Max(0f, t - 0.2f), len); }
+
+        /// <summary>
+        /// B80.a: the one the Keeper named (<paramref name="young"/>, just grown) and an elder (<paramref name="elder"/>, carrying the tool) come to
+        /// the fire's camera side and stand face to face across the camera (0.22 u apart); the elder nods; B7.b's hand-over (<see cref="PairStage.HandOver"/>:
+        /// held out, the hands meet, the tool changes hands at the contact <see cref="CampScene.a"/>, the taker lifts it to look); the young one holds
+        /// it up (right arm x 150, a small hop, 1.4 s) while the elder and the watchers at the fire nod; then the young one walks off with it to
+        /// work, and the elder sits down at the fire. <see cref="CampScene.b"/>: the hand-over is over; <see cref="CampScene.c"/>: the tool is
+        /// lowered. Up to three watchers sit round the far side of the fire.
+        /// </summary>
+        public static CampScene ComeOfAge(int young, Vector2 youngAt, int elder, Vector2 elderAt, IList<int> watchers, IList<Vector2> watchersAt,
+            Vector2 fire, Vector2 toCam, PropKind tool, float t0)
+        {
+            toCam = Unit(toCam, Vector2.down); var acr = Across(toCam);
+            var mid = fire + toCam * 0.3f;
+            var ys = mid + acr * (GiveGap * 0.5f); var es = mid - acr * (GiveGap * 0.5f);
+            var s = new CampScene(CampUse.KeeperChildGrown, t0, mid) { holdFocus = true };
+            int my = s.Add(young), me = s.Add(elder);
+            // to the fire: the elder brings the tool
+            float wy = WalkTime(youngAt, ys, Walk), we = WalkTime(elderAt, es, Walk);
+            float t = Mathf.Max(wy, we);
+            s.Part(my, 0f, wy, ys, es, DollStyle.Stand, null, PropKind.None, Walk);
+            if (wy < t) s.Part(my, wy, t, ys, es, DollStyle.Stand);
+            s.Part(me, 0f, we, es, ys, DollStyle.Stand, null, tool, Walk);
+            if (we < t) s.Part(me, we, t, es, ys, DollStyle.Stand, null, tool);
+            // face to face; the elder nods
+            s.Part(my, t, t + 0.8f, ys, es, DollStyle.Stand);
+            s.Part(me, t, t + 0.8f, es, ys, DollStyle.Stand, NodPose, tool);
+            t += 0.8f;
+            // B7.b: the hand-over (the pair's cue holds both while it plays; the parts under it keep them in the scene)
+            var ev = PairStage.HandOver(8011 + young * 31 + elder, t0 + t, elder, young, es, ys, tool);
+            float give = ev != null ? ev.approach + ev.duration : PairBeats.HandOverSeconds;
+            if (ev != null) s.pairs.Add(ev);
+            s.a = t + (ev != null ? ev.approach + ev.giverBeat.ContactAt : PairBeats.HandOverContactAt);
+            s.Part(my, t, s.a, ys, es, DollStyle.Stand);
+            s.Part(my, s.a, t + give, ys, es, DollStyle.Stand, null, tool);
+            s.Part(me, t, s.a, es, ys, DollStyle.Stand, null, tool);
+            s.Part(me, s.a, t + give, es, ys, DollStyle.Stand);
+            t += give;
+            s.b = t;
+            // held up for everyone to see
+            s.Part(my, t, t + ToolUpFor, ys, ys + toCam, DollStyle.Stand, ToolUp, tool);
+            s.Part(me, t, t + ToolUpFor, es, ys, DollStyle.Stand, NodPose);
+            float up = t;
+            t += ToolUpFor;
+            s.c = t;
+            // off to work with it; the elder sits down at the fire
+            var off = ys + acr * 0.4f + toCam * 0.15f;
+            Go(s, my, t, WalkTime(ys, off, Walk), off, off + acr, Walk).prop = tool;
+            var seat = fire + Rot(toCam, -70f) * WatchR;
+            float ws = WalkTime(es, seat, Walk);
+            s.Part(me, t, t + ws, seat, fire, DollStyle.Sit, null, PropKind.None, Walk);
+            s.Part(me, t + ws, t + ws + 1.5f, seat, fire, DollStyle.Sit);
+            float end = t + ws + 1.5f;
+            s.d = end;
+            // the watchers round the far side of the fire, facing the two
+            int n = Mathf.Min(3, watchers.Count);
+            var angles = new[] { 150f, -150f, 180f };
+            for (int i = 0; i < n; i++)
+            {
+                int m = s.Add(watchers[i]);
+                var spot = fire + Rot(toCam, angles[i]) * WatchR;
+                float w = Mathf.Min(WalkTime(watchersAt[i], spot, Walk), up);
+                s.Part(m, 0f, w, spot, mid, DollStyle.Sit, null, PropKind.None, Walk);
+                if (w < up) s.Part(m, w, up, spot, mid, DollStyle.Sit);
+                s.Part(m, up, up + ToolUpFor, spot, mid, DollStyle.Sit, SitNod);
+                s.Part(m, up + ToolUpFor, end, spot, fire, DollStyle.Sit);
+            }
+            return s;
+        }
     }
 }

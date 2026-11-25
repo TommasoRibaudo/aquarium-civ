@@ -109,7 +109,8 @@ namespace AquariumCiv.Sim
         public Dilemma FindDilemma(int id) => State.dilemmas.FirstOrDefault(d => d.id == id);
         public Dilemma DilemmaOfEntry(int entryId) => State.dilemmas.FirstOrDefault(d => d.entryId == entryId);
         public DilemmaDef DilemmaDefOf(Dilemma d) => d == null ? null : DilemmaCatalog.FirstOrDefault(x => x.id == d.defId) ?? SmallCatalog.FirstOrDefault(x => x.id == d.defId)
-            ?? LifeChoiceCatalog?.FirstOrDefault(x => x.id == d.defId); // #437/#438: the wolves' and the dogs' choices
+            ?? LifeChoiceCatalog?.FirstOrDefault(x => x.id == d.defId) // #437/#438: the wolves' and the dogs' choices
+            ?? StoryChoiceCatalog?.FirstOrDefault(x => x.id == d.defId); // #722 §4: the story events' small owned choices
 
         /// <summary>The dilemma that is open now (at most one), or null.</summary>
         public Dilemma OpenDilemma => State.dilemmas.FirstOrDefault(d => d.state == DilemmaState.Open);
@@ -272,8 +273,10 @@ namespace AquariumCiv.Sim
         {
             if (!Config.smallChoices || OpenDilemma != null || OpenWish != null) return false;
             var def = SeasonalLifeDef();
+            int a = -1, b = -1;
+            if (def == null) def = SeasonalStoryAsk(out a, out b); // #722 (4.4): the new pup's ask comes as the litter does
             if (def == null) return false;
-            var raised = RaiseDilemma(def, -1, -1);
+            var raised = RaiseDilemma(def, a, b);
             choiceStageFor = raised.id;
             return true;
         }

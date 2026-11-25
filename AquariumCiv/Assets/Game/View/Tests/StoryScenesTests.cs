@@ -210,5 +210,59 @@ namespace AquariumCiv.View.Tests
             Assert.IsTrue(Enumerable.Range(0, bv.Length).Any(i => (fv[i] - bv[i]).sqrMagnitude > 1e-8f), "another seed: its own rough shape");
             foreach (var m in new[] { first, blank, one }) Object.DestroyImmediate(m);
         }
+
+        // ================================================================== B80.a the Keeper's child comes of age
+        [Test]
+        public void B80a_ComeOfAge_AnElderHandsTheToolOver_AtTheFire_HeldUp_ThenOffToWork()
+        {
+            var watchAt = new[] { Fire + Vector2.left * 0.5f, Fire + Vector2.up * 0.5f };
+            var s = StoryScenes.ComeOfAge(1, Far, 2, Far2, new[] { 3, 4 }, watchAt, Fire, ToCam, PropKind.Rod, 0f);
+            Ok(s);
+            Assert.AreEqual(CampUse.KeeperChildGrown, s.use);
+            Assert.AreEqual(4, s.Count, "the Keeper's child, the elder, two watchers");
+            // B7.b's hand-over: one pair event, the elder gives, the Keeper's child takes
+            var ev = s.pairs.Single();
+            Assert.AreEqual(PairKind.HandOver, ev.kind);
+            Assert.AreEqual(PropKind.Rod, ev.thing, "their work's tool");
+            Assert.AreEqual(0, ev.group.IndexOf(2), "the elder gives");
+            Assert.AreEqual(1, ev.group.IndexOf(1), "the Keeper's child takes");
+            Assert.AreEqual(s.a, ev.BeatStart + ev.giverBeat.ContactAt - s.t0, 1e-3f, "the hit: the tool changes hands at the contact");
+            Assert.GreaterOrEqual(s.Length, ev.End - s.t0, "the scene holds them past the hand-over");
+            // at the fire, on the camera's side, face to face
+            var give = s.parts[0].First(p => p.from >= s.a - 1e-3f);
+            Assert.That((give.pos - Fire).magnitude, Is.InRange(0.25f, 0.4f), "at the fire");
+            Assert.Less(Vector2.Dot(give.pos - Fire, ToCam), 0.35f); Assert.Greater(Vector2.Dot(give.pos - Fire, ToCam), 0.2f, "on the camera's side");
+            // the elder carries the tool in; the young one is empty-handed until the contact, then holds it and walks off with it
+            Assert.IsTrue(s.parts[1].Where(p => p.to <= s.a + 1e-3f).All(p => p.prop == PropKind.Rod), "the elder brings it");
+            Assert.IsTrue(s.parts[1].Where(p => p.from >= s.a - 1e-3f).All(p => p.prop == PropKind.None), "and gives it away");
+            Assert.IsTrue(s.parts[0].Where(p => p.to <= s.a + 1e-3f).All(p => p.prop == PropKind.None));
+            Assert.IsTrue(s.parts[0].Where(p => p.from >= s.a - 1e-3f).All(p => p.prop == PropKind.Rod), "the Keeper's child keeps it");
+            // held up for everyone (right arm x 150, 1.4 s) once the hand-over is over; the watchers nod, seated
+            var up = s.parts[0].Single(p => p.pose != null);
+            Assert.GreaterOrEqual(up.from, s.b - 1e-3f); Assert.Greater(s.b, s.a);
+            Assert.AreEqual(StoryScenes.ToolUpFor, up.Len, 1e-3f);
+            var d = DollPose.Rest; up.pose(ref d, up.Len * 0.5f, up.Len);
+            Assert.AreEqual(150f, d.armR.x, 1f, "held up");
+            for (int m = 2; m < 4; m++)
+            {
+                Assert.IsTrue(s.parts[m].All(p => p.style == DollStyle.Sit), "the watchers sit at the fire");
+                Assert.IsTrue(s.parts[m].Any(p => p.pose != null && Mathf.Abs(p.from - up.from) < 1e-3f), "and nod as it goes up");
+            }
+            // then off to work; the elder sits down at the fire
+            var last = s.parts[0].OrderBy(p => p.from).Last();
+            Assert.Greater((last.pos - Fire).magnitude, 0.4f, "walks off with it");
+            Assert.AreEqual(DollStyle.Sit, s.parts[1].OrderBy(p => p.from).Last().style, "the elder sits down");
+        }
+
+        [Test]
+        public void B80a_TheTool_ByTheirWork()
+        {
+            Assert.AreEqual(PropKind.Rod, StoryScenes.ToolOf(AquariumCiv.Sim.JobType.Fisher));
+            Assert.AreEqual(PropKind.Axe, StoryScenes.ToolOf(AquariumCiv.Sim.JobType.Woodcutter));
+            Assert.AreEqual(PropKind.Axe, StoryScenes.ToolOf(AquariumCiv.Sim.JobType.Hunter));
+            Assert.AreEqual(PropKind.Basket, StoryScenes.ToolOf(AquariumCiv.Sim.JobType.Gatherer));
+            Assert.AreEqual(PropKind.Basket, StoryScenes.ToolOf(AquariumCiv.Sim.JobType.Farmer));
+            Assert.AreEqual(PropKind.Basket, StoryScenes.ToolOf(""));
+        }
     }
 }
