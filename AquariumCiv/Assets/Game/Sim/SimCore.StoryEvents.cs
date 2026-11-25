@@ -219,8 +219,10 @@ namespace AquariumCiv.Sim
             who = DebugPick(State.notables.Where(n => n.alive && n.age >= AdultAge).OrderBy(n => Math.Abs(n.age - 28f)).ThenBy(n => n.id), who);
             if (who == null) return null;
             var list = State.consequenceProps ??= new List<ConsequenceProp>();
-            // beside the first stone, on the side away from the pond's middle [est]
+            // beside the first stone, on the side away from the pond's middle [est]; the other side when a tree stands in front of that one
+            // (toward the glass the camera looks in from), so no tree hides the new stone and its cut (the review of the clip)
             float side = first.x >= 0f ? 1f : -1f;
+            if (TreeInFront(first.x + side * 0.24f, first.z + 0.04f) && !TreeInFront(first.x - side * 0.24f, first.z + 0.04f)) side = -side;
             var p = new ConsequenceProp
             {
                 id = list.Count == 0 ? 1 : list.Max(x => x.id) + 1, dilemmaId = 991000, option = 0, kind = ConsequenceKind.NameStone,
@@ -230,6 +232,21 @@ namespace AquariumCiv.Sim
             list.Add(p);
             StoryMarks.secondStoneId = p.id; StoryMarks.secondStoneFirst = dead.id;
             return StoryLine(StoryEvent.SecondStone, $"The name stone was full. {who.name} rolled a second one beside it, and {dead.name}'s name went on first.", 0.75f, who.id, dead.id);
+        }
+
+        /// <summary>A grown or young tree within reach in front of (x, z): toward the front glass (lower z), where the camera looks from [est].</summary>
+        bool TreeInFront(float x, float z)
+        {
+            var e = State.eco;
+            if (!EcologyOn || e?.cover == null) return false;
+            for (int c = 0; c < AquariumCiv.Sim.Eco.EcoLand.N && c < e.cover.Length; c++)
+            {
+                var cv = (AquariumCiv.Sim.Eco.EcoCover)e.cover[c];
+                if (cv != AquariumCiv.Sim.Eco.EcoCover.Tree && cv != AquariumCiv.Sim.Eco.EcoCover.Young) continue;
+                float dx = Settle.SiteMap.CXc(c) - x, dz = Settle.SiteMap.CZc(c) - z;
+                if (Math.Abs(dx) < 0.25f && dz < 0.05f && dz > -0.5f) return true;
+            }
+            return false;
         }
 
         // ---------- debug (SimDebugPanel's "Stories (#722)" block) ----------
