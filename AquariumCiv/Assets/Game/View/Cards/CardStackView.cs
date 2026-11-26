@@ -207,6 +207,7 @@ namespace AquariumCiv.View
             if (clock != null && clock.Visiting) return true;
             var person = PersonCardView.Instance;
             if (person != null && (person.AnyOpen || person.BuildingOpen)) return true; // #241: a building card too, or the cards open under it
+            if (BookView.Instance != null && BookView.Instance.IsOpen) return true; // #766: Remember opens the book: one sheet at a time, the note waits under it
             var tl = TimeLapseView.Find();
             if (tl != null && tl.Active) return true;
             var mp = MomentPlayer.Instance;

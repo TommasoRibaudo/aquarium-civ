@@ -144,6 +144,10 @@ namespace AquariumCiv.View
             int start = key == null ? 0 : Pages.FindIndex(p => p.key == key);
             if (start < 0) return false;
             closed = whenClosed;
+            var person = PersonCardView.Instance;
+            if (person != null) { person.Close(); person.CloseCrowd(); person.CloseBuilding(); } // #766: one sheet at a time
+            var hud = GameHud.Instance;
+            if (hud != null) hud.CloseSheet();
             IsOpen = true;
             pressing = false;
             ApplySafe();
