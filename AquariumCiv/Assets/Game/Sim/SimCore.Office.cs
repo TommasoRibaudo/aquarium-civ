@@ -429,7 +429,7 @@ namespace AquariumCiv.Sim
         {
             var s = State;
             if (s.termLineNextId < TermLineIdBase) // a save that lost the counter: carry on above every id in use
-                s.termLineNextId = Math.Max(TermLineIdBase, s.chronicle.Count == 0 ? 0 : s.chronicle.Max(x => x.id) + 1);
+                s.termLineNextId = Math.Max(TermLineIdBase, s.chronicle.Count == 0 ? 0 : s.chronicle.Where(x => x.id < RelicLineIdBase).Select(x => x.id).DefaultIfEmpty(0).Max() + 1); // not above the relic cards' or the glance lines' own ids (#788)
             var e = new ChronicleEntry
             {
                 id = s.termLineNextId++, month = s.month, kind = kind, text = text, salience = TermSalience,

@@ -29,6 +29,9 @@ namespace AquariumCiv.Sim
         public double simHours;     // sim hours from close until then
         public double realHours;    // real hours from close until then: the notification goes at close + this
         public int monthsRun;       // months the copy lived: the run's cost
+        /// <summary>#790: the pinned person died in the copy before the run ended (a soft word may go for it, off by default), and when: real hours from close.</summary>
+        public bool pinnedGone;
+        public double pinnedGoneRealHours;
         public bool Found => target != RunAheadTarget.None;
     }
 
@@ -66,23 +69,34 @@ namespace AquariumCiv.Sim
             if (copy == null || ReferenceEquals(copy, State)) throw new ArgumentException("needs a separate copy of the state", nameof(deepCopy));
             var ahead = new SimCore(Config, copy) { CatchingUp = true };
             var s = ahead.State;
+            var pin = State.pinnedNotableId < 0 ? null : s.notables.Find(n => n.id == State.pinnedNotableId && n.alive); // #790
+            long pinGoneMonth = -1;
+            double startSim = s.simHours;
+            RunAheadResult WithPin(RunAheadResult r)
+            {
+                if (pinGoneMonth < 0) return r;
+                r.pinnedGone = true;
+                r.pinnedGoneRealHours = Config.RealHoursFor(Math.Max(0, pinGoneMonth * Config.StepHours - startSim));
+                return r;
+            }
             bool Ready() => s.eraReady || s.peakReady;
             // Like Advance: a month steps when simHours reaches it, and a save can stand part way through a month.
             long last = (long)Math.Floor((s.simHours + Config.OfflineSimHours(RunAheadMaxAwayHours)) / Config.StepHours + 1e-7);
             int months = 0;
             while (s.month < last && !Ready())
             {
-                if (stop != null && stop()) return new RunAheadResult { miss = RunAheadMiss.Stopped, monthsRun = months };
+                if (stop != null && stop()) return WithPin(new RunAheadResult { miss = RunAheadMiss.Stopped, monthsRun = months });
                 ahead.Step();
                 months++;
+                if (pin != null && pinGoneMonth < 0 && !pin.alive) pinGoneMonth = s.month;
             }
-            if (!Ready()) return new RunAheadResult { miss = RunAheadMiss.NotInTime, monthsRun = months };
+            if (!Ready()) return WithPin(new RunAheadResult { miss = RunAheadMiss.NotInTime, monthsRun = months });
             double sim = Math.Max(0, s.month * Config.StepHours - s.simHours);
-            return new RunAheadResult
+            return WithPin(new RunAheadResult
             {
                 target = s.eraReady ? RunAheadTarget.NextEra : RunAheadTarget.Peak, era = s.eraReady ? s.era + 1 : s.era,
                 month = s.month, simHours = sim, realHours = Config.RealHoursFor(sim), monthsRun = months,
-            };
+            });
         }
     }
 }

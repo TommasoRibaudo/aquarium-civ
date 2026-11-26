@@ -90,6 +90,7 @@ namespace AquariumCiv.Sim
         public int roleSinceYear = -1;
         public int termEndsYear = -1;   // elected roles: the year of the next vote (-1 = no term)
         public string roleLine = "";    // "gatherer, chief of the camp"; "child"; "elder, priest"
+        public string frailLine = "";   // #790: "Slowing down these days. ..." for an elder in their last days ("" = not)
         public string keeperLine = "";  // #371: "Chosen by the Keeper." / "Named by the Keeper." ("" = the Keeper's hand set nothing here)
         public List<PersonTerm> terms = new();          // every term, oldest first (the book's "roles with years")
         public List<PersonTie> family = new();          // partner, parents, children, siblings (living first)
@@ -437,6 +438,7 @@ namespace AquariumCiv.Sim
             }
             c.roleLine = CardRoleLine(n, c.role);
             c.keeperLine = KeeperHandLine(n);
+            c.frailLine = FrailLine(n);
             foreach (var t in TermsOf(n.id).OrderBy(t => t.fromMonth))
             {
                 long end = t.toMonth >= 0 ? t.toMonth : (n.alive ? State.month : n.diedMonth);

@@ -258,6 +258,7 @@ namespace AquariumCiv.Sim
         public string trait;
         public float age;        // in years (advances at notableAgeFactor per game year)
         public float lifespan;
+        public bool slowingNoted; // #788/#790: the chronicle has said this elder is slowing down (once, in their last window)
         public bool alive = true;
         public int parentId = -1;
         public long bornMonth;
@@ -375,6 +376,7 @@ namespace AquariumCiv.Sim
         public List<Relic> relics = new();               // the slice relics, found and the Sandal still lost (SimCore.Relics.cs, #74)
         public bool dollDue;                  // the Keeper Doll's trigger fired while the player was away: made on the first live month
         public List<KeeperActionCount> keeperActions = new(); // what the Keeper did how often (the Keeper Doll's prop)
+        public int slowLineNextId = SimCore.SlowLineIdBase; // #788: the glance lines' own ids, so the shared ids never shift
         public int relicLineNextId = SimCore.RelicLineIdBase; // relic cards' own ids, so the shared ids never shift
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
         /// <summary>Where everything stands: lots, family yards, paths, the Keeper's marks on the land (Sim/Settle, #32).</summary>
