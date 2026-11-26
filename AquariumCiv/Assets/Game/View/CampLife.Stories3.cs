@@ -100,7 +100,7 @@ namespace AquariumCiv.View
             int who = NamedOr(acts, named, force, x => IsGrown(x), () => Nobody);
             if (who == Nobody) return (sim.FindNotable(named)?.name ?? "the tinkerer") + " isn't free";
             var watch = Pick(acts, edge, x => IsGrown(x) || IsKid(x), 2, force, new[] { who });
-            Add(Thing(StoryScenes.TinkererBucket(who, At(who).Value, watch, AtAll(watch), fire, edge, toWater, ToCam(fire), time), ThingBank));
+            Add(Thing(StoryScenes.TinkererBucket(who, At(who).Value, watch, AtAll(watch), fire, edge, toWater, ToCam(fire), time, Room(acts, new[] { who }, watch)), ThingBank));
             return null;
         }
 

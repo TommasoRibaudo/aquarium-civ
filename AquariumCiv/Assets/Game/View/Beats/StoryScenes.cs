@@ -279,18 +279,18 @@ namespace AquariumCiv.View
         /// <see cref="CampScene.kind"/>: the pair; <see cref="CampScene.p0"/>.x: which notch of the pair is a's (0, 1). The knife stays with the
         /// grown-ups: the kids never come nearer than their step back.
         /// </summary>
-        public static CampScene TwoMarks(int a, int b, Vector2 aAt, Vector2 bAt, IList<int> kids, IList<Vector2> kidsAt, Vector2 tree, int stage, int pair, float t0)
+        public static CampScene TwoMarks(int a, int b, Vector2 aAt, Vector2 bAt, IList<int> kids, IList<Vector2> kidsAt, Vector2 tree, int stage, int pair, float t0, StoryRoom room = null)
         {
             var face = MarkFace; var acr = Across(face);
             var visit = TreeGeo.Visit(tree, stage, face);
             var s = new CampScene(CampUse.TwoMarks, t0, visit) { holdFocus = true, kind = pair };
             int ma = s.Add(a), mb = s.Add(b);
             // they meet, then walk to the tree side by side
-            var meet = aAt + Dir(aAt, bAt, acr) * 0.08f;
+            var meet = aAt + Dir(aAt, bAt, acr) * (BodySpots.BodyW + 0.01f); // a body width and a little apart (#779)
             float t = WalkTime(bAt, meet, Walk);
             s.Part(ma, 0f, t, aAt, meet, DollStyle.Stand);
             s.Part(mb, 0f, t, meet, aAt, DollStyle.Stand, null, PropKind.None, Walk);
-            var va = visit + acr * 0.045f; var vb = visit - acr * 0.045f;
+            var va = visit + acr * MarksHalf; var vb = visit - acr * MarksHalf;
             if (Vector2.Dot(va - vb, meet - aAt) > 0f) { var x = va; va = vb; vb = x; } // a keeps its side
             float pace = Walk * 0.85f, wt = Mathf.Max(WalkTime(aAt, va, pace), WalkTime(meet, vb, pace));
             s.Part(ma, t, t + wt, va, tree, DollStyle.Stand, null, PropKind.None, pace);
@@ -322,19 +322,28 @@ namespace AquariumCiv.View
             var backA = va + face * 0.3f + acr * 0.05f; var backB = vb + face * 0.3f - acr * 0.05f;
             Go(s, ma, t, WalkTime(va, backA, pace), backA, backA + face, pace);
             Go(s, mb, t, WalkTime(vb, backB, pace), backB, backB + face, pace);
-            // the kids watch from a step back
+            // the kids watch from a step back, each on a spot of their own: a body width from the grown-ups' (at the tree and where they step
+            // back to), from each other and from anyone else about (#779)
+            var taken = new List<Vector2> { va, vb, backA, backB, ta, tb };
             int nk = Mathf.Min(2, kids.Count);
+            var kidSpots = new List<Vector2>();
+            for (int i = 0; i < nk; i++)
+                kidSpots.Add(BodySpots.Free(visit + face * 0.2f + acr * (i == 0 ? 0.13f : -0.13f), acr * (i == 0 ? 1f : -1f), taken, room));
             for (int i = 0; i < nk; i++)
             {
                 int m = s.Add(kids[i]);
-                var spot = visit + face * 0.2f + acr * (i == 0 ? 0.13f : -0.13f);
+                var spot = kidSpots[i];
                 float w = WalkTime(kidsAt[i], spot, KidWalk);
                 s.Part(m, 0f, w, spot, visit, DollStyle.Stand, null, PropKind.None, KidWalk);
                 if (w < t) s.Part(m, w, t, spot, tree, DollStyle.Peek);
-                Go(s, m, Mathf.Max(w, t), 1.2f, spot + face * 0.3f + acr * (i == 0 ? 0.15f : -0.15f), spot + face, KidWalk);
+                var off = BodySpots.Free(spot + face * 0.3f + acr * (i == 0 ? 0.15f : -0.15f), acr * (i == 0 ? 1f : -1f), taken, room);
+                Go(s, m, Mathf.Max(w, t), 1.2f, off, spot + face, KidWalk);
             }
             return s;
         }
+
+        /// <summary>#779: half the gap between the two at the tree (a body width and a little).</summary>
+        public const float MarksHalf = 0.055f;
 
         static void Cut(CampScene s, int m, float t, Vector2 at, Vector2 tree, Vector3 mark)
         {

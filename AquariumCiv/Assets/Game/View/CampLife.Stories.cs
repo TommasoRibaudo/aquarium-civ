@@ -182,6 +182,24 @@ namespace AquariumCiv.View
             return best;
         }
 
+        /// <summary>#779: what a story scene's standing spots keep clear of: everyone drawn who is not in <paramref name="cast"/>, and the water,
+        /// the tents and the glass's margin.</summary>
+        StoryRoom Room(IReadOnlyList<PersonActivity> acts, params IEnumerable<int>[] cast)
+        {
+            var room = new StoryRoom();
+            var in1 = new HashSet<int>();
+            foreach (var c in cast) if (c != null) foreach (int k in c) in1.Add(k);
+            foreach (var a in acts) if (!in1.Contains(a.who.Key) && At(a.who.Key) is Vector2 p) room.others.Add(p);
+            var box = LandBox; var tents = Tents();
+            room.blocked = p =>
+            {
+                if (box != null && box.land.IsWater(p.x, p.y)) return true;
+                foreach (var t in tents) if ((t.centre - p).magnitude < t.r + 0.05f) return true;
+                return !Terrain.InBox(p.x, p.y, Terrain.GlassMargin + 0.05f);
+            };
+            return room;
+        }
+
         string TryMarksScene(IReadOnlyList<PersonActivity> acts, float time, int a, int b, bool force, Vector2 tree, int stage)
         {
             if (a <= 0 || b <= 0) return "no couple";
@@ -191,7 +209,7 @@ namespace AquariumCiv.View
             for (int i = mk.markA.Count - 1; i >= 0 && pair < 0; i--) if (mk.markA[i] == a && mk.markB[i] == b || mk.markA[i] == b && mk.markB[i] == a) pair = i;
             if (pair < 0) pair = Mathf.Max(0, mk.markA.Count - 1);
             var kids = Pick(acts, tree, x => IsKid(x), 2, force, new[] { a, b });
-            Add(Thing(StoryScenes.TwoMarks(a, b, At(a).Value, At(b).Value, kids, AtAll(kids), tree, stage, pair, time), ThingTree));
+            Add(Thing(StoryScenes.TwoMarks(a, b, At(a).Value, At(b).Value, kids, AtAll(kids), tree, stage, pair, time, Room(acts, new[] { a, b }, kids)), ThingTree));
             return null;
         }
 
