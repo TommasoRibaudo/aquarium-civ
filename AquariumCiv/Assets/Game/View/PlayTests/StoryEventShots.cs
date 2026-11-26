@@ -182,8 +182,51 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>How far from a held scene's thing its staged spots still count for the still frame [est].</summary>
         const float HoldReach = 0.7f;
 
-        IEnumerator Film(string ev, Func<bool> playing, Func<IEnumerable<int>> cast, Func<Vector2?> fallback, float max, List<int> frames, List<Vector2> hold = null)
+        /// <summary>
+        /// #779: nobody stands inside anybody. Each frame, everyone drawn within <see cref="Near"/> of the cast who has stood still for a moment
+        /// (under 0.03 u over the last 0.4 s) is checked against every other such person: the closest pair over the clip is
+        /// <see cref="Closest"/> (it must be at least <see cref="Least"/>, a body width less what a pose leans).
+        /// </summary>
+        sealed class BodyWatch
         {
+            public const float Near = 1.2f, Least = BodySpots.BodyW - 0.02f;
+            readonly Dictionary<int, List<(float t, Vector2 at)>> hist = new Dictionary<int, List<(float, Vector2)>>();
+            /// <summary>People who may stand close on purpose (a couple at their vow's hug).</summary>
+            public readonly HashSet<int> Together = new HashSet<int>();
+            public float Closest = float.MaxValue; public string Where = "nobody close";
+
+            public void Sample(float now, IEnumerable<int> cast)
+            {
+                var pv = Pv; if (pv == null) return;
+                var who = new List<PersonRef>(); var xs = new List<float>(); var zs = new List<float>();
+                pv.StandingNow(who, xs, zs);
+                var keys = new HashSet<int>(cast); var mid = Vector2.zero; int n = 0;
+                for (int i = 0; i < who.Count; i++) if (keys.Contains(who[i].Key)) { mid += new Vector2(xs[i], zs[i]); n++; }
+                if (n == 0) return;
+                mid /= n;
+                var still = new List<(int key, Vector2 at)>();
+                for (int i = 0; i < who.Count; i++)
+                {
+                    var at = new Vector2(xs[i], zs[i]); int k = who[i].Key;
+                    if (!hist.TryGetValue(k, out var h)) hist[k] = h = new List<(float, Vector2)>();
+                    h.Add((now, at)); h.RemoveAll(x => now - x.t > 0.4f);
+                    bool stood = h[0].t <= now - 0.35f && (h[0].at - at).magnitude < 0.03f;
+                    if (stood && (at - mid).magnitude < Near) still.Add((k, at));
+                }
+                for (int i = 0; i < still.Count; i++)
+                    for (int j = i + 1; j < still.Count; j++)
+                    {
+                        float d = (still[i].at - still[j].at).magnitude;
+                        if (d >= Closest || Together.Contains(still[i].key) && Together.Contains(still[j].key)) continue;
+                        Closest = d; Where = $"{still[i].key} and {still[j].key} {d:0.000} u apart at ({still[i].at.x:0.00}, {still[i].at.y:0.00}) / ({still[j].at.x:0.00}, {still[j].at.y:0.00}), {now:0.0} s in";
+                    }
+            }
+        }
+
+        IEnumerator Film(string ev, Func<bool> playing, Func<IEnumerable<int>> cast, Func<Vector2?> fallback, float max, List<int> frames, List<Vector2> hold = null, bool bodies = false, params int[] together)
+        {
+            var watch = bodies ? new BodyWatch() : null;
+            if (watch != null) foreach (int k in together) watch.Together.Add(k);
             int f = 0; float t = 0f, next = 0f, px = 0f, lo = float.MaxValue, hi = 0f;
             List<Vector2> Pts() { if (hold != null) return hold; var p = Spots(cast()); if (p.Count == 0 && fallback() is Vector2 fb) p.Add(fb); return p; }
             var last = Pts();
@@ -191,6 +234,7 @@ namespace AquariumCiv.View.PlayTests
             while (t < max && playing())
             {
                 var now = Pts();
+                watch?.Sample(t, cast());
                 if (now.Count > 0) last = now;
                 if (last.Count > 0) px = Frame(last, false);
                 if (t >= next - 1e-4f)
@@ -203,6 +247,7 @@ namespace AquariumCiv.View.PlayTests
             }
             frames.Add(f); every = FrameEvery;
             Debug.Log($"[722 shots] {ev}: {f} frames over {t:0.0} s, a person {lo:0}-{hi:0} px tall, framing {last.Count}");
+            if (watch != null) { Debug.Log($"[722 shots] {ev}: closest two standing: {watch.Where}"); Assert.GreaterOrEqual(watch.Closest, BodyWatch.Least, $"{ev}: nobody stands inside anybody ({watch.Where})"); }
         }
 
         /// <summary>The "after" still: the camera on <paramref name="spot"/> (eased in over ~1.5 s), then the shot.</summary>
@@ -268,7 +313,7 @@ namespace AquariumCiv.View.PlayTests
         /// <paramref name="before"/> (what stays, for the still) and the after still at <paramref name="left"/>.
         /// </summary>
         IEnumerator Story(string ev, string id, CampUse use, float hour, Action setup, Func<ChronicleEntry, int[]> named, Func<Vector2?> left,
-            bool pond = false, Action before = null, string thing = null)
+            bool pond = false, Action before = null, string thing = null, bool bodies = false)
         {
             Fresh(ev);
             yield return LivedCamp(hour, pond);
@@ -298,7 +343,7 @@ namespace AquariumCiv.View.PlayTests
                 hold = new List<Vector2> { sc.focus };
                 foreach (var l in sc.parts) foreach (var pt in l) if ((pt.pos - sc.focus).magnitude < HoldReach) hold.Add(pt.pos);
             }
-            yield return Film(ev, () => pv.Camp.Playing(use), CastOf(sc), () => pv.Camp.FocusNow(), MaxScene, frames, hold);
+            yield return Film(ev, () => pv.Camp.Playing(use), CastOf(sc), () => pv.Camp.FocusNow(), MaxScene, frames, hold, bodies);
             Assert.IsFalse(pv.Camp.Playing(use), ev + ": the scene ends");
             Assert.Greater(frames[0], 4, ev + ": frames of the scene");
             yield return new WaitForSecondsRealtime(1f);
@@ -324,7 +369,7 @@ namespace AquariumCiv.View.PlayTests
 
         /// <summary>B78.b toward dusk: the couple cut their marks. After: the two notches on the trunk.</summary>
         [UnityTest, Timeout(600000)]
-        public IEnumerator B78b_TwoMarks() => Story("b78b-two-marks", StoryEvent.TwoMarks, CampUse.TwoMarks, 16.5f, null, Both, TreeSpot);
+        public IEnumerator B78b_TwoMarks() => Story("b78b-two-marks", StoryEvent.TwoMarks, CampUse.TwoMarks, 16.5f, null, Both, TreeSpot, bodies: true);
 
         /// <summary>B78.c: the name stone full, the second rolled in. After: the second stone beside the first.</summary>
         [UnityTest, Timeout(600000)]
@@ -452,7 +497,7 @@ namespace AquariumCiv.View.PlayTests
         {
             int who = -1;
             yield return Story("b80c-tinkerer", StoryEvent.TinkererBucket, CampUse.TinkererBucket, 10f, null,
-                e => { who = e.notableId; return Named(e); }, () => Person(who), pond: true);
+                e => { who = e.notableId; return Named(e); }, () => Person(who), pond: true, bodies: true);
         }
 
         /// <summary>B80.e: the ring of flowers at the name stone. After: the flowers.</summary>
@@ -464,6 +509,44 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(600000)]
         public IEnumerator B80f_JokerFace() => Story("b80f-joker", StoryEvent.JokerFace, CampUse.JokerFace, 10f,
             () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof)), Named, () => PropSpot(Sim.StoryMarks.faceLogPropId), thing: ConsequenceKind.WoodpileRoof);
+
+        /// <summary>
+        /// #784: a story cheat that needs a thing from an earlier choice (the name stone, the woodpile's roof) plays from an ordinary lived-in camp
+        /// where that choice was never made: the things are taken out first (<paramref name="bare"/>), the cheat stands them itself and the scene
+        /// plays (<paramref name="after"/> checks what the sim has then).
+        /// </summary>
+        IEnumerator CheatFromABareBox(string ev, string id, CampUse use, Action<SimCore> bare, Action<SimCore> after)
+        {
+            yield return LivedCamp(10f);
+            var sim = Sim; var pv = Pv;
+            bare(sim);
+            Assert.IsNull(sim.State.consequenceProps.FirstOrDefault(p => p.kind == ConsequenceKind.NameStone || p.kind == ConsequenceKind.WoodpileRoof), ev + ": an ordinary box: neither thing stands");
+            yield return new WaitForSecondsRealtime(1.5f);
+            string r = StoryMoment.DebugPlayNow(id);
+            Debug.Log($"[784] {ev}: {r}");
+            Assert.IsFalse(r.StartsWith("not now") || r.StartsWith("no "), $"{ev}: the cheat does not refuse: {r}");
+            after(sim);
+            yield return Until(() => pv.Camp.Playing(use), 15f); // the stage looks every second
+            Assert.IsTrue(pv.Camp.Playing(use), $"{ev}: the scene plays ({r}; {StoryMoment.LastWhy})");
+            CloseSlice();
+        }
+
+        static void TakeAway(SimCore sim, params string[] kinds) { sim.State.consequenceProps.RemoveAll(p => kinds.Contains(p.kind)); sim.StoryMarks.secondStoneId = -1; }
+
+        /// <summary>#784: "Stone: fill it" in a box with no name stone: the stone stands with a death after it, and the second is rolled in.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator Cheat784_StoneFillIt_FromABoxWithNoNameStone() => CheatFromABareBox("stone", StoryEvent.SecondStone, CampUse.SecondStone,
+            s => TakeAway(s, ConsequenceKind.NameStone), s =>
+            {
+                Assert.IsNotNull(s.FirstNameStone, "the first stone stands now");
+                Assert.GreaterOrEqual(s.NamesSince(s.FirstNameStone).Count, 1, "a death after it");
+                Assert.GreaterOrEqual(s.StoryMarks.secondStoneId, 0, "and the second");
+            });
+
+        /// <summary>#784: "Trait: the joker's face" in a box with no woodpile roof: the roof is built, the face is carved on it.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator Cheat784_JokersFace_FromABoxWithNoWoodpileRoof() => CheatFromABareBox("joker", StoryEvent.JokerFace, CampUse.JokerFace,
+            s => TakeAway(s, ConsequenceKind.WoodpileRoof), s => Assert.IsNotNull(s.WoodpileProp, "the woodpile's roof stands now"));
 
         /// <summary>B80.g in a dry spell: the bucket from the pond to the Keeper's tree, the others look up for rain. After: the tree.</summary>
         [UnityTest, Timeout(600000)]
@@ -651,15 +734,16 @@ namespace AquariumCiv.View.PlayTests
             var e = Sim.State.chronicle.LastOrDefault(x => x.kind == "wedding");
             Assert.IsNotNull(e);
             StringAssert.Contains("named by the Keeper, married", e.text);
-            Assert.AreEqual(e.text, StagedMoments.LastCaption, "the line on the wedding's caption");
+            Assert.IsNull(StagedMoments.LastCaption, "#764: the line waits for the vows, not the queue");
             var sc = StagedMoments.LastScene;
             Assert.IsNotNull(sc, "the wedding is staged");
             Assert.AreEqual(MomentKind.Wedding, sc.kind);
             Assert.IsNotNull(sc.plan.Member(e.notableId), "the Keeper's child is in the wedding");
             Assert.IsNotNull(sc.plan.Member(e.otherNotableId), "and the one they marry");
             var frames = new List<int>();
-            yield return Film(ev, () => StagedMoments.Playing > 0, CastOf(sc, e.notableId, e.otherNotableId), Fire, MaxScene, frames);
+            yield return Film(ev, () => StagedMoments.Playing > 0, CastOf(sc, e.notableId, e.otherNotableId), Fire, MaxScene, frames, null, true, e.notableId, e.otherNotableId);
             Assert.Greater(frames[0], 4, "frames of the wedding");
+            Assert.AreEqual(e.text, StagedMoments.LastCaption, "the line on the wedding's caption (said once the vows began)");
             CloseSlice();
         }
     }

@@ -286,8 +286,7 @@ namespace AquariumCiv.Sim
                 }
                 case StoryEvent.SecondStone:
                     if (StoryMarks.secondStoneId >= 0) { why = "the second stone already stands"; break; }
-                    if (FirstNameStone == null) { why = "no name stone stands (answer 'camp_remember' with the stone first)"; break; }
-                    if (NamesSince(FirstNameStone).Count == 0) { why = "nobody has died since the stone stood"; break; }
+                    if (DebugNameStoneWithADeath(out why) == null) break; // #784: the stone stands, with a death after it
                     e = TrySecondStone(true);
                     if (e == null) why = "no grown-up to roll it";
                     break;

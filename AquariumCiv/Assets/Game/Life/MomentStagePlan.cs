@@ -211,6 +211,9 @@ namespace AquariumCiv.Life
         public readonly List<MomentMember> members = new List<MomentMember>();
         /// <summary>The ring (wedding, festival): its centre, radius, when it dances, and who is in it in slot order.</summary>
         public float centreX, centreZ, ringRadius, ringT0, ringT1;
+        /// <summary>#764: a wedding's vows begin at this second of the plan (the couple are at their places, face to face; -1 = not a wedding). The
+        /// "I do" line and the Keeper's child's line on the caption wait for it.</summary>
+        public float vowAt = -1f;
         public readonly List<int> ringKeys = new List<int>();
         /// <summary>The newborn's baby (a person key, 0 = none) and the parent who carries it.</summary>
         public int babyKey, carrierKey;
@@ -456,11 +459,12 @@ namespace AquariumCiv.Life
 
             float tA = gather, tV = tA + AisleSeconds, tJ = tV + VowSeconds, tD = tJ + JoinSeconds, tE = tD + WeddingDance, tEnd = tE + WeddingWave;
             ringT0 = tD; ringT1 = tE; ringRadius = R;
+            vowAt = tV;
 
             // The couple: side by side at the aisle's start, then the walk in, the vow facing each other, the join, the middle of the ring, the wave.
             var A = Add(c.a, MomentRole.Couple);
             var B = Add(c.b, MomentRole.Couple);
-            const float side = 0.045f, face = 0.07f;
+            const float side = 0.055f, face = 0.07f; // #779: side by side a body width and a little apart
             float axL = ex + Gx * side, azL = ez + Gz * side, bxL = ex - Gx * side, bzL = ez - Gz * side;
             float axC = cx + Gx * side, azC = cz + Gz * side, bxC = cx - Gx * side, bzC = cz - Gz * side;
             float axV = cx - Px * face, azV = cz - Pz * face, bxV = cx + Px * face, bzV = cz + Pz * face;

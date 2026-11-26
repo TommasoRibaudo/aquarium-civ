@@ -590,6 +590,7 @@ namespace AquariumCiv.View
             var pv = PeopleView.Find();
             var cam = Camera.main;
             bool up = StepCaption();
+            StagedMoments.StepVowLine(Sim); // #764: the wedding's line waits for its vows
             if (Placing()) waiting.Hold(Mathf.Min(Time.unscaledDeltaTime, 0.1f)); // tester feedback 3: lines don't age while the Keeper places
             // #327: a scene's line that found the word busy says it now, if it's still in time.
             if (!CaptionBlocked() && SceneMaySpeak(false) && waiting.TryTake(Time.unscaledTimeAsDouble, true, out var w))
@@ -605,6 +606,7 @@ namespace AquariumCiv.View
             var now = pv.Now;
             string moment = now.hour >= 18f && now.hour < 21f ? PeopleMoment.Evening : null;
             bubbles.HeldNow = StagedMoments.PlayingMoment(Sim); // t1-moments: a staged moment's own words, not the stories
+            bubbles.VowsBegun = StagedMoments.VowsBegun(Sim); // #764: no "I do" before the vows
             bubbles.TellerNow = TellerNow(pv, now); // #717: the Keeper's pick telling tonight's story
             if (StagedMoments.SpeaksItsOwnLines(Sim) || TellerBeats.SpeaksItsOwnLines) return; // S-ritual, B76: the beats say their own lines
             var b = bubbles.Next(Time.unscaledTime, moment, visibleNotables);

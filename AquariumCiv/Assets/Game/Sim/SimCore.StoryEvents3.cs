@@ -240,6 +240,49 @@ namespace AquariumCiv.Sim
             return true;
         }
 
+        // ---------- #784: the cheats that need a thing from an earlier choice stand it ----------
+
+        /// <summary>
+        /// Debug (#784): one thing of <paramref name="kind"/> stands, placed, as if the choice that leaves it had been made (the first option of the
+        /// first choice that leaves it; the name stone from "camp_remember", the woodpile's roof from the winter choice). The one that stands
+        /// already is kept. Null if no choice leaves it. A name stone is made as if it stood since last month, so a death this month is "since".
+        /// </summary>
+        public ConsequenceProp DebugStandProp(string kind)
+        {
+            var have = ConsequenceProps.FirstOrDefault(p => p.kind == kind && p.placed && p.id != StoryMarks.secondStoneId);
+            if (have != null) return have;
+            var list = State.consequenceProps ??= new List<ConsequenceProp>();
+            foreach (var def in DilemmaCatalog.Concat(SmallCatalog))
+                for (int i = 0; i < def.options.Length; i++)
+                {
+                    if (def.options[i].prop != kind) continue;
+                    int at = Math.Max(0, State.notables.FindIndex(n => n.alive));
+                    var d = new Dilemma { id = 992000 + list.Count, defId = def.id, month = State.month, endMonth = State.month, state = DilemmaState.Answered, end = DilemmaEnd.Answered, option = i, personA = State.notables.Count > 0 ? State.notables[at].id : -1, subjectId = State.notables.Count > 0 ? State.notables[at].id : -1 };
+                    LeaveConsequence(d, def, i);
+                    foreach (var p in list) if (!p.placed && p.dilemmaId == d.id) TryPlaceProp(p, true);
+                    var made = list.LastOrDefault(p => p.dilemmaId == d.id && p.kind == kind && p.placed);
+                    if (made != null && kind == ConsequenceKind.NameStone) made.dueMonth = State.month - 1;
+                    Settlement?.MarkProps();
+                    return made;
+                }
+            return null;
+        }
+
+        /// <summary>Debug (#784): the first name stone stands, and someone has died since it did (the oldest of three or more grown-ups; else a
+        /// death that is not the last hand). The stone, or null and why.</summary>
+        ConsequenceProp DebugNameStoneWithADeath(out string why)
+        {
+            why = "";
+            var stone = DebugStandProp(ConsequenceKind.NameStone);
+            if (stone == null) { why = "no choice leaves a name stone"; return null; }
+            if (NamesSince(stone).Count == 0)
+            {
+                if (State.notables.Count(n => n.alive && n.age >= AdultAge) < 3) { why = "nobody has died since the stone stood, and too few grown-ups to spare one"; return null; }
+                DebugKillOldest();
+            }
+            return stone;
+        }
+
         /// <summary>Debug: a batch-3 event happens now, its gate eased where a cheat must (a trait given, the antlers hung, the seat passed, the
         /// grass dried, the season). The line, or null and why. Its mark is forgotten first so the cheat can play it again.</summary>
         ChronicleEntry DebugStory3(string id, out string why)
@@ -292,7 +335,7 @@ namespace AquariumCiv.Sim
                 }
                 case StoryEvent.GardenerFlowers:
                 {
-                    if (FirstNameStone == null) { why = "no name stone stands (answer 'camp_remember' with the stone first)"; return null; }
+                    if (DebugStandProp(ConsequenceKind.NameStone) == null) { why = "no name stone stands (and no choice leaves one)"; return null; } // #784
                     var who = DebugTrait("the gardener");
                     if (who == null) { why = "no grown-up"; return null; }
                     m.flowersStoneId = -1;
@@ -303,7 +346,8 @@ namespace AquariumCiv.Sim
                 case StoryEvent.JokerFace:
                 {
                     if (!WoodpileStands) DebugFirstWildWoodNow(); // a living land's woodpile comes with its first wild wood
-                    if (WoodpileProp == null) { why = "no woodpile stands (answer 'camp_winter' with the woodpile roof first)"; return null; }
+                    if (WoodpileStands && State.consequenceProps?.Any(p => p.kind == ConsequenceKind.WoodpileRoof && p.placed) != true) DebugStandProp(ConsequenceKind.WoodpileRoof); // #784: the roof is built
+                    if (WoodpileProp == null) { why = "no woodpile roof stands (and no choice leaves one)"; return null; }
                     var who = DebugTrait("the joker");
                     if (who == null) { why = "no grown-up"; return null; }
                     m.faceLogPropId = -1;

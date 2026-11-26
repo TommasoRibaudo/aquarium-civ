@@ -341,5 +341,30 @@ namespace AquariumCiv.View.ShowMe.Tests
             foreach (var b in got) CollectionAssert.Contains(texts, b.text);
             Assert.AreEqual(got.Count, got.Select(b => b.text).Distinct().Count(), "no line twice in a moment");
         }
+
+        /// <summary>#764 (playtest 1): the "I do" came up before the ceremony began. A wedding's vow is a line only once the vows have begun
+        /// (StagedMoments.VowsBegun, from the plan's vowAt); the crowd's lines and the other keys don't move.</summary>
+        [Test]
+        public void AWeddingsIDoWaitsForTheVows_ThenItIsSaid_TheOtherLinesAreNotHeld()
+        {
+            var sim = ShowMeTests.SimIn(Era.Village, 7);
+            var couple = sim.State.notables.Where(n => n.alive).Take(2).ToList();
+            Assert.AreEqual(2, couple.Count, "a village with two people");
+            var wb = new WorldBubbles(sim, new BubbleRules { warmUpSeconds = 0f })
+            {
+                HeldNow = new HeldMoment { id = 78, kind = MomentKind.Wedding, personA = couple[0].id, personB = couple[1].id },
+                VowsBegun = false,
+            };
+            var before = wb.Candidates().ToList();
+            Assert.IsNotEmpty(before, "the crowd and the other one speak while they gather");
+            Assert.IsFalse(before.Any(b => b.text == PeopleVoice.VowLine), "no \"I do\" before the vows");
+            wb.VowsBegun = true;
+            var after = wb.Candidates().ToList();
+            var vow = after.SingleOrDefault(b => b.text == PeopleVoice.VowLine);
+            Assert.IsNotNull(vow, "the vows have begun: \"I do\" is a line");
+            Assert.AreEqual(couple[0].id, vow.speakerId, "said by the one it is for");
+            foreach (var b in before) Assert.IsTrue(after.Any(a => a.key == b.key && a.text == b.text), "the other lines keep their keys: " + b.text);
+            Assert.AreEqual(PeopleVoice.VowLine, PeopleVoice.MomentLines(MomentKind.Wedding, 1, 2)[0].text, "the vow is the first of the wedding's lines");
+        }
     }
 }
