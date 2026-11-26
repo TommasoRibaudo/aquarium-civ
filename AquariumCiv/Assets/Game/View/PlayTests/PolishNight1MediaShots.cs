@@ -229,7 +229,11 @@ namespace AquariumCiv.View.PlayTests
             for (int calm = 0, f = 0; calm < 120 && f < 1500; f++) { calm = StagedMoments.StopAll() == 0 && StagedMoments.Playing == 0 ? calm + 1 : 0; yield return null; }
             Box.Rebuild();
             PeopleView.DebugSetHour(17f);
-            Debug.Log("[pn1 media] 770 " + MomentPlayer.DebugFestival());
+            // the real thing: the staged festival (its ring on open ground, the dressing laid round it), not the old scene cheat that dances at the hearth
+            Sim.State.festivalUntilMonth = Sim.State.month + Sim.Config.festivalYears * SimConfig.MonthsPerYear; // the festival year the moment belongs to: the dressing shows
+            string fr = StagedMoments.DebugPlayNow(MomentKind.Festival);
+            Debug.Log("[pn1 media] 770 " + fr + " ring " + (FestivalLayout.Ring.HasValue ? $"({FestivalLayout.Ring.Value.x:0.00},{FestivalLayout.Ring.Value.z:0.00}) r {FestivalLayout.Ring.Value.r:0.00}" : "none"));
+            Assert.IsTrue(Sim.FestivalOn, "the festival is on");
             yield return Until(() => Where_(a => a.kind == ActivityKind.Dance && !a.moving).Count >= 3, 90f);
             var d = Where_(a => a.kind == ActivityKind.Dance);
             Debug.Log($"[pn1 media] 770 dancers {d.Count}, era {Sim.State.era}, gaps{Gaps(d)}");
@@ -258,6 +262,29 @@ namespace AquariumCiv.View.PlayTests
 
         // ================================================================== 5: #772 ball at the glass
 
+        /// <summary>The cheat's ball (a natural solo ball game may run elsewhere: the one nearest the glass side wins).</summary>
+        static GameObject TheBall()
+        {
+            GameObject best = null; float bd = 99f; var home = new Vector2(Land.HX - 0.5f, Land.CZ); // the cheat's game stands at this spot; a ball far from it is another game's
+            foreach (var mr in Resources.FindObjectsOfTypeAll<MeshRenderer>()) // the balls are DontSave: FindObjectsByType never lists them
+            {
+                var t = mr != null ? mr.transform : null;
+                if (t == null || t.name != "Play Ball" || !t.gameObject.activeInHierarchy) continue;
+                var l = Box.Root.InverseTransformPoint(t.position);
+                float d = (new Vector2(l.x, l.z) - home).magnitude;
+                if (d < bd) { bd = d; best = t.gameObject; }
+            }
+            return best;
+        }
+
+        static void DumpGroups(string when)
+        {
+            var gf = typeof(KidPlayDirector).GetField("groups", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var gl = gf?.GetValue(Pv.KidPlay) as System.Collections.IEnumerable;
+            if (gl == null) { Debug.Log("[pn1 media] 772 " + when + ": no groups field"); return; }
+            foreach (var gg in gl) { var gm = gg.GetType().GetField("game").GetValue(gg) as KidGame; Debug.Log($"[pn1 media] 772 {when}: group {gm.game} x{gm.Count} centre ({gm.centre.x:0.00},{gm.centre.y:0.00}) forced {gg.GetType().GetField("forced").GetValue(gg)}"); }
+        }
+
         [UnityTest, Timeout(900000)]
         public IEnumerator Pn1_05_BallAtTheGlass()
         {
@@ -266,16 +293,46 @@ namespace AquariumCiv.View.PlayTests
             Pv.Planner.Invalidate();
             PeopleView.DebugSetHour(11f);
             yield return new WaitForSecondsRealtime(3f);
+            CampLife.OnlyCheats = true; Pv.Camp.CutForCheat(); // no camp use borrows the kids (a borrowed holder hides the ball and freezes the game)
             string r = KidPlayDirector.DebugBallAtGlass();
             Debug.Log("[pn1 media] 772 " + r);
+            yield return new WaitForSecondsRealtime(10f);
+            DumpGroups("8 s");
             yield return Until(() => Where_(a => a.kind == ActivityKind.Play).Count >= 2, 60f);
             var kids = Where_(a => a.kind == ActivityKind.Play);
             Debug.Log($"[pn1 media] 772 players {kids.Count}: " + string.Join(" ", kids.Select(k => $"({k.x:0.00},{k.y:0.00})")));
-            // the kids and the pane they throw at: keep the pane's spot (x 3, the land's middle) in frame
-            List<Vector2> Pts() { var p = Where_(a => a.kind == ActivityKind.Play); p.Add(new Vector2(2.9f, CZ)); return p; }
-            yield return Settle(Pts, 100f, 40f, yaw: 28f, frames: 40);
+            // the camera follows the ball and holds the spot of the pane it is nearest, so a throw that misses is seen meeting the glass
+            Vector2 lastBall = new Vector2(Land.HX - 0.5f, Land.CZ); float maxX = -9f, maxAt = 0f, t0 = Time.realtimeSinceStartup; int bounces = 0; bool wasNear = false; float lastX = 0f;
+            List<Vector2> Pts()
+            {
+                var ball = TheBall();
+                var p = new List<Vector2>();
+                if (ball != null && ball.activeInHierarchy)
+                {
+                    var l = Box.Root.InverseTransformPoint(ball.transform.position);
+                    lastBall = new Vector2(l.x, l.z);
+                    p.Add(lastBall);
+                    p.Add(new Vector2(GlassBox.HalfX - 0.1f, l.z));
+                    float t = Time.realtimeSinceStartup - t0;
+                    if (l.x > maxX) { maxX = l.x; maxAt = t; }
+                    bool near = l.x > GlassBox.HalfX - 0.2f;
+                    if (wasNear && l.x < lastX - 0.01f && near) { bounces++; Debug.Log($"[pn1 media] 772 ball turned back off the glass at t {t:0.0} s, x {l.x:0.00}"); }
+                    wasNear = near; lastX = l.x;
+                }
+                else { p.Add(lastBall); p.Add(new Vector2(GlassBox.HalfX - 0.1f, lastBall.y)); }
+                return p;
+            }
+            foreach (float yw in new[] { 28f, 118f, 208f, 298f })
+            {
+                yield return Settle(Pts, 110f, 40f, yaw: yw, frames: 30);
+                var bl = TheBall();
+                Debug.Log($"[pn1 media] 772 yaw {yw}: ball {(bl != null ? Box.Root.InverseTransformPoint(bl.transform.position).ToString("0.00") : "none")}, players {string.Join(" ", Where_(a => a.kind == ActivityKind.Play).Select(k => $"({k.x:0.00},{k.y:0.00})"))}");
+                yield return Still("772", $"yaw_{yw:0}");
+            }
+            yield return Settle(Pts, 110f, 40f, yaw: 28f, frames: 30);
             yield return Still("772", "ball_start");
-            yield return Clip("772", "ball", 10f, Pts, 100f, 40f);
+            yield return Clip("772", "ball", 40f, Pts, 110f, 40f);
+            Debug.Log($"[pn1 media] 772 ball: furthest x {maxX:0.00} at {maxAt:0.0} s (glass at {GlassBox.HalfX:0.000}), turn-backs near the glass {bounces}");
         }
 
         // ================================================================== 6: #768 / #762 / #769, a village at a seed (before or after the swap)
