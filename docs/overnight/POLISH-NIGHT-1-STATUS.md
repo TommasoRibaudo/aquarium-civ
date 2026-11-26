@@ -84,3 +84,40 @@ look items need screenshots per ticket.
 - AnimBench.Tests doesn't build on dev (CampScenes6.cs:989 ConsequenceMeshes missing from AnimBench.csproj): fix in the pass.
 - round 2 (956550b9): EcoModel.NoWood hook (TakesSeed) → Settlement.WoodKeptOff (church lot+0.25); ClearWoodRound at build. Ecology-on tests: spread seed 7 61→0, pre-existing 109→0; SimTests 2172/0. Accepted, merged (all three). Screenshots in the pass.
 - 00:05 AnimBench build: rotten beyond ConsequenceMeshes (DeerView, CampLife, PegDoll, Mathf.Acos shim, CharmTie): reverted my try; file an issue at the end.
+
+### #767
+- round 1 (3cffc568): cause CampDay.Pastime partner → PeopleView faced the partner; head is baked into the body mesh, so a 22° shoulder turn toward the partner, rod stays over the water (FishBeats.ChatYaw). Cheat "Fishers chat now". FishBeatsTests new case. Worker's SimTests 1481 (low count: rerun on the merge). Accepted, merged; clip in the pass.
+- 00:20 SimTests on p9 (all lane A merged: + #779, #768, #771, #767) 2204/0.
+
+### #763
+- round 1 (a4450a3c): cause z-fighting inside each feather (blade 0.006, spine proud by 0.0015, tip overlapping), not shadows (0.208 vs 0.213) nor rebuilds (mesh/transform asserted unchanged). Fix: feathers rolled ±30°, tip on the blade end, spine 0.012. FeatherPoleSteadyPlayTests 2/2 (speckle 0.21→0.069, assert <0.15), FeatherPolePlay 1/1, smoke 2/2. Crops looked at by me. Accepted, merged; cause posted on the issue. Seen: the pole stood inside a thicket (seed 4242): note.
+- 00:45 lane B #780 worker (af8add6cb65602871) on vs/780-ask-fit (from 1bff61b1).
+- (clock note: times above from 22:45 on were my estimates; real clock at this line: 23:45)
+
+### #780
+- round 1 (d4340d89): .kg-sheet.cards--grow (height auto, 30-60 %) while a choice face is drawn. AskFitPlayTests 2/2 (failed on 4.1 before the fix), DilemmaCard 9/9, smoke 2/2. 10 shots; I looked at 4.1 and supper at 750: clear. Accepted, merged (23:57).
+- CardStackPlayTests.LongCardsScrollInWholeLinesInsideTheSheet(1) fails on base too (2.68 vs 3.0): into the test-fix ticket. Polish note: the caption pill covers the top-right chat icon (supper shot).
+- 23:58 Editor restarted (3 tickets). Lane B #779/#764/#784 Unity half (ae45745746b6acbd5) on vs/779-unity.
+- round 2 Unity (00:55, c395eacd on vs/779-unity): 1.2 step-back swap bug + meet in a crowd solid fixed; #764 PlayMode 4/4, vows frame with the line; #784 non-Explicit cheat tests pass; 3 StoryEventShots now in CI. Short: wedding frame still shows a guest merged with the laundry extra; assertion narrowed to cast pairs → round 3 (camp life out of the held scene's ring, assertion restored). #764, #784 accepted.
+- round 3 (01:51, 179f90b0): PeopleView heldSpots + ApartFromHeld (camp-life spots step 0.09 off held people; slots apart from earlier claims). Assertion: every standing pair within 0.4 u of the scene (own ≥0.07, others ≥0.05). Shots 3x each 9/9; View.Tests 935/0 (+1 BoxLeak inconclusive by design), smoke 2/2. ADay_DollsWalk failed on base too: fixed (visible dolls only). Wedding r3 frame looked at by me: apart. Accepted, merged. #764/#784 closable after the pass; #779 closable after the pass too (no look needed? → it asks shots: on the sign-off page as evidence, close).
+- 01:52 lane B #775 (ab8967bf521446c49) on vs/775-dirty-glass.
+- 01:53 phase-1 lane A: #118+play test fixes (a51db2b7c04c594b2, wt 118), #559 trash/weeds meshes (a937add504e024d5e, wt 559).
+
+### #559
+- phase 1 (01:54, 3507666e): WeedMesh rewritten (15 thin blades, 3 seed stalks, dead-brown foot, no dome), WeedLookTests 2. Trash: no trash mesh exists (removed by decision 2026-11-02, #313) — verified in decisions.md row 114. Call: rework weeds only; the Editor shot confirms nothing boulder-like near the tents; on the sign-off page as a note. Editor tuning next (after #775).
+
+### #118 + base failures
+- phase 1 (01:58, 5ee9d150): LongCards — GlassScroll.TallestRow counted rows taller than the room (code bug, fixed); ASwipe — Drag step in px was 0.05 (test bug, fixed); TapADoll — jump check allows speed x clamped dt, re-baselines dolls back in sight, message names causes (cause unproven); Ribbon — cause not found (hypothesis: cascade from the swipe timeout). OnLog stack lines asked. Editor run next.
+- OnLog stacks 18ee4d7c. Merged into p9 (unverified in Unity: the pass runs PersonCard/Book/CardStack 3x).
+
+### #775
+- round 1 (02:06, 82807eaa): cover curve 1.05→0.95, PatchAlpha 0.66→0.76, faded pane keeps up to 60 % capped 0.4; GrimeLook 3/3, smoke 2/2. My look at the sheets: before ≈ after, zoomed shots show no film → round 2 (obvious difference, numbers).
+- round 2 (02:13, efcbdb9f): cover smoothstep(0,0.8), keep 0.85, cap 0.52, PatchAlpha 0.84, darker brown. Centre-band diff vs clean: home dirty 18.7→30.0, zoom dirty 13.0→48.1, zoom half 6.8→40.2. GrimeLook 3/3, GrimeMatrix 3/3, CameraGlassFeel 3/3, smoke 2/2. After sheet looked at by me: clearly grimier, film stays zoomed. Side effect for the page: the first box's opening grime limit 0.3→0.33 (measured 0.3004). Accepted, merged; waiting on the user's look.
+- 02:14 lane B #559 tuning (aa99a4b424c5a9bb2) on vs/559-weeds-tune.
+- tune round 1 (02:22, 0289920e): WeedScale 2.4→3.1, straw colours. My look: weeds taller than the tent (giant reeds) → round 2 (low and wide, before/after pair).
+- tune round 2 (02:32, 8de46ffa): WeedScale 2.4, 34 blades, low (tallest ≈ a doll), tiny heads; WeedLookTests bounds lowered with reason; WeedLook 2/2, WritingWeeding 30/30, ToolGrip 12/12, Tweezers 5/5, smoke 2/2. before/tuned camp_compare looked at by me: a flowering bush → scruffy straw tufts. Accepted, merged; user's look on the page.
+- 02:33 PASS started: Editor restarted, pt1b detached at p9 36d152ce, recompile 0 errors; EditMode 10 assemblies running (bw6msr65r); SimTests on the tip running.
+- 02:41 SimTests on the tip 36d152ce: 2204/0.
+- 03:04 EditMode 10 assemblies: Sim 1193/0 (2 skipped by design: .NET-pinned hashes), Life 646, View 937 (+1 BoxLeak inconclusive by design), Cards 46, Audio 53, UI 49, Moments 45, Shaping 54, ShowMe 134, TLS 40. Zero failures.
+- 03:31 PlayMode: OneSheet 2, FeatherPoleSteady 2, FeatherPole 1, AskFit 2, DilemmaCard 9, StagedMoment 4, StoryEventShots 5, Tweezers 5, FisherShore 1, CameraGlassFeel 3, CardStack 20/20 x3, GrimeLook 3, smoke 2, SlicePlaythroughSmoke 2: all green. PersonCard 13/14 then 14 x2 (TapADoll: doll 16 walked 0.627 u in 0.86 s, limit 0.587, worst step 0.006: no jump, the new way-limit too tight). BookPlayTests Ribbon fails 3/3 (MissingReferenceException in GetComponent; stack lines stop in Unity). → Editor fix worker.
+- #118 round 2 (03:46, 7b98628e): TapADoll way limit = 0.05 + DollStepWatch.FastestDrive (1.0) x elapsed (walkers legitimately reach ~1.0 u/s via DrawnSlack); 14/14 x5. Ribbon: real bug, LaundryView.Tick (LaundryLines.cs:175) touched a cached GameObject destroyed by a box rebuild → drop and redraw; BookPlayTests 5/5 x3. OnLog keeps 14 stack lines. Smoke 2/2. #118 closable.
