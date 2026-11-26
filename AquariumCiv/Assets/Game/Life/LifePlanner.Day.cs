@@ -831,7 +831,8 @@ namespace AquariumCiv.Life
             if (farms.Count > 0 && R(k, day, 7) < 0.5f * (1f - fr)) At(ActivityKind.WatchWork, 17f, PlaceOf(farms[(int)(H(k, day, 8) % (uint)farms.Count)]), Prop.Stick);
             else { var at = FrailSit(p, d, 4, ElderSitPlace(p, d, 4)); At(ActivityKind.SitOut, 17f, at, Prop.Stool); }
             float home = 19.4f + R(k, day, 2) * 0.4f - box.homeEarlyHours - p.hints.homeEarlyHours - 0.6f * fr;
-            if (StyleOf(p, d) != EveningStyle.Gather || fr >= 0.5f && !d.tellerPicked) { At(d.supper == SupperPick.Baskets ? ActivityKind.Eat : ActivityKind.SitOut, home, p.home, d.supper == SupperPick.Baskets ? Prop.Basket : Prop.Stool, default, TripType.Home); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #197, #589
+            if (StyleOf(p, d) != EveningStyle.Gather || fr >= 0.5f && !d.tellerPicked && R(k, day, 215) < 0.65f) { // #788: most evenings they stay in, some they still come and sit at the edge
+             At(d.supper == SupperPick.Baskets ? ActivityKind.Eat : ActivityKind.SitOut, home, p.home, d.supper == SupperPick.Baskets ? Prop.Basket : Prop.Stool, default, TripType.Home); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #197, #589
             At(ActivityKind.SitOut, TellFrom, gather, Prop.Stool, default, TripType.HomeToGreen);
             if (d.tellerPicked && d.teller == p) { At(ActivityKind.StoryTell, TellerUntil(d), gather); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #717
             if (d.tellerPicked) ListenToTheTeller(d, Math.Max(home, TellEnd(d) + 0.05f));

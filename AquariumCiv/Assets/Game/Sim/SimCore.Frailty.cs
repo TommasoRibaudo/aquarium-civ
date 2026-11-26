@@ -79,6 +79,9 @@ namespace AquariumCiv.Sim
         {
             if (n.slowingNoted || !IsFrail(n)) return;
             n.slowingNoted = true;
+            // B82: several elders entering their last days together never read as a list: within about a game year only the first gets the story line
+            // (the rest keep the card text and the pin sign).
+            if (State.chronicle.Any(x => x.kind == SlowingKind && State.month - x.month < SimConfig.MonthsPerYear)) return;
             Chronicle(SlowingKind, $"{n.FullName} is slowing down these days.", 0.4f, n.id);
         }
 

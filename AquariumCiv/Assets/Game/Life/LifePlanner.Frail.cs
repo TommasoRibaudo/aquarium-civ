@@ -15,13 +15,16 @@ namespace AquariumCiv.Life
         /// <summary>How much slower a fully frail elder walks (a walk takes this much longer than <c>1</c>): +50 %, on top of the hunger pace.</summary>
         public const float FrailSlowest = 0.5f;
 
-        /// <summary>The two spells the family sit with a frail elder at the elder's door, in view hours (afternoon, then a morning one).</summary>
-        public const float VisitAfternoonFrom = 16.9f, VisitAfternoonTo = 17.8f, VisitMorningFrom = 10.1f, VisitMorningTo = 11f;
+        /// <summary>#788 (B82): the family's spells at a frail elder's door are never a timetable. Per elder and day (a hash, no dice): the
+        /// afternoon spell lands anywhere in <see cref="AfternoonFrom"/> to <see cref="AfternoonTo"/>, lasts 0.4 to 1 h, and comes most days;
+        /// the morning one is rarer. Two elders' families never gather on the same minute by design.</summary>
+        public const float AfternoonFrom = 15.5f, AfternoonTo = 19f, MorningFrom = 9.5f, MorningTo = 11.5f, AfternoonDays = 0.85f, MorningDays = 0.3f;
 
         /// <summary>How much longer this person's walks take now (1 outside their last days).</summary>
         float walkPace = 1f;
 
         readonly Dictionary<int, List<Person>> frailVisited = new Dictionary<int, List<Person>>(); // a visitor's key -> the frail elders of their family
+        readonly Dictionary<int, List<Person>> frailKin = new Dictionary<int, List<Person>>(); // a frail elder's key -> the family who may come
 
         /// <summary>How frail they are now: 0 outside their last days, up to 1 (the sim's rule, read when the box was last read).</summary>
         public float FrailtyOf(PersonRef who) { Sync(); return byKey.TryGetValue(who.Key, out var p) ? p.frail : 0f; }
@@ -34,7 +37,7 @@ namespace AquariumCiv.Life
         /// <summary>After the links are set: who is frail, and whose family sits with them.</summary>
         void SnapshotFrail()
         {
-            frailVisited.Clear();
+            frailVisited.Clear(); frailKin.Clear();
             foreach (var e in people)
             {
                 if (e.n == null || e.frail <= 0f) continue;
@@ -43,6 +46,8 @@ namespace AquariumCiv.Life
                     if (!byKey.TryGetValue(id, out var k) || k.stage == LifeStage.Baby) continue;
                     if (!frailVisited.TryGetValue(k.key, out var l)) frailVisited[k.key] = l = new List<Person>();
                     l.Add(e);
+                    if (!frailKin.TryGetValue(e.key, out var kl)) frailKin[e.key] = kl = new List<Person>();
+                    kl.Add(k);
                 }
             }
         }
@@ -54,28 +59,54 @@ namespace AquariumCiv.Life
         /// <summary>The stool for a frail elder sitting at their own door; the usual prop elsewhere.</summary>
         static Prop FrailProp(Person p, Place at, Prop usual) => p.frail > 0f && at == p.home ? Prop.Stool : usual;
 
-        /// <summary>The frail elder holds two spells at their own door each day, and whoever is of their family sits beside them in those
-        /// (in <see cref="FrailVisits"/>). Laid over the day, under the role beats, the weather and the scenes.</summary>
+        /// <summary>The frail elder's spell today: when it starts and ends (view hours), false when there is none today.</summary>
+        public bool VisitSpell(PersonRef elder, long day, bool morning, out float start, out float end)
+        {
+            Sync();
+            start = end = 0f;
+            return byKey.TryGetValue(elder.Key, out var e) && e.frail > 0f && Spell(e, day, morning, out start, out end);
+        }
+
+        bool Spell(Person e, long day, bool morning, out float start, out float end)
+        {
+            int salt = morning ? 420 : 410;
+            start = end = 0f;
+            if (R(e.key, day, salt) >= (morning ? MorningDays : AfternoonDays)) return false;
+            float len = morning ? 0.4f + 0.4f * R(e.key, day, salt + 1) : 0.4f + 0.6f * R(e.key, day, salt + 1);
+            float from = morning ? MorningFrom : AfternoonFrom, to = morning ? MorningTo : AfternoonTo;
+            start = from + R(e.key, day, salt + 2) * (to - from - len);
+            end = start + len;
+            return true;
+        }
+
+        /// <summary>The frail elder is at their own door for today's spells.</summary>
         void FrailSeat(Person p, DayInfo d, List<Seg> list)
         {
             if (p.frail <= 0f) return;
-            Put(list, Mk(ActivityKind.SitOut, VisitMorningFrom, VisitMorningTo, p.home, Prop.Stool), d);
-            Put(list, Mk(ActivityKind.SitOut, VisitAfternoonFrom, VisitAfternoonTo, p.home, Prop.Stool), d);
+            foreach (bool morning in new[] { true, false })
+                if (Spell(p, d.day, morning, out float s, out float e)) Put(list, Mk(ActivityKind.SitOut, s, e, p.home, Prop.Stool), d);
         }
 
-        /// <summary>Family of a frail elder sit beside them at the elder's door: every afternoon spell (the first elder they have), the
-        /// morning one for a second, and the old and the young of the family, now and then, in the morning too.</summary>
+        /// <summary>Who of the family comes to a spell: one of them by the day's hash, and now and then a second.</summary>
+        bool Comes(Person elder, Person visitor, long day, bool morning)
+        {
+            var kin = frailKin[elder.key];
+            int n = kin.Count, at = kin.IndexOf(visitor);
+            int first = (int)(H(elder.key, day, morning ? 430 : 431) % (uint)n);
+            if (at == first) return true;
+            return n > 1 && at == (first + 1) % n && R(elder.key, day, morning ? 432 : 433) < 0.4f;
+        }
+
+        /// <summary>Family of a frail elder sit beside them at the elder's door in the elder's spells (one or two of them each time).</summary>
         void FrailVisits(Person p, DayInfo d, List<Seg> list)
         {
             if (!frailVisited.TryGetValue(p.key, out var elders)) return;
-            for (int i = 0; i < elders.Count && i < 2; i++)
+            foreach (var e in elders)
             {
-                var e = elders[i];
                 if (e == p) continue;
-                bool afternoon = i % 2 == 0;
-                Put(list, Mk(ActivityKind.SitWithOld, afternoon ? VisitAfternoonFrom : VisitMorningFrom, afternoon ? VisitAfternoonTo : VisitMorningTo, e.home, Prop.None, ActivitySource.Schedule, e.who), d);
-                if (afternoon && (p.stage == LifeStage.Elder || p.stage == LifeStage.Kid) && R(p.key, d.day, 301 + e.key) < 0.6f)
-                    Put(list, Mk(ActivityKind.SitWithOld, VisitMorningFrom, VisitMorningTo, e.home, Prop.None, ActivitySource.Schedule, e.who), d);
+                foreach (bool morning in new[] { true, false })
+                    if (Spell(e, d.day, morning, out float s, out float en) && Comes(e, p, d.day, morning))
+                        Put(list, Mk(ActivityKind.SitWithOld, s, en, e.home, Prop.None, ActivitySource.Schedule, e.who), d);
             }
         }
     }

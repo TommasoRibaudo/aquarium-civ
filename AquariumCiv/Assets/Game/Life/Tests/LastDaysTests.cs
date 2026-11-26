@@ -253,61 +253,136 @@ namespace AquariumCiv.Life.Tests
             }
         }
 
+        /// <summary>The family's spell today at the elder's door (the day's own window), or none.</summary>
+        static bool Spell(LifePlanner pl, Notable e, long d, bool morning, out float s, out float en) => pl.VisitSpell(PersonRef.Notable(e.id), d, morning, out s, out en);
+
         [Test]
-        public void TheFamilySitsBesideAFrailElderAtTheirDoorAndNotOtherwise()
+        public void TheFamilySitsBesideAFrailElderAtTheirDoorInTheDaysOwnSpellAndNotOtherwise()
         {
-            int besideFrail = 0, besideHealthy = 0, days = 0;
-            float hoursFrail = 0f;
+            int visitDays = 0, days = 0, besideHealthy = 0;
             foreach (bool frail in new[] { false, true })
             {
                 var sim = Fresh();
                 var (e, c) = Pair(sim, frail ? 0.4f : 50f);
                 var planner = LifePlanner.Wired(sim);
-                if (frail) Assert.Greater(planner.FrailtyOf(PersonRef.Notable(e.id)), 0f);
-                for (long d = 2; d < 14; d++)
+                for (long d = 2; d < 22; d++)
                 {
                     var eld = Day(planner, e.id, d);
                     var kid = Day(planner, c.id, d);
+                    bool has = Spell(planner, e, d, false, out float s, out float en);
+                    if (frail) days++;
+                    if (frail && !has) continue;
+                    if (!frail) { s = 16.5f; en = 17.4f; }
                     bool beside = false;
-                    float together = 0f;
-                    for (float h = 16.9f; h < 17.8f; h += 0.05f)
+                    for (float h = s + 0.05f; h < en - 0.05f; h += 0.05f)
                     {
                         var ae = At(eld, h); var ac = At(kid, h);
                         if (ae.kind == ActivityKind.None || ac.kind == ActivityKind.None) continue;
-                        bool near = !ae.moving && !ac.moving && ae.place == ac.place;
-                        if (near) together += 0.05f;
-                        if (near && ac.kind == ActivityKind.SitWithOld && ac.partner == PersonRef.Notable(e.id)) beside = true;
+                        if (ac.kind == ActivityKind.SitWithOld && ac.partner == PersonRef.Notable(e.id) && ac.place == ae.place && !ae.moving) beside = true;
                     }
-                    if (frail) { days++; if (beside) besideFrail++; hoursFrail += together; }
-                    else if (beside) besideHealthy++;
+                    if (frail) { if (beside) visitDays++; } else if (beside) besideHealthy++;
                 }
             }
-            TestContext.WriteLine($"family beside a frail elder on {besideFrail} of {days} days ({hoursFrail / days:0.00} h a day), healthy: {besideHealthy}");
-            Assert.GreaterOrEqual(besideFrail, days * 2 / 3, "most afternoons the family is beside them at their door");
-            Assert.GreaterOrEqual(hoursFrail / days, 0.5f, "for a good part of the spell");
+            TestContext.WriteLine($"the only child came on {visitDays} of {days} days");
+            Assert.GreaterOrEqual(visitDays, 8, "the family comes on a good share of the days");
+            Assert.Less(visitDays, days, "but not every day");
             Assert.AreEqual(0, besideHealthy, "a healthy elder is not sat beside this way");
         }
 
         [Test]
-        public void ThePartnerAndTheChildrenAlsoComeAndTheMorningHasItsSpell()
+        public void TheSpellsAreIrregularNotATimetable()
+        {
+            var sim = Fresh();
+            var (e, _) = Pair(sim, 0.4f);
+            var planner = LifePlanner.Wired(sim);
+            var starts = new List<float>(); int morning = 0, none = 0;
+            for (long d = 2; d < 22; d++)
+            {
+                if (Spell(planner, e, d, false, out float s, out float en))
+                {
+                    starts.Add(s);
+                    Assert.GreaterOrEqual(s, LifePlanner.AfternoonFrom - 1e-3f);
+                    Assert.LessOrEqual(en, LifePlanner.AfternoonTo + 1e-3f);
+                    Assert.GreaterOrEqual(en - s, 0.4f - 1e-3f);
+                    Assert.LessOrEqual(en - s, 1f + 1e-3f);
+                }
+                else none++;
+                if (Spell(planner, e, d, true, out _, out _)) morning++;
+            }
+            TestContext.WriteLine($"afternoon starts over 20 days: {string.Join(" ", starts.Select(x => x.ToString("0.0")))}; none {none}; mornings {morning}");
+            Assert.Greater(starts.Max() - starts.Min(), 1.5f, "the starts spread over the window");
+            Assert.GreaterOrEqual(starts.Select(x => (int)System.Math.Floor(x)).Distinct().Count(), 3, "over at least three different hours");
+            Assert.Greater(none, 0, "not every day");
+            Assert.Greater(starts.Count, 12, "most days");
+            Assert.Less(morning, starts.Count, "the morning spell is rarer");
+        }
+
+        [Test]
+        public void TwoFrailEldersFamiliesDoNotGatherOnTheSameMinute()
+        {
+            var sim = Fresh();
+            var (e1, _) = Pair(sim, 0.4f);
+            var alive = sim.State.notables.Where(n => n.alive && n.id != e1.id).OrderBy(n => n.id).ToList();
+            var e2 = alive[1];
+            e2.age = sim.Config.retireAge + 6f; e2.lifespan = e2.age + 0.5f; e2.job = JobType.Elder; e2.partnerId = -1;
+            var planner = LifePlanner.Wired(sim);
+            Assert.Greater(planner.FrailtyOf(PersonRef.Notable(e2.id)), 0f);
+            int both = 0, same = 0;
+            for (long d = 2; d < 22; d++)
+            {
+                if (!Spell(planner, e1, d, false, out float a, out _) || !Spell(planner, e2, d, false, out float b, out _)) continue;
+                both++;
+                if (System.Math.Abs(a - b) < 0.1f) same++;
+            }
+            TestContext.WriteLine($"both visited on {both} days, within 6 minutes of each other on {same}");
+            Assert.Greater(both, 8);
+            Assert.LessOrEqual(same, both / 4, "not at the same time on most days");
+        }
+
+        [Test]
+        public void SeveralElderGlanceLinesAreNotAList()
+        {
+            var sim = Fresh();
+            var alive = sim.State.notables.Where(n => n.alive).OrderBy(n => n.id).Take(2).ToList();
+            foreach (var n in alive) { n.age = sim.Config.retireAge + 5f; n.job = JobType.Elder; n.lifespan = n.age + 0.8f; sim.DebugLastDays(n.id); n.lifespan = n.age + 0.8f; }
+            var lines = sim.State.chronicle.Where(x => x.kind == SimCore.SlowingKind).ToList();
+            Assert.AreEqual(1, lines.Count, "within a game year only the first gets the story line");
+            Assert.AreEqual(alive[0].id, lines[0].notableId);
+            foreach (var n in alive)
+            {
+                Assert.IsTrue(sim.IsFrail(n));
+                StringAssert.StartsWith("Slowing down", sim.PersonCardOf(n.id).frailLine, "the card text stays");
+                Assert.AreEqual("slowing", sim.FrailTagWord(n), "so does the pin sign");
+            }
+            sim.State.month += SimConfig.MonthsPerYear + 1;
+            var late = sim.State.notables.First(n => n.alive && !alive.Contains(n));
+            sim.DebugLastDays(late.id);
+            Assert.AreEqual(2, sim.State.chronicle.Count(x => x.kind == SimCore.SlowingKind), "a year later the next one is said again");
+        }
+
+        [Test]
+        public void ThePartnerAndTheChildrenAlsoComeNowAndThen()
         {
             var sim = Fresh();
             var (e, c) = Pair(sim, 0.4f);
             var third = sim.State.notables.First(n => n.alive && n.id != e.id && n.id != c.id);
-            third.parentId = e.id; third.age = 12f; // a grandchild-age child of the elder
+            third.parentId = e.id; third.age = 12f; // a child of the elder
             var planner = LifePlanner.Wired(sim);
-            int morning = 0, kidBeside = 0, n = 0;
-            for (long d = 2; d < 14; d++)
+            int cCame = 0, tCame = 0, spells = 0;
+            for (long d = 2; d < 30; d++)
             {
-                n++;
-                var kid = Day(planner, third.id, d);
-                var m = At(kid, 10.5f); var a = At(kid, 17.3f);
-                if (m.kind == ActivityKind.SitWithOld && m.partner == PersonRef.Notable(e.id)) morning++;
-                if (a.kind == ActivityKind.SitWithOld && a.partner == PersonRef.Notable(e.id)) kidBeside++;
+                if (!Spell(planner, e, d, false, out float s, out float en)) continue;
+                spells++;
+                float mid = (s + en) / 2f;
+                var kid = At(Day(planner, third.id, d), mid); var adult = At(Day(planner, c.id, d), mid);
+                if (kid.kind == ActivityKind.SitWithOld && kid.partner == PersonRef.Notable(e.id)) tCame++;
+                if (adult.kind == ActivityKind.SitWithOld && adult.partner == PersonRef.Notable(e.id)) cCame++;
             }
-            TestContext.WriteLine($"a child of the house: afternoon beside them {kidBeside}/{n}, morning {morning}/{n}");
-            Assert.Greater(kidBeside, n / 2, "the young sit with them in the afternoon");
-            Assert.Greater(morning, 0, "and sometimes in the morning too");
+            TestContext.WriteLine($"{spells} spells: the adult child came {cCame}, the young one {tCame}");
+            Assert.Greater(cCame, 0); Assert.Greater(tCame, 0);
+            Assert.Less(cCame, spells, "not all of them every time");
+            Assert.Less(tCame, spells);
+            Assert.LessOrEqual(cCame + tCame, spells * 2);
         }
 
         [Test]
@@ -324,7 +399,7 @@ namespace AquariumCiv.Life.Tests
                 foreach (var n in sim.State.notables.Where(x => x.alive))
                 {
                     var day = Day(planner, n.id, d);
-                    Assert.IsFalse(day.Any(a => a.kind == ActivityKind.SitWithOld && a.partner != PersonRef.None && a.start < 11f && a.end > 10.1f && At(Day(planner, a.partner.Key, d), 10.5f).place == a.place && a.place.kind == PlaceKind.Home),
+                    Assert.IsFalse(day.Any(a => a.kind == ActivityKind.SitWithOld && a.partner != PersonRef.None && a.place.kind == PlaceKind.Home),
                         "no visit to a door when nobody is frail");
                 }
         }
