@@ -107,10 +107,6 @@ namespace AquariumCiv.View
             /// <summary>#363: who they last stood talking with, and when (a couple leaving together walks together, see <see cref="Mates"/>).</summary>
             public int mateKey;
             public float mateTime = -999f;
-            /// <summary>#791: into a slot the way round by the place's middle: 0 straight, 1 on the way to the middle, 2 from the middle to the slot;
-            /// and the slot it was for.</summary>
-            public int via;
-            public Vector2 viaFor;
             /// <summary>#791: walking together, eased: how much of the held hands and the lean is on (0..1), which side they walk on (true: the
             /// lead, kept until the other is clearly on the other side) and the lean's way (-1..1, eased toward the side).</summary>
             public float mateHold, mateLean;
@@ -178,8 +174,6 @@ namespace AquariumCiv.View
         public const float FireClear = MomentStagePlan.FireClear;
         /// <summary>#189: how much faster than the plan the drawn doll may catch up with where it should be.</summary>
         const float DrawnSlack = 0.35f;
-        /// <summary>#791: the middle counts as reached this close; a slot that moves more than <see cref="ViaRetarget"/> in a frame starts the way afresh.</summary>
-        const float ViaReached = 0.02f, ViaRetarget = 0.05f;
         /// <summary>#698: a drawn doll this near its tent's spot is in (hidden at once); further off it walks there first.</summary>
         const float TentArrived = 0.04f;
         /// <summary>Tester run 9: catching up with the plan: the least extra speed, and how it grows with the gap (per second) on the way and into a slot.</summary>
@@ -806,14 +800,7 @@ namespace AquariumCiv.View
             else
             {
                 // Into a slot: straight if the way is clear, else by the place's middle (no cutting across a house corner).
-                // #791: the way round is kept once taken, and from the middle they go on to the slot. Re-read every frame, a doll on the line where
-                // the way turns clear stepped to and fro on the spot, and one at the middle (inside the lot) never left it: two drinkers stood in one body there.
-                if (a.moving || (target - d.viaFor).sqrMagnitude > ViaRetarget * ViaRetarget) d.via = 0;
-                d.viaFor = target;
-                if (d.via == 0 && !a.moving && !(Clear(d.pos, target) || IceView.Instance != null && IceView.Instance.OnIce(target) /* #618: out onto the ice */)) d.via = 1;
-                if (d.via == 1 && (spot - d.pos).sqrMagnitude < ViaReached * ViaReached) d.via = 2;
-                var goal = d.via == 1 ? spot : target;
-                if (d.via == 2 && (target - d.pos).sqrMagnitude < ViaReached * ViaReached) d.via = 0;
+                var goal = a.moving || Clear(d.pos, target) || IceView.Instance != null && IceView.Instance.OnIce(target) /* #618: out onto the ice */ ? target : spot;
                 float gap = (goal - d.pos).magnitude;
                 // Tester run 9: most of a town's hard brakes were this, not the crowd. Off a slot a walker ran at twice the walk to reach the plan's point, then dropped to the walk
                 // on reaching it. Now the catching up fades as they near it, and they settle into the walk.
