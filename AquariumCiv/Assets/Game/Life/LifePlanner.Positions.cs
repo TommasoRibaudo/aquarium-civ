@@ -278,7 +278,11 @@ namespace AquariumCiv.Life
                 }
             }
             if (runs != null)
-                foreach (var s in runs) pieces.Add(new Piece { t0 = s.start, t1 = s.end, index = -1, target = Place.None, seg = s, order = pieces.Count, runIn = true, hasPoint = s.hasPoint, mx = s.mx, mz = s.mz });
+                foreach (var s0 in runs)
+                {
+                    if (!RunInAsPlayed(p, s0, out var s)) continue; // #791: the partner (or they) went into a live scene first: no run-in
+                    pieces.Add(new Piece { t0 = s.start, t1 = s.end, index = -1, target = Place.None, seg = s, order = pieces.Count, runIn = true, hasPoint = s.hasPoint, mx = s.mx, mz = s.mz });
+                }
             if (pieces.Count == 0) return NoBlocks;
             pieces.Sort((a, b) => a.t0 != b.t0 ? a.t0.CompareTo(b.t0) : a.order.CompareTo(b.order));
 

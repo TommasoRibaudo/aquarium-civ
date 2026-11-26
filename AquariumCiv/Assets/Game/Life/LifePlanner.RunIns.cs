@@ -249,10 +249,40 @@ namespace AquariumCiv.Life
             EnsureRunIns();
             var list = new List<RunInBeat>();
             foreach (var kv in runInCache)
-                foreach (var s in kv.Value)
-                    if (byKey.TryGetValue(kv.Key, out var p)) list.Add(new RunInBeat(p.who, s.partner, s.kind, s.start, s.end, s.hasPoint));
+                foreach (var s0 in kv.Value)
+                    if (byKey.TryGetValue(kv.Key, out var p) && RunInAsPlayed(p, s0, out var s)) list.Add(new RunInBeat(p.who, s.partner, s.kind, s.start, s.end, s.hasPoint));
             list.Sort((a, b) => a.start.CompareTo(b.start));
             return list;
+        }
+
+        /// <summary>#791 (tests): one person's day and interruption blocks round [<paramref name="h0"/>, <paramref name="h1"/>]: the stitched
+        /// pieces, each block's pieces and legs, and where the plan has them every few minutes, so a run-in that misses says why.</summary>
+        public string DebugRunInTrace(PersonRef who, long day, float h0, float h1)
+        {
+            Sync();
+            EnsureDay(day);
+            EnsureRunIns();
+            if (!byKey.TryGetValue(who.Key, out var p)) return who + ": not planned";
+            var sb = new System.Text.StringBuilder();
+            sb.Append(who).Append(" day:");
+            foreach (var s in DayOf(p))
+                if (s.end > h0 - 0.3f && s.start < h1 + 0.3f)
+                    sb.Append($" [{s.kind} {s.start:0.000}-{s.end:0.000} {s.from}>{s.place} {s.src}{(s.cut ? " cut" : "")}{(s.resumed ? " resumed" : "")}]");
+            foreach (var b in BlocksOf(p))
+            {
+                if (b.be < h0 - 0.3f || b.bs > h1 + 0.3f) continue;
+                sb.Append($" | block {b.bs:0.000}-{b.ie:0.000}-{b.be:0.000} stop ({b.sx:0.00},{b.sz:0.00}) at {b.stopAt}:");
+                foreach (var pc in b.pieces) sb.Append($" piece {(pc.reaction ? "reaction" : pc.runIn ? "runin" : "live")} {pc.seg.kind} {pc.t0:0.000}-{pc.t1:0.000}{(pc.hasPoint ? $" to ({pc.mx:0.00},{pc.mz:0.00})" : "")}");
+                foreach (var l in b.legs) sb.Append($" leg {l.t0:0.000}-{l.t1:0.000} {(l.poly == null ? $"stand ({l.x:0.00},{l.z:0.00})" : $"walk {l.f0:0.00}-{l.f1:0.00}")}{(l.tail ? " tail" : "")}");
+            }
+            sb.Append(" | at:");
+            for (float t = h0; t <= h1 + 1e-4f; t += Math.Max(0.01f, (h1 - h0) / 8f))
+            {
+                PositionAt(who, new ViewTime(day, t), out float x, out float z);
+                PlanPos(p, t, out float px, out float pz);
+                sb.Append($" {t:0.000} ({x:0.00},{z:0.00}) plan ({px:0.00},{pz:0.00})");
+            }
+            return sb.ToString();
         }
 
         /// <summary>Debug: a rival bicker (<see cref="ActivityKind.Argue"/>) or a friend chat now: the first awake pair with that tie
@@ -263,7 +293,8 @@ namespace AquariumCiv.Life
             Sync();
             EnsureDay(now.day);
             EnsureRunIns();
-            bool Awake(Person p) => p != null && p.Grown && byKey.ContainsKey(p.who.Key) && PlanPerson(p, now).kind is not (ActivityKind.Sleep or ActivityKind.None) && PositionAt(p.who, now, out _, out _);
+            bool Awake(Person p) => p != null && p.Grown && byKey.ContainsKey(p.who.Key) && PlanPerson(p, now).kind is not (ActivityKind.Sleep or ActivityKind.None) && PositionAt(p.who, now, out _, out _)
+                && LiveFrom(p, now.hour, now.hour + 0.5f) == float.MaxValue; // #791: never with someone a live scene has (the beat would never start)
             Person a = null, b = null;
             foreach (var p in people)
             {
@@ -310,6 +341,38 @@ namespace AquariumCiv.Life
                 if (d2 < NearUnits * NearUnits && d2 >= NotOnOneSpot * NotOnOneSpot) return t; // two out of one door are walking together, not meeting
             }
             return -1f;
+        }
+
+        /// <summary>#791: a run-in as it plays with today's live scenes. A scene that casts either of the two ends it for both where it starts
+        /// (the other walks on into their day, the one cast goes to the scene); one already holding either when it would start means it never
+        /// starts. Only the beat's end moves, never its start or its spot, so a beat already playing stops where it stands, no slide.</summary>
+        bool RunInAsPlayed(Person p, in Seg s0, out Seg s)
+        {
+            s = s0;
+            if (live.Count == 0) return true;
+            float cut = LiveFrom(p, s.start, s.end);
+            if (byKey.TryGetValue(s.partner.Key, out var q)) cut = Math.Min(cut, LiveFrom(q, s.start, s.end));
+            if (cut <= s.start + 1e-4f) return false;
+            if (cut < s.end) s.end = cut;
+            return true;
+        }
+
+        readonly List<Seg> castScratch = new List<Seg>(8);
+
+        /// <summary>#791: the first hour in [<paramref name="t0"/>, <paramref name="t1"/>) a live scene has <paramref name="p"/> (MaxValue: none).</summary>
+        float LiveFrom(Person p, float t0, float t1)
+        {
+            float first = float.MaxValue;
+            for (int i = 0; i < live.Count; i++)
+            {
+                var sc = live[i];
+                if (sc.day != dayInfo.day) continue;
+                castScratch.Clear();
+                SceneLayer(sc, p, dayInfo, castScratch, true);
+                foreach (var c in castScratch)
+                    if (c.end > t0 && c.start < t1) first = Math.Min(first, Math.Max(t0, c.start));
+            }
+            return first;
         }
 
         bool Overlaps(Person p, float t, float len)
