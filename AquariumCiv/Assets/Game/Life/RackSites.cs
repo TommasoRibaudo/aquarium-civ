@@ -66,6 +66,43 @@ namespace AquariumCiv.Life
             m.moves++;
         }
 
+        /// <summary>#762: the lots a rack may not stand under (the strip fields, orchards and pastures).</summary>
+        public static bool IsField(LotKind k) => k == LotKind.Farm || k == LotKind.Orchard || k == LotKind.Pasture;
+
+        /// <summary>#762: true when (x, z) lies on a standing field lot (its polygon): a rack never stands under one, and a field laid
+        /// over a standing rack makes the rack move (at night, as for a path) when it has somewhere to go. The placer in turn keeps a new
+        /// field off the racks (<see cref="Publish"/>).</summary>
+        public static bool FieldAt(SimCore sim, float x, float z)
+        {
+            var w = sim?.Settlement;
+            if (w == null || !sim.Config.settle) return false;
+            int c = SiteMap.CellAt(x, z);
+            if (c < 0) return false;
+            int ci = SiteMap.I(c), cj = SiteMap.J(c);
+            for (int dj = -1; dj <= 1; dj++)
+                for (int di = -1; di <= 1; di++)
+                {
+                    int i = ci + di, j = cj + dj;
+                    if (i < 0 || j < 0 || i >= SiteMap.NX || j >= SiteMap.NZ) continue;
+                    int id = w.Map.lot[SiteMap.Index(i, j)];
+                    if (id == 0) continue;
+                    var l = w.LotById(id);
+                    if (l == null || l.retired || l.open || !IsField(l.kind)) continue;
+                    // the lot's polygon (its oriented rect), not only the cells it claimed: a cell is 0.1 wide
+                    float r = l.yaw * (float)(Math.PI / 180.0), cs = (float)Math.Cos(r), sn = (float)Math.Sin(r);
+                    float dx = x - l.x, dz = z - l.z, lx = dx * cs - dz * sn, lz = dx * sn + dz * cs;
+                    if (Math.Abs(lx) <= l.w / 2f && Math.Abs(lz) <= l.d / 2f) return true;
+                }
+            return false;
+        }
+
+        /// <summary>What a rack may not stand on: a path (#700) or a field (#762). Null when neither can exist.</summary>
+        static Func<float, float, bool> RackBlock(SimCore sim)
+        {
+            var path = PathTest(sim);
+            return path == null ? null : (Func<float, float, bool>)((x, z) => path(x, z) || FieldAt(sim, x, z));
+        }
+
         /// <summary>The path test for <paramref name="sim"/>, or null when no path can exist (the first run, plain prototypes).</summary>
         public static Func<float, float, bool> PathTest(SimCore sim)
             => sim?.Settlement?.Map == null || !sim.Config.settle ? null : (Func<float, float, bool>)((x, z) => PathAt(sim, x, z));
@@ -82,11 +119,35 @@ namespace AquariumCiv.Life
         /// <summary>How many times a rack has moved because of a path (a change counter for caches).</summary>
         public static int Moves(SimCore sim) => sim == null ? 0 : Get(sim).moves;
 
+        /// <summary>#762: tells the settlement where the racks stand, so the placer keeps a new field off them (the rack that came first stays).</summary>
+        static void Publish(SimCore sim, float fx, float fz)
+        {
+            var w = sim?.Settlement;
+            if (w == null) return;
+            var m = Get(sim);
+            w.KeepClear.Clear();
+            if (!float.IsNaN(m.hide)) Add(w, fx, fz, m.hide, LifePlanner.HideFrameDistance, CampSpots.RackHalfDepth, CampSpots.RackHalfLength + 0.035f);
+            if (!float.IsNaN(m.fish)) Add(w, fx, fz, m.fish, FishRackSpot.Distance, FishRackSpot.HalfDepth, FishRackSpot.HalfLength);
+        }
+
+        static void Add(Settlement w, float fx, float fz, float angle, float dist, float halfDepth, float halfLength)
+        {
+            float ux = (float)Math.Cos(angle), uz = (float)Math.Sin(angle);
+            w.KeepClear.Add(new Footprint(fx + ux * dist, fz + uz * dist, (float)Math.Atan2(-ux, -uz) * (180f / (float)Math.PI), 2f * halfLength, 2f * halfDepth));
+        }
+
         /// <summary>The hide rack's angle round the fire at (<paramref name="fx"/>, <paramref name="fz"/>).</summary>
         public static float Hide(SimCore sim, float fx, float fz)
         {
+            float a = HideCore(sim, fx, fz);
+            Publish(sim, fx, fz);
+            return a;
+        }
+
+        static float HideCore(SimCore sim, float fx, float fz)
+        {
             var m = Get(sim);
-            var onPath = PathTest(sim);
+            var onPath = RackBlock(sim);
             if (!float.IsNaN(m.hide) && (onPath == null || !CampSpots.RackOnPath(fx, fz, m.hide, LifePlanner.HideFrameDistance,
                     CampSpots.RackHalfDepth, CampSpots.RackHalfLength + 0.035f, onPath))) return m.hide;
             if (!float.IsNaN(m.hide) && m.beats)
@@ -109,9 +170,16 @@ namespace AquariumCiv.Life
         /// <summary>The fish rack's angle: clear of the paths, the hide rack and the camp's fixed things.</summary>
         public static float Fish(SimCore sim, float fx, float fz)
         {
+            float a = FishCore(sim, fx, fz);
+            Publish(sim, fx, fz);
+            return a;
+        }
+
+        static float FishCore(SimCore sim, float fx, float fz)
+        {
             var m = Get(sim);
-            var onPath = PathTest(sim);
-            float hide = Hide(sim, fx, fz);
+            var onPath = RackBlock(sim);
+            float hide = HideCore(sim, fx, fz);
             if (!float.IsNaN(m.fish)
                 && (onPath == null || !CampSpots.RackOnPath(fx, fz, m.fish, FishRackSpot.Distance, FishRackSpot.HalfDepth, FishRackSpot.HalfLength, onPath))
                 && CampSpots.AngleGap(m.fish, hide) >= CampSpots.RackGap) return m.fish;

@@ -34,6 +34,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CardsTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/RelicTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettleTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettleFieldGroundTests.cs" /><!-- #768 fields on damp fertile ground -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TroddenGroundTests.cs" /><!-- #523 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettingTerrainTests.cs" /><!-- #115 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ShapingTests.cs" />

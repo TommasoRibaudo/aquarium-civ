@@ -728,9 +728,12 @@ namespace AquariumCiv.Sim.Eco
         }
 
         /// <summary>Jays cache in open ground and at edges; bushes shelter the seedling (not in a thicket's heart); never in the flood line or the yard.</summary>
+        /// <summary>#769: cells no tree seeds on (the church's lot and margin). SimCore sets it from the settlement. Null = none.</summary>
+        public Func<int, bool> NoWood;
+
         bool TakesSeed(int c, float roll)
         {
-            if (land.InBasin(c) || land.yard[c] || c == st.treeCell) return false;
+            if (land.InBasin(c) || land.yard[c] || c == st.treeCell || (NoWood?.Invoke(c) ?? false)) return false;
             float p;
             switch (Cv(c))
             {
