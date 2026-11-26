@@ -23,7 +23,7 @@ Branch: `p9/polish-night-1` → PR to `dev`. Spec-gated, not in the PR: `vs/776-
 | 767 | Fishers chatting keep their rods over the water (22° body turn) | merged, open | 767-chat (gif) | Reads as chatting, or do we need a separate head? |
 | 770 | The dance keeps off buildings (lots incl. the well; dressing follows the ring) | merged, open | 770-dance (gif), 770-ring | Good? |
 | 771 | Wolves' eased turn on the spot | merged, open | 771-wolf-turn (gif, new left / old right) | Good? Deer and dogs too? |
-| 772 | The glass stops a thrown ball | merged, open | 772 clip (reshoot) | Fine as built? |
+| 772 | The glass stops a thrown ball | merged, open | 772-ball (gif), 772-impact | Fine as built? |
 | 768 | Fields on good ground, away from the centre | merged, open | 768-{7,11,1}-{before,after} | Fields where you'd expect? |
 | 769 | The church out of the wood (eco seeding kept off its lot) | merged, open | 769-{7,11}-{before,after} | Good? |
 | 775 | Dirty glass reads dirtier, a film stays zoomed in | merged, open | 775-after (sheet) | The look you wanted? |
