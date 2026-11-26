@@ -140,7 +140,7 @@ namespace AquariumCiv.View.PlayTests
         sealed class DollStepWatch : MonoBehaviour
         {
             /// <summary>The fastest any doll is driven toward its spot (PeopleView.Drive: the play/pair/camp caps are 0.75 u/s; a walker is the plan's pace plus DrawnSlack).</summary>
-            const float FastestDrive = 1f;
+            public const float FastestDrive = 1f;
             PeopleView pv;
             readonly Dictionary<int, Vector3> last = new(), first = new();
             readonly Dictionary<int, (float excess, float step, float frameDt)> worst = new();
@@ -258,7 +258,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Less(watch.WorstStep, 0.12f, "a doll jumped (a step beyond the fastest drive for that frame) when the card opened: " + watch.Report());
                 foreach (int n in shownIds)
                     if (!watch.WentOutOfSight.Contains(n) && before.TryGetValue(n, out var b0) && pv.TryGetDollFeet(PersonRef.Notable(n), out var b1))
-                        Assert.Less(Vector3.Distance(b0, b1), 0.05f + 2f * LifePlanner.RealWalkSpeed * watch.Elapsed, $"doll {n} outran a walk while the card opened; {watch.Report()}");
+                        Assert.Less(Vector3.Distance(b0, b1), 0.05f + DollStepWatch.FastestDrive * watch.Elapsed, $"doll {n} outran a walk while the card opened; {watch.Report()}");
                 UnityEngine.Object.Destroy(watch.gameObject);
 
                 var card = cards.CardRoot.Q("person-card");
