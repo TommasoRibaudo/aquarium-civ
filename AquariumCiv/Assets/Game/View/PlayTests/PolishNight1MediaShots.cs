@@ -262,20 +262,8 @@ namespace AquariumCiv.View.PlayTests
 
         // ================================================================== 5: #772 ball at the glass
 
-        /// <summary>The cheat's ball (a natural solo ball game may run elsewhere: the one nearest the glass side wins).</summary>
-        static GameObject TheBall()
-        {
-            GameObject best = null; float bd = 99f; var home = new Vector2(Land.HX - 0.5f, Land.CZ); // the cheat's game stands at this spot; a ball far from it is another game's
-            foreach (var mr in Resources.FindObjectsOfTypeAll<MeshRenderer>()) // the balls are DontSave: FindObjectsByType never lists them
-            {
-                var t = mr != null ? mr.transform : null;
-                if (t == null || t.name != "Play Ball" || !t.gameObject.activeInHierarchy) continue;
-                var l = Box.Root.InverseTransformPoint(t.position);
-                float d = (new Vector2(l.x, l.z) - home).magnitude;
-                if (d < bd) { bd = d; best = t.gameObject; }
-            }
-            return best;
-        }
+        /// <summary>The cheat's ball (a natural ball game may run elsewhere: only the forced group's ball counts).</summary>
+        static GameObject TheBall() => KidPlayDirector.DebugForcedBall(); // the cheat's own (forced) ball game
 
         static void DumpGroups(string when)
         {
@@ -296,13 +284,9 @@ namespace AquariumCiv.View.PlayTests
             CampLife.OnlyCheats = true; Pv.Camp.CutForCheat(); // no camp use borrows the kids (a borrowed holder hides the ball and freezes the game)
             string r = KidPlayDirector.DebugBallAtGlass();
             Debug.Log("[pn1 media] 772 " + r);
-            yield return new WaitForSecondsRealtime(10f);
-            DumpGroups("8 s");
-            yield return Until(() => Where_(a => a.kind == ActivityKind.Play).Count >= 2, 60f);
-            var kids = Where_(a => a.kind == ActivityKind.Play);
-            Debug.Log($"[pn1 media] 772 players {kids.Count}: " + string.Join(" ", kids.Select(k => $"({k.x:0.00},{k.y:0.00})")));
+            // the forced game runs 45 s from the cheat: film it from the start (the kids walk in, the first throws are the glass misses)
             // the camera follows the ball and holds the spot of the pane it is nearest, so a throw that misses is seen meeting the glass
-            Vector2 lastBall = new Vector2(Land.HX - 0.5f, Land.CZ); float maxX = -9f, maxAt = 0f, t0 = Time.realtimeSinceStartup; int bounces = 0; bool wasNear = false; float lastX = 0f;
+            Vector2 lastBall = new Vector2(Land.HX - 0.3f, Land.CZ); float maxX = -9f, maxAt = 0f, t0 = Time.realtimeSinceStartup; int bounces = 0; bool wasNear = false; float lastX = 0f;
             List<Vector2> Pts()
             {
                 var ball = TheBall();
@@ -322,16 +306,7 @@ namespace AquariumCiv.View.PlayTests
                 else { p.Add(lastBall); p.Add(new Vector2(GlassBox.HalfX - 0.1f, lastBall.y)); }
                 return p;
             }
-            foreach (float yw in new[] { 28f, 118f, 208f, 298f })
-            {
-                yield return Settle(Pts, 110f, 40f, yaw: yw, frames: 30);
-                var bl = TheBall();
-                Debug.Log($"[pn1 media] 772 yaw {yw}: ball {(bl != null ? Box.Root.InverseTransformPoint(bl.transform.position).ToString("0.00") : "none")}, players {string.Join(" ", Where_(a => a.kind == ActivityKind.Play).Select(k => $"({k.x:0.00},{k.y:0.00})"))}");
-                yield return Still("772", $"yaw_{yw:0}");
-            }
-            yield return Settle(Pts, 110f, 40f, yaw: 28f, frames: 30);
-            yield return Still("772", "ball_start");
-            yield return Clip("772", "ball", 40f, Pts, 110f, 40f);
+            yield return Clip("772", "ball", 26f, Pts, 110f, 40f, 28f);
             Debug.Log($"[pn1 media] 772 ball: furthest x {maxX:0.00} at {maxAt:0.0} s (glass at {GlassBox.HalfX:0.000}), turn-backs near the glass {bounces}");
         }
 
