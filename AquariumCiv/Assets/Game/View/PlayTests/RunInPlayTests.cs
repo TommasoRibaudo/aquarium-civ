@@ -35,14 +35,14 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(4);
         }
 
-        struct Sample { public float t, speed, step, gap, facing; public ActivityKind kind; public bool enRoute, moving; public Vector2 at; }
+        struct Sample { public float t, speed, step, gap, facing; public ActivityKind kind; public bool enRoute, moving, seen; public Vector2 at; public string why; }
 
         /// <summary>Watches one person through <paramref name="seconds"/> real seconds, each frame.</summary>
         IEnumerator Watch(PersonRef who, PersonRef with, float seconds, List<Sample> into)
         {
             var pv = People;
             Vector2 last = default;
-            bool has = false;
+            bool has = false, wasSeen = false;
             float start = Time.realtimeSinceStartup, prevT = start;
             while (Time.realtimeSinceStartup - start < seconds)
             {
@@ -54,14 +54,35 @@ namespace AquariumCiv.View.PlayTests
                 pv.TryGetDollPosition(with, out var q);
                 pv.TryGetDollFacing(who, out var f);
                 var to = q - p;
+                // #791: only a step between two frames the doll is drawn in is a step anyone sees. Asleep or indoors (Hidden) it takes a changed
+                // slot at once (#696, by design), and coming out it appears at the door: neither is a jump on screen.
+                bool seen = pv.TryGetDollTop(who, out _), stepSeen = has && seen && wasSeen;
+                wasSeen = seen;
                 into.Add(new Sample
                 {
-                    t = now - start, speed = has ? (p - last).magnitude / dt : 0f, step = has ? (p - last).magnitude : 0f, gap = to.magnitude,
+                    t = now - start, speed = stepSeen ? (p - last).magnitude / Mathf.Max(1e-4f, pv.LastTickDt) : 0f, step = stepSeen ? (p - last).magnitude : 0f, gap = to.magnitude, seen = seen,
                     facing = to.sqrMagnitude > 1e-6f ? Vector2.Dot(f.normalized, to.normalized) : -2f,
-                    kind = a.kind, enRoute = a.enRoute, moving = a.moving, at = p,
+                    kind = a.kind, enRoute = a.enRoute, moving = a.moving, at = p, why = $"{a.kind}@{a.place.kind}/{a.source}/{a.hunt}",
                 });
                 last = p; has = true;
             }
+        }
+
+        /// <summary>#791: the biggest step and the frames round it (when, what, en route, moving, where), so a jump says where it was.</summary>
+        static string Jump(List<Sample> s)
+        {
+            int i = 2; for (int k = 2; k < s.Count; k++) if (s[k].step > s[i].step) i = k;
+            return Around(s, i);
+        }
+
+        static string Around(List<Sample> s, int i) => string.Join(" | ", Enumerable.Range(Mathf.Max(0, i - 2), Mathf.Min(s.Count, i + 3) - Mathf.Max(0, i - 2))
+                .Select(k => $"{(k == i ? "*" : "")}t {s[k].t:0.00} step {s[k].step:0.000} speed {s[k].speed:0.00} {s[k].kind} route {s[k].enRoute} moving {s[k].moving} seen {s[k].seen} at {s[k].at}"));
+
+        /// <summary>#791: the fastest frame and the frames round it.</summary>
+        static string Fastest(List<Sample> s)
+        {
+            int i = 2; for (int k = 2; k < s.Count; k++) if (s[k].speed > s[i].speed) i = k;
+            return Around(s, i);
         }
 
         static string Sum(List<Sample> s) => $"max speed {s.Max(x => x.speed):0.00} (walk {LifePlanner.RealWalkSpeed:0.00}), kinds {string.Join(",", s.Select(x => x.kind).Distinct())}, path {s.First().at} to {s.Last().at}";
@@ -84,15 +105,18 @@ namespace AquariumCiv.View.PlayTests
             var mid = a.Where(s => s.kind == stop.kind).ToList();
             Assert.IsNotEmpty(mid, $"{stop.who} plays {stop.kind}");
             Assert.IsTrue(mid.All(s => s.enRoute), "stopped on the route, not at a slot");
-            Assert.Less(a.Skip(2).Max(s => s.step), 0.1f, "the stopper never jumps");
-            Assert.Less(b.Skip(2).Max(s => s.step), 0.1f, "nor does the other");
-            Assert.Less(a.Skip(2).Max(s => s.speed), 2.2f, "or runs");
-            Assert.Less(b.Skip(2).Max(s => s.speed), 2.2f, "or runs");
+            Assert.Less(a.Skip(2).Max(s => s.step), 0.1f, "the stopper never jumps: " + Jump(a));
+            Assert.Less(b.Skip(2).Max(s => s.step), 0.1f, "nor does the other: " + Jump(b));
+            Assert.Less(a.Skip(2).Max(s => s.speed), 2.2f, "or runs: " + Fastest(a));
+            Assert.Less(b.Skip(2).Max(s => s.speed), 2.2f, "or runs: " + Fastest(b));
             var settled = mid.Skip(mid.Count / 2).ToList();
             float drift = (settled.First().at - settled.Last().at).magnitude;
             Assert.Less(drift, 0.05f, "and stands still for the beat, no slot glide (the walk's crowd offset easing off is a few hundredths)");
             var both = settled.Where(s => s.gap < 0.6f).ToList();
-            Assert.IsNotEmpty(both, $"the two meet (gap {settled.Min(s => s.gap):0.00})");
+            float midH = (stop.start + stop.end) * 0.5f;
+            pv.Planner.PositionAt(stop.who, new ViewTime(pv.Now.day, midH), out float wx, out float wz);
+            pv.Planner.PositionAt(stop.with, new ViewTime(pv.Now.day, midH), out float hx, out float hz);
+            Assert.IsNotEmpty(both, $"the two meet (gap {settled.Min(s => s.gap):0.00}; the plan has them {new Vector2(wx - hx, wz - hz).magnitude:0.00} apart mid-beat at ({wx:0.00},{wz:0.00}) and ({hx:0.00},{hz:0.00}), {stop.who} {string.Join(",", a.Select(x => x.why).Distinct())} / {stop.with} {string.Join(",", b.Select(x => x.why).Distinct())})");
             Assert.Greater(both.Min(s => s.gap), 0.05f, "not on one spot");
             Assert.Greater(both.Average(s => s.facing), 0.8f, "they face each other");
         }
