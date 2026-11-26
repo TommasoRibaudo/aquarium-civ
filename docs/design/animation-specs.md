@@ -2711,7 +2711,7 @@ Every number is [est] until the clip.
 
 ## B81. A statue of the founder (#776, 2026-11-25)
 
-**Status: spec, waiting for the user's sign-off.** No Unity was run. Every number is [est] until the clip. Direction it serves:
+**Status: approved by the user 2026-11-26.** (The four answers are in B81.6.) Built in #776 (no Unity run yet: every number is [est] until the clip). Direction it serves:
 decisions.md 2026-11-25, "lean into watching people age and die" (what a person leaves behind, who carries it on). Source: the first
 outside playtest (private notes; paraphrased): the people could raise a statue of the founder, especially of the one the Keeper
 kept pinned for a long time.
@@ -2791,8 +2791,8 @@ the figure changing with the era. All could be later polish rows.
 - **Tests (when built):** pure: the rule (`StatueRules.Who`, `.Ready`: most-pinned over founder, a year after death, village and 12 people, never while alive), the spot finder (never on a path, 0.2 u clear ring, same spot every load); PlayMode: the raising scene plays in a village box and leaves the statue, each use plays (`Playing(use)` then free), the work minutes stay within 5 % over 10 view days (D); AnimLab: one clip per beat (`Tools/AnimBench/clips/776-statue-*.json`).
 - **Screenshot check:** a close shot at 750×1334 of the statue and the family at the raising, and of a kid on the base.
 
-### B81.6 Open questions for the user
-1. **Who is "the founder"** when nobody was pinned a day: the first notable of the box (★), or the first chief, or nobody (no statue)?
-2. **Wait after death:** one game year (★) or the same view day as the quiet visit?
-3. **The caption's wording:** the one above, or none (the scene alone, seen not read)?
-4. **A festival wreath** on the statue every year: add it as a follow-up row (★ later), or in this one?
+### B81.6 Open questions for the user (answered by the user 2026-11-26, all four as the starred option)
+1. **Who is "the founder"** when nobody was pinned a day: **the first notable of the box** (decided).
+2. **Wait after death:** **one game year** (decided).
+3. **The caption's wording:** **kept**: "{who} is made of stone now, on the green." (checked against docs/research/21: closed world, no outside place, no "monument").
+4. **A festival wreath** on the statue every year: **later**, as a follow-up row (not in #776).
