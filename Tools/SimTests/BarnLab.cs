@@ -1,5 +1,6 @@
 // #791 barn lab: how often a village has no barn. Every family yard with a home gets one outbuilding (Settlement.Outbuildings), and
-// SimLayout draws it as a barn (Pieces.Barn variant 0) when Terrain.Hash3(seed, lotId, 61) < 0.6, else a shed with a woodpile (variant 1).
+// SimLayout draws it as a barn (Pieces.Barn variant 0) when Settlement.IsBarn: Terrain.Hash3(seed, lotId, 61) < 0.6 or the box's first
+// outbuilding (2026-11-26: every village has a barn; before that rule 10 of 20 had none), else a shed with a woodpile (variant 1).
 // The village's barn uses (BarnChores, HayJump: CampLife.BarnOf) take only variant 0. Measurement only (Explicit): dotnet test --filter BarnLab.
 using System;
 using System.Linq;
@@ -13,7 +14,7 @@ namespace AquariumCiv.Tests
 {
     public class BarnLab
     {
-        static bool IsBarn(SimCore sim, Lot l) => Terrain.Hash3(sim.State.seed, l.id, 61) < 0.6f; // SimLayout.Fill, LotKind.Outbuilding
+        static bool IsBarn(SimCore sim, Lot l) => sim.Settlement.IsBarn(l); // SimLayout.Fill, LotKind.Outbuilding
 
         static void Year(SimCore sim)
         {

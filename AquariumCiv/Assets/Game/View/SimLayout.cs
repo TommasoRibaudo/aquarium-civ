@@ -240,14 +240,6 @@ namespace AquariumCiv.View
         /// <summary>#284: how much of a building stands, 0..1, while its tent is being raised (the camp view sets it; null = all of them stand).</summary>
         public static Func<int, float> BuildingGrow;
 
-        /// <summary>#791 (debug: the staged village and the barn cheats, CampCheats.EnsureBarn): this world's outbuilding lot drawn as a barn whatever
-        /// its hash says. Tied to the world's state, so another box (a new slice, a test's own) never sees it. Null: none.</summary>
-        public static SimState DebugBarnOf;
-        public static int DebugBarnLot;
-
-        /// <summary>Is this family outbuilding drawn as a barn (Pieces.Barn variant 0), not a shed with a woodpile (variant 1)? 6 in 10 by the lot's hash.</summary>
-        public static bool DrawsBarn(SimState s, Lot l) => STerrain.Hash3(s.seed, l.id, 61) < 0.6f || (ReferenceEquals(s, DebugBarnOf) && l.id == DebugBarnLot);
-
         public static void Fill(BoxLayout L, SimCore sim, Func<Lot, Era> eraOf = null, Func<int, bool> cobbled = null, ReplayFrame replay = null)
         {
             L.Clear();
@@ -388,7 +380,7 @@ namespace AquariumCiv.View
                         // The first well stands as the moment showed it, so the sim taking over changes nothing on screen.
                         P(PieceKind.Well, 0.3f, 0.3f).yaw = l.open ? 0f : l.yaw;
                         break;
-                    case LotKind.Outbuilding: P(PieceKind.Barn, l.w, l.d).variant = DrawsBarn(S, l) ? 0 : 1; break;
+                    case LotKind.Outbuilding: P(PieceKind.Barn, l.w, l.d).variant = st.IsBarn(l) ? 0 : 1; break;
                     default: P(PieceFor(l.kind), l.w, l.d); break;
                 }
             }

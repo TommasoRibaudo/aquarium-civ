@@ -57,6 +57,20 @@ namespace AquariumCiv.Sim.Settle
         public List<Nudge> Nudges => S.nudges;
         public SettleState State => St;
 
+        /// <summary>Is this family outbuilding a barn (Pieces.Barn variant 0), not a shed with a woodpile (variant 1)? 6 in 10 by the lot's
+        /// hash, and the box's first outbuilding (the lowest lot id) always is, so every village and town has a barn (user call 2026-11-26).
+        /// Stable: lot ids only grow and outbuildings are never retired, so the first stays first and a barn never turns into a shed.</summary>
+        public bool IsBarn(Lot l) => l.kind == LotKind.Outbuilding && (Terrain.Hash3(Seed, l.id, 61) < 0.6f || l.id == FirstOutbuilding());
+
+        /// <summary>The lot id of the box's first standing outbuilding (0 = none yet).</summary>
+        public int FirstOutbuilding()
+        {
+            int first = 0;
+            foreach (var l in St.lots)
+                if (l.kind == LotKind.Outbuilding && !l.retired && (first == 0 || l.id < first)) first = l.id;
+            return first;
+        }
+
         public Settlement(SimCore core)
         {
             this.core = core;
@@ -422,6 +436,13 @@ namespace AquariumCiv.Sim.Settle
         void Outbuildings()
         {
             MarkProps();
+            Outbuildings(false);
+            // #791 (user call 2026-11-26: every village has a barn): no family found room and the box has none yet: try farther out.
+            if (FirstOutbuilding() == 0) Outbuildings(true);
+        }
+
+        void Outbuildings(bool far)
+        {
             foreach (var k in Yards)
             {
                 // From the second home on (or once the family stops growing), so the barn rarely takes a home's place.
@@ -435,7 +456,7 @@ namespace AquariumCiv.Sim.Settle
                     d = spec.dMin + (spec.dMax - spec.dMin) * Terrain.Hash3(Seed, id, 12),
                 };
                 // No room for a barn: the yard tries again next year (the land round it changes).
-                if (cluster.PlaceOutbuilding(k, site)) k.outbuildingLot = site.id;
+                if (cluster.PlaceOutbuilding(k, site, far)) { k.outbuildingLot = site.id; if (far) return; } // farther out: the one barn only
             }
         }
 
