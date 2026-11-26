@@ -386,7 +386,9 @@ namespace AquariumCiv.View
         }
 
         /// <summary>How far along the pane point <paramref name="q"/> (on the land's edge) is from the nearest bank: a point where the ground
-        /// reaches the water line <paramref name="y"/>, or the box's corner. At most <see cref="BankRamp"/>.</summary>
+        /// reaches the water line <paramref name="y"/>. At most <see cref="BankRamp"/>. 2026-11-25 (the user: where the pond runs into the
+        /// side pane, its bottom curved up short of the glass): the box's corner is glass, not a bank, so the basin keeps its full depth
+        /// up to the other pane; only ground at the water line counts.</summary>
         public float FromBank(Vector2 q, bool alongX, float y)
         {
             const float Step = 0.02f;
@@ -395,7 +397,7 @@ namespace AquariumCiv.View
                 for (int sgn = -1; sgn <= 1; sgn += 2)
                 {
                     float t = t0 + sgn * d;
-                    if (t <= lo || t >= hi) return d;
+                    if (t <= lo || t >= hi) continue; // past the corner: the other pane, no bank that way
                     float g = alongX ? land.Height(q.x, t) : land.Height(t, q.y);
                     if (g >= y) return d;
                 }

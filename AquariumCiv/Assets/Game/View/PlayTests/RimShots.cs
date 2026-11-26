@@ -68,6 +68,32 @@ namespace AquariumCiv.View.PlayTests
             Assert.Less(worst, y - BoxView.RimMargin + 0.001f, tag + ": water ends inside the bank");
         }
 
+        /// <summary>The user (2026-11-25): where the pond runs into the side pane, the section's bottom must not curve up toward the corner. At
+        /// each end of each pane where the pond reaches the corner, the distance to the bank counts only real banks on the inner side.</summary>
+        static void CornerIsGlass(BoxView box, float y)
+        {
+            const float In = 0.01f, Step = 0.02f;
+            int seen = 0;
+            foreach (bool alongX in new[] { true, false })
+                foreach (float side in new[] { -1f, 1f })
+                    foreach (float end in new[] { -1f, 1f })
+                    {
+                        float lo = alongX ? Land.ZMin : -Land.HX, hi = alongX ? Land.ZMax : Land.HX;
+                        float fixedAt = alongX ? side * (Land.HX - 0.001f) : (side < 0 ? Land.ZMin + 0.001f : Land.ZMax - 0.001f);
+                        float t = end < 0 ? lo + In : hi - In;
+                        Vector2 At(float u) => alongX ? new Vector2(fixedAt, u) : new Vector2(u, fixedAt);
+                        float G(float u) { var p = At(u); return box.land.Height(p.x, p.y); }
+                        if (G(t) >= y) continue;
+                        float inward = BoxView.BankRamp;
+                        for (float d = 0f; d < BoxView.BankRamp; d += Step) if (G(t - end * d) >= y) { inward = d; break; }
+                        float got = box.FromBank(At(t), alongX, y);
+                        Debug.Log($"[708 corner] pane {(alongX ? "x" : "z")}{side:+0;-0} end {end:+0;-0}: from bank {got:0.00} (inward bank {inward:0.00})");
+                        Assert.GreaterOrEqual(got, Mathf.Min(inward, BoxView.BankRamp) - Step - 1e-4f, "the corner is glass, not a bank: no ramp up toward it");
+                        seen++;
+                    }
+            Debug.Log($"[708 corner] {seen} pond corners checked");
+        }
+
         IEnumerator Frame(BoxView box, Vector2 at, float yaw, float pitch, float zoom)
         {
             Rig.minZoom = 0.02f;
@@ -148,6 +174,7 @@ namespace AquariumCiv.View.PlayTests
             float y = box.DebugWaterMesh.vertices.Max(v => v.y); // the water line (the sheet's top)
             Assert.Greater(BoxView.WallFoot(y - 0.002f, y, 0f), y - 0.01f, "at the bank the section is a sliver, not a cut");
             Assert.Less(BoxView.WallFoot(y - 0.002f, y, BoxView.BankRamp), y - BoxView.BasinBelow + 0.001f, "away from the bank it is the full basin");
+            CornerIsGlass(box, y);
             var cells = WaterCells(box);
             var glass = cells.OrderBy(p => Mathf.Min(Land.HX - Mathf.Abs(p.x), Land.GlassGapZ(p.y))).First();
             var edge = glass;
