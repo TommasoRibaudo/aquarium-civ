@@ -344,18 +344,21 @@ namespace AquariumCiv.GameUI
             float fit = WholeRows ? LastWholeRow(room) : 0f;
             // #674 (tester): a view snapped under the first rows could be shorter than a taller row further down (the person card's
             // pencil, 121 against 113): that row then never showed whole at any scroll. The view is at least as tall as its tallest row.
-            if (fit > 0f) fit = Mathf.Max(fit, Mathf.Min(room, TallestRow()));
+            if (fit > 0f) fit = Mathf.Max(fit, Mathf.Min(room, TallestRow(room)));
             float lead = WholeRows ? FirstRowTop() : 0f; // a first row's top margin isn't a line
             view.style.height = fit > 0f ? fit : lead + Mathf.Floor((room - lead) / LinePitch) * LinePitch;
             Bar();
         }
 
-        float TallestRow()
+        float TallestRow(float room)
         {
             float tall = 0f;
             view.contentContainer.Query(className: RowClass).ForEach(r =>
             {
-                if (r.resolvedStyle.display != DisplayStyle.None) tall = Mathf.Max(tall, r.worldBound.height);
+                if (r.resolvedStyle.display == DisplayStyle.None) return;
+                // a paragraph taller than the room is split on a whole line of its own (LastWholeRow): counting it here would stretch the view to the whole room, ending mid-line
+                if (SplitRows && r.worldBound.height > room) return;
+                tall = Mathf.Max(tall, r.worldBound.height);
             });
             return tall;
         }

@@ -77,11 +77,11 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(Book.Open());
             yield return Frames(6);
             float w = Screen.width, h = Screen.height;
-            yield return Drag(new[] { new Vector2(w * 0.8f, h * 0.5f), new Vector2(w * 0.5f, h * 0.5f), new Vector2(w * 0.2f, h * 0.5f) }, 0.05f);
+            yield return Drag(new[] { new Vector2(w * 0.8f, h * 0.5f), new Vector2(w * 0.5f, h * 0.5f), new Vector2(w * 0.2f, h * 0.5f) }, w * 0.05f); // Drag's step is in pixels: 0.05 px a frame was 7000 frames a segment (the 180 s timeout)
             yield return Frames(4);
             Assert.AreEqual(1, Book.At, "a swipe left is the next page");
             yield return new WaitForSecondsRealtime(0.35f);
-            yield return Drag(new[] { new Vector2(w * 0.2f, h * 0.5f), new Vector2(w * 0.5f, h * 0.5f), new Vector2(w * 0.8f, h * 0.5f) }, 0.05f);
+            yield return Drag(new[] { new Vector2(w * 0.2f, h * 0.5f), new Vector2(w * 0.5f, h * 0.5f), new Vector2(w * 0.8f, h * 0.5f) }, w * 0.05f); // Drag's step is in pixels: 0.05 px a frame was 7000 frames a segment (the 180 s timeout)
             yield return Frames(4);
             Assert.AreEqual(0, Book.At, "a swipe right goes back");
             Assert.AreEqual(0, BookView.SwipeTurn(new Vector2(40f, 400f), w), "a scroll isn't a swipe");
