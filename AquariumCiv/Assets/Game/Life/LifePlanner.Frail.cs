@@ -43,7 +43,7 @@ namespace AquariumCiv.Life
                 if (e.n == null || e.frail <= 0f) continue;
                 foreach (int id in sim.KinOf(e.n))
                 {
-                    if (!byKey.TryGetValue(id, out var k) || k.stage == LifeStage.Baby) continue;
+                    if (!byKey.TryGetValue(id, out var k) || k.stage == LifeStage.Baby || k.frail > 0f) continue; // a frail elder is visited, they don't go visiting
                     if (!frailVisited.TryGetValue(k.key, out var l)) frailVisited[k.key] = l = new List<Person>();
                     l.Add(e);
                     if (!frailKin.TryGetValue(e.key, out var kl)) frailKin[e.key] = kl = new List<Person>();
@@ -79,13 +79,27 @@ namespace AquariumCiv.Life
             return true;
         }
 
-        /// <summary>The frail elder is at their own door for today's spells.</summary>
+        /// <summary>The frail elder is at their own door for today's spells. The seat starts early enough for the walk home from
+        /// wherever the day had them just before (at their own, slower pace), so the walk never eats into the spell: a spell the
+        /// stitch could not walk them home for in time was dropped, and the family sat at an empty door (Editor, 2026-11-26).</summary>
         void FrailSeat(Person p, DayInfo d, List<Seg> list)
         {
             if (p.frail <= 0f) return;
             foreach (bool morning in new[] { true, false })
-                if (Spell(p, d.day, morning, out float s, out float e)) Put(list, Mk(ActivityKind.SitOut, s, e, p.home, Prop.Stool), d);
+            {
+                if (!Spell(p, d.day, morning, out float s, out float e)) continue;
+                float lead = 0f;
+                foreach (var o in list)
+                    if (o.start < s && o.end >= s) { lead = WalkHours(o.place, p.home); if (lead > 0f) lead += SeatSlack; break; }
+                Put(list, Mk(ActivityKind.SitOut, Math.Max(0f, s - lead), e, p.home, Prop.Stool), d);
+            }
         }
+
+        /// <summary>How much earlier than the walk home needs a frail elder sets off for their spell (view hours).</summary>
+        const float SeatSlack = 0.05f;
+
+        /// <summary>The shortest stretch of a spell worth the family's walk to the door (view hours).</summary>
+        public const float ShortestVisit = 0.15f;
 
         /// <summary>Who of the family comes to a spell: one of them by the day's hash, and now and then a second.</summary>
         bool Comes(Person elder, Person visitor, long day, bool morning)
@@ -97,17 +111,64 @@ namespace AquariumCiv.Life
             return n > 1 && at == (first + 1) % n && R(elder.key, day, morning ? 432 : 433) < 0.4f;
         }
 
-        /// <summary>Family of a frail elder sit beside them at the elder's door in the elder's spells (one or two of them each time).</summary>
+        /// <summary>Family of a frail elder sit beside them at the elder's door in the elder's spells (one or two of them each time),
+        /// only while the elder is really on the stool there: the visit is cut to the elder's own planned day, so a scene, the weather
+        /// or a beat that takes the elder away also takes the visit (Editor, 2026-11-26: 73 frames of family at an empty door). A frail
+        /// elder is visited, they don't go visiting: their own seat comes first (and two frail elders' days never wait on each other).</summary>
         void FrailVisits(Person p, DayInfo d, List<Seg> list)
         {
-            if (!frailVisited.TryGetValue(p.key, out var elders)) return;
+            if (p.frail > 0f || !frailVisited.TryGetValue(p.key, out var elders)) return;
             foreach (var e in elders)
             {
                 if (e == p) continue;
                 foreach (bool morning in new[] { true, false })
-                    if (Spell(e, d.day, morning, out float s, out float en) && Comes(e, p, d.day, morning))
-                        Put(list, Mk(ActivityKind.SitWithOld, s, en, e.home, Prop.None, ActivitySource.Schedule, e.who), d);
+                {
+                    if (!Spell(e, d.day, morning, out float s, out float en) || !Comes(e, p, d.day, morning)) continue;
+                    foreach (var o in DayOf(e))
+                    {
+                        if (!SeatedAtDoor(e, o)) continue;
+                        float a = Math.Max(s, o.start), z = Math.Min(en, o.end);
+                        if (z - a >= ShortestVisit) Put(list, Mk(ActivityKind.SitWithOld, a, z, e.home, Prop.None, ActivitySource.Schedule, e.who), d);
+                    }
+                }
             }
         }
+
+        /// <summary>After the stitch: a visit at a frail elder's door never outlasts the elder's seat there. The stitch may stretch a stay
+        /// up to the walk after it (the visitor's supper at the fire set off later than the elder's); the part after the elder got up
+        /// is the visitor getting up too, stretching at the door before they go.</summary>
+        Seg[] KeepVisitsToTheSeat(Person p, Seg[] segs)
+        {
+            if (!frailVisited.ContainsKey(p.key)) return segs;
+            List<Seg> outList = null;
+            for (int i = 0; i < segs.Length; i++)
+            {
+                var v = segs[i];
+                if (v.kind != ActivityKind.SitWithOld || v.place.kind != PlaceKind.Home || v.Moving || !byKey.TryGetValue(v.partner.Key, out var e) || e.frail <= 0f || v.place != e.home)
+                {
+                    outList?.Add(v);
+                    continue;
+                }
+                outList ??= new List<Seg>(segs.Length + 4);
+                if (outList.Count == 0) for (int j = 0; j < i; j++) outList.Add(segs[j]);
+                float t = v.start;
+                foreach (var o in DayOf(e))
+                {
+                    if (o.end <= t || !SeatedAtDoor(e, o)) continue;
+                    if (o.start >= v.end) break;
+                    float a = Math.Max(t, o.start), z = Math.Min(v.end, o.end);
+                    if (a > t) outList.Add(Stand(v, t, a));
+                    var sit = v; sit.start = a; sit.end = z; outList.Add(sit);
+                    t = z;
+                }
+                if (t < v.end) outList.Add(Stand(v, t, v.end));
+            }
+            return outList == null ? segs : outList.ToArray();
+
+            static Seg Stand(Seg v, float a, float z) { v.start = a; v.end = z; v.kind = ActivityKind.Stretch; v.partner = PersonRef.None; return v; }
+        }
+
+        /// <summary>The elder on the stool at their own door (not walking, not indoors).</summary>
+        static bool SeatedAtDoor(Person e, Seg o) => o.kind == ActivityKind.SitOut && o.place == e.home && !o.Moving && o.prop == Prop.Stool;
     }
 }

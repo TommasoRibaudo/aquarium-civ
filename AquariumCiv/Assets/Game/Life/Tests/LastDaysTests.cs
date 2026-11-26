@@ -421,5 +421,99 @@ namespace AquariumCiv.Life.Tests
             var planner = LifePlanner.Wired(sim);
             Assert.Greater(planner.PaceOf(PersonRef.Notable(other.id)), 1f);
         }
+
+        // ------------------------------------------------------------------ the visit waits for the seat (Editor bug, 2026-11-26)
+
+        static SimCore Village(int seed)
+        {
+            var cfg = new SimConfig();
+            var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+            for (int m = 0; m < 120 * 12 && sim.State.era < Era.Village; m++)
+            {
+                sim.Step();
+                if (sim.State.eraReady) sim.AdvanceEra();
+            }
+            Assert.AreEqual(Era.Village, sim.State.era);
+            for (int m = 0; m < 24; m++) sim.Step(); // past the era festival's year (every evening a festival)
+            Assert.IsFalse(sim.FestivalOn);
+            return sim;
+        }
+
+        /// <summary>The Editor showed family sitting at a frail elder's door 73 frames while the elder was off minding the babies or
+        /// elsewhere. Every minute a visitor sits beside the elder, the elder is on their own stool at that door: the elder's other
+        /// doings give way to the spell.</summary>
+        [TestCase(1)]
+        [TestCase(3)]
+        public void EveryMinuteAVisitorSitsBesideTheElderTheElderIsOnTheirStool(int seed)
+        {
+            var sim = Village(seed);
+            var alive = sim.State.notables.Where(n => n.alive).OrderBy(n => n.id).ToList();
+            var frail = new List<Notable>(); // two elders who each have family besides the other (a frail elder is visited, they don't go visiting)
+            foreach (var n in alive)
+                if (frail.Count < 2 && sim.KinOf(n).Any(k => frail.All(f => f.id != k)) && frail.All(f => sim.KinOf(f).Any(k => k != n.id))) frail.Add(n);
+            Assert.AreEqual(2, frail.Count, "two elders with family");
+            foreach (var e in frail) { e.age = sim.Config.retireAge + 6f; e.lifespan = e.age + 0.5f; e.job = JobType.Elder; }
+            var planner = LifePlanner.Wired(sim);
+            foreach (var e in frail) Assert.Greater(planner.FrailtyOf(PersonRef.Notable(e.id)), 0f, e.name);
+            int minutes = 0, wrong = 0, seated = 0;
+            var bad = new List<string>();
+            var hist = new Dictionary<string, int>();
+            var firstVisit = new Dictionary<(int, long), float>(); // elder, day -> the first minute anyone sat beside them
+            for (long d = 2; d < 32; d++)
+            {
+                for (int m = 0; m < 24 * 60; m++)
+                {
+                    var t = new ViewTime(d, m / 60f + 1f / 120f);
+                    foreach (var e in frail)
+                    {
+                        var who = PersonRef.Notable(e.id);
+                        var ae = planner.Plan(who, t);
+                        bool sits = ae.kind == ActivityKind.SitOut && !ae.moving && ae.prop == Prop.Stool && ae.place.kind == PlaceKind.Home;
+                        if (sits) seated++;
+                        foreach (var v in alive)
+                        {
+                            if (v.id == e.id) continue;
+                            var av = planner.Plan(PersonRef.Notable(v.id), t);
+                            if (av.kind != ActivityKind.SitWithOld || av.partner != who || av.moving || av.place.kind != PlaceKind.Home) continue; // the family at the door (the priest's hour with an elder at the gather is another beat)
+                            minutes++;
+                            if (!firstVisit.ContainsKey((e.id, d))) firstVisit[(e.id, d)] = t.hour;
+                            if (sits && ae.place == av.place) continue;
+                            wrong++;
+                            string key = $"{ae.kind}/{ae.source}/{(ae.place.kind == PlaceKind.Home && ae.place == av.place ? "home" : ae.place.kind.ToString())}";
+                            hist[key] = hist.TryGetValue(key, out int c0) ? c0 + 1 : 1;
+                            if (bad.Count < 8) bad.Add($"day {d} {t.hour:0.00} h: {v.name} beside {e.name}, who is {ae.kind} at {ae.place} (moving {ae.moving}, prop {ae.prop})");
+                        }
+                    }
+                }
+            }
+            TestContext.WriteLine($"{minutes} visitor-minutes over 30 days; the elders sat {seated} minutes on their stools; wrong {wrong}");
+            foreach (var l in bad) TestContext.WriteLine(l);
+            foreach (var kv in hist.OrderByDescending(x => x.Value)) TestContext.WriteLine($"  {kv.Key}: {kv.Value}");
+            Assert.Greater(minutes, 30 * 20, "the family comes on most days");
+            Assert.AreEqual(0, wrong, "a visit only while the elder sits at their door: " + string.Join("; ", bad));
+            // Still irregular: per elder the visits start at many different times, and the two families don't arrive together.
+            foreach (var e in frail)
+            {
+                var starts = firstVisit.Where(kv => kv.Key.Item1 == e.id && kv.Value > 13f).Select(kv => kv.Value).ToList();
+                int spells = 0, held = 0;
+                for (long d = 2; d < 32; d++)
+                {
+                    if (!planner.VisitSpell(PersonRef.Notable(e.id), d, false, out float s0, out float e0)) continue;
+                    spells++;
+                    bool all = true;
+                    for (float h = s0 + 0.01f; h < e0; h += 0.05f) { var a0 = planner.Plan(PersonRef.Notable(e.id), new ViewTime(d, h)); if (a0.kind != ActivityKind.SitOut || a0.moving) all = false; }
+                    if (all) held++;
+                }
+                TestContext.WriteLine($"{e.name}: {spells} afternoon spells, seated through {held}; kin {string.Join(",", sim.KinOf(e))}");
+                TestContext.WriteLine($"{e.name}: afternoon visits on {starts.Count} days, from {string.Join(" ", starts.Select(x => x.ToString("0.0")))}");
+                Assert.GreaterOrEqual(starts.Count, 6, e.name + " is visited on many afternoons (fewer for an elder with a role beat in the evening)");
+                Assert.Greater(starts.Max() - starts.Min(), 0.8f, e.name + ": the first sit beside them spreads over the afternoon, no timetable");
+            }
+            int together = 0, bothDays = 0;
+            for (long d = 2; d < 32; d++)
+                if (firstVisit.TryGetValue((frail[0].id, d), out float a) && firstVisit.TryGetValue((frail[1].id, d), out float b) && a > 13f && b > 13f)
+                { bothDays++; if (System.Math.Abs(a - b) < 0.1f) together++; }
+            Assert.LessOrEqual(together, bothDays / 4, "the two families don't gather on a schedule");
+        }
     }
 }

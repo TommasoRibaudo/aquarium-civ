@@ -72,6 +72,8 @@ namespace AquariumCiv.Life
                 var order = new List<Person>(people);
                 order.Sort((a, b) =>
                 {
+                    int frail = (b.frail > 0f).CompareTo(a.frail > 0f); // #788: a frail elder's stool spells are their family's visits
+                    if (frail != 0) return frail;
                     int old = (b.stage == LifeStage.Elder).CompareTo(a.stage == LifeStage.Elder);
                     return old != 0 ? old : H(a.key, d.day, 777).CompareTo(H(b.key, d.day, 777));
                 });
@@ -379,7 +381,7 @@ namespace AquariumCiv.Life
             if (eraReady && p == leader && era == Era.Village) Put(list, Mk(ActivityKind.PacePlans, 18.3f, 19.1f, gather, Prop.Plans, ActivitySource.RoleBeat), d);
             WeatherLayer(p, d, list);
             foreach (var sc in d.scenes) SceneLayer(sc, p, d, list, false);
-            return Stitch(p, list);
+            return KeepVisitsToTheSeat(p, Stitch(p, list)); // #788: the family sits at the door only while the elder does
         }
 
         Seg Mk(ActivityKind k, float start, float end, Place place, Prop prop = Prop.None, ActivitySource src = ActivitySource.Schedule, PersonRef partner = default, Place from = default, int chronicle = -1)
