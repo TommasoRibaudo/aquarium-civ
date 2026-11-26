@@ -59,6 +59,24 @@ namespace AquariumCiv.Life
 
         readonly List<WalkRef> runWalks = new List<WalkRef>();
 
+        /// <summary>#791: is this person in a deer hunt's scene between these hours? The hunt's steps win over their schedule (DeerStepOf), so a
+        /// run-in laid on a walk of theirs then never plays and the other stops to chat with nobody.</summary>
+        bool DeerHuntDuring(Person p, long day, float t0, float t1)
+        {
+            foreach (var pl in DeerHuntsOf(day)) if (HuntCovers(pl, p.who, t0, t1)) return true;
+            foreach (var pl in whiteHunts) if (pl.day == day && HuntCovers(pl, p.who, t0, t1)) return true;
+            return false;
+        }
+
+        static bool HuntCovers(DeerHuntPlan pl, PersonRef who, float t0, float t1)
+        {
+            if (!pl.HasScene) return false;
+            int i = pl.hunters.IndexOf(who);
+            if (i < 0 || i >= pl.steps.Count) return false;
+            var st = pl.steps[i];
+            return st.Count > 0 && st[0].start < t1 && st[st.Count - 1].end > t0;
+        }
+
         List<Seg> RunInsOf(Person p)
         {
             EnsureRunIns();
@@ -84,6 +102,7 @@ namespace AquariumCiv.Life
                     var s = segs[i];
                     if (s.kind != ActivityKind.Walk || !s.Moving || s.src != ActivitySource.Schedule || s.cut || s.resumed) continue;
                     if (s.end - s.start < MinWalkForRunIn || s.carries || s.prop != Prop.None) continue;
+                    if (DeerHuntDuring(p, day, s.start, s.end)) continue; // #791: the hunt is their day then, the walk never plays
                     var next = segs[i + 1]; // the very next piece must be a stay of its own (not another move), so a beat only ever delays an arrival
                     if (next.Moving || ActivityInfo.IsMove(next.kind) || next.end - next.start < MinStayAfter || next.place != s.place) continue;
                     runWalks.Add(new WalkRef { p = p, s = s, poly = RouteBetween(s.from, s.place) });
@@ -190,6 +209,7 @@ namespace AquariumCiv.Life
                     if (g0.src != ActivitySource.Schedule || g1.src != ActivitySource.Schedule || g0.kind == ActivityKind.Sleep || g1.kind == ActivityKind.Sleep || Carrying(g0) || Carrying(g1)) continue;
                     float tEnd = t + len;
                     if (Overlaps(goer, t0, tEnd - t0) || Overlaps(stopper, t, tEnd - t)) continue;
+                    if (DeerHuntDuring(goer, dayInfo.day, t0, tEnd)) continue; // #791: a hunter on the hunt never walks over (the stopper chatted to nobody)
                     PlanPos(goer, t0, out float fx, out float fz);
                     StopShort(fx, fz, ref mx, ref mz);
                     Add(stopper, goer, kind, t, tEnd + 0.02f);
