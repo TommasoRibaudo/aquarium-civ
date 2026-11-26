@@ -451,7 +451,8 @@ namespace AquariumCiv.View
             if (!planner.Positions.TryGetPosition(gather, out float gx, out float gz)) return "no gathering place";
             var spot = new Vector2(gx, gz);
             var centre = Open(spot + new Vector2(0.6f, -0.2f), spot);
-            if (glassNext && game == PlayGame.Ball) centre = new Vector2(Land.HX - 0.5f, Land.CZ); // #772: the right pane's side, so a miss meets the glass
+            if (glassNext && game == PlayGame.Ball) centre = new Vector2(Land.HX - 0.3f, Land.CZ); // #772: the right pane's side, so a miss meets the glass
+            bool glass = glassNext && game == PlayGame.Ball;
             glassNext = false;
             Vector2? herd = null;
             if (game == PlayGame.ChaseRabbits)
@@ -496,6 +497,7 @@ namespace AquariumCiv.View
                     game == PlayGame.DanceRing ? OpenRing(spot + new Vector2(0.5f, 0.3f), spot, RingGroup.RadiusFor(who.Count)) : game == PlayGame.Toddle ? Open(spot + new Vector2(0.5f, 0.3f), spot) : centre), // #770: the ring clear of the buildings
             };
             if (g.game is RabbitChaseGame chase) { var c = centre; chase.HerdAt = cyc => cyc == 0 ? herd : HerdNear(pv.Planner, pv.Now, c); }
+            if (glass && g.game is BallGame bg) bg.GlassAim = true; // #772 cheat
             Add(g);
             return $"{game}: {who.Count} at the gathering place for {ForcedSeconds:0} s";
         }
@@ -540,6 +542,15 @@ namespace AquariumCiv.View
 
         bool glassNext;
         /// <summary>#772 cheat: the ball game, played 0.5 u from the right-hand pane (the land's middle in z), so the missed throws bounce off the glass.</summary>
+        /// <summary>#772 media/test: the ball object of the cheat's (forced) ball game, or null.</summary>
+        public static GameObject DebugForcedBall()
+        {
+            var pv = PeopleView.Find();
+            if (pv == null) return null;
+            foreach (var g in pv.KidPlay.groups) if (g.forced && g.game is BallGame && g.ball != null && g.ball.activeInHierarchy) return g.ball;
+            return null;
+        }
+
         public static string DebugBallAtGlass()
         {
             var pv = PeopleView.Find();

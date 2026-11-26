@@ -485,6 +485,8 @@ namespace AquariumCiv.View
         }
 
         public override bool HasBall => true;
+        /// <summary>#772 cheat only: the first two throws are misses aimed at the +x pane, so the bounce is seen on demand.</summary>
+        public bool GlassAim;
         public Vector2 HomeOf(int i) => home[i];
 
         /// <summary>#772: a point kept inside the glass (the ball's radius in from the panes).</summary>
@@ -541,6 +543,7 @@ namespace AquariumCiv.View
                     th.aim = spots[th.to];
                     th.miss = BeatHash.U01(seed, j, 24) < MissShare;
                 }
+                if (GlassAim && j < 2) { th.miss = true; th.aim = th.fromPos + new Vector2(1f, BeatHash.Range(-0.15f, 0.15f, seed, j, 27)).normalized * 0.9f; } // #772 cheat: the first throws miss toward the right pane
                 var dir = (th.aim - th.fromPos).normalized;
                 if (dir.sqrMagnitude < 1e-6f) dir = new Vector2(1f, 0f);
                 th.launch = th.ready + Antic + Act;

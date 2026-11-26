@@ -66,6 +66,30 @@ namespace AquariumCiv.View.Tests
             Assert.IsFalse(Arc.HitGlassBetween(shot, 0f, 0.05f));
         }
 
+        [Test]
+        public void TheGlassCheatsGame_FirstThrowsMeetTheRightPane_AndStayInside()
+        {
+            for (int n = 1; n <= 3; n++)
+                for (int seed = 1; seed <= 24; seed++)
+                {
+                    var members = new List<int>(); for (int i = 0; i < n; i++) members.Add(100 + i);
+                    var game = new BallGame(seed, 0f, members, new Vector2(GlassBox.HalfX - 0.3f, 0.8f)) { GlassAim = true };
+                    bool met = false;
+                    for (int k = 0; k < 2; k++)
+                    {
+                        var th = game.ThrowAt(k);
+                        Assert.IsTrue(th.miss, $"{n} kids seed {seed}: throw {k} is a miss");
+                        for (float t = th.launch; t < th.next; t += 0.02f)
+                        {
+                            var p = Arc.Sample(th.shot, t).position;
+                            AssertInside(p, BallGame.BallR, $"{n} kids seed {seed} throw {k} t {t:0.00}");
+                            met |= p.x > GlassBox.HalfX - BallGame.BallR - 0.1f;
+                        }
+                    }
+                    Assert.IsTrue(met, $"{n} kids seed {seed}: the ball met the pane");
+                }
+        }
+
         static IEnumerable<TestCaseData> Games()
         {
             foreach (int n in new[] { 1, 2, 3 })
