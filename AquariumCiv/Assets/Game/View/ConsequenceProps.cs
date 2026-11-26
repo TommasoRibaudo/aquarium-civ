@@ -41,7 +41,7 @@ namespace AquariumCiv.View
                         var col = i == 0 ? Palette.Plaster : i < 0 ? Palette.Accents[1] : Palette.Accents[0];
                         var at = new Vector3(i * 0.04f, 0.31f - Mathf.Abs(i) * 0.015f, 0f);
                         mb.Box(at, new Vector3(0.05f, 0.2f, 0.008f), col, rot);
-                        mb.Box(at, new Vector3(0.006f, 0.21f, 0.011f), Palette.Timber, rot);
+                        mb.Box(at, new Vector3(0.006f, 0.21f, 0.018f), Palette.Timber, rot); // #763: well proud of the 0.008 blade (a 0.0015 skin z-fought)
                     }
                     break;
                 case ConsequenceKind.Baskets: // three berry baskets side by side (2026-11-14: the pink domes on flat rims read as odd discs):
@@ -649,7 +649,7 @@ namespace AquariumCiv.View
                 var col = i == 0 ? Palette.Plaster : i < 0 ? Palette.Accents[1] : Palette.Accents[0];
                 var at = new Vector3(i * 0.04f, 0.31f - Mathf.Abs(i) * 0.015f, 0f);
                 mb.Box(at, new Vector3(0.05f, 0.2f, 0.008f), col, rot);
-                mb.Box(at, new Vector3(0.006f, 0.21f, 0.011f), Palette.Timber, rot);
+                mb.Box(at, new Vector3(0.006f, 0.21f, 0.018f), Palette.Timber, rot); // #763: well proud of the 0.008 blade (a 0.0015 skin z-fought)
             }
             // the user's review of B31.a ("where's the white feather"): a tied feather is as big as the old fan's (0.04 x 0.17 here), hangs
             // below the fan off the red band, fanned out sideways and up (50 deg), with a dark spine and a dark tip, so a new one shows
@@ -658,11 +658,15 @@ namespace AquariumCiv.View
                 float a = i * 2.39996f + 0.6f, y = 0.125f + (i % 3) * 0.02f;
                 var col = slots[i] == PoleFeatherKind.Newborn ? new Color(0.96f, 0.95f, 0.92f) : slots[i] == PoleFeatherKind.Marriage ? new Color(0.80f, 0.18f, 0.16f) : new Color(0.80f, 0.56f, 0.20f);
                 var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
-                var rot = Quaternion.LookRotation(dir) * Quaternion.Euler(-40f, 0f, 0f); // out from the pole and up, 50 deg off upright
+                // #763 (the feathers flickered while the camera panned): thin boxes that share a plane, or overlap with a skin 0.0005-0.0015 proud, fight for the
+                // depth buffer (a phone's is 16 bit: 0.003 at this range). So: each feather is rolled a little round its own spine (golden-angle neighbours
+                // were within 10 deg of one plane), the dark tip sits on the blade's end (no overlap) and the spine stands clearly proud of the blade.
+                float roll = ((i * 37) % 60 - 30f);
+                var rot = Quaternion.LookRotation(dir) * Quaternion.Euler(-40f, 0f, 0f) * Quaternion.Euler(0f, roll, 0f); // out from the pole and up, 50 deg off upright
                 var at = new Vector3(0f, y, 0f) + dir * 0.02f;
-                mb.Box(at + rot * new Vector3(0f, 0.085f, 0f), new Vector3(0.04f, 0.15f, 0.006f), col, rot);
-                mb.Box(at + rot * new Vector3(0f, 0.165f, 0f), new Vector3(0.03f, 0.02f, 0.007f), col * 0.55f, rot);
-                mb.Box(at + rot * new Vector3(0f, 0.08f, 0f), new Vector3(0.005f, 0.17f, 0.009f), Palette.Timber, rot);
+                mb.Box(at + rot * new Vector3(0f, 0.08f, 0f), new Vector3(0.04f, 0.14f, 0.006f), col, rot);
+                mb.Box(at + rot * new Vector3(0f, 0.16f, 0f), new Vector3(0.04f, 0.02f, 0.006f), col * 0.55f, rot);
+                mb.Box(at + rot * new Vector3(0f, 0.08f, 0f), new Vector3(0.004f, 0.17f, 0.012f), Palette.Timber, rot);
             }
             var m = mb.ToMesh("Consequence_FeatherPole_" + slots.Length);
             m.hideFlags = HideFlags.DontSave;
