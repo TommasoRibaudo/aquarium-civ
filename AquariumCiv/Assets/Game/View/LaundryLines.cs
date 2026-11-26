@@ -159,7 +159,9 @@ namespace AquariumCiv.View
                 if (!anchorOf(l.home, l.ordinal, l.cloths, out var an)) continue;
                 var key = (l.home, l.ordinal);
                 live.Add(key);
-                if (!drawn.TryGetValue(key, out var d))
+                // the root's children go with a rebuilt box (Destroy on the parent): a cached line whose object is gone is drawn afresh, not touched
+                if (drawn.TryGetValue(key, out var d) && d.go == null) { if (d.mesh != null) Gone(d.mesh); drawn.Remove(key); d = null; }
+                if (d == null)
                 {
                     d = new Drawn { mb = new MeshBuilder(705) { jitter = 0f } };
                     d.go = new GameObject("Washing line " + l.home) { hideFlags = HideFlags.DontSave };
