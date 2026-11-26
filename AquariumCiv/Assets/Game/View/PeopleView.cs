@@ -1222,6 +1222,15 @@ namespace AquariumCiv.View
             KeepOutAll(d, ref d.drawn);
         }
 
+        /// <summary>#779: every circle the crowd keeps people out of now (the stash, a sleeping dog, the choices' things, the fires): x, z, radius.
+        /// A story scene keeps its spots clear of them, so nobody is pushed off the spot the scene gave them (and into the next person).</summary>
+        public void SolidCircles(List<Vector3> into)
+        {
+            foreach (var s in solids) into.Add(new Vector3(s.x, s.z, s.r));
+            foreach (var s in propSolids) into.Add(new Vector3(s.x, s.z, s.r));
+            foreach (var s in fireSolids) into.Add(new Vector3(s.x, s.z, s.r));
+        }
+
         /// <summary>B3 tester fixes: out of the solids (the stash, a sleeping dog), out of every choice thing but the one this person's use seats
         /// them on, and last out of the fire (at FireKeep; the feeder at the flames' 0.2), so a thing beside the fire never pushes anyone in.</summary>
         void KeepOutAll(Doll d, ref Vector2 p)

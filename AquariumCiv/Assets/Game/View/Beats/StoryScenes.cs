@@ -286,7 +286,7 @@ namespace AquariumCiv.View
             var s = new CampScene(CampUse.TwoMarks, t0, visit) { holdFocus = true, kind = pair };
             int ma = s.Add(a), mb = s.Add(b);
             // they meet, then walk to the tree side by side
-            var meet = aAt + Dir(aAt, bAt, acr) * (BodySpots.BodyW + 0.01f); // a body width and a little apart (#779)
+            var meet = BodySpots.Free(aAt + Dir(aAt, bAt, acr) * (BodySpots.BodyW + 0.01f), Dir(aAt, bAt, acr), new List<Vector2> { aAt }, room); // a body width and a little apart, on ground the crowd leaves them (#779)
             float t = WalkTime(bAt, meet, Walk);
             s.Part(ma, 0f, t, aAt, meet, DollStyle.Stand);
             s.Part(mb, 0f, t, meet, aAt, DollStyle.Stand, null, PropKind.None, Walk);
@@ -319,7 +319,8 @@ namespace AquariumCiv.View
             // together, a step back, looking at the two marks
             s.Part(ma, t, t + 1.5f, va, tree, DollStyle.Stand); s.Part(mb, t, t + 1.5f, vb, tree, DollStyle.Stand);
             t += 1.5f;
-            var backA = va + face * 0.3f + acr * 0.05f; var backB = vb + face * 0.3f - acr * 0.05f;
+            var apart = Unit(va - vb, acr); // (va and vb may be swapped from acr: step back away from each other either way)
+            var backA = va + face * 0.3f + apart * 0.05f; var backB = vb + face * 0.3f - apart * 0.05f;
             Go(s, ma, t, WalkTime(va, backA, pace), backA, backA + face, pace);
             Go(s, mb, t, WalkTime(vb, backB, pace), backB, backB + face, pace);
             // the kids watch from a step back, each on a spot of their own: a body width from the grown-ups' (at the tree and where they step

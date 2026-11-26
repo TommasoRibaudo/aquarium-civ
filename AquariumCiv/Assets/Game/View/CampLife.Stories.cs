@@ -191,9 +191,11 @@ namespace AquariumCiv.View
             foreach (var c in cast) if (c != null) foreach (int k in c) in1.Add(k);
             foreach (var a in acts) if (!in1.Contains(a.who.Key) && At(a.who.Key) is Vector2 p) room.others.Add(p);
             var box = LandBox; var tents = Tents();
+            var solids = new List<Vector3>(); pv?.SolidCircles(solids);
             room.blocked = p =>
             {
                 if (box != null && box.land.IsWater(p.x, p.y)) return true;
+                foreach (var c in solids) if ((new Vector2(c.x, c.y) - p).magnitude < c.z + 0.03f) return true; // the crowd would push them off the spot
                 foreach (var t in tents) if ((t.centre - p).magnitude < t.r + 0.05f) return true;
                 return !Terrain.InBox(p.x, p.y, Terrain.GlassMargin + 0.05f);
             };
