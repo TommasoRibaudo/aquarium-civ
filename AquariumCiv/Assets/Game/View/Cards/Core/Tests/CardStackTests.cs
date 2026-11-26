@@ -28,6 +28,15 @@ namespace AquariumCiv.View.Cards.Tests
             return sim;
         }
 
+        /// <summary>Two grown-ups (not the chief) fall out: a rivalry the box can tease, whatever the seed left.</summary>
+        static void Quarrel(SimCore sim)
+        {
+            int chief = (sim.State.roles ?? new List<RoleSeat>()).Where(r => r.role == RoleType.Chief).Select(r => r.holderId).DefaultIfEmpty(-1).First();
+            var adults = sim.State.notables.Where(n => n.alive && n.age >= SimCore.AdultAge && n.id != chief).OrderBy(n => n.id).ToList();
+            var a = adults[0]; var b = adults[1];
+            a.rivalId = b.id; b.rivalId = a.id;
+        }
+
         static int nextId = 500_000;
 
         static ChronicleEntry Add(SimCore sim, string kind, float salience = 0.6f, int a = -1, int b = -1)
@@ -321,8 +330,9 @@ namespace AquariumCiv.View.Cards.Tests
         public void WithNothingNewThePeekIsTheTeaserAndOpensNothing()
         {
             var sim = Quiet();
+            Quarrel(sim);
             string line = sim.DebugOpenTeaser();
-            Assume.That(line, Is.Not.Null.And.Not.Empty, "this box has something to tease");
+            Assert.That(line, Is.Not.Null.And.Not.Empty, "the quarrel is something to tease");
             var m = Model(sim);
             Assert.IsFalse(m.Prepare(Day));
             Assert.AreEqual(CardStackMode.Peek, m.Mode);
