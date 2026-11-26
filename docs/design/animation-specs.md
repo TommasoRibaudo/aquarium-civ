@@ -2637,6 +2637,27 @@ Answered 2026-11-15 (decisions.md "Batch 3 approvals"). Added with S-ritual (app
 15. **The unpicked evening teller** (B76): give the eldest's winter story the slow manner's gestures too, or keep `Speech`?
     My pick: keep `Speech`.
 
+## B78. New events (#722): the first three, for sign-off (2026-11-24)
+
+Draft specs for the three events suggested first in `docs/design/new-events.md` (§1.1–1.3). Each one is staged by
+CampLife (a `CampScene`, like the rituals' uses). Each gets a cheat and an AnimLab clip, and is built only after the user
+picks it. Every number is [est] until the clip.
+
+| # | Who · when · how often | Beats | Props · reuse | Cheat |
+|---|---|---|---|---|
+| B78.a The tree's first fruit | the nearest free kid, a summer day once the Keeper's tree is grown; **once** a box (and the life use: a kid picks one in later summers, the same fall) | the kid stops under the tree and looks up (`LookUp`, 1 s); the one red fruit lets go up in the crown with a leaf, falls 0.45 s, bounces once (0.012 u) and lies at their feet; they bend down (squash 0.8, lean 35) and pick it up (`hit` → in the hand; 2026-11-25 review: a fruit hanging at kid height looked wrong); runs to the fire holding it up (both arms x 150, `KidRun`); at the fire it goes round: each grown-up there bends and takes a bite (`Nod`, 0.6 s each), the last bite to the youngest. Reads: a kid holding up something red, people leaning in to it | `Fruit` (new: a red sphere 0.018 u, a leaf); R `LookUp`, `Pick`, B75.b's held-high run | **"Tree: first fruit"** |
+| B78.b Two marks on the tree | the newly-weds, the dusk after a wedding while the tree is grown; **once** per couple, up to 8 pairs | the couple walk to the tree side by side; one cuts a short mark at hand height (arm x 70, the `Knife`, three small strokes → `hit` each, a `Chip` puff); the other cuts one beside it; they step back together and look at the two marks (`Stand`, 1.5 s); kids watch from a step back (`Peek`). Reads: two people at the trunk with a small knife, then two pale notches | `TreeMark` (new: a pale notch 0.012 × 0.004 u on the bark, a pair per couple, stacked); R the knife and the strokes from the name cut (#693) | **"Tree: a couple's marks"** |
+| B78.c The second stone | two grown-ups and the family of the one lost, when the name stone is full (nine names) and a tenth is due; **once** | two grown-ups roll a blank rough stone in from the camp's edge, from the side away from the first (both push, lean 25°, hands on its side; it lies along its length and tips over its edges a quarter each 0.8 s, flat, on edge, flat, whole turns, `Push`); they go to its top half, one each side, bend and lift it up on its foot over 1.3 s beside the first (`Lift`, the stone `Jolt`s as it stands, in its own standing turn: no snap); the cutter cuts the new name (the runestone's cut, #693 `NameCut`); the family stands round with heads down (`Mourn`, as B32.a), clear of where it lay; the camera holds on both stones. Names are cut in as dark grooves, each its own runes (2026-11-25 review: no painted-white rows, no repeated name); the new stone has no names until the cut; it stands on the side of the first with no tree canopy in front of it (else the tree hid the cut). Reads: a stone rolled in, set up, a name cut | `Runestone` (the #693 runestone, a second one, a different seed); R `NameCut`, `Push`, B32.a's mourners | **"Stone: fill it"** |
+
+**Assets needed:**
+- `Fruit` and `TreeMark`: built in code in the house style.
+- The second stone: the existing runestone mesh with another seed.
+
+**Kids safe:**
+- the fruit is picked from the ground, never by climbing;
+- the knife stays with the grown-ups;
+- the stone is rolled only by grown-ups, with the kids kept back 0.3 u.
+
 ## B79. The ball game at the pond and in a dry hollow (#744, 2026-11-24)
 
 The user's pick (options 3 and 4): a missed ball (B2.b) that ends on the pond is waded for; in a dry hollow it rolls to the bottom.
@@ -2646,3 +2667,44 @@ Land as before, and the frozen pond, are unchanged. [est] until the clip.
 |---|---|---|---|---|
 | B79.a The wade-in | a miss whose bounce-and-roll ends on the drawn pond | the ball comes down on the water (a small splash and a ring) and floats a third under; the nearest kid runs to the edge and wades in ankle-deep (`sink` 0.02, only while on the water) to stand beside it; picks it up (`PlayCatch`), shakes it (`PlayShake`, 0.6 s), runs back to their spot | the ball; R B4's wading, `PlayShake` | `NaturalUses.BallInThePond_AndTheDryHollow_Frames` (pond) |
 | B79.b The roll into the hollow | a miss that stops on dry ground sloping down into a dip (a drop over 3 cm within 0.6 u) | the ball rolls on down (0.35 u/s, easing to a stop, spinning) to the bottom; the fetcher runs down after it, picks it up there, runs back | the ball; the roll is the game's own | the same test (the dried pond's hollow) |
+
+## B80. New events (#722), batch 2
+
+The one new scene of the second batch (`docs/design/new-events.md` §5.1). It is staged by CampLife (a `CampScene`, as B78) as the
+held Story moment of its line. The other batch-2 events reuse what exists: the four asks (4.1–4.4) are the choice scene; the
+Keeper's child's wedding (5.2) is the wedding moment with its line on the caption; the singer's song (2.2) is a card until its own
+spec. Every number is [est] until the clip.
+
+| # | Who · when · how often | Beats | Props · reuse | Cheat |
+|---|---|---|---|---|
+| B80.a The Keeper's child comes of age | the child the Keeper named, the year they turn grown-up (with work), the eldest free grown-up as the elder, up to 3 free people at the fire watching; **once** per person | the two come to the fire's camera side and stand face to face across the camera, 0.22 u apart (the elder carries the tool); the elder nods (0.8 s); B7.b's hand-over (`Giver` / `Taker`: held out, the hands meet, the tool changes hands at the contact → `hit`, the taker lifts it to look); the child holds it up (right arm x 150, a small hop 0.015 u, 1.4 s) while the elder and the seated watchers nod; the child walks off with it toward work, the elder sits down at the fire (1.5 s). Reads: an old one gives a young one a tool at the fire, and the young one holds it up | the job's tool, already in the prop kit: `Rod` (fisher), `Axe` (woodcutter, hunter, toolmaker, mason, smith), `Basket` (every other job); R B7.b `PairStage.HandOver`, `NodPose`, `Sit` | **"People: the Keeper's child grows up"** |
+
+**Assets needed:** none (the tools are the existing props).
+
+**Kids safe:** the tool goes from a grown-up to a grown-up (the child has just come of age); the kids watching sit at the fire.
+
+### B80, batch 3 (`docs/design/new-events.md` §1.4, §2.1–2.4, §3.2, §3.3)
+
+Staged by CampLife (a `CampScene`, as B78) as the held Story moment of each line, except B80.d, which rides the ritual's own
+held moment. Builders: `View/Beats/StoryScenes.Batch3.cs`; casting, what stays and the life uses: `View/CampLife.Stories3.cs`.
+Every number is [est] until the clip.
+
+| # | Who · when · how often | Beats | Props · reuse | Cheat |
+|---|---|---|---|---|
+| B80.b The antlers passed | {old} (the old chief; one of their family if {old} has died or is busy) and {new}, the new chief, right after the new-leader moment of the seat change while the antlers hang; **once** a box (later passes: the antlers just follow) | the carrier walks to the old post at the old door and looks at it (0.6 s); both arms up to the post's top (x 150) and lifts the antlers off (`hit` at 0.7 s), down to the carry (x 110); carries them high in front to {new}'s door (`Walk` x 0.85); sets them on the post there (arms up x 150, `hit` at 0.6 s, a dust puff); {new} has come to their door and watches (`Look`), nods as they go up; a nod each, the carrier walks off. The old post stays empty. Reads: someone carries the antlers from one door to another | the antlers off their post (DeerHuntStage's own antlers, drawn in the hands) and the empty post (the antlers' post alone); R `Look`, `NodPose`, B13.d's antlers | **"Chief: pass the antlers"** |
+| B80.c The tinkerer's bucket | the first grown-up tinkerer, once people fetch water from the pond (the living land's pond holds water); **once** a box | sits by the fire with a bucket and bends a spout onto it (ChoreBeats' `Mend`, seated, 4 s, a chip now and then; `hit`: the spout is on); holds it up to look (arm x 110, 1 s); walks to the pond's edge and dips it full (crouched, the arm x 58, a ring); tips it (B34.a's pour, the bucket rolled 10° left) and the water lands 0.1 u off to the **left** (a wet patch, `hit`); looks at where it went, laughs. Up to two watchers come and stand on the right; just before the pour they step a little further right; everyone laughs. Reads: a new spout, a pour that goes sideways, everyone standing to one side | `SpoutBucket` (new: the bucket with a bent spout on its rim, full and empty). **Stays:** the tinkerer carries it on their water runs (their eldest child after them), and their pours in the watering uses (B80.e, B80.g) land to the left; R `Mend`, B34.a's `PourPose` | **"Trait: the tinkerer's bucket"** |
+| B80.d The singer's song | the first grown-up singer, the first ritual played while they live; **once** a box (the song every year after) | no scene of its own: it rides the ritual's own held moment. The singer starts the tune: the first 5 s, music notes (`RitualSymbol.Notes`) over the singer alone; the ritual's own bubbles after; the last 5 s, notes over everyone it can show (the singer first, at most 5): by the end everyone joins in. The song's line is that moment's caption (its first year); every later year the singer still gets the notes first, and the caption has the song's name (4.3). Reads: one person singing, then everyone | none: #276's wordless bubbles; R the ritual's held moment, `RitualBubbles` | **"Trait: the singer's song"** |
+| B80.e The gardener's flowers | the first grown-up gardener, once the name stone stands; **once** a box | walks to the stone with a small bunch in hand (`Bunch`); kneels outside the ring at three spots from the camera's side round (`KneelPose`); at each presses two flowers into the ground (the hand down x 60, 0.6 s, a grass puff, the flower `hit`): six in a ring r 0.15 round the stone; stands back, looks at it (1.4 s), nods. **Morning use (life):** someone carries a bucket to the ring and pours a little on the camera's side (B34.a's pour), looks, nods (the crooked bucket's water lands to the left). Reads: someone planting flowers round a stone; later, watering them | `FlowerRing` (the PickFlowers tip's flower, six round the stone, stays); R `KneelPose`, B34.b's ring layout, B34.a's pour | **"Trait: the gardener's flowers"**, **"Stone: water the flowers"** |
+| B80.f The joker's face | the first grown-up joker, once the woodpile stands; **once** a box | walks to the woodpile's front (0.26 u out) and picks a log (`Look`, 0.6 s); carves a grin into its end: two rounds of B78.b's cut (arm x 70, three strokes each, a chip puff each, the cutting stone in hand); the face shows (`hit`); steps back and laughs, hands on the hips. Up to two kids come and lean in to watch a step back either side (`Peek`, 0.16 u behind the carver), and laugh when it shows. **Life use:** a kid passing pats the face log (arm x 90, 0.6 s, a jolt), grins and runs on. Reads: a grin on a log, kids laughing at it | `FaceLog` (new: two dark eyes and a curved mouth on the top log's ends: the woodpile's look bit, kept when logs are laid on top, where it goes back on top); R B78.b's cut, `Peek`, `HipsPose` | **"Trait: the joker's face"**, **"Woodpile: a kid pats the face"** |
+| B80.g The dry spell | {who}, a grown-up, the first dry spell (most of the grass thirsty, #687) with the Keeper's tree planted; **once** a box; then each evening of a later dry spell (life), their eldest child after them | walks to the pond's edge with an empty bucket and dips it full (crouched, the arm x 58, a ring); carries it to the Keeper's tree (B34.a's carry); crouches and tips it at the trunk's foot (B34.a's pour, a wet patch `hit`, a leaf stirs); looks up at the crown (`LookUp`, 1.2 s), nods, goes. Up to two grown-ups look up at the glass for rain where they stand (#687's sky look: 2.6 s, then the slow head shake), one after the other. Reads: in brown grass, someone carries water to the tree while others look up | the bucket (`Bucket`, `BucketEmpty`; the tinkerer's if it is theirs); R B34.a, #687's `SkyLook`. It changes no sim numbers | **"Weather: the dry spell"**, **"Tree: the waterer's evening bucket"** |
+| B80.h The first snow | {kid}, the kid the line names (else the nearest free kid), up to three free people near them, the day of the box's first snow; **once** a box | {kid} stops, tips the head back (`LookUp`, 1.4 s), catches a flake on the tongue (a little hop, the head snaps forward, `hit`) and laughs; the others copy, one after another (0.5 s apart); then {kid} and one more (a kid first) bend over a small ball of snow and roll it along the ground 0.22 u into its spot by the fire (`RollPose`, 3.2 s; it grows from 0.015 to 0.045 u, a little powder); {kid} lifts the head onto it from the ground (arms x 120); everyone steps back, the kids hop and clap, the grown-ups laugh. Reads: tongues out at the snow, then a snow figure | `SnowFigure` (new: two white balls, `MeshBuilder.Ico`, two pebble eyes; by the fire toward the front glass, until the thaw); the snowball game starts beside it; R `LookUp`, `ClapJumpPose` | **"Weather: the first snow"** |
+
+**Assets needed (batch 3):**
+- `SpoutBucket`, `FaceLog`, `SnowFigure`: built in code in the house style.
+- The carried antlers and the empty post: DeerHuntStage's own antlers mesh, without and with its post.
+- The flowers at the stone: the PickFlowers tip's flower.
+
+**Kids safe (batch 3):**
+- the cutting stone stays with the grown-up; the kids watch from 0.16 u behind the carver;
+- nobody climbs: the snow figure's head goes on from the ground, the face log is patted from the ground;
+- the buckets are carried by grown-ups (the event's and the watering uses).

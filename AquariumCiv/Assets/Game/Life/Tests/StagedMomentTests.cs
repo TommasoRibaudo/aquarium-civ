@@ -339,5 +339,27 @@ namespace AquariumCiv.Life.Tests
             var parent = PersonRef.Notable(born.plan.carrierKey);
             Assert.IsTrue(RitualBubbles.ForHeldMoment(born).Any(b => b.symbol == RitualSymbol.Heart && b.who.Equals(parent)), "the parent lifting the baby shows a heart");
         }
+
+        [Test]
+        public void B80d_TheSingersSong_TheSingerStartsTheTune_EveryoneJoinsInByTheEnd()
+        {
+            // #722 (2.2): the song rides its ritual's held moment; a festival's plan stands in for the ritual's (its members and length are all it reads)
+            var sc = new HeldMomentScene { kind = MomentKind.Festival, plan = Build(MomentKind.Festival), day = 0, start = 9f, end = 10f };
+            var members = sc.plan.members;
+            Assume.That(members.Count, Is.GreaterThan(2));
+            int singer = members.First(m => m.key > 0 && m.key != members[0].key).key;
+            var song = RitualBubbles.SongFirst(RitualBubbles.ForHeldMoment(sc), sc, singer);
+            var first = song.OrderBy(b => b.start).First();
+            Assert.AreEqual(PersonRef.Notable(singer), first.who, "the singer starts the tune");
+            Assert.AreEqual(RitualSymbol.Notes, first.symbol);
+            Assert.IsFalse(song.Any(b => !b.who.Equals(first.who) && b.start < first.end - 1e-5f), "alone at first");
+            float last = song.Max(b => b.end);
+            var end = song.Where(b => b.end >= last - 1e-5f).ToList();
+            Assert.IsTrue(end.All(b => b.symbol == RitualSymbol.Notes), "music notes at the end");
+            Assert.AreEqual(System.Math.Min(members.Count, RitualBubbles.MaxAlive), end.Count, "everyone it can show joins in");
+            Assert.IsTrue(end.Any(b => b.who.Equals(PersonRef.Notable(singer))), "the singer still singing");
+            var none = RitualBubbles.ForHeldMoment(sc);
+            CollectionAssert.AreEqual(none, RitualBubbles.SongFirst(none, sc, 999999), "a singer not in the cast: as it was");
+        }
     }
 }

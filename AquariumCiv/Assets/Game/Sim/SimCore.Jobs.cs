@@ -370,9 +370,10 @@ namespace AquariumCiv.Sim
         static string A(string job) => job.Length > 0 && "aeiou".IndexOf(job[0]) >= 0 ? "an " + job : "a " + job;
 
         /// <summary>Gives a notable coming of age their first job and returns the chronicle line for it.</summary>
-        string ComingOfAgeLine(Notable n)
+        string ComingOfAgeLine(Notable n, bool cheatWork = false)
         {
             n.job = ChooseJob(n, null);
+            if (cheatWork && string.IsNullOrEmpty(n.job)) n.job = JobType.Toolmaker; // #722 cheat (5.1): the land gives no work yet; they help make the tools
             if (string.IsNullOrEmpty(n.job)) return $"{n.FullName} came of age, and waited with the others for the land to give them work."; // #656
             return $"{n.FullName} came of age and took up work as {A(n.job)}.";
         }

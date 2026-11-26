@@ -366,6 +366,14 @@ namespace AquariumCiv.View
                     mb.Prism(new Vector3(0, -0.04f, 0), 0.031f, 0.032f, 0.008f, 8, Palette.Iron, capTop: false);
                     mb.Box(new Vector3(0, -0.005f, 0), new Vector3(0.06f, 0.006f, 0.006f), Palette.Iron);
                     break;
+                case PropKind.SpoutBucket:
+                case PropKind.SpoutBucketEmpty:
+                    // #722 (2.1, B80.c): the same bucket, and a spout bent onto its rim, crooked (it points off to the left of the pour)
+                    mb.Prism(new Vector3(0, -0.06f, 0), 0.026f, 0.032f, 0.05f, 8, Palette.WoodLight, topCol: kind == PropKind.SpoutBucket ? Palette.Water : Palette.Door);
+                    mb.Prism(new Vector3(0, -0.04f, 0), 0.031f, 0.032f, 0.008f, 8, Palette.Iron, capTop: false);
+                    mb.Box(new Vector3(0, -0.005f, 0), new Vector3(0.06f, 0.006f, 0.006f), Palette.Iron);
+                    mb.Box(new Vector3(-0.012f, -0.013f, 0.036f), new Vector3(0.008f, 0.007f, 0.026f), Palette.Iron, Quaternion.Euler(-25f, -35f, 0f)); // the spout, bent
+                    break;
                 case PropKind.Block:
                     mb.Box(Vector3.zero, new Vector3(0.075f, 0.05f, 0.055f), Palette.Stone);
                     break;

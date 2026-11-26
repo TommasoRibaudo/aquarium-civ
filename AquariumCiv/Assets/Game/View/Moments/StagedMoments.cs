@@ -143,8 +143,17 @@ namespace AquariumCiv.View
             if (live.moment.kind == MomentKind.Ritual && live.sim.RitualOfEntry(live.moment.entryId) is string ritual)
             {
                 // #721: the ritual's name on the caption as it begins (the people's own lines follow as the moment's bubbles).
-                LastCaption = RitualKind.Caption(ritual);
-                ShowMeDirector.Instance?.Say(LastCaption, PersonRef.None, CaptionSeconds, LineKind.Echo);
+                // #722 (4.3): with the singer's song named, its name too ("The harvest feast: One More Bowl"); never in a bubble (#276).
+                LastCaption = live.sim.RitualCaption(ritual);
+                // #722 (2.2, B80.d): the year the singer made their song, the song's line is the caption (the line rides this moment)
+                if (live.sim.SongLineOn(live.moment.entryId) is string song) LastCaption = song;
+                ShowMeDirector.Instance?.Say(LastCaption, PersonRef.None, LastCaption == live.sim.RitualCaption(ritual) ? CaptionSeconds : StoryMoment.CaptionSeconds, LineKind.Echo);
+            }
+            if (live.moment.kind == MomentKind.Wedding && live.sim.KeeperWeddingLine(live.moment.entryId) is string wed)
+            {
+                // #722 (5.2): the Keeper's child's wedding says its line on the caption as it starts, the way the rituals do.
+                LastCaption = wed;
+                ShowMeDirector.Instance?.Say(wed, PersonRef.None, StoryMoment.CaptionSeconds, LineKind.Echo);
             }
             LastWhy = null;
             Started++;
@@ -153,7 +162,7 @@ namespace AquariumCiv.View
 
         /// <summary>#721: how long a ritual's name stays on the caption (real seconds) [est].</summary>
         public const float CaptionSeconds = 5f;
-        /// <summary>#721: the caption said for the last ritual staged (tests, the panel).</summary>
+        /// <summary>#721: the caption said for the last ritual staged (tests, the panel); #722: or the Keeper's child's wedding.</summary>
         public static string LastCaption { get; private set; }
 
         static bool Done(Live live)
@@ -254,7 +263,13 @@ namespace AquariumCiv.View
             foreach (var l in lives)
             {
                 if (l.scene == null || l.over || now.day != l.scene.day) continue;
-                l.bubbles ??= RitualBubbles.ForHeldMoment(l.scene);
+                if (l.bubbles == null)
+                {
+                    l.bubbles = RitualBubbles.ForHeldMoment(l.scene);
+                    // #722 (2.2, B80.d): at the song's ritual (every year) its singer starts the tune and everyone joins in by the end
+                    if (l.moment != null && l.moment.kind == MomentKind.Ritual && l.sim?.SongSingerOf(l.sim.RitualOfEntry(l.moment.entryId)) is Notable singer)
+                        l.bubbles = RitualBubbles.SongFirst(l.bubbles, l.scene, singer.id);
+                }
                 foreach (var b in l.bubbles) if (now.hour >= b.start && now.hour < b.end) into.Add((b, false));
             }
         }
@@ -305,11 +320,12 @@ namespace AquariumCiv.View
             if (sim == null) return "no living box";
             if (!sim.MomentsOn && GameClock.Instance != null) GameClock.Instance.config.moments = true;
             if (!sim.MomentsOn) return "moments off";
-            if (sim.PlayingMoments().Count > 0) return "a moment is playing: wait, or End staged moments";
             var pv = PeopleView.Find();
             if (pv == null || pv.Planner == null) return "no people";
             string skipped = "";
-            if (!Fits(MomentKind.Ritual, pv.Now)) { PeopleView.DebugSetHour(9.5f); skipped = " (skipped to the morning)"; }
+            int ended = HeldMomentStage.DebugEndPlaying(); // #722: the cheat plays now: what plays is ended (its people back to their day)
+            if (ended > 0) skipped += $" (ended {ended} moment{(ended == 1 ? "" : "s")})";
+            if (!Fits(MomentKind.Ritual, pv.Now)) { PeopleView.DebugSetHour(9.5f); skipped += " (skipped to the morning)"; }
             var e = sim.DebugPlayRitual(ritual);
             if (e == null) return "no such ritual: " + ritual;
             var m = sim.MomentOfEntry(e.id);
@@ -324,8 +340,8 @@ namespace AquariumCiv.View
             if (started.Count == 0) return $"nothing started: {stage.LastWhy}";
             var sc = LastScene;
             return sc != null && sc.momentId == m.id
-                ? $"{RitualKind.Caption(ritual)}: {sc.CastCount} people, {sc.plan.Duration:0} s, led by {sim.FindNotable(m.personA)?.name ?? "nobody"}{skipped}"
-                : $"{RitualKind.Caption(ritual)}: started{skipped}; {(LastWhy ?? "waiting for the morning")}";
+                ? $"{sim.RitualCaption(ritual)}: {sc.CastCount} people, {sc.plan.Duration:0} s, led by {sim.FindNotable(m.personA)?.name ?? "nobody"}{skipped}"
+                : $"{sim.RitualCaption(ritual)}: started{skipped}; {(LastWhy ?? "waiting for the morning")}";
         }
 
         /// <summary>Cheat: the Keeper arrives now: a new visit, so the top waiting moment plays as the welcome (a wedding is queued

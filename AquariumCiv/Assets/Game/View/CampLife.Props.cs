@@ -66,8 +66,25 @@ namespace AquariumCiv.View
         bool PropOf(string kind, out PropSpot spot)
         {
             spot = default;
-            foreach (var p in Props()) if (p.kind == kind) { spot = p; return true; }
+            int second = kind == ConsequenceKind.NameStone && sim != null ? sim.StoryMarks.secondStoneId : -1; // #722: the name stone is the first one (its uses keep to it)
+            foreach (var p in Props()) if (p.kind == kind && p.id != second) { spot = p; return true; }
             return false;
+        }
+
+        /// <summary>#722: the thing <paramref name="id"/> as drawn now (false: not standing or not drawn).</summary>
+        bool PropById(int id, out PropSpot spot)
+        {
+            spot = default;
+            foreach (var p in Props()) if (p.id == id) { spot = p; return true; }
+            return false;
+        }
+
+        /// <summary>#722 (1.3 "Read later"): a remembering use goes to either name stone once the second stands (by the day: one day the first, the
+        /// next the second) [est].</summary>
+        PropSpot EitherStone(in PropSpot first)
+        {
+            if (sim == null || sim.StoryMarks.secondStoneId < 0 || BeatHash.Pick(2, (int)(today & 0x7fffffff), 0, 7221) == 0) return first;
+            return PropById(sim.StoryMarks.secondStoneId, out var second) && !ThingBusy(ThingOf(second)) ? second : first;
         }
 
         static int ThingOf(in PropSpot p) => ThingPropBase + p.id;
@@ -130,7 +147,7 @@ namespace AquariumCiv.View
                     if (p.kind == ConsequenceKind.OfferingBasket) ConsequencePropsView.SetLook(p.id, offeredDay == now.day ? 1 : 0);
                 }
                 if (p.kind == ConsequenceKind.NamePeg && !ThingBusy(ThingOf(p))) ConsequencePropsView.SetLook(p.id, PostLook(p.id)); // the fresh re-cut fades the next day
-                if (p.kind == ConsequenceKind.NameStone && !nameSeen.ContainsKey(p.id)) { int d = DeathsSince(p.id); nameSeen[p.id] = d; nameCut[p.id] = Mathf.Min(2, d); ConsequencePropsView.SetLook(p.id, nameCut[p.id]); } // [est] the rows already cut for the dead: at most 2 more, so the next one shows
+                if (p.kind == ConsequenceKind.NameStone && !nameSeen.ContainsKey(p.id)) { int d = DeathsSince(p.id); nameSeen[p.id] = d; nameCut[p.id] = p.id == sim.StoryMarks.secondStoneId ? 0 : Mathf.Min(2, d); ConsequencePropsView.SetLook(p.id, nameCut[p.id]); } // [est] the rows already cut for the dead: at most 2 more, so the next one shows; #722: the second stone comes blank, its rows are only the ones cut on it
                 // B54.p: a storm tips the bird over in the night
                 if (p.kind == ConsequenceKind.RoofBird && !birdTipped.Contains(p.id) && birdFixedDay != now.day && planner != null && planner.WeatherOn(now.day - 1) == Weather.Storm && Hour < 12f)
                 { birdTipped.Add(p.id); ConsequencePropsView.Tip(p.id, 20f); }
@@ -174,7 +191,7 @@ namespace AquariumCiv.View
             if (wet) return;
             // the life uses (kids at play, idle grown-ups)
             if (Go(CampUse.WoodShelter, Sometimes, ConsequenceKind.WoodpileRoof, out q) && TryShelter(acts, time, false, q, false) == null) return;
-            if (Go(CampUse.NameTrace, Sometimes, ConsequenceKind.NameStone, out q) && TryNameTrace(acts, time, false, q) == null) return;
+            if (Go(CampUse.NameTrace, Sometimes, ConsequenceKind.NameStone, out q) && TryNameTrace(acts, time, false, EitherStone(q)) == null) return; // #722: either stone
             if (Go(CampUse.CharmFlick, Sometimes, ConsequenceKind.CharmPole, out q) && TryCharmFlick(acts, time, false, q) == null) return;
             if ((season == Season.Winter || weather == Weather.Snow) && Go(CampUse.PotDrum, Sometimes, ConsequenceKind.StewPot, out q) && TryPotDrum(acts, time, false, q) == null) return;
             if (Go(CampUse.StumpSit, Sometimes, ConsequenceKind.AxeStump, out q) && TryStumpSit(acts, time, false, q) == null) return;
@@ -543,7 +560,7 @@ namespace AquariumCiv.View
                 }
                 case PropFx.Offered: offeredDay = now.day; break;
                 case PropFx.Swing: ConsequencePropsView.Swing(id); break;
-                case PropFx.Stack: { int n = Mathf.Min(ConsequenceMeshes.WoodSlots, (woodStacked.TryGetValue(id, out int w0) ? w0 : 0) + 1); woodStacked[id] = n; ConsequencePropsView.SetLook(id, n); break; }
+                case PropFx.Stack: { int n = Mathf.Min(ConsequenceMeshes.WoodSlots, (woodStacked.TryGetValue(id, out int w0) ? w0 : 0) + 1); woodStacked[id] = n; ConsequencePropsView.SetLook(id, n | (ConsequencePropsView.LookOf(id) & ConsequenceMeshes.FaceLook)); break; } // #722 (2.4): the face log stays
                 case PropFx.Unstack: { int n = Mathf.Max(0, (woodStacked.TryGetValue(id, out int w0) ? w0 : 0) - 1); woodStacked[id] = n; ConsequencePropsView.SetLook(id, n); break; }
                 case PropFx.Recut: postRecut[id] = now.day; ConsequencePropsView.SetLook(id, PostLook(id)); break;
                 case PropFx.Measure: postScratches[id] = Mathf.Min(3, (postScratches.TryGetValue(id, out int m0) ? m0 : 0) + 1); ConsequencePropsView.SetLook(id, PostLook(id)); break;

@@ -53,8 +53,12 @@ namespace AquariumCiv.View
                     }
                     break;
                 case ConsequenceKind.WoodpileRoof: // a tall woodpile under its own little roof
+                {
                     Pieces.Woodpile(mb, Vector3.zero, 0f);
-                    for (int i = 0; i < Mathf.Clamp(variant, 0, WoodSlots); i++) Pieces.Log(mb, WoodSlot(i), 0.026f, 0.26f, 90f, i % 2 == 0 ? Palette.WoodLight : Palette.Bark); // #693 notes: the logs laid across its top
+                    int laid = Mathf.Clamp(variant & ~FaceLook, 0, WoodSlots);
+                    for (int i = 0; i < laid; i++) Pieces.Log(mb, WoodSlot(i), 0.026f, 0.26f, 90f, i % 2 == 0 ? Palette.WoodLight : Palette.Bark); // #693 notes: the logs laid across its top
+                    if ((variant & FaceLook) != 0) FaceLog(mb, laid); // #722 (2.4, B80.f): the joker's grin, on top
+                }
                     foreach (int s in new[] { -1, 1 }) mb.Box(new Vector3(s * 0.15f, 0.12f, 0f), new Vector3(0.02f, 0.24f, 0.02f), Palette.Timber);
                     foreach (int s in new[] { -1, 1 })
                         mb.Box(new Vector3(0f, 0.26f, s * 0.05f), new Vector3(0.36f, 0.015f, 0.12f), Palette.Thatch, Quaternion.Euler(s * 28f, 0f, 0f), true);
@@ -384,32 +388,62 @@ namespace AquariumCiv.View
 
         /// <summary>The runestone's footprint (local half-sizes before <see cref="Scale"/>): people stand outside it (tests: NoOneInsideTheStone).</summary>
         public const float StoneHalfX = 0.07f, StoneHalfZ = 0.035f, StoneH = 0.36f;
-        static void RuneStone(MeshBuilder mb, int variant)
+        /// <summary>#722 (1.3, B78.c): the second name stone: the same runestone with another seed (its own rough shape), and only the rows cut
+        /// on it so far (<paramref name="rows"/>, 0-3: the first name, then the next; the newest pale), not the first stone's four old rows.</summary>
+        public static Mesh SecondStone(int rows)
+        {
+            var mb = new MeshBuilder(3710 + System.Array.IndexOf(ConsequenceKind.All, ConsequenceKind.NameStone) + 7220) { jitter = 0.025f };
+            RuneStone(mb, rows, 0, 7220);
+            var mesh = mb.ToMesh("Consequence_" + ConsequenceKind.NameStone + "_second");
+            mesh.hideFlags = HideFlags.DontSave;
+            return mesh;
+        }
+
+        static void RuneStone(MeshBuilder mb, int variant, int oldRows = 4, int seed = 693)
         {
             var grey = new Color(0.56f, 0.55f, 0.52f); var dark = new Color(0.33f, 0.32f, 0.31f);
             // the slab: one rough piece of stone, an uneven five-sided section squashed thin, narrowing a little to an uneven cut top, leaning a
             // touch and sunk in the ground (the props' jitter roughens it further)
             var saved = mb.M;
             mb.M = saved * Matrix4x4.TRS(new Vector3(0f, -0.02f, 0f), Quaternion.identity, new Vector3(1f, 1f, StoneHalfZ / (StoneHalfX * 0.866f)));
-            mb.Prism(Vector3.zero, StoneHalfX, StoneHalfX * 0.96f, StoneH - 0.02f, 6, grey, topCol: Color.Lerp(grey, dark, 0.25f)); // flat faces at +-z
+            mb.Prism(Vector3.zero, StoneHalfX, StoneHalfX * 0.96f, StoneH - 0.02f, 6, grey, capBottom: true, topCol: Color.Lerp(grey, dark, 0.25f)); // flat faces at +-z; the foot closed (the user: it lay open when rolled in)
             mb.Prism(new Vector3(-0.02f, StoneH - 0.04f, 0f), StoneHalfX * 0.62f, StoneHalfX * 0.4f, 0.05f, 6, grey, topCol: Color.Lerp(grey, dark, 0.25f)); // an uneven, broken-off top
             mb.M = saved;
             mb.Ico(new Vector3(0.05f, 0.005f, 0.03f), 0.025f, new Vector3(1.2f, 0.4f, 1f), dark, 0.2f); // a stone at its foot
-            // the runes on both faces: rows of short strokes and slants (the newest row pale: freshly cut)
-            int rows = 4 + Mathf.Clamp(variant, 0, 3); float gap = rows <= 4 ? 0.045f : 0.17f / (rows - 1);
+            // the names on both faces, one row each: cut in (dark grooves, never painted on), each name its own runes (RuneRow)
+            int rows = oldRows + Mathf.Clamp(variant, 0, 3); float gap = rows <= 4 ? 0.045f : 0.17f / (rows - 1);
+            var groove = new Color(0.16f, 0.15f, 0.15f);
             foreach (float face in new[] { -1f, 1f })
                 for (int i = 0; i < rows; i++)
+                    RuneRow(mb, 0.1f + i * gap, face * (StoneHalfZ + 0.002f), seed + i * 7919, groove);
+        }
+
+        /// <summary>#722 (user, the second stone): one name cut in a row: 3-5 runes, each a stave with its own branches, chosen by
+        /// <paramref name="seed"/> (the stone and the row), so no two names read the same.</summary>
+        static void RuneRow(MeshBuilder mb, float y, float z, int seed, Color col)
+        {
+            uint h = (uint)seed * 2654435761u;
+            uint Next() { h ^= h << 13; h ^= h >> 17; h ^= h << 5; return h; }
+            int n = 3 + (int)(Next() % 3);
+            float step = 0.024f, x0 = -(n - 1) * step * 0.5f;
+            const float sh = 0.022f, th = 0.0035f;
+            for (int k = 0; k < n; k++)
+            {
+                float x = x0 + k * step;
+                int shape = (int)(Next() % 7);
+                if (shape != 6) mb.Box(new Vector3(x, y, z), new Vector3(th, sh, th), col); // the stave
+                void Branch(float dx, float dy, float len, float deg) => mb.Box(new Vector3(x + dx, y + dy, z), new Vector3(th, len, th), col, Quaternion.Euler(0f, 0f, deg));
+                switch (shape)
                 {
-                    bool fresh = variant > 0 && i == rows - 1;
-                    var col = fresh ? new Color(0.88f, 0.86f, 0.80f) : dark;
-                    float y = 0.1f + i * gap, z = face * (StoneHalfZ + 0.002f);
-                    for (int k = 0; k < 4; k++)
-                    {
-                        float x = -0.04f + k * 0.027f;
-                        mb.Box(new Vector3(x, y, z), new Vector3(0.004f, 0.022f, 0.004f), col);
-                        mb.Box(new Vector3(x + 0.007f, y + 0.003f, z), new Vector3(0.004f, 0.016f, 0.004f), col, Quaternion.Euler(0f, 0f, (k % 2 == 0 ? 35f : -35f)));
-                    }
+                    case 0: Branch(0.004f, 0.006f, 0.011f, -40f); break;                                  // one branch up-right
+                    case 1: Branch(0.004f, 0.006f, 0.011f, -40f); Branch(0.004f, -0.001f, 0.011f, -40f); break; // two branches
+                    case 2: Branch(-0.004f, 0.006f, 0.011f, 40f); Branch(0.004f, 0.006f, 0.011f, -40f); break; // arms up both sides
+                    case 3: Branch(0f, 0f, 0.016f, 45f); break;                                           // a slash across
+                    case 4: Branch(0.004f, 0.004f, 0.01f, -45f); Branch(0.004f, -0.003f, 0.01f, 45f); break;  // a hook out and back
+                    case 5: Branch(0f, 0f, 0.016f, 45f); Branch(0f, 0f, 0.016f, -45f); break;             // a cross
+                    default: Branch(-0.0035f, 0f, 0.022f, 18f); Branch(0.0035f, 0f, 0.022f, -18f); break;  // a V, no stave
                 }
+            }
         }
 
         /// <summary>The classic flour sack: a fat cloth body, wider at the foot, pinched and tied at the neck with a cord, an ear of cloth on top
@@ -562,6 +596,25 @@ namespace AquariumCiv.View
         /// <summary>#693 notes (B54.c): the woodpile's free slots for a laid log (local, before <see cref="Scale"/>): three side by side, crosswise, on
         /// top of the top row (the pile's logs run along z).</summary>
         public const int WoodSlots = 3;
+        /// <summary>#722 (2.4, B80.f): the woodpile's look bit for the joker's face log (the low bits are the logs laid on top).</summary>
+        public const int FaceLook = 16;
+
+        /// <summary>#722 (2.4, B80.f "FaceLog"): a grin carved into a log's ends: two dark eyes and a curved mouth on each end, on the top row's
+        /// front log (its ends face local ±z), or once logs are laid across the top, on the top one's ends (±x): "it goes back on top".</summary>
+        static void FaceLog(MeshBuilder mb, int laid)
+        {
+            var cut = new Color(0.30f, 0.20f, 0.12f);
+            Vector3 c; bool alongX;
+            if (laid > 0) { c = WoodSlot(laid - 1); alongX = true; }
+            else { c = new Vector3(-0.0275f, 0.124f, 0f); alongX = false; }
+            foreach (float e in new[] { -1f, 1f })
+            {
+                Vector3 At(float across, float up) => alongX ? c + new Vector3(e * 0.131f, up, across) : c + new Vector3(across, up, e * 0.131f);
+                var size = alongX ? new Vector3(0.004f, 0.006f, 0.006f) : new Vector3(0.006f, 0.006f, 0.004f);
+                mb.Box(At(-0.008f, 0.007f), size, cut); mb.Box(At(0.008f, 0.007f), size, cut); // the eyes
+                for (int i = -2; i <= 2; i++) mb.Box(At(i * 0.0045f, -0.007f + 0.0012f * i * i), size, cut); // the grin
+            }
+        }
         public static Vector3 WoodSlot(int i) => new Vector3(0f, 0.124f + 0.052f, 0.06f * (Mathf.Clamp(i, 0, 2) - 1)); // across the top, carried crosswise so it never pokes into the pile
 
         /// <summary>#693 (B54.a/b): where basket <paramref name="i"/> of the three stands (local, before <see cref="Scale"/>), and which are gone when
@@ -658,6 +711,12 @@ namespace AquariumCiv.View
         public static int HeldCharms;
         /// <summary>Real seconds a pulse lasts.</summary>
         public const float PulseSeconds = 1.6f;
+        /// <summary>#722 (B78.c): things not drawn at their spot for now (the second stone while it is rolled in and stood up: CampLife draws it
+        /// in the rollers' hands). CampLife.Stories sets it each frame.</summary>
+        public static readonly HashSet<int> HeldBack = new();
+        /// <summary>#722: where a fire prop is drawn (the camp's spot for it, off its saved spot when that one is taken), or false before it
+        /// has one.</summary>
+        public bool DrawnSpot(int id, out Vector2 at) => settledSpot.TryGetValue(id, out at);
 
         sealed class Made { public Transform t; public Mesh mesh; public string kind; public float yaw; public Vector3 at; }
 
@@ -911,6 +970,10 @@ namespace AquariumCiv.View
             Instance.pulses[propId] = Time.unscaledTime;
         }
 
+        /// <summary>#722: places and draws the props now, not at the end of the frame (a cheat that makes a prop and stages its scene at once:
+        /// the scene needs the prop's camp spot).</summary>
+        public void Settle() => LateUpdate();
+
         void LateUpdate()
         {
             var sim = Sim;
@@ -989,7 +1052,20 @@ namespace AquariumCiv.View
                     settledSpot[p.id] = new Vector2(px, pz);
                     spots.Add(new CampSpots.Disc(px, pz, p.kind == ConsequenceKind.ShoreBoat ? BoatRadius : p.kind == ConsequenceKind.GoatPen ? PenRadius : own));
                 }
-                else if (haveFire) spots.Add(new CampSpots.Disc(px, pz, own));
+                else
+                {
+                    if (haveFire) spots.Add(new CampSpots.Disc(px, pz, own));
+                    // #722 tester: a thing at the pond (the name stone) stands at its own spot; DrawnSpot knows it too, or the second stone's
+                    // scene waited for a spot that never came (and every later story with it)
+                    settledSpot[p.id] = new Vector2(px, pz);
+                }
+                // #722: the second stone is still being rolled in: hidden, but its spot is worked out (and kept clear) like any other's, so the
+                // scene raises it where it will stand (the user: it slid aside once it was up)
+                if (HeldBack.Contains(p.id))
+                {
+                    if (made.TryGetValue(p.id, out var held) && held.t != null && held.t.gameObject.activeSelf) held.t.gameObject.SetActive(false);
+                    continue;
+                }
                 // #635: charms on a tree hang from the drawn crown (no post, not scaled up); a tree not drawn yet: wait a frame
                 bool onTree = p.anchor == PropAnchor.Tree && p.treeCell >= 0;
                 Vector3 treeAt = default; float treeR = 0f;
@@ -1014,6 +1090,7 @@ namespace AquariumCiv.View
                     }
                     else if (p.anchor == PropAnchor.Tree) mesh = ConsequenceMeshes.PoleWithCharms(charms); // tester: the pole always drew four
                     else if (featherSlots != null && featherSlots.Length > 0) mesh = ConsequenceMeshes.FeatherPole(featherSlots);
+                    else if (p.kind == ConsequenceKind.NameStone && p.id == sim.StoryMarks.secondStoneId) mesh = ConsequenceMeshes.SecondStone(look); // #722: its own shape, its own rows
                     else mesh = ConsequenceMeshes.Build(p.kind, look);
                     m = new Made { kind = key, mesh = mesh };
                     var go = new GameObject("Consequence_" + p.kind + "_" + p.id) { hideFlags = HideFlags.DontSave };

@@ -31,7 +31,9 @@ namespace AquariumCiv.View
         // #692 (B29.d, B31.a): a torn piece of roast meat; a single feather for the pole
         MeatPiece, Feather,
         // the user's review of #692 part 1 (B30.b): the bowl before the ladle fills it (Bowl is a bowl of stew now)
-        BowlEmpty }
+        BowlEmpty,
+        // #722 (2.1, B80.c): the tinkerer's crooked bucket: the bucket with a bent spout on its rim (full, empty)
+        SpoutBucket, SpoutBucketEmpty }
 
     /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
     /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>

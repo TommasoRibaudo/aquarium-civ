@@ -148,6 +148,7 @@ namespace AquariumCiv.Sim
         {
             a = b = -1;
             if (LifeChoices.Is(def)) return LifeWhyNot(def); // #437/#438
+            if (StoryChoices.Is(def)) return StoryAskWhyNot(def, out a, out b, false); // #722 §4
             if (def.smallKind == SmallChoices.Naming)
             {
                 var c = NamingNewborn();
@@ -207,6 +208,9 @@ namespace AquariumCiv.Sim
             // #437/#438: a wolves' or dogs' moment that waits comes next (the first in the catalog's order: thief, pup, kill, pen)
             var life = EligibleLife();
             if (life.Count > 0) return new List<(DilemmaDef def, int a, int b)> { life[0] };
+            // #722 §4: a story event's ask that waits (its window is short: the months before its ritual) comes before the everyday ones
+            var story = EligibleStoryAsks();
+            if (story.Count > 0) return new List<(DilemmaDef def, int a, int b)> { story[0] };
             return list;
         }
 
@@ -218,6 +222,7 @@ namespace AquariumCiv.Sim
         void PrepareSmall(Dilemma d, DilemmaDef def)
         {
             if (LifeChoices.Is(def)) { PrepareLife(d, def); return; } // #437/#438
+            if (StoryChoices.Is(def)) { PrepareStoryAsk(d, def); return; } // #722 §4
             if (def.smallKind != SmallChoices.Naming) return;
             var c = NamingNewborn();
             if (c == null) return;
@@ -247,6 +252,7 @@ namespace AquariumCiv.Sim
         void ApplySmall(Dilemma d, DilemmaDef def, int option)
         {
             if (LifeChoices.Is(def)) { ApplyLife(d, def, option); return; } // #437/#438
+            if (StoryChoices.Is(def)) { ApplyStoryAsk(d, def, option); return; } // #722 §4
             if (def.smallKind == SmallChoices.Story)
             {
                 // #717: the one picked (by the Keeper, by "Let them decide" or by the people on a lapse) tells it at the fire tonight,
@@ -289,6 +295,7 @@ namespace AquariumCiv.Sim
         {
             var def = DilemmaDefOf(d);
             if (LifeChoices.Is(def)) return LifeDefaultOption(d, def); // #437/#438: the chief's trait
+            if (StoryChoices.Is(def) && def.smallKind == StoryChoices.PupHolder) return Alive(d.personA) != null || Alive(d.personB) == null ? 0 : 1; // #722 (4.4): today's rule
             bool a = Alive(d.personA) != null, b = Alive(d.personB) != null;
             if (a != b) return a ? 0 : 1;
             return (int)(DilemmaRoll(31, d.id, d.month) * 2f) % 2;

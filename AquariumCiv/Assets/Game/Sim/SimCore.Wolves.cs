@@ -353,7 +353,7 @@ namespace AquariumCiv.Sim
 
         /// <summary>A seasonal life choice (thief, pup) has its moment and isn't open: it is raised at the next watched month or open, ahead
         /// of the gap (it still waits for an open choice or wish to end).</summary>
-        public bool SeasonalLifeWaiting => Config.smallChoices && SeasonalLifeDef() != null;
+        public bool SeasonalLifeWaiting => Config.smallChoices && (SeasonalLifeDef() != null || SeasonalStoryAsk(out _, out _) != null); // #722: and the new pup's
 
         /// <summary>The first seasonal life choice (in the catalog's order: thief, pup) whose moment is there now; null none.</summary>
         DilemmaDef SeasonalLifeDef()

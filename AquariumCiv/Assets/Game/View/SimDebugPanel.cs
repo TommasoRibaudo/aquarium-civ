@@ -330,6 +330,51 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
             }
             // ---- end #721 ----
+            // ---- #722: the story events (each happens now and plays while watched) ----
+            if (Section("Stories (#722)"))
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Tree: first fruit")) last = StoryMoment.DebugPlayNow(StoryEvent.FirstFruit);
+                if (GUILayout.Button("Tree: a couple's marks")) last = StoryMoment.DebugPlayNow(StoryEvent.TwoMarks);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Stone: fill it")) last = StoryMoment.DebugPlayNow(StoryEvent.SecondStone);
+                if (GUILayout.Button("Tree: a kid picks a fruit")) last = CampCheats.FruitPick(); // the life use the fruit leaves
+                GUILayout.EndHorizontal();
+                // batch 2: the singer's song, the four asks, the Keeper's child (each says why on failure)
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Trait: the singer's song")) last = StoryMoment.DebugPlayNow(StoryEvent.SingerSong);
+                if (GUILayout.Button("Ask: the song's name")) last = StoryMoment.DebugAskNow(StoryChoices.SongName);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Ask: who carries the offering")) last = StoryMoment.DebugAskNow(StoryChoices.Offering);
+                if (GUILayout.Button("Ask: who sets the first log")) last = StoryMoment.DebugAskNow(StoryChoices.FirstLog);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Ask: which child holds the pup")) last = StoryMoment.DebugAskNow(StoryChoices.PupHolder);
+                if (GUILayout.Button("People: the Keeper's child grows up")) last = StoryMoment.DebugPlayNow(StoryEvent.KeeperChildGrown);
+                GUILayout.EndHorizontal();
+                if (GUILayout.Button("People: the Keeper's child marries")) last = StoryMoment.DebugKeeperChildWed();
+                // batch 3 (B80.b-h): each event now (its gate eased; says why on failure), and the life uses they leave
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Chief: pass the antlers")) last = StoryMoment.DebugPlayNow(StoryEvent.AntlersPassed);
+                if (GUILayout.Button("Trait: the tinkerer's bucket")) last = StoryMoment.DebugPlayNow(StoryEvent.TinkererBucket);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Trait: the gardener's flowers")) last = StoryMoment.DebugPlayNow(StoryEvent.GardenerFlowers);
+                if (GUILayout.Button("Stone: water the flowers")) last = CampCheats.FlowerWater();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Trait: the joker's face")) last = StoryMoment.DebugPlayNow(StoryEvent.JokerFace);
+                if (GUILayout.Button("Woodpile: a kid pats the face")) last = CampCheats.FacePat();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Weather: the dry spell")) last = StoryMoment.DebugPlayNow(StoryEvent.DrySpell);
+                if (GUILayout.Button("Tree: the waterer's evening bucket")) last = CampCheats.TreeWater();
+                GUILayout.EndHorizontal();
+                if (GUILayout.Button("Weather: the first snow")) last = StoryMoment.DebugPlayNow(StoryEvent.FirstSnow);
+            }
+            // ---- end #722 ----
             // ---- fb4 #540: camp props ----
             if (Section("Camp props (fb4 #540)"))
                 if (GUILayout.Button("Camp props: show all (rack, every prop)")) last = ConsequenceCheats.ShowCampProps();

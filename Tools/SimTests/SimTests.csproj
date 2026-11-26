@@ -42,6 +42,9 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ConsequencePropTests.cs" /><!-- visit loop C4 #371 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ConsequencePropRoomTests.cs" /><!-- B3 tester fixes: things apart, no lot over one -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CharmTreeTests.cs" /><!-- #635 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/StoryEventTests.cs" /><!-- #722 the story events (sim) -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/StoryEventBatch2Tests.cs" /><!-- #722 batch 2: the song, the four asks, the Keeper's child -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/StoryEventBatch3Tests.cs" /><!-- #722 batch 3: the antlers, the trait things, the dry spell, the first snow -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/KeeperChoicesTests.cs" /><!-- visit loop C6 #373 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/MomentQueueTests.cs" /><!-- visit loop C2 #369 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaCallbackTests.cs" /><!-- P7 #221 -->

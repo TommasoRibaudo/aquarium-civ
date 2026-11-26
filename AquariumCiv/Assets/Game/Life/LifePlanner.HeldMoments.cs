@@ -105,12 +105,14 @@ namespace AquariumCiv.Life
         /// <summary>About how long a staged moment of this kind takes (real seconds), to check <see cref="HeldMomentFits"/> before casting.</summary>
         public static float HeldMomentSeconds(MomentKind kind) => kind switch
         {
-            MomentKind.Wedding => 42f, MomentKind.Newborn => 22f, MomentKind.NewLeader => 27f, MomentKind.Festival => 50f, MomentKind.Ruling => 50f, MomentKind.WhiteWolf => 50f, MomentKind.Ritual => RitualSeconds, _ => 10f,
+            MomentKind.Wedding => 42f, MomentKind.Newborn => 22f, MomentKind.NewLeader => 27f, MomentKind.Festival => 50f, MomentKind.Ruling => 50f, MomentKind.WhiteWolf => 50f, MomentKind.Ritual => RitualSeconds, MomentKind.Story => StorySeconds, _ => 10f,
         };
 
         /// <summary>S-ritual: the longest a ritual's own plan runs (real seconds; the berrying walk with a full camp and far bushes), for
         /// <see cref="HeldMomentFits"/> [est]. The spec's lengths: berrying 55 s, woodpile 45 s, feast 50 s, offering 45 s.</summary>
         public const float RitualSeconds = 66f;
+        /// <summary>#722: the longest a story event's scene runs (real seconds; B78.c, the second stone rolled in and cut, is the longest) [est].</summary>
+        public const float StorySeconds = 45f;
 
         /// <summary>S-ritual: the view fills each ritual's own targets (the bushes, the woodpile, the long table, the tree) before the plan
         /// is built (View/Moments/StagedMoments.Rituals.cs). Null, or no target: the festival's gathering stands in.</summary>
@@ -224,6 +226,15 @@ namespace AquariumCiv.Life
             heldScenes.Add(sc);
             heldStaging[sc] = st;
             return sc;
+        }
+
+        /// <summary>#722 cheats: this notable could be cast in a held moment at <paramref name="at"/> (awake, not on a hunt or at a tent, not in
+        /// the Keeper's ask or another moment), as <see cref="StageHeldMoment"/> asks of a wedding's couple.</summary>
+        public bool FreeForHeldMoment(int key, ViewTime at)
+        {
+            Sync();
+            EnsureDay(at.day);
+            return Free(Alive(key), at);
         }
 
         /// <summary>Why <see cref="StageHeldMoment"/> last returned null.</summary>
