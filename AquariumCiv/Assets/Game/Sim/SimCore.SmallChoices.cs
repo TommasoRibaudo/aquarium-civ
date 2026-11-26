@@ -74,14 +74,14 @@ namespace AquariumCiv.Sim
         {
             id = "small_supper", kind = DilemmaKind.Tradition, size = DilemmaSize.Small, smallKind = Supper, cast = DilemmaCast.None,
             minEra = Era.Camp, maxEra = Era.Village,
-            question = "Supper tonight: one big pot for everyone, or a basket for each family?",
+            question = "Supper: one stew kept going by the fire, or a fresh one each time?",
             shortAsk = "What supper is tonight.",
-            letDone = "They had {n} for supper.",
+            letDone = "Supper was {n}.",
             options = new[]
             {
-                new DilemmaOptionDef { label = "one big pot", hint = "Everyone eats together at the fire.", done = "The Keeper chose one big pot for supper.",
+                new DilemmaOptionDef { label = "the stew kept going", hint = "One pot by the fire, topped up. Everyone eats together.", done = "The Keeper kept the stew going for supper.",
                     prop = ConsequenceKind.StewPot, propAt = PropAnchor.Fire },
-                new DilemmaOptionDef { label = "a basket each", hint = "Each family eats at home, quietly.", done = "The Keeper chose a basket each for supper.",
+                new DilemmaOptionDef { label = "a fresh one each time", hint = "Each family has its own, new each evening, at home.", done = "The Keeper asked for a fresh supper each time.",
                     prop = ConsequenceKind.Baskets, propAt = PropAnchor.Fire },
             },
         };
@@ -283,7 +283,7 @@ namespace AquariumCiv.Sim
 
         /// <summary>The words of the name placeholders on a small card.</summary>
         string SmallText(string t, Dilemma d) =>
-            t.Replace("{n1}", d.nameA ?? "").Replace("{n2}", d.nameB ?? "").Replace("{child}", FindNotable(d.subjectId)?.name ?? "the baby")
+            t.Replace("{ritual}", StoryChoices.RitualAt(StoryMarks.songRitual)).Replace("{n1}", d.nameA ?? "").Replace("{n2}", d.nameB ?? "").Replace("{child}", FindNotable(d.subjectId)?.name ?? "the baby")
              .Replace("{who}", FindNotable(d.subjectId)?.name ?? "One of the hunters"); // #714: who saw the wolves
 
         /// <summary>True if the Keeper named this person (the person card shows "chosen by the Keeper", C4).</summary>

@@ -56,9 +56,9 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>Night dims the world, it doesn't thicken the glass: <see cref="MostNightGain"/> is the most a pane's measured opacity may rise over noon.</summary>
         const float MostNightGain = 0.03f;
         /// <summary>A pane at 0.8 stays see-through at its worst spots (p95 of what it covers), and still reads as dirty on average.</summary>
-        const float MostPatchOpacity = 0.7f, LeastDirtyOpacity = 0.25f;
+        const float MostPatchOpacity = 0.9f, LeastDirtyOpacity = 0.35f; // #775: dirtier on purpose (was 0.7 / 0.25), still a film
         /// <summary>A box that has just opened: light smudges, on average.</summary>
-        const float MostNewBoxOpacity = 0.3f;
+        const float MostNewBoxOpacity = 0.33f; // #775: was 0.3; the new box measured 0.300 after the dirtier curve
 
         [UnityTest, Timeout(180000)]
         public IEnumerator PatchesAreNoThickerAtNightAndNewBoxesAreLight()
@@ -98,6 +98,35 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log($"[grime] box 2, as it opens: opacity {next:0.000} at grime {sim.State.grime:0.00}");
             Assert.Less(next, MostNewBoxOpacity, "box 2 opens lightly smudged");
             AssertNoErrors("grime hours");
+        }
+
+        /// <summary>#775: zoomed in, the near pane fades but the dirt on it does not go with it: a lighter film stays (at least this share of the
+        /// pane's own at full), and the faded film is capped so it never walls off the people; clean glass shows nothing once faded.</summary>
+        const float LeastKeptShare = 0.6f, MostFadedFilm = 0.55f, MostFadedCleanOpacity = 0.03f;
+
+        [UnityTest, Timeout(180000)]
+        public IEnumerator TheNearPaneKeepsItsDirtWhenItFades()
+        {
+            yield return OpenSlice(1080, 1920, Seed);
+            DayLightDriver.DebugPauseClock(true);
+            yield return GrimeMatrixPlayTests.Apply(1f, 12f);
+            BoxView.NearGlassForce = -1f;
+            yield return new WaitForSecondsRealtime(0.5f);
+            GrimeMatrixPlayTests.Opacity(out float full, out _);
+            BoxView.NearGlassForce = 1f;
+            yield return new WaitForSecondsRealtime(1.2f);
+            GrimeMatrixPlayTests.Opacity(out float faded, out float fadedTop);
+            Debug.Log($"[grime] 775 dirty pane: opacity {full:0.000} shown, {faded:0.000} faded (p95 {fadedTop:0.000})");
+            Assert.Greater(full, 0.4f, "dirty glass reads dirty");
+            Assert.GreaterOrEqual(faded, full * LeastKeptShare, "the faded near pane keeps its dirt");
+            Assert.LessOrEqual(fadedTop, MostFadedFilm, "and it stays a veil you see the people through");
+            yield return GrimeMatrixPlayTests.Apply(0f, 12f);
+            yield return new WaitForSecondsRealtime(0.5f);
+            GrimeMatrixPlayTests.Opacity(out float clean, out _);
+            Assert.LessOrEqual(clean, MostFadedCleanOpacity, "clean glass leaves no film when it fades");
+            BoxView.NearGlassForce = -1f;
+            DayLightDriver.DebugPauseClock(false);
+            AssertNoErrors("grime 775");
         }
 
         [UnityTest, Explicit("#121: the repetition shot; pass the tag by hand in BeforeTag when comparing with an older build")]

@@ -36,7 +36,8 @@ namespace AquariumCiv.View
         sealed class Slot
         {
             public QuadDoll doll; public bool pup, grey;
-            public Vector3 cur; public float yaw; public bool placed;
+            public Vector3 cur; public QuadTurn turn; public bool placed; // #771: eased heading
+            public float yaw { get => turn.yaw; set { turn.yaw = value; turn.target = value; turn.held = true; turn.rate = 0f; } }
             public WolfAct lastAct; public float actSince; public float grow;
         }
 
@@ -223,23 +224,23 @@ namespace AquariumCiv.View
             var at2 = new Vector2(s.cur.x, s.cur.z);
             var dv = new Vector2(gx, gz) - at2;
             float dist = dv.magnitude;
-            bool moving = dist > 0.012f;
+            bool moving = s.turn.Moving(dist);
             if (moving)
             {
                 float step = Mathf.Min(dist, TrotSpeed * dt);
                 var next = at2 + dv / dist * step;
                 if (!Ok(next.x, next.y, lim)) { next = new Vector2(gx, gz); Detours++; s.grow = 0f; moving = false; } // round through the trees
-                else s.yaw = Mathf.MoveTowardsAngle(s.yaw, Mathf.Atan2(dv.x, dv.y) * Mathf.Rad2Deg, 300f * dt);
+                else { if (dist > QuadTurn.MoveOn) s.turn.Look(Mathf.Atan2(dv.x, dv.y) * Mathf.Rad2Deg, dt); s.turn.Step(dt, QuadTurn.TrotMaxRate); } // #771: no heading from a tiny dv, eased
                 at2 = next;
             }
-            else s.yaw = Mathf.MoveTowardsAngle(s.yaw, pose.yaw * Mathf.Rad2Deg, 60f * dt);
+            else { s.turn.Look(pose.yaw * Mathf.Rad2Deg, dt); s.turn.Step(dt); } // #771: the idle turn on the spot eases
             s.cur = box.land.OnGround(at2.x, at2.y);
             if (!Ok(s.cur.x, s.cur.z, Mathf.Min(lim, WolfRules.FirelightEdge))) RuleBreaks++;
             if (TreeCrowns.Under(box, sim, s.cur.x, s.cur.z)) UnderCrownFrames++;
             s.grow = Mathf.MoveTowards(s.grow, 1f, dt / 0.6f);
             var act = moving ? WolfAct.Trot : pose.act;
             if (act != s.lastAct) { s.lastAct = act; s.actSince = 0f; } else s.actSince += dt;
-            var p = QuadPose.Stand(s.cur, s.yaw);
+            var p = QuadPose.Stand(s.cur, s.turn.yaw);
             p.scale = Mathf.SmoothStep(0f, 1f, s.grow);
             switch (act)
             {

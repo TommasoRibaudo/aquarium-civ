@@ -88,6 +88,35 @@ namespace AquariumCiv.Life
             return end.day == at.day && end.hour <= HeldLatest;
         }
 
+        /// <summary>#770: is (x, z) inside a building's footprint (a cell nobody can walk: a lot, its wall, the water)? Null when the box has no
+        /// settlement layer. The dance rings and the kids' ring dance keep to cells where this is false.</summary>
+        public static Func<float, float, bool> FootprintBlocked(SimCore sim)
+        {
+            var st = sim?.Settlement;
+            if (st == null || !sim.Config.settle) return null;
+            // #770 round 2: also every building's lot rectangle (the well, the market, houses, the church: walkable ground the cells let through),
+            // grown by the ring's margin; the rectangle's turn is tried both ways, so a reading of the yaw's sign never lets a corner through
+            var rects = new List<(float x, float z, float c, float s, float hw, float hd)>();
+            foreach (var b in sim.State.buildings)
+            {
+                if (b.lotId == 0) continue;
+                float yr = b.yaw * (float)Math.PI / 180f;
+                rects.Add((b.x, b.z, (float)Math.Cos(yr), (float)Math.Sin(yr), 0.5f * b.w + OpenGround.RingMargin, 0.5f * b.d + OpenGround.RingMargin));
+            }
+            return (x, z) =>
+            {
+                int c = AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z);
+                if (c >= 0 && st.WalkCost(c) == 0) return true;
+                foreach (var r in rects)
+                {
+                    float dx = x - r.x, dz = z - r.z;
+                    if (Math.Abs(dx * r.c + dz * r.s) <= r.hw && Math.Abs(-dx * r.s + dz * r.c) <= r.hd) return true;
+                    if (Math.Abs(dx * r.c - dz * r.s) <= r.hw && Math.Abs(dx * r.s + dz * r.c) <= r.hd) return true;
+                }
+                return false;
+            };
+        }
+
         /// <summary>t4-fixes: the buildings standing on their lots (tents, huts...) as x, z, radius triples, for the wedding's vow point to
         /// keep out of their shadow; the fire's own pit is not one.</summary>
         float[] HeldBlockers(float fx, float fz)
@@ -139,7 +168,7 @@ namespace AquariumCiv.Life
             if (!positions.TryGetPosition(fire, out fx, out fz) && !positions.TryGetPosition(gather, out fx, out fz)) return NoHeld("no fire on the land");
             if (!positions.TryGetPosition(GlassPlace, out float gx, out float gz)) return NoHeld("no glass spot");
             var n = GlassNormalOf(glassSide);
-            var geo = new MomentGeometry { fireX = fx, fireZ = fz, glassX = gx, glassZ = gz, nx = n.x, nz = n.z, halfX = Terrain.HX, halfZ = Terrain.HZ, centreZ = Terrain.CZ, blockers = HeldBlockers(fx, fz) };
+            var geo = new MomentGeometry { fireX = fx, fireZ = fz, glassX = gx, glassZ = gz, nx = n.x, nz = n.z, halfX = Terrain.HX, halfZ = Terrain.HZ, centreZ = Terrain.CZ, blockers = HeldBlockers(fx, fz), blocked = FootprintBlocked(sim) };
             if (m.kind == MomentKind.Ritual && sim.RitualOfEntry(m.entryId) is string ritual) geo.spots = RitualTargets?.Invoke(sim, m, ritual) ?? new RitualSpots { ritual = ritual };
 
             var cast = new MomentCast();
@@ -198,6 +227,7 @@ namespace AquariumCiv.Life
             int seed = unchecked(sim.State.seed * 31 + m.id * 7919 + 370);
             var plan = MomentStagePlan.Build(m.kind, cast, geo, seed);
             if (plan == null) return NoHeld(MomentStagePlan.LastWhyNot);
+            if (m.kind == MomentKind.Festival) FestivalLayout.Ring = (plan.centreX, plan.centreZ, plan.ringRadius); // #770: the dressing follows the dancers
             float end = EndAfter(at, plan.Duration);
             var st = new Staging { glass = GlassPlace, spot = place, start = at.hour, end = end };
             foreach (var mem in plan.members)

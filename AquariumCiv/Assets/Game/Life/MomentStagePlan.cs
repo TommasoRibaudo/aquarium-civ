@@ -123,6 +123,9 @@ namespace AquariumCiv.Life
         public float centreZ;
         /// <summary>t4-fixes: what hides people standing behind it (tents, buildings): x, z, radius triples in box units; null = none.</summary>
         public float[] blockers;
+        /// <summary>#770: whether a point is inside a building's footprint (or otherwise not walkable ground), so a dance ring is held on open
+        /// ground; null = nothing blocked (tests, the bench).</summary>
+        public Func<float, float, bool> blocked;
         /// <summary>S-ritual (B72-B75): the ritual's own targets, filled by the view (<c>LifePlanner.RitualSpots</c>). None: the festival's
         /// gathering stands in (the spec's "where a ritual has no target").</summary>
         public RitualSpots spots;
@@ -208,6 +211,9 @@ namespace AquariumCiv.Life
         public readonly List<MomentMember> members = new List<MomentMember>();
         /// <summary>The ring (wedding, festival): its centre, radius, when it dances, and who is in it in slot order.</summary>
         public float centreX, centreZ, ringRadius, ringT0, ringT1;
+        /// <summary>#764: a wedding's vows begin at this second of the plan (the couple are at their places, face to face; -1 = not a wedding). The
+        /// "I do" line and the Keeper's child's line on the caption wait for it.</summary>
+        public float vowAt = -1f;
         public readonly List<int> ringKeys = new List<int>();
         /// <summary>The newborn's baby (a person key, 0 = none) and the parent who carries it.</summary>
         public int babyKey, carrierKey;
@@ -290,7 +296,7 @@ namespace AquariumCiv.Life
         /// the ring or between it and the glass, the point turns round the fire (up to a quarter either way) to the first spot in the open,
         /// else the least hidden one. No blockers: the old spot.
         /// </summary>
-        void VowPoint(float R, out float x, out float z)
+        void VowPoint(ref float R, out float x, out float z)
         {
             float dist = R + 0.34f, best = float.MaxValue;
             x = geo.fireX + Gx * dist; z = geo.fireZ + Gz * dist;
@@ -303,10 +309,18 @@ namespace AquariumCiv.Life
                     float cx = geo.fireX + dx * d, cz = geo.fireZ + dz * d;
                     ClampIn(ref cx, ref cz, R + 0.12f);
                     float hidden = Hidden(cx, cz, R);
-                    if (hidden <= 0f) { x = cx; z = cz; return; } // the first spot in the open, in the order tried
+                    int lots = OpenGround.RingHits(cx, cz, R, geo.blocked); // #770: the dance round the couple stays off the buildings
+                    if (hidden <= 0f && lots == 0) { x = cx; z = cz; return; } // the first spot in the open, in the order tried
+                    hidden += lots * 0.05f;
                     float score = hidden + Math.Abs(a) * 0.02f + far * 0.01f; // none in the open: the least hidden, a little turn preferred
                     if (score < best) { best = score; x = cx; z = cz; }
                 }
+            // #770: none of the turns kept the ring off the buildings: the nearest centre that does (the ring can't be kept clear of the lot)
+            if (geo.blocked != null && OpenGround.RingHits(x, z, R, geo.blocked) > 0)
+            {
+                var rc = OpenGround.RingFit(x, z, R, Math.Max(0.3f, 0.7f * R), geo.blocked, RingOk, 2.2f, Gx, Gz);
+                x = rc.x; z = rc.z; R = rc.r;
+            }
         }
 
         /// <summary>t4-fixes: how much the blockers hide a ring of radius <paramref name="R"/> at (cx, cz): overlap with the ring, and any in
@@ -337,6 +351,9 @@ namespace AquariumCiv.Life
             x = Math.Max(-mx, Math.Min(mx, x));
             z = geo.centreZ + Math.Max(-mz, Math.Min(mz, z - geo.centreZ));
         }
+
+        /// <summary>#770: a ring centre may be used: inside the box with room for the ring (the land's own water is the view's to refuse).</summary>
+        bool RingOk(float x, float z) => Math.Abs(x) <= geo.halfX - 0.5f && Math.Abs(z - geo.centreZ) <= geo.halfZ - 0.5f;
 
         static float Dist(float ax, float az, float bx, float bz) => (float)Math.Sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz));
 
@@ -425,7 +442,7 @@ namespace AquariumCiv.Life
 
             // The vow point: in front of the fire, toward the glass, clear of the fire by the ring (t4-fixes: turned round the fire away
             // from a tent that would stand in the ring or hide it from the glass).
-            VowPoint(R, out centreX, out centreZ);
+            VowPoint(ref R, out centreX, out centreZ);
             float cx = centreX, cz = centreZ;
             // The aisle runs across the screen (p), the couple walks it left to right; two rows face each other 0.32 apart.
             int rowMembers = cast.Count + (hasSpotter ? 1 : 0);
@@ -442,11 +459,12 @@ namespace AquariumCiv.Life
 
             float tA = gather, tV = tA + AisleSeconds, tJ = tV + VowSeconds, tD = tJ + JoinSeconds, tE = tD + WeddingDance, tEnd = tE + WeddingWave;
             ringT0 = tD; ringT1 = tE; ringRadius = R;
+            vowAt = tV;
 
             // The couple: side by side at the aisle's start, then the walk in, the vow facing each other, the join, the middle of the ring, the wave.
             var A = Add(c.a, MomentRole.Couple);
             var B = Add(c.b, MomentRole.Couple);
-            const float side = 0.045f, face = 0.07f;
+            const float side = 0.055f, face = 0.07f; // #779: side by side a body width and a little apart
             float axL = ex + Gx * side, azL = ez + Gz * side, bxL = ex - Gx * side, bzL = ez - Gz * side;
             float axC = cx + Gx * side, azC = cz + Gz * side, bxC = cx - Gx * side, bzC = cz - Gz * side;
             float axV = cx - Px * face, azV = cz - Pz * face, bxV = cx + Px * face, bzV = cz + Pz * face;
@@ -696,7 +714,15 @@ namespace AquariumCiv.Life
             if (gather > MaxGather) return Fail("the leader can't get to the fire in time");
             int n = all.Count;
             float R = Math.Max(0.5f, RingRadiusFor(n));
-            ringRadius = R; centreX = fx; centreZ = fz;
+            // #770: the ring dances on open ground: when the fire's own ring would meet a building (the later eras crowd the green), it
+            // turns to the nearest centre whose whole ring (and step-in) is clear; the speech and the toss stay at the fire.
+            float rcx = fx, rcz = fz;
+            if (geo.blocked != null)
+            {
+                var rc = OpenGround.RingFit(fx, fz, R, Math.Max(0.3f, 0.7f * R), geo.blocked, RingOk, 2.2f, Gx, Gz);
+                rcx = rc.x; rcz = rc.z; R = rc.r;
+            }
+            ringRadius = R; centreX = rcx; centreZ = rcz;
             double tg = Math.Atan2(Gz, Gx);
             // Behind the fire, facing the Keeper and the camp, close enough to throw a log on it without a step (the hit stays a Poke's).
             float spx = fx - Gx * TossReach, spz = fz - Gz * TossReach, tox = spx, toz = spz;
@@ -709,7 +735,7 @@ namespace AquariumCiv.Life
                 var (p, lead) = all[i];
                 var m = Add(p, lead ? MomentRole.Leader : p.kid ? MomentRole.Kid : MomentRole.Bringer);
                 double a = tg + Math.PI + (i + 0.5) * 2 * Math.PI / n;
-                float rx = fx + R * (float)Math.Cos(a), rz = fz + R * (float)Math.Sin(a);
+                float rx = rcx + R * (float)Math.Cos(a), rz = rcz + R * (float)Math.Sin(a);
                 if (lead)
                 {
                     // The leader brings a log for the fire, throws it on (the fire flares), and speaks from behind it.
@@ -734,14 +760,14 @@ namespace AquariumCiv.Life
                 }
                 ringKeys.Add(m.key);
             }
-            SortRingByAngle(fx, fz);
+            SortRingByAngle(rcx, rcz);
             foreach (var m in members)
             {
                 int r = ringKeys.IndexOf(m.key);
-                var dance = Step(StageBeat.Ring, ActivityKind.Dance, tD, tC, fx, fz, fx, fz); dance.ring = r; Put(m, dance);
-                var clap = Facing(Step(StageBeat.Clap, ActivityKind.Clap, tC, tM, fx, fz, fx, fz), fx, fz); clap.ring = r; clap.endBeat = true; Put(m, clap); // the ring stops: everyone claps (B2.e)
-                var eat = Facing(Step(StageBeat.Eat, ActivityKind.Eat, tM, tJ, fx, fz, fx, fz), fx, fz); eat.ring = r; eat.ringScale = 0.85f; Put(m, eat);
-                var jump = Facing(Step(StageBeat.Jump, ActivityKind.Cheer, tJ, tEnd, fx, fz, fx, fz), fx, fz); jump.ring = r; jump.ringScale = 0.85f; jump.cue = 0.25f; jump.endBeat = true;
+                var dance = Step(StageBeat.Ring, ActivityKind.Dance, tD, tC, rcx, rcz, rcx, rcz); dance.ring = r; Put(m, dance);
+                var clap = Facing(Step(StageBeat.Clap, ActivityKind.Clap, tC, tM, rcx, rcz, rcx, rcz), rcx, rcz); clap.ring = r; clap.endBeat = true; Put(m, clap); // the ring stops: everyone claps (B2.e)
+                var eat = Facing(Step(StageBeat.Eat, ActivityKind.Eat, tM, tJ, rcx, rcz, rcx, rcz), rcx, rcz); eat.ring = r; eat.ringScale = 0.85f; Put(m, eat);
+                var jump = Facing(Step(StageBeat.Jump, ActivityKind.Cheer, tJ, tEnd, rcx, rcz, rcx, rcz), rcx, rcz); jump.ring = r; jump.ringScale = 0.85f; jump.cue = 0.25f; jump.endBeat = true;
                 Put(m, jump); // in step on purpose: the whole camp jumps once (P6 exempt)
             }
             return true;

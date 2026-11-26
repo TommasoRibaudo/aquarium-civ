@@ -183,8 +183,8 @@ namespace AquariumCiv.View.PlayTests
                     if (a >= 0.03f) seen.Add(a); // the pane is a slanted shape in this rectangle: clean glass is 0.05, the rest isn't glass
                 }
             seen.Sort();
-            mean = seen.Average();
-            p95 = seen[(int)(seen.Count * 0.95f)];
+            mean = seen.Count > 0 ? seen.Average() : 0f; // #775: a faded clean pane shows nothing at all
+            p95 = seen.Count > 0 ? seen[(int)(seen.Count * 0.95f)] : 0f;
             Object.Destroy(dark); Object.Destroy(light);
         }
 

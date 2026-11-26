@@ -125,5 +125,28 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(0f, FishBeats.Tug(key, bite), "the bite's tug is the bite, not a tug");
             Assert.AreEqual(0f, FishBeats.Tug(key, first - 1f));
         }
+
+        // #767: two fishers who talk keep the rod over the water: the body turns a little toward the partner, never past ChatTurnMax.
+        [Test]
+        public void AFishingChatKeepsTheRodTipOverTheWater()
+        {
+            for (float water = 0f; water < 360f; water += 30f)
+                for (float toPartner = 0f; toPartner < 360f; toPartner += 15f)
+                {
+                    float yaw = FishBeats.ChatYaw(water, toPartner);
+                    float off = Mathf.Abs(Mathf.DeltaAngle(water, yaw));
+                    Assert.LessOrEqual(off, FishBeats.ChatTurnMax + 1e-3f, $"water {water} partner {toPartner}");
+                    // the rod's tip (LineReach out along the facing) stays within a few degrees of straight out over the water
+                    var tip = Quaternion.Euler(0f, yaw, 0f) * Vector3.back * FishBeats.LineReach;
+                    var wet = Quaternion.Euler(0f, water, 0f) * Vector3.back;
+                    Assert.LessOrEqual(Vector3.Angle(tip, wet), FishBeats.ChatTurnMax + 1e-2f);
+                    Assert.Greater(Vector3.Dot(tip.normalized, wet), 0.92f, "the tip is still over the water");
+                    // and the turn is toward the partner, not away
+                    float want = Mathf.DeltaAngle(water, toPartner);
+                    if (Mathf.Abs(want) > 1f) Assert.AreEqual(Mathf.Sign(want), Mathf.Sign(Mathf.DeltaAngle(water, yaw)));
+                }
+            Assert.AreEqual(100f, FishBeats.ChatYaw(100f, 100f), 1e-3f, "a partner straight out over the water: no turn");
+            Assert.AreEqual(110f, FishBeats.ChatYaw(100f, 110f), 1e-3f, "a small turn is followed whole");
+        }
     }
 }

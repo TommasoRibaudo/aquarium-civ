@@ -201,6 +201,8 @@ namespace AquariumCiv.View
             EndRow();
             Row(); // #364
             if (Btn("Fish bite now")) last = FishingView.DebugBiteNow();
+            if (Btn("Three fishers now")) { var pvf = PeopleView.Find(); int nf = pvf != null && pvf.Planner != null ? pvf.Planner.DebugFishNow(pvf.Now, 3, 2f) : -1; last = nf < 0 ? "no water to fish (or nobody free)" : nf + " sent to fish the pond (#765: each on their own spot)"; }
+            if (Btn("Fishers chat now")) { var pvc = PeopleView.Find(); int nc = pvc != null && pvc.Planner != null ? pvc.Planner.DebugFishersChat(pvc.Now, 2f) : -1; last = nc < 0 ? "no water to fish (or fewer than two free)" : "two fishers fish side by side as partners (#767: rods stay over the water while they chat)"; } // #767
             EndRow();
             Row(); // #708 (B70): the fish seen from above and through the glass; B39.c the kids' try by hand
             if (Btn("Fish: the shadows")) last = FishView.DebugShadows();
@@ -249,6 +251,7 @@ namespace AquariumCiv.View
             if (Btn("Kids play: chase rabbits")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.ChaseRabbits);
             if (Btn("Toddle")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Toddle);
             if (Btn("Dance ring now")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.DanceRing);
+            if (Btn("Ball at the glass")) last = KidPlayDirector.DebugBallAtGlass(); // #772: a missed throw bounces off the pane
             if (Btn("Two kids play")) last = KidPlayDirector.DebugTwo(); // fb4 #541
             EndRow();
             Row(); // #365 B9 meals and the fire
@@ -710,6 +713,7 @@ namespace AquariumCiv.View
             if (Btn("Line on walker")) last = ShowMeDirector.DebugSayOverWalker();
             if (Btn("Stalls")) last = StallProps.DebugStock();
             if (Btn("Keeper Doll")) last = GlassVoice.DebugPlayMoment(AquariumCiv.Sim.RelicId.KeeperDoll);
+            if (Btn("First-mist line")) last = GlassVoice.DebugFirstMistLine(); // #564
             if (Btn("Start a ritual now")) last = GlassVoice.DebugStartRitual();
             if (Btn("Baby")) last = PeopleView.DebugBaby();
             if (Btn("Bicker")) last = PeopleView.DebugRunIn(true);

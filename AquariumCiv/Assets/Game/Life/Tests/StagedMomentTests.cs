@@ -105,6 +105,53 @@ namespace AquariumCiv.Life.Tests
                 }
         }
 
+        /// <summary>#764: the wedding's vows begin the second the couple's walk in ends (they are at their places); nothing else has one.</summary>
+        [Test]
+        public void Wedding_TheVowsBeginWhenTheCoupleAreAtTheirPlaces()
+        {
+            var plan = Build(MomentKind.Wedding);
+            Assert.Greater(plan.vowAt, 5f, "after the spotter's run and the aisle");
+            foreach (var c in plan.members.Where(m => m.role == MomentRole.Couple))
+            {
+                var walk = c.steps.Single(s => s.beat == StageBeat.WalkIn);
+                Assert.AreEqual(plan.vowAt, walk.t1, 1e-4f, "the walk in ends as the vows begin");
+                Assert.AreEqual(plan.vowAt, c.steps.First(s => s.beat == StageBeat.Vow).t0, 1e-4f, "their first vow step");
+                Assert.AreEqual(StageBeat.WalkIn, c.steps[c.steps.FindIndex(s => s.beat == StageBeat.Vow) - 1].beat);
+            }
+            foreach (var kind in new[] { MomentKind.Newborn, MomentKind.NewLeader, MomentKind.Festival })
+                Assert.Less(Build(kind).vowAt, 0f, kind + " has no vows");
+        }
+
+        /// <summary>#779 (5.2): nobody stands inside anybody at the wedding: every two people standing still (the aisle, the vows, the cheers, the
+        /// blessing) are a body width (0.09 u) apart, for any crowd.</summary>
+        [Test]
+        public void Wedding_EveryoneStandingStillKeepsABodyWidthFromEveryoneElse_ForAnyCrowd()
+        {
+            foreach (var (grown, kids, officiant) in new[] { (0, 0, false), (3, 1, false), (5, 2, true), (9, 3, true), (12, 4, true) })
+            {
+                var plan = Build(MomentKind.Wedding, Cast(MomentKind.Wedding, true, officiant, grown, kids));
+                float worst = float.MaxValue; string at = "";
+                for (float u = 0f; u < plan.Duration; u += 0.05f)
+                {
+                    var still = new List<(int key, float x, float z)>();
+                    foreach (var m in plan.members)
+                    {
+                        if (!plan.StepAt(m.key, u, out _, out int i)) continue;
+                        var st = m.steps[i];
+                        if (st.travel || st.ring >= 0 || st.Moves || st.beat == StageBeat.Run) continue; // the planner walks the travellers; the ring is the kit's
+                        still.Add((m.key, st.x1, st.z1));
+                    }
+                    for (int a = 0; a < still.Count; a++)
+                        for (int b = a + 1; b < still.Count; b++)
+                        {
+                            float d = (float)Math.Sqrt((still[a].x - still[b].x) * (still[a].x - still[b].x) + (still[a].z - still[b].z) * (still[a].z - still[b].z));
+                            if (d < worst) { worst = d; at = $"{still[a].key} and {still[b].key} at {u:0.0} s"; }
+                        }
+                }
+                Assert.GreaterOrEqual(worst, 0.09f - 1e-4f, $"{grown} grown-ups, {kids} kids, officiant {officiant}: {at}");
+            }
+        }
+
         [Test]
         public void Wedding_TheKidSpotsTheKeeper_TheCoupleWalksTheAisle_TheRowsCheerAsTheyPass_TheRingDancesRoundThem()
         {

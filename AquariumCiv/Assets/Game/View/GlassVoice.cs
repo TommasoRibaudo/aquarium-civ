@@ -377,6 +377,29 @@ namespace AquariumCiv.View
             return $"ritual: the {SimCore.RelicName(id)}, {r.moment.cast.Count} people, {r.bubbles.Count} symbol bubbles until {r.moment.end:0.00}h";
         }
 
+        /// <summary>#564: the first line the glass voice says: someone near the middle of the screen, on the first mist that greens the ground.
+        /// Said once per box (<see cref="EcoState.firstMistWords"/>); false when it was said before or nobody can say it now. See docs/design/polish-night-1-words.md.</summary>
+        public const string FirstMistLine = "The sky wept. The dust drank it.";
+        public static bool SayFirstMist(SimCore sim, bool force = false)
+        {
+            var d = ShowMeDirector.Instance;
+            if (sim == null || d == null || sim.State.eco == null || (sim.State.eco.firstMistWords && !force)) return false;
+            var who = ShowMeDirector.MiddlePerson();
+            if (who.IsNone) return false;
+            sim.State.eco.firstMistWords = true;
+            d.SayOrWait(FirstMistLine, who, 4.5f, LineKind.Relic);
+            return true;
+        }
+
+        /// <summary>Debug (#564): forget that the first-mist line was said and say it now.</summary>
+        public static string DebugFirstMistLine()
+        {
+            var sim = Sim;
+            if (sim == null) return "glass: not running";
+            sim.State.eco.firstMistWords = false;
+            return SayFirstMist(sim, true) ? "said: " + FirstMistLine : "nobody on view to say it";
+        }
+
         /// <summary>Debug: a gathering at the glass now (stage 1: a step back; later: the kids look for you).</summary>
         public static string DebugGather(int most = 0)
         {

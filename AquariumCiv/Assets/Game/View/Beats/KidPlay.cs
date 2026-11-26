@@ -485,7 +485,12 @@ namespace AquariumCiv.View
         }
 
         public override bool HasBall => true;
+        /// <summary>#772 cheat only: the first two throws are misses aimed at the +x pane, so the bounce is seen on demand.</summary>
+        public bool GlassAim;
         public Vector2 HomeOf(int i) => home[i];
+
+        /// <summary>#772: a point kept inside the glass (the ball's radius in from the panes).</summary>
+        static Vector2 InGlass(Vector2 p) => new Vector2(Mathf.Clamp(p.x, -GlassBox.HalfX + BallR, GlassBox.HalfX - BallR), Mathf.Clamp(p.y, GlassBox.ZMin + BallR, GlassBox.ZMax - BallR));
 
         /// <summary>Throw <paramref name="k"/> (grown on demand, kept).</summary>
         public Throw ThrowAt(int k) { Grow(k); return throws[k]; }
@@ -538,6 +543,7 @@ namespace AquariumCiv.View
                     th.aim = spots[th.to];
                     th.miss = BeatHash.U01(seed, j, 24) < MissShare;
                 }
+                if (GlassAim && j < 2) { th.miss = true; th.aim = th.fromPos + new Vector2(1f, BeatHash.Range(-0.15f, 0.15f, seed, j, 27)).normalized * 0.9f; } // #772 cheat: the first throws miss toward the right pane
                 var dir = (th.aim - th.fromPos).normalized;
                 if (dir.sqrMagnitude < 1e-6f) dir = new Vector2(1f, 0f);
                 th.launch = th.ready + Antic + Act;
@@ -552,6 +558,7 @@ namespace AquariumCiv.View
                 float dist = new Vector2(end.x - start.x, end.z - start.z).magnitude;
                 float apex = Mathf.Clamp(0.25f * dist / 0.45f, 0.12f, 0.3f);
                 th.shot = ArcShot.Throw(start, end, apex, Arc.FlightFor(dist, Speed), th.miss ? Landing.BounceRoll : Landing.Catch, th.launch, 0f, BallR);
+                if (th.miss) th.shot = th.shot.InsideGlass(BallR); // #772: a throw (or a roll) that would pass a pane bounces off the glass, never out of the box
                 th.land = th.shot.LandAt;
                 if (!th.miss)
                 {
@@ -567,7 +574,7 @@ namespace AquariumCiv.View
                     th.wet = PondAt != null && PondAt(th.restPos);
                     if (!th.wet && RollsTo != null)
                     {
-                        var down = RollsTo(th.restPos);
+                        var down = InGlass(RollsTo(th.restPos)); // #772
                         float far = (down - th.restPos).magnitude;
                         if (far > 0.05f)
                         {

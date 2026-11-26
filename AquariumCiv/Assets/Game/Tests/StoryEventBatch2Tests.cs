@@ -148,6 +148,31 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void TheSongsHint_NamesTheRitualItIsSungAt()
+        {
+            var sim = Camp(14);
+            sim.DebugAddKids(2, 30f);
+            Assert.IsNotNull(sim.DebugStory(StoryEvent.SingerSong, out string why), why);
+            string ritual = sim.StoryMarks.songRitual;
+            var names = StoryChoices.SongNames(ritual);
+            var v = sim.ViewOfDilemma(Raise(sim, StoryChoices.SongName));
+            Assert.AreEqual($"Everyone sings {names.a} {StoryChoices.RitualAt(ritual)}, every year.", v.options[0].hint);
+            Assert.AreEqual($"Everyone sings {names.b} {StoryChoices.RitualAt(ritual)}, every year.", v.options[1].hint);
+            StringAssert.DoesNotContain("at it", v.options[0].hint);
+            StringAssert.DoesNotContain("{", v.options[1].hint);
+        }
+
+        [Test]
+        public void TheSupperChoice_AsksOneStewKeptGoingOrAFreshOneEachTime()
+        {
+            var sim = Camp(14);
+            var v = sim.ViewOfDilemma(sim.DebugRaiseSmall(SmallChoices.Supper));
+            Assert.AreEqual("Supper: one stew kept going by the fire, or a fresh one each time?", v.question);
+            Assert.AreEqual("the stew kept going", v.options[0].label);
+            Assert.AreEqual("a fresh one each time", v.options[1].label);
+        }
+
+        [Test]
         public void TheSongsNames_TwoPerRitual()
         {
             foreach (var k in RitualKind.All)

@@ -2708,3 +2708,91 @@ Every number is [est] until the clip.
 - the cutting stone stays with the grown-up; the kids watch from 0.16 u behind the carver;
 - nobody climbs: the snow figure's head goes on from the ground, the face log is patted from the ground;
 - the buckets are carried by grown-ups (the event's and the watering uses).
+
+## B81. A statue of the founder (#776, 2026-11-25)
+
+**Status: spec, waiting for the user's sign-off.** No Unity was run. Every number is [est] until the clip. Direction it serves:
+decisions.md 2026-11-25, "lean into watching people age and die" (what a person leaves behind, who carries it on). Source: the first
+outside playtest (private notes; paraphrased): the people could raise a statue of the founder, especially of the one the Keeper
+kept pinned for a long time.
+
+### The one thing, in a sentence
+Some years after the person the Keeper watched longest has died, and the village is grown, the people raise a small stone figure of
+them on the green: they carve it in one morning, the family lay the first flowers, and from then on the figure is a place the people
+use, for the child's climb, the old one's rest and the yearly flowers.
+
+### B81.0 Who, when, who decides (rules, not a beat)
+| | |
+|---|---|
+| **Who it is** | The notable with the **most pinned hours** (`SimCore.PinnedHours`, at least `pinLegendHours` = 24 h, the legend rule of chronicle-and-history.md §4.1). If nobody was pinned that long: **the founder**, the first notable of the box (the lowest notable id of the first generation) [est: open question 1]. Never the Keeper's own doll (the relic stays by the shrine or on the green) |
+| **When it is raised** | all of: that person has **died** (`Notable.alive` false); **at least one game year** has passed since their `diedMonth` (the quiet visit at the Keeper's tree, B32.h, comes first and is not replaced); the box is a **village or a town** (the era has changed, so the green exists) and has **12 or more people** [est: "a grown village"]; the day is a **morning in spring or summer** with no ritual, choice or other held moment playing. If the pinned person is not yet dead when the village is grown, nothing happens until they die (and never before: no statue of the living) |
+| **Who decides** | **The people, by a rule: the sim, no Keeper choice** (one choice per visit; the user's "seen, not read"). The Keeper learns it by seeing it: the held scene plays while watched, or, when away, the book's line and a card ("Show me" plays the scene's echo, the fly-to as usual). The sim only sets `statueFor = notableId` and `statueMonth`; the raising is the view's held Story moment (as B78) |
+| **How often** | **Once per box.** If the pinned person changes later and dies, nothing more is raised (the first stands); a second person's death only gets the anniversary flowers if they were pinned for a day (B81.c uses whoever the statue is for) |
+| **Where** | **On the green**, on open ground, in the ring 0.4–0.9 u from the green's centre (`Settlement.GreenX/GreenZ`), preferring the side that shows from the default camera (toward the front glass, yaw 28°). Footprint **0.14 × 0.14 u**, **kept clear 0.2 u all round** (like `Life/RackSites.cs`: not on a path cell, not within 0.25 u of the well, the fire, a door, the name stone or the Keeper's post; paths and `PlaceOnGround` route round it, nothing grows or is built on those cells). It faces the green's centre; if that points away from the front glass it turns to 45° so its face still shows. If no cell fits, it goes to the nearest open ground within 1.4 u (`ApartSpots.AwayFromGreen`), never on a path |
+| **How it persists** | saved as two numbers in `SimState` (`statueFor`, `statueMonth`); the spot is recomputed from the settlement the same way every load (deterministic), so no cell list is stored. Old saves: none |
+
+### B81.1 What it looks like (code-built style kit, no imported assets)
+`PropKind.FounderStatue`, built by a new `PegDoll.Statue(MeshBuilder mb, Vector3 at, float s, Notable who)` in the way of
+`PegDoll.KeeperDoll`: low-poly boxes, prisms and icos, the **name stone's grey** (`Palette` stone tones), one flat colour per part.
+
+| Part | Build | Size (box units) |
+|---|---|---|
+| Plinth, lower step | `mb.Box`, stone, a little chipped (a corner box missing) | 0.14 × 0.03 × 0.14 |
+| Plinth, upper step | `mb.Box`, stone, a shade lighter | 0.09 × 0.03 × 0.09, on the lower step |
+| The figure | the founder's own peg doll in stone: `mb.Prism` body (6 sides), `mb.Ico` head (as `PegDoll`), **one stone grey for all, no skin or tunic colours**; a doll about **1.3 × a person's height** (0.28 u) so it reads from the camp frame (0.28 u ≈ 70 px at 55 px per 0.213) | feet at the plinth's top (0.06 u up), total height 0.34 u |
+| Its tell | what they were: the job's tool in one hand (`Axe`, `Rod`, `Basket`, `Hoe` from the existing prop kit, carved in the same stone) or, for a chief, the antlers' post's crook; a kind person: the hand held out (palm up); no job: both hands at the sides. Pick by `Notable.job` / `trait` | tool ≥ 0.03 u |
+| Wear (view only) | winter: a snow cap on the head and shoulders (a white `Ico` 0.04 u, a look bit like the woodpile's); autumn: two leaves on the plinth's step; none otherwise | |
+| The raising's stages | three look bits on the same prop: block (a plain box 0.06 × 0.1 × 0.06 on the plinth), rough (the block with the head and shoulders cut in: a prism + ico), carved (the full figure). The carving scene steps through them (`hit` on each) | |
+| Name | none carved on it: the figure's name is on the person's card and in the book, and the tap on the statue (as on any prop with a history) opens that person's card as for a person remembered | |
+
+Closed-world: the stone is "the green's stone"; no outside place or "monument" word in a caption. Caption (held moment, once):
+*"{who} is made of stone now, on the green."* [est; the writing guide wins, docs/research/21].
+
+### B81.2 The raising, the one held scene (staged by CampLife as a `CampScene`, as B78; Story moment)
+Cast: up to 6 free people: a **mason** or the best-fit worker (a stonecutter; else a woodcutter or toolmaker) as the carver; one more
+grown-up as the helper; **the founder's family** if any are alive (the person's partner, children, grandchildren: up to 3, kids too);
+anyone else free at the green watches (at most 3 more). Ends with everyone back in their day. ~26 s of real time at scene speed.
+
+| # | Beats | Props · reuse | Cheat |
+|---|---|---|---|
+| B81.a The raising | **1 Block (0–6 s):** the carver and the helper roll a block onto the plinth (B78.c's roll-in: both crouched at the block, pushing, `Push` loop, a dust puff at the stop, `hit` when it seats); the helper steps away wiping the hands. **2 Carving (6–16 s):** the carver circles the block once (`Walk`, 3 s), stands at the camera-facing side and works with B78.b's cut: three rounds of three strokes (arm x 70, a chip puff each, `hit` per round); at the first `hit` the block becomes the rough form, at the second the head shows, at the third the figure and its tell. The family stand in a half ring on the **camera's side**, 0.3 u back, and look at the block (`Look`); kids peek round the grown-ups' legs (`Peek`). **3 Done (16–20 s):** the carver steps back (1.2 s), looks at it, hands on the hips (`HipsPose`), then at the family; the oldest family member (or the carver) nods slowly (0.8 s). **4 The first flowers (20–26 s):** the nearest kid or the founder's youngest descendant carries a small bunch (`Bunch`, the PickFlowers flower) to the foot, kneels (`KneelPose`), lays it on the lower step (`hit`), stands, touches the plinth with one hand (1.2 s); the others come one by one and put a hand on it; then all step back and the scene ends. Reads: two roll a block, one carves a stone person, the family come close and lay flowers | `FounderStatue` (the 3 stages, stays); R B78.c's roll-in, B78.b's cut, B34.b's kneel, B30.d-style nods, `Bunch`, `Peek`, `HipsPose`. N the three look bits | **"Statue: raise now"** |
+
+### B81.3 How the people use it (each a life use unless marked; all free-time only, D "The work still gets done")
+The statue has **one work use** too (the core rule asks for both): **W** the town's sweepers brush the green round it (B58-style
+sweep, 5 s, on the weekly clean); **L** the rest below. Times are view hours.
+
+| # | When · who · how often | Beats | Props · reuse | Cheat |
+|---|---|---|---|---|
+| B81.b Kids climb the base | a kid (5+), daylight (not winter ice days), **sometimes**; a grown-up within 0.6 u | the kid walks to the plinth's camera-facing side, reaches up (x 170), pulls up onto the lower step (0 → +0.03 u over 0.5 s, a wiggle roll ±10° at 6 Hz), steps onto the upper step (+0.06 u in all, 0.4 s) and stands against the figure's leg with one arm round it (x 90 toward it); looks up at the face (`LookUp`, 1 s), waves to a kid below (`Wave`); hops down (squash, `Bounce`, `Dust`). Max one kid on it at a time; **never on the figure** (feet on the steps only, 0.06 u up). Reads: a small doll hugging a stone doll's leg | R B44.a's climb and `Sit`, `Wave`, `LookUp`; N the two-step climb | **"Statue: kids climb"** |
+| B81.c Flowers on the anniversary | the **calendar day of the person's death**, each year, morning, **once a year**; the nearest living family member or, with no family, the oldest grown-up free; plus up to 2 who come and stand | walks to the foot carrying a bunch (`Bunch`; winter: a fir sprig, `Bunch` tinted dark green); kneels (`KneelPose`), lays it at the foot (`hit`), a hand on the figure's foot (1.4 s, head down), stands; the two others come and stand a step back with the head bowed (z 12°, 3 s), then each lays a hand on the plinth. The bunch stays on the lower step **until night**, then gone. Reads: someone brings flowers to the stone and others stand still | N nothing new (the raising's bunch); R `KneelPose`, `Bunch`, `Visit`-style bow of B32.h's quiet visit | **"Statue: flowers (anniversary)"** |
+| B81.d Sit at its foot | a grown-up, an **old** one first (age ≥ 60 or `job` "elder"), midday or evening, **often**; weather: not in rain or on a snow day | walks to the plinth's side facing the green (not the camera's), turns, sits on the lower step with the back against the plinth (`SitOut` pose, 6–14 s, head up at the figure now and then: `LookUp` 1.2 s, a slow nod once); a second person sometimes sits beside (`Chat` pair, B50.b's meet): they talk, the first points up at the figure (arm x 110, 0.8 s). Then gets up (a hand on the knee) and goes. Reads: an old one rests against the stone and looks up at it | R `Sit`, `SitOut`, `LookUp`, `Chat`, the stump-sit's get-up | **"Statue: sit at its foot"** |
+| B81.e A nod in passing | **any grown-up** whose walk crosses the green within 0.5 u of the statue, **often** (about 1 in 3 crossings; not the first crossing of a day for the same person) | slows to a stop's-worth (walk x 0.6 over 0.6 s), turns the head to it (0.4 s), small nod (head down 15°, 0.5 s, up 0.3 s); someone who **knew them** (alive when the founder was) also touches the plinth in passing (hand out x 70, 0.4 s) and goes on; the others do the nod only; kids who never knew them just run past (they have the climb). Never stops the walk longer than 1.5 s in all. Reads: a small bow to a stone as someone goes by | R the existing head `Look` and nod, `Walk` slowing | **"Statue: a nod in passing"** |
+| B81.f The green's sweep (work) | the weekly clean of the green (B58-style sweepers): the sweeper brushes the plinth's feet last (2 strokes, 3 s) and leaves it clear | R the sweep | with the sweepers' own cheat ("Sweep the green") |
+
+**Not in this spec (to stay small):** a festival wreath on the statue (the festival could hang one: a follow-up row), birds on its head,
+the figure changing with the era. All could be later polish rows.
+
+### B81.4 Debug cheats (the "Statue (#776)" block in `View/SliceDebugPanel.cs`, one block, tagged `// #776`)
+- **"Statue: raise now"**: jumps to a village box if the box is smaller (like "Jump: a village box"), picks the person
+  (most-pinned, else the founder; if both are alive it marks the pinned one dead a year back), clears busy moments
+  (`HeldMomentStage.DebugEndPlaying`), and starts B81.a on the green now. Names the person in the result line.
+- **"Statue: stand it"**: puts the finished statue on the green with no scene (the setup for the cheats below).
+- **"Statue: kids climb"**, **"Statue: flowers (anniversary)"**, **"Statue: sit at its foot"**, **"Statue: a nod in passing"**: each makes
+  sure the statue stands, then starts that use now with the people nearest the camera's centre (an old person for the sit, a living
+  family member for the flowers).
+- **"Statue: skip to the anniversary"**: advances the box to the person's death day, morning.
+- **"Founder: die now"**: kills the most-pinned (or founder) notable so the rule can fire (with "skip a year" below).
+- **"Statue: skip a year"**: moves `diedMonth` a year back so the rule's wait is over.
+- **"Statue: remove"**: clears it (the reset), so the raising can be replayed.
+
+### B81.5 Assets, safety, tests
+- **Assets needed:** none imported. `FounderStatue` (plinth, three stages, figure with a tell) built in code, house style; the bunch and tools are existing props.
+- **Kids safe:** climbing only the two steps (0.06 u), never the figure, one at a time, a grown-up within 0.6 u; the carver's cutting stone stays with the grown-up, kids watch from 0.3 u back.
+- **Tests (when built):** pure: the rule (`StatueRules.Who`, `.Ready`: most-pinned over founder, a year after death, village and 12 people, never while alive), the spot finder (never on a path, 0.2 u clear ring, same spot every load); PlayMode: the raising scene plays in a village box and leaves the statue, each use plays (`Playing(use)` then free), the work minutes stay within 5 % over 10 view days (D); AnimLab: one clip per beat (`Tools/AnimBench/clips/776-statue-*.json`).
+- **Screenshot check:** a close shot at 750×1334 of the statue and the family at the raising, and of a kid on the base.
+
+### B81.6 Open questions for the user
+1. **Who is "the founder"** when nobody was pinned a day: the first notable of the box (★), or the first chief, or nobody (no statue)?
+2. **Wait after death:** one game year (★) or the same view day as the quiet visit?
+3. **The caption's wording:** the one above, or none (the scene alone, seen not read)?
+4. **A festival wreath** on the statue every year: add it as a follow-up row (★ later), or in this one?

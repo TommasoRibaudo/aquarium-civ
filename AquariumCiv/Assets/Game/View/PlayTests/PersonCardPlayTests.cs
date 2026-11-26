@@ -139,34 +139,50 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>#207: how each shown doll moved, frame by frame, while the card opened: the longest step in one frame, the fastest, and the whole way.</summary>
         sealed class DollStepWatch : MonoBehaviour
         {
+            /// <summary>The fastest any doll is driven toward its spot (PeopleView.Drive: the play/pair/camp caps are 0.75 u/s; a walker is the plan's pace plus DrawnSlack).</summary>
+            public const float FastestDrive = 1f;
             PeopleView pv;
             readonly Dictionary<int, Vector3> last = new(), first = new();
-            readonly Dictionary<int, (float step, float speed, float frameDt)> worst = new();
+            readonly Dictionary<int, (float excess, float step, float frameDt)> worst = new();
+            /// <summary>Dolls that were out of sight (indoors, in a tent) in some frame: coming out of a door is no jump, and their before/after distance proves nothing.</summary>
+            public readonly HashSet<int> WentOutOfSight = new();
+            readonly List<string> why = new();
             float started;
             public void Begin(PeopleView view, List<int> ids)
             {
                 pv = view; started = Time.realtimeSinceStartup;
                 foreach (int n in ids) if (pv.TryGetDollFeet(PersonRef.Notable(n), out var w)) { last[n] = w; first[n] = w; }
+                PeopleView.StepWatch = m => { if (why.Count < 6) why.Add(m); };
             }
+            void OnDestroy() { PeopleView.StepWatch = null; }
             void LateUpdate()
             {
                 if (pv == null) return;
                 float dt = Mathf.Max(1e-4f, Time.unscaledDeltaTime);
+                // Unity clamps the frame the dolls are moved by (Time.maximumDeltaTime): a hitch of half a second moves them one clamped frame, never more
+                float moved = Mathf.Min(dt, Time.maximumDeltaTime);
                 foreach (int n in new List<int>(last.Keys))
                 {
-                    if (!pv.TryGetDollFeet(PersonRef.Notable(n), out var w)) continue;
+                    if (!pv.TryGetDollFeet(PersonRef.Notable(n), out var w)) { WentOutOfSight.Add(n); last.Remove(n); continue; }
                     float step = Vector3.Distance(w, last[n]);
                     last[n] = w;
-                    if (!worst.TryGetValue(n, out var had) || step > had.step) worst[n] = (step, step / dt, dt);
+                    // a jump is more than the fastest drive covers in the frame: a long frame (a hitch while the card builds) legitimately takes a long step
+                    float excess = step - FastestDrive * moved;
+                    if (!worst.TryGetValue(n, out var had) || excess > had.excess) worst[n] = (excess, step, dt);
                 }
+                // someone who came back into sight starts a new baseline where they appear
+                foreach (int n in WentOutOfSight)
+                    if (!last.ContainsKey(n) && pv.TryGetDollFeet(PersonRef.Notable(n), out var back)) last[n] = back;
             }
             public float Elapsed => Time.realtimeSinceStartup - started;
-            public float WorstStep { get { float m = 0f; foreach (var v in worst.Values) m = Mathf.Max(m, v.step); return m; } }
+            /// <summary>The biggest step beyond what the fastest drive covers in that frame (0 or less: no doll outran its drive).</summary>
+            public float WorstStep { get { float m = float.NegativeInfinity; foreach (var v in worst.Values) m = Mathf.Max(m, v.excess); return m; } }
             public string Report()
             {
                 var s = new System.Text.StringBuilder($"over {Elapsed:0.00} s: ");
                 foreach (var (n, v) in worst)
-                    if (v.step > 0.002f) s.Append($"doll {n} way {Vector3.Distance(first[n], last[n]):0.000} worst step {v.step:0.000} in {v.frameDt:0.000} s; ");
+                    if (v.step > 0.002f) s.Append($"doll {n} way {(last.TryGetValue(n, out var l) ? Vector3.Distance(first[n], l) : -1f):0.000} worst step {v.step:0.000} in {v.frameDt:0.000} s; ");
+                foreach (var m in why) s.Append("[view: ").Append(m).Append("] ");
                 return s.ToString();
             }
         }
@@ -239,10 +255,10 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual(knocks, glass.Knocks, "a tap on a person is no knock");
                 // #207: a jump is a long step in one frame. The whole way was never the measure: the window is a second, and a doll gliding into its slot at the
                 // walk's pace with the catch-up covers 0.3 u in it (doll 21: 0.298 u in 1.02 s, longest step 0.071 u in a 0.16 s frame).
-                Assert.Less(watch.WorstStep, 0.12f, "a doll jumped when the card opened: " + watch.Report());
+                Assert.Less(watch.WorstStep, 0.12f, "a doll jumped (a step beyond the fastest drive for that frame) when the card opened: " + watch.Report());
                 foreach (int n in shownIds)
-                    if (before.TryGetValue(n, out var b0) && pv.TryGetDollFeet(PersonRef.Notable(n), out var b1))
-                        Assert.Less(Vector3.Distance(b0, b1), 0.05f + 2f * LifePlanner.RealWalkSpeed * watch.Elapsed, $"doll {n} outran a walk while the card opened; {watch.Report()}");
+                    if (!watch.WentOutOfSight.Contains(n) && before.TryGetValue(n, out var b0) && pv.TryGetDollFeet(PersonRef.Notable(n), out var b1))
+                        Assert.Less(Vector3.Distance(b0, b1), 0.05f + DollStepWatch.FastestDrive * watch.Elapsed, $"doll {n} outran a walk while the card opened; {watch.Report()}");
                 UnityEngine.Object.Destroy(watch.gameObject);
 
                 var card = cards.CardRoot.Q("person-card");

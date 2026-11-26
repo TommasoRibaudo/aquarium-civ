@@ -217,7 +217,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsFalse(GameClock.Instance.Held);
 
                 // the camera answers a drag again
-                float yaw = cam.yaw;
+                float yaw = cam.yaw; var target0 = cam.target; // #587: one finger pans (a turn is two fingers), so the drag shows as a moved target
                 var a = new Vector2(Screen.width * 0.3f, Screen.height * 0.5f);
                 BeginTouch(touchId, a, queueEventOnly: true);
                 yield return null;
@@ -225,7 +225,7 @@ namespace AquariumCiv.View.PlayTests
                 EndTouch(touchId, a + new Vector2(300f, 0f), delta: Vector2.zero, queueEventOnly: true);
                 touchId++;
                 for (int i = 0; i < 20; i++) yield return null;
-                Assert.AreNotEqual(yaw, cam.yaw, "a drag orbits after the moment");
+                Assert.IsTrue(cam.yaw != yaw || (cam.target - target0).sqrMagnitude > 1e-6f, "a drag moves the camera after the moment (one finger pans)");
             }
             finally { Close(); }
         }

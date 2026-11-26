@@ -22,6 +22,10 @@ namespace AquariumCiv.View
         public const float Flight = 0.6f, Apex = 0.3f, Spin = 720f, MissApex = 0.05f, MissFlight = 0.4f;
         /// <summary>Where the line's end is, out from the fisher's feet along the way they face (adult units): the rod's tip, 0.06 u back from the edge, and the line.</summary>
         public const float LineReach = 0.34f, BasketSide = 0.08f;
+        /// <summary>#767: the most a fisher's body turns from the water toward who they talk with (degrees): the rod's tip stays out over the water.</summary>
+        public const float ChatTurnMax = 22f;
+        /// <summary>#767: the yaw a fisher stands at: facing the water (<paramref name="waterYaw"/>), turned toward the partner (<paramref name="partnerYaw"/>) by at most <see cref="ChatTurnMax"/>.</summary>
+        public static float ChatYaw(float waterYaw, float partnerYaw) => waterYaw + Mathf.Clamp(Mathf.DeltaAngle(waterYaw, partnerYaw), -ChatTurnMax, ChatTurnMax);
         /// <summary>The end beat's length (block seconds left), and when in it the fish is in the hand.</summary>
         public const float EndSeconds = 1.6f, FishInHandAt = 0.3f;
         /// <summary>The basket shows this many fish at most (the pile of a few); the sim has no per-fish count.</summary>

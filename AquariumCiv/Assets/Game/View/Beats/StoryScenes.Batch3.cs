@@ -157,6 +157,8 @@ namespace AquariumCiv.View
         // ================================================================== B80.c the tinkerer's bucket
         /// <summary>B80.c: the mend at the fire (ChoreBeats' Mend, seated), how far the watchers stand to the right.</summary>
         public const float SpoutMendFor = 4f, WatchRight = 0.15f;
+        /// <summary>#779: how far apart the watchers stand along the shore (a body width and a little).</summary>
+        public const float WatchStep = 0.12f;
 
         /// <summary>
         /// B80.c: <paramref name="who"/> sits by the fire and bends a spout onto a bucket (ChoreBeats' <see cref="DollStyle.Mend"/>, seated, the
@@ -166,7 +168,7 @@ namespace AquariumCiv.View
         /// right, and everyone laughs. Then the tinkerer walks off with the bucket.
         /// </summary>
         public static CampScene TinkererBucket(int who, Vector2 whoAt, IList<int> watchers, IList<Vector2> watchersAt, Vector2 fire, Vector2 edge, Vector2 toWater,
-            Vector2 toCam, float t0)
+            Vector2 toCam, float t0, StoryRoom room = null)
         {
             toCam = Unit(toCam, Vector2.down); toWater = Unit(toWater, Vector2.up);
             var s = new CampScene(CampUse.TinkererBucket, t0, (fire + edge) * 0.5f) { followReach = 2f };
@@ -196,20 +198,25 @@ namespace AquariumCiv.View
             s.Part(m, t, t + 1.4f, edge, edge - face, DollStyle.Laugh, null, PropKind.SpoutBucketEmpty); t += 1.4f;
             float end = t;
             // the watchers, to the right, a step further right at the pour
+            // #779: each watcher has a spot of their own along the shore, a body width from the tinkerer's (the pond's edge and where they walk off
+            // to), from each other and from anyone else about, and not in the water; their step right and their walk off are free too
+            var tinkerEnd = edge - face * 0.35f + right * 0.1f;
+            var atSpot = new List<Vector2> { edge, tinkerEnd }; var atFurther = new List<Vector2> { edge, tinkerEnd }; var atAway = new List<Vector2> { edge, tinkerEnd }; // one list a phase: they stand there together
             int nw = Mathf.Min(2, watchers.Count);
             for (int i = 0; i < nw; i++)
             {
                 int k = s.Add(watchers[i]);
-                var spot = edge + right * (WatchRight + i * 0.1f) - face * 0.06f;
-                var further = spot + right * 0.08f;
+                var spot = BodySpots.Free(edge + right * (WatchRight + i * WatchStep) - face * 0.06f, right, atSpot, room);
+                var further = BodySpots.Free(spot + right * 0.08f, right, atFurther, room);
+                var away = BodySpots.Free(further + right * 0.15f - face * 0.2f, right, atAway, room);
                 float w = WalkTime(watchersAt[i], spot, Walk), start = Mathf.Max(0f, s.b - w), there = Mathf.Min(start + w, s.c - 0.6f); // there before the pour
                 s.Part(k, start, there, spot, edge, DollStyle.Stand, null, PropKind.None, Walk);
                 if (there < s.c - 0.6f) s.Part(k, there, s.c - 0.6f, spot, edge, DollStyle.Look);
                 s.Part(k, s.c - 0.6f, s.c, further, edge, DollStyle.Stand, null, PropKind.None, 0.3f); // a quick step right
                 s.Part(k, s.c, end, further, edge, DollStyle.Laugh);
-                Go(s, k, end, 1.2f, further + right * 0.15f - face * 0.2f, further - face, Walk);
+                Go(s, k, end, 1.2f, away, further - face, Walk);
             }
-            Go(s, m, end, 1.4f, edge - face * 0.35f + right * 0.1f, edge - face, Walk).prop = PropKind.SpoutBucketEmpty;
+            Go(s, m, end, 1.4f, tinkerEnd, edge - face, Walk).prop = PropKind.SpoutBucketEmpty;
             return s;
         }
 

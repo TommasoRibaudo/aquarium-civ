@@ -45,6 +45,7 @@ namespace AquariumCiv.View
             public List<RitualBubble> bubbles;
             public StagedSign sign; // t1-moments: the wedding's arch and petals
             public readonly HashSet<long> said = new HashSet<long>(); // S-ritual: the beats' lines said (member key, step)
+            public string vowLine; // #764: the Keeper's child's wedding line, said on the caption once the vows begin
         }
 
         static readonly List<Live> lives = new List<Live>();
@@ -151,13 +152,42 @@ namespace AquariumCiv.View
             }
             if (live.moment.kind == MomentKind.Wedding && live.sim.KeeperWeddingLine(live.moment.entryId) is string wed)
             {
-                // #722 (5.2): the Keeper's child's wedding says its line on the caption as it starts, the way the rituals do.
-                LastCaption = wed;
-                ShowMeDirector.Instance?.Say(wed, PersonRef.None, StoryMoment.CaptionSeconds, LineKind.Echo);
+                // #722 (5.2): the Keeper's child's wedding says its line on the caption. #764: not as it is queued or the people gather: when the
+                // vows begin (StepVowLine), the couple at their places.
+                LastCaption = null;
+                live.vowLine = wed;
             }
             LastWhy = null;
             Started++;
             return true;
+        }
+
+        /// <summary>#764: the vows of the wedding staged for <paramref name="sim"/> have begun (the couple are at their places, face to face):
+        /// what the wedding says of the vows (the "I do" bubble, the Keeper's child's line) waits for it. False when no wedding is staged.</summary>
+        public static bool VowsBegun(SimCore sim)
+        {
+            foreach (var l in lives) if (l.scene != null && !l.over && ReferenceEquals(l.sim, sim) && l.scene.kind == MomentKind.Wedding && Begun(l)) return true;
+            return false;
+        }
+
+        /// <summary>The wedding's scene second <paramref name="live"/> is at now, and whether it has reached the vows.</summary>
+        static bool Begun(Live live)
+        {
+            var sc = live.scene;
+            if (live.pv == null || sc == null || sc.plan == null || sc.plan.vowAt < 0f || live.pv.Now.day != sc.day) return false;
+            return LifeClock.RealSecondsBetween(sc.start, live.pv.Now.hour) >= sc.plan.vowAt;
+        }
+
+        /// <summary>#764: each frame (the director's lines step): the Keeper's child's wedding says its line on the caption once the vows begin.</summary>
+        public static void StepVowLine(SimCore sim)
+        {
+            foreach (var l in lives)
+            {
+                if (l.vowLine == null || l.over || l.scene == null || !ReferenceEquals(l.sim, sim) || !Begun(l)) continue;
+                string wed = l.vowLine; l.vowLine = null;
+                LastCaption = wed;
+                ShowMeDirector.Instance?.Say(wed, PersonRef.None, StoryMoment.CaptionSeconds, LineKind.Echo);
+            }
         }
 
         /// <summary>#721: how long a ritual's name stays on the caption (real seconds) [est].</summary>

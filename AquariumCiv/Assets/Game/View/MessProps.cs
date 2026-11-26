@@ -262,19 +262,73 @@ namespace AquariumCiv.View
         }
 
         // ---------------- looks ----------------
-        static Mesh WeedMesh(int seed)
+        // #559: weeds read as something to pull, not as a pretty bush: thin pointed blades and bent stalks in yellow-green and
+        // straw, leaning every way, a few seed heads, dead brown at the base. No dome, no flowers (the garden's bushes have both).
+        public const int WeedBlades = 34, WeedStalks = 3;
+        /// <summary>The widest a weed blade is at its foot, in mesh units (a blade is a sliver; tests pin it).</summary>
+        public const float WeedBladeHalfWidth = 0.009f;
+        static readonly Color WeedFoot = new(0.36f, 0.27f, 0.16f), WeedDry = new(0.70f, 0.55f, 0.24f), WeedYellow = new(0.82f, 0.74f, 0.30f),
+            WeedGreen = new(0.52f, 0.60f, 0.20f), WeedSeed = new(0.30f, 0.20f, 0.10f);
+
+        /// <summary>A bent blade: a foot, a knee that leans out, a tip that droops further. Two thin triangles per segment (both faces).</summary>
+        static void WeedBlade(MeshBuilder mb, Vector3 g, float h, float yaw, float lean, float halfW, Color mid)
         {
-            var mb = new MeshBuilder(seed * 13 + 3);
-            mb.sway = 0.3f;
-            mb.Ico(new Vector3(0.02f, 0.04f, 0), 0.07f, new Vector3(1.2f, 0.75f, 1.1f), Palette.Pine, 0.25f);
-            mb.sway = 0f;
-            for (int k = 0; k < 7; k++)
+            var dir = new Vector3(Mathf.Cos(yaw), 0f, Mathf.Sin(yaw));
+            var side = new Vector3(-dir.z, 0f, dir.x) * halfW;
+            var knee = g + dir * (h * lean * 0.35f) + Vector3.up * (h * 0.55f);
+            var tip = g + dir * (h * lean) + Vector3.up * (h * 0.92f);
+            var foot = new Color(WeedFoot.r, WeedFoot.g, WeedFoot.b);
+            const float still = 0.012f;
+            // lower half: a sliver from the brown foot to the knee
+            mb.TriCorners(g - side, knee, g + side, foot, mid, foot, still, 0.5f, still);
+            mb.TriCorners(g + side, knee, g - side, foot, mid, foot, still, 0.5f, still);
+            // upper half: from the knee (narrower) to a sharp tip
+            var ks = side * 0.55f;
+            mb.TriCorners(knee - ks, tip, knee + ks, mid, mid, mid, 0.5f, 1f, 0.5f);
+            mb.TriCorners(knee + ks, tip, knee - ks, mid, mid, mid, 0.5f, 1f, 0.5f);
+        }
+
+        /// <summary>The weed patch: a dead-brown scrap at the foot, <see cref="WeedBlades"/> thin blades leaning every way and
+        /// <see cref="WeedStalks"/> bent stalks with a small dark seed head. Its tallest point stays about as high as before, so the tap area is unchanged.</summary>
+        public static Mesh WeedMesh(int seed)
+        {
+            var mb = new MeshBuilder(seed * 13 + 3) { jitter = 0.08f };
+            // a few dead brown scraps lying at the foot
+            for (int k = 0; k < 3; k++)
             {
-                float a = k / 7f * Mathf.PI * 2f + mb.Range(0f, 0.6f), r = mb.Range(0.02f, 0.09f);
-                AquariumCiv.View.Pieces.GrassTuft(mb, new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r), mb.Range(0.12f, 0.24f), k % 2 == 0 ? Palette.LeafB : Palette.Pine);
+                float a = mb.Range(0f, 6.28f), r = mb.Range(0.02f, 0.07f);
+                var g = new Vector3(Mathf.Cos(a) * r, 0.004f, Mathf.Sin(a) * r);
+                var d = new Vector3(Mathf.Cos(a + 1.3f), 0f, Mathf.Sin(a + 1.3f)) * mb.Range(0.025f, 0.04f);
+                var sd = new Vector3(-d.z, 0f, d.x) * 0.25f;
+                mb.Tri(g - sd, g + d, g + sd, WeedFoot);
+                mb.Tri(g + sd, g + d, g - sd, WeedFoot);
             }
-            for (int k = 0; k < 3; k++)   // thistle heads, so the patch reads as weeds and not as a nicer lawn
-                mb.Ico(new Vector3(mb.Range(-0.06f, 0.06f), mb.Range(0.17f, 0.24f), mb.Range(-0.06f, 0.06f)), 0.014f, Vector3.one, Palette.Flowers[3], 0.1f);
+            for (int k = 0; k < WeedBlades; k++)
+            {
+                float a = mb.Range(0f, 6.28f), r = mb.Range(0.01f, 0.12f);
+                var g = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                // some blades are short and dry, some tall and yellow-green; the lean is outward-ish but uneven
+                var col = k % 4 == 0 ? WeedDry : k % 5 == 0 ? WeedGreen : WeedYellow;
+                float h = mb.Range(0.035f, 0.07f);
+                WeedBlade(mb, g, h, a + mb.Range(-1.2f, 1.2f), mb.Range(0.25f, 0.85f), mb.Range(0.006f, 0.009f), col);
+            }
+            for (int k = 0; k < WeedStalks; k++)
+            {
+                float a = k / (float)WeedStalks * 6.28f + mb.Range(0f, 1.2f), r = mb.Range(0.01f, 0.09f);
+                var g = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                float h = mb.Range(0.06f, 0.078f), yaw = a + mb.Range(-0.8f, 0.8f), lean = mb.Range(0.3f, 0.6f);
+                var dir = new Vector3(Mathf.Cos(yaw), 0f, Mathf.Sin(yaw));
+                var knee = g + dir * (h * lean * 0.3f) + Vector3.up * (h * 0.55f);
+                var tip = g + dir * (h * lean) + Vector3.up * h;
+                var side = new Vector3(-dir.z, 0f, dir.x) * 0.003f;
+                mb.sway = 0.35f;
+                mb.Tri(g - side, knee, g + side, WeedDry); mb.Tri(g + side, knee, g - side, WeedDry);
+                mb.Tri(knee - side, tip, knee + side, WeedDry); mb.Tri(knee + side, tip, knee - side, WeedDry);
+                // the seed head: a small dark, pointed spike on the tip
+                var up = (tip - knee).normalized;
+                mb.Prism(tip - up * 0.004f, 0.005f, 0f, 0.02f, 4, WeedSeed, Quaternion.FromToRotation(Vector3.up, up));
+                mb.sway = 0f;
+            }
             return mb.ToMesh("CareWeeds");
         }
 

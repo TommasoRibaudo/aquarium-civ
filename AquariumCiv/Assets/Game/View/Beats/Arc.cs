@@ -20,6 +20,15 @@ namespace AquariumCiv.View
         Burst,
     }
 
+    /// <summary>#772: where the glass panes' inner faces stand (box units), for what is thrown or rolls: x = �(HX + 0.075 - half the pane's thickness),
+    /// z = the land's front and back (Terrain.ZMin = -2.2, ZMax = 3.8; the land is NOT centred on z = 0) � the same. A test pins these to the land's.</summary>
+    public static class GlassBox
+    {
+        public const float HalfX = 3.065f, ZMin = -2.265f, ZMax = 3.865f;
+        /// <summary>The share of its speed a ball keeps off the glass.</summary>
+        public const float Rebound = 0.55f;
+    }
+
     /// <summary>Where an arc object is in its life.</summary>
     public enum ArcStage { Waiting, Flying, Bouncing, Rolling, Stuck, Resting, Gone }
 
@@ -47,6 +56,21 @@ namespace AquariumCiv.View
         public float bounce1, bounce2, roll, rollSeconds;
         /// <summary><see cref="Landing.Stick"/>: the clamp off vertical (degrees) and the quiver.</summary>
         public float stickMin, stickMax, wobbleDeg, wobbleHz, wobbleTau;
+        /// <summary>#772: the glass. When <see cref="bounded"/>, the object's xz stays inside [minX, maxX] x [minZ, maxZ]: a path that would pass a
+        /// pane bounces off it instead, the way back at <see cref="rebound"/> of the speed it came in with (the straight path is folded).</summary>
+        public bool bounded;
+        public float minX, maxX, minZ, maxZ, rebound;
+
+        /// <summary>This shot kept inside the glass (<see cref="GlassBox"/>), the ball's own radius inside the pane.</summary>
+        public ArcShot InsideGlass(float margin, float reboundSpeed = GlassBox.Rebound)
+        {
+            var s = this;
+            s.bounded = true;
+            s.minX = -GlassBox.HalfX + margin; s.maxX = GlassBox.HalfX - margin;
+            s.minZ = GlassBox.ZMin + margin; s.maxZ = GlassBox.ZMax - margin;
+            s.rebound = reboundSpeed;
+            return s;
+        }
 
         /// <summary>A throw with the spec sheets' defaults for its landing (§0.6: ball bounces 0.09/0.03, roll 0.25 u in 0.8 s; spear
         /// 30–50°, wobble 6°, 10 Hz, τ 0.25 s).</summary>
@@ -72,6 +96,8 @@ namespace AquariumCiv.View
         public Vector3 position, velocity;
         public Quaternion rotation;
         public ArcStage stage;
+        /// <summary>#772: the straight path has passed a glass pane by now (the position is the bounce off it).</summary>
+        public bool beyondGlass;
         /// <summary>Seconds since it landed (negative while it flies).</summary>
         public float sinceLanding;
         public bool Visible => stage != ArcStage.Waiting && stage != ArcStage.Gone;
@@ -125,8 +151,32 @@ namespace AquariumCiv.View
         static float Gravity(in ArcShot s) => Mathf.Max(0.5f, 8f * Mathf.Max(0.01f, s.apex) / (s.flight * s.flight));
         static float Hop(float height, float g) => height > 0f ? 2f * Mathf.Sqrt(2f * height / g) : 0f;
 
-        /// <summary>The object at <paramref name="time"/> (the same clock as <see cref="ArcShot.launchAt"/>).</summary>
+        /// <summary>The object at <paramref name="time"/> (the same clock as <see cref="ArcShot.launchAt"/>). A shot kept inside the glass
+        /// (<see cref="ArcShot.InsideGlass"/>) bounces off a pane it would pass, in flight, on its bounces and in its roll.</summary>
         public static ArcSample Sample(in ArcShot s, float time)
+        {
+            var o = SampleStraight(s, time);
+            if (!s.bounded) return o;
+            var p = o.position;
+            float x = Fold(p.x, s.minX, s.maxX, s.rebound), z = Fold(p.z, s.minZ, s.maxZ, s.rebound);
+            o.beyondGlass = x != p.x || z != p.z;
+            o.position = new Vector3(x, p.y, z);
+            return o;
+        }
+
+        /// <summary>Did the straight path pass a pane in (<paramref name="from"/>, <paramref name="to"/>]? The once-only thunk.</summary>
+        public static bool HitGlassBetween(in ArcShot s, float from, float to)
+            => s.bounded && Sample(s, to).beyondGlass && !Sample(s, from).beyondGlass;
+
+        /// <summary>The coordinate <paramref name="v"/> folded back off the wall it passed, the way back at <paramref name="rebound"/> of the speed.</summary>
+        public static float Fold(float v, float lo, float hi, float rebound)
+        {
+            if (v > hi) return Mathf.Max(lo, hi - rebound * (v - hi));
+            if (v < lo) return Mathf.Min(hi, lo + rebound * (lo - v));
+            return v;
+        }
+
+        static ArcSample SampleStraight(in ArcShot s, float time)
         {
             var o = new ArcSample { sinceLanding = time - s.LandAt };
             if (time < s.launchAt) { o.stage = ArcStage.Waiting; o.position = s.start; o.rotation = Along(s.Heading); return o; }
