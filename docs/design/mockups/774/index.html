@@ -1,0 +1,93 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Mock-ups for #774</title><style>
+:root{--ink:#3D2A1E;--ink-soft:#4A3324;--timber:#6A4B36;--paper:#F3E9D6;--brass:#B88A3E;--edge:#D3B684;--brass-light:#D9B873;
+--primary:#9E5033;--on-primary:#EFE3CC;--moss:#526E3A;--pressed:#E2D3B3;--sheet:rgba(243,233,214,.96);--stone:#9a9288}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:#2b2622;font-family:Georgia,'Palatino Linotype',serif;color:var(--ink)}
+h1,h2{color:#EFE3CC;font-weight:600}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.cap{color:#d9cdb4;font:13px/1.35 system-ui,sans-serif;margin:6px 0 0;max-width:393px}
+.phone{flex:none;position:relative;overflow:hidden;border-radius:26px;border:3px solid #111;background:linear-gradient(#9fc7b4 0,#7fae86 38%,#5d8b6b 100%)}
+.f375{width:375px;height:667px}.f393{width:393px;height:852px}
+.tank{position:absolute;inset:0}
+.tank i{position:absolute;display:block}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--sheet);border-radius:26px 26px 0 0;box-shadow:0 -4px 14px rgba(46,42,39,.35);display:flex;flex-direction:column;overflow:hidden}
+.sheet.tall{top:92px}.sheet.short{height:30%}
+.pad{padding:0 14px}
+.head{display:flex;align-items:center;gap:10px;padding:12px 14px 2px}
+.head h3{margin:0;font-size:19px;flex:1;line-height:1.1}
+.btn{font:600 12px system-ui,sans-serif;border:1.5px solid var(--timber);border-radius:16px;padding:6px 11px;background:var(--paper);color:var(--ink)}
+.btn.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.x{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--timber);text-align:center;line-height:27px;font:600 15px system-ui}
+.sub{padding:0 14px 6px 62px;font-size:12.5px;color:var(--ink-soft);margin-top:-2px}
+.body{flex:1;overflow:hidden;padding:0 14px 10px;position:relative}
+.fade{position:absolute;left:0;right:0;bottom:0;height:38px;background:linear-gradient(transparent,var(--sheet));pointer-events:none}
+h4{margin:12px 0 6px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--timber)}
+h4 small{font:400 11px system-ui;text-transform:none;letter-spacing:0;color:var(--ink-soft);margin-left:6px}
+.doll{--c:#c98f5a;width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 50% 36%,#f1d3b0 0 30%,var(--c) 31%);border:2px solid var(--timber);flex:none;position:relative;display:inline-block}
+.doll.big{width:46px;height:46px}.doll.sm{width:28px;height:28px;border-width:1.5px}
+.doll.dead{filter:grayscale(1) brightness(1.08);opacity:.7;border-color:var(--stone)}
+.doll.here{box-shadow:0 0 0 3px var(--brass)}
+.doll .st{position:absolute;right:-5px;bottom:-4px;width:12px;height:14px;background:#cfc8bd;border:1.5px solid #7d766c;border-radius:6px 6px 1px 1px}
+.doll .al{position:absolute;right:-3px;bottom:-2px;width:10px;height:10px;border-radius:50%;background:var(--moss);border:1.5px solid var(--paper)}
+.chips{display:flex;gap:10px;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+.kin{display:flex;flex-direction:column;align-items:center;width:58px;font:11.5px/1.1 Georgia,serif;text-align:center;flex:none}
+.kin b{font-weight:600}.kin span{font-size:10px;color:var(--ink-soft);font-family:system-ui}
+.kin .doll{margin-bottom:3px}
+.rel{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid rgba(106,75,54,.2)}
+.rel .t{flex:1;font-size:13px;line-height:1.28}.rel .t b{font-weight:700}.rel .t em{display:block;font-size:12px;color:var(--ink-soft)}
+.tag{font:600 10px system-ui;background:var(--pressed);border-radius:9px;padding:2px 7px;color:var(--timber);margin-left:4px;vertical-align:1px}
+.tag.riv{background:#e9c9bb;color:var(--primary)}
+.show{font:600 11px system-ui;border:1.5px solid var(--timber);border-radius:13px;padding:4px 8px;white-space:nowrap}
+.tl{position:relative;margin-left:8px;padding-left:16px;border-left:2px solid var(--edge)}
+.tl .e{position:relative;padding:0 0 9px;font-size:13px;line-height:1.28}
+.tl .e:before{content:'';position:absolute;left:-23px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--paper);border:2px solid var(--brass)}
+.tl .e.best:before{background:var(--brass)}
+.tl .e .y{font:700 11px system-ui;color:var(--timber);display:block}
+.tl .e .star{color:var(--brass);font-size:12px}
+.tabs{display:flex;gap:0;margin:6px 14px 0;border-bottom:2px solid var(--edge)}
+.tabs div{flex:1;text-align:center;font:600 13px system-ui;padding:8px 0;color:var(--ink-soft);border-bottom:3px solid transparent;margin-bottom:-2px}
+.tabs div.on{color:var(--ink);border-color:var(--primary);font-family:Georgia,serif;font-weight:700}
+.tabs div small{font:600 10px system-ui;background:var(--pressed);border-radius:8px;padding:1px 6px;margin-left:3px}
+.note{font-size:12px;color:var(--ink-soft);font-style:italic}
+.quote{font-style:italic;font-size:13px;margin:8px 0 2px}
+.tree{background:var(--paper)}
+.tbar{display:flex;align-items:center;gap:8px;padding:12px 14px 6px;background:var(--paper)}
+.tbar h3{margin:0;font-size:18px;flex:1}
+.seg{display:flex;gap:6px;padding:0 14px 8px;background:var(--paper);overflow:hidden}
+.seg div{font:600 11.5px system-ui;border:1.5px solid var(--timber);border-radius:15px;padding:5px 10px;white-space:nowrap;background:var(--paper)}
+.seg div.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.canvas{position:absolute;left:0;top:0}
+.vp{position:relative;flex:1;overflow:hidden;background:var(--paper);background-image:radial-gradient(rgba(106,75,54,.08) 1px,transparent 1px);background-size:14px 14px}
+.nd{position:absolute;width:62px;text-align:center;font:600 10.5px/1.05 Georgia,serif}
+.nd .doll{display:block;margin:0 auto 2px}
+.nd span{display:block;font:9.5px system-ui;color:var(--ink-soft);font-weight:400}
+.gut{position:absolute;left:0;top:0;bottom:0;width:56px;background:var(--paper);border-right:2px solid var(--edge);z-index:2}
+.gen{position:absolute;left:0;width:56px;text-align:center;font:700 10px/1.2 system-ui;color:var(--timber)}.gen b{font:700 14px Georgia}
+.fold{position:absolute;font:600 10px system-ui;background:var(--pressed);border:1.5px dashed var(--timber);border-radius:12px;padding:5px 7px;text-align:center}
+.mini{position:absolute;right:8px;bottom:8px;width:74px;height:96px;background:rgba(243,233,214,.95);border:1.5px solid var(--timber);border-radius:8px;z-index:3}
+.mini i{position:absolute;border-radius:50%;width:4px;height:4px;background:var(--timber)}
+.mini i.d{background:var(--stone)}
+.mini u{position:absolute;border:1.5px solid var(--primary);border-radius:3px;background:rgba(158,80,51,.12)}
+.nav{display:flex;justify-content:space-around;padding:8px 0 12px;background:var(--paper);border-top:1px solid var(--edge);font:600 11px system-ui;color:var(--ink-soft)}
+.nav .on{color:var(--primary);border-bottom:2px solid var(--primary)}
+.line{display:flex;gap:10px;padding:10px 14px;border-top:1px solid rgba(106,75,54,.18);position:relative}
+.spine{position:absolute;left:36px;top:0;bottom:0;width:2px;background:var(--edge)}
+.gl{background:var(--paper);width:44px;flex:none;font:700 10px system-ui;color:var(--timber);text-align:center;z-index:1}
+.gl b{display:block;font-size:15px;font-family:Georgia}
+.lp{flex:1}.lp .n{font-weight:700;font-size:14px}.lp .m{font:11.5px system-ui;color:var(--ink-soft)}
+.lp .s{font-size:12.5px;margin:3px 0 5px;line-height:1.28}
+.sibs{display:flex;gap:7px;align-items:flex-start}
+.sibs .kin{width:50px}
+
+a{color:#D9B873}.card{background:#3a322b;border-radius:12px;padding:14px 18px;margin:14px 0;max-width:780px;color:#EFE3CC;font:14px/1.4 system-ui}
+.card h2{margin:0 0 4px;font-size:17px}.k{color:#cdbf9e}</style></head><body><h1>#774 mock-ups: person card and family tree</h1>
+<p class="cap" style="max-width:780px">Static pages, invented people, no game code. Open each at phone width; PNGs next to them.</p>
+<div class="card"><h2><a href="person-card-A.html">Person card A: one scroll</a></h2>Family faces first, then relations each with a one-line story, then a single story timeline (Recent and Best folded in: stars mark the told-most ones). No tabs.<br>
+<span class="k">Has: family, friends, rivals, mentors ties, stories with Show me, recent and best lists. Lacks: nothing new for the card; a one-line story per relation needs a small query (the shared chronicle entry), which the sim can derive (sharedStories exists).</span></div>
+<div class="card"><h2><a href="person-card-B.html">Person card B: tabs Family, Friends, Story</a></h2>Same count of tabs as today but named for what they hold, with counts; Family is grouped (partner, parents, children, siblings) and links to the tree.<br>
+<span class="k">Has: all lists. Lacks: nothing; the one-line story per friend uses the same derived query as A.</span></div>
+<div class="card"><h2><a href="family-tree-A.html">Family tree A: top-down generations</a></h2>The whole family of a founding couple, founders at the top, the living in colour, the dead greyed with a stone; sideways and down scroll, folding chips, a corner map.<br>
+<span class="k">Has: partnerId, parentId (one parent kept; the other is derived from the parent's partner at the birth), born/died month, alive. Lacks: a stored second parent (children of a second partner or a remarriage read wrong), a generation number (derivable by walking parentId), a clean "family" root (the book groups by family name).</span></div>
+<div class="card"><h2><a href="family-tree-B.html">Family tree B: follow one line</a></h2>A branch picker and a vertical line of one person per generation with a story and the siblings; scales to any size, tells a story rather than showing a diagram.<br>
+<span class="k">Has: the same links, plus the book's BookFamily (parents, main, partner, children, 8 max). Lacks: line summaries (people per branch, alive count) and a story per ancestor; both derivable. The small book's Family page already draws a 3-level tree for up to 4 families; this replaces it with a History section.</span></div>
+<p class="cap"><a href="README.md">README</a></p></body></html>
