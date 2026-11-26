@@ -32,6 +32,8 @@ namespace AquariumCiv.View
         public bool StoneRolling { get; private set; }
         /// <summary>B78.c: where the last scene raised the second stone (tests: the standing stone is drawn there, no slide aside).</summary>
         public Vector2? StoneRaisedAt { get; private set; }
+        /// <summary>Tests: why the second stone is hidden now ("" when it isn't).</summary>
+        public string StoneHoldWhy { get; private set; } = "";
         /// <summary>B78.c: the second stone has its camp spot (the frame after it is made): its scene can start.</summary>
         public bool SecondStoneHasSpot => sim != null && sim.StoryMarks.secondStoneId >= 0 && ConsequencePropsView.Instance != null
                                           && ConsequencePropsView.Instance.DrawnSpot(sim.StoryMarks.secondStoneId, out _);
@@ -328,7 +330,9 @@ namespace AquariumCiv.View
             {
                 CampScene roll = null;
                 foreach (var s in scenes) if (s.use == CampUse.SecondStone && s.thing == ThingPropBase + id) roll = s;
-                bool hold = roll != null ? time - roll.t0 < roll.c : StoryWaiting(StoryEvent.SecondStone) != null;
+                var waiting = roll == null ? StoryWaiting(StoryEvent.SecondStone) : null;
+                bool hold = roll != null ? time - roll.t0 < roll.c : waiting != null;
+                StoneHoldWhy = !hold ? "" : roll != null ? $"rolling ({time - roll.t0:0.0} of {roll.c:0.0} s)" : $"its moment {waiting.id} is {waiting.state}";
                 if (hold) held.Add(id);
                 else if (roll == null && ConsequencePropsView.LookOf(id) == 0)
                 {   // standing with nothing at it: its first name is cut (a reload, a card, a scene cut short)

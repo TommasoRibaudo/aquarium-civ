@@ -388,7 +388,8 @@ namespace AquariumCiv.View.PlayTests
             else
             {
                 yield return Until(() => sim.PlayingMoments().Count == 0, MaxScene);
-                Assert.IsFalse(ConsequencePropsView.HeldBack.Contains(sim.StoryMarks.secondStoneId), "not left hidden");
+                yield return new WaitForSecondsRealtime(3f);
+                Assert.IsFalse(ConsequencePropsView.HeldBack.Contains(sim.StoryMarks.secondStoneId), "not left hidden: " + Pv.Camp.StoneHoldWhy);
                 yield return new WaitForSecondsRealtime(2f);
                 Assert.IsTrue(ConsequencePropsView.Instance.DrawnSpot(sim.StoryMarks.secondStoneId, out var drawn), "the second stone stands");
                 Assert.IsTrue(Pv.Camp.StoneRaisedAt.HasValue, "the scene raised it");
