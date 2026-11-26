@@ -218,7 +218,11 @@ namespace AquariumCiv.View.PlayTests
                         foreach (var o in where) if (o.key != a.who.Key && (o.at - p).magnitude < near) { near = (o.at - p).magnitude; nearKey = o.key; }
                         if (near < OverlapUnder) { c.overlap++; all.overlap++; }
                         float rate = Mathf.Abs(Vector2.SignedAngle(t.face, face)) / dt;
-                        if (v < 0.15f && rate > 280f) { c.spins++; all.spins++; }
+                        if (v < 0.15f && rate > 280f)
+                        {
+                            c.spins++; all.spins++;
+                            if (c.events.Count < 40) c.events.Add($"spin f{f} key {a.who.Key} v {v:0.00} rate {rate:0} walked {t.moved} frames, near {near:0.00} ({nearKey}) {a.kind} to {a.place.kind} style {pv.StyleOf(a.who.Key)}"); // #791
+                        }
                         int n = t.speed.Count;
                         if (n >= 7 && t.speed[n - 7] > 0.4f && t.speed[n - 1] < t.speed[n - 7] - 0.3f && f - t.lastBrake > 15)
                         {
