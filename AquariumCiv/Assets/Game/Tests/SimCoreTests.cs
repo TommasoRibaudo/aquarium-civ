@@ -54,7 +54,7 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(2942912u, Fingerprint(sim.State), "slice world fingerprint"); // #788/#790: the glance line "is slowing down" joins the chronicle once per elder (text and ids only, no dice drawn); #722 (3.3): the first snow says the spec's line with a kid (text only, the dice as before); #716: office and role lines (text only); #715: the weather and trait stories left the story stream; #82fix: quarrels gated on the box (text only); #67: job_fill lines; #74: the first "lost" story is the Left Sandal's (text only)
+            Assert.AreEqual(2942912u, Fingerprint(sim.State), "slice world fingerprint"); // #788/#790: the glance line "is slowing down" joins the chronicle once per elder, in its own id range (text only, no dice drawn, shared ids unchanged); #722 (3.3): the first snow says the spec's line with a kid (text only, the dice as before); #716: office and role lines (text only); #715: the weather and trait stories left the story stream; #82fix: quarrels gated on the box (text only); #67: job_fill lines; #74: the first "lost" story is the Left Sandal's (text only)
             var noRelics = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             noRelics.RelicsOn = false;
             noRelics.Advance(48);

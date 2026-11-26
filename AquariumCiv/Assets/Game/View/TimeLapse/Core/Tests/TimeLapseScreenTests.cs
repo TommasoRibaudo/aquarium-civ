@@ -22,7 +22,7 @@ namespace AquariumCiv.View.TimeLapseScreen.Tests
         public void Once()
         {
             var cfg = new SimConfig();
-            sim = new SimCore(cfg, SimCore.NewWorld(5, cfg)); // seed 5: no story pin right at "now" (seed 3 got one when trash left the dice, #313; seed 4 got one when the glance line joined the chronicle, #788)
+            sim = new SimCore(cfg, SimCore.NewWorld(4, cfg)); // seed 4: no story pin right at "now" (seed 3 got one when trash left the dice, #313)
             for (int m = 0; m < 120 * Y; m++) { sim.Step(); if (sim.State.eraReady) sim.AdvanceEra(); }
         }
 

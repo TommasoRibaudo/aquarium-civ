@@ -20,6 +20,9 @@ namespace AquariumCiv.Sim
 
         /// <summary>The chronicle kind of the glance line.</summary>
         public const string SlowingKind = "slowing";
+        /// <summary>The glance lines' own ids, far above the shared counter, the term lines and the relic cards: a line that exists only for
+        /// some elders must not shift the ids (and so the dice and the tests) of everything after it.</summary>
+        public const int SlowLineIdBase = 1_600_000_000;
 
         /// <summary>This person's own window in years: about two, 1.5 to 2.5 by a hash of their id (no dice).</summary>
         public static float FrailWindowOf(int notableId)
@@ -82,7 +85,11 @@ namespace AquariumCiv.Sim
             // B82: several elders entering their last days together never read as a list: within about a game year only the first gets the story line
             // (the rest keep the card text and the pin sign).
             if (State.chronicle.Any(x => x.kind == SlowingKind && State.month - x.month < SimConfig.MonthsPerYear)) return;
-            Chronicle(SlowingKind, $"{n.FullName} is slowing down these days.", 0.4f, n.id);
+            var s = State;
+            if (s.slowLineNextId < SlowLineIdBase) s.slowLineNextId = SlowLineIdBase;
+            var e = new ChronicleEntry { id = s.slowLineNextId++, month = s.month, kind = SlowingKind, text = $"{n.FullName} is slowing down these days.", salience = 0.4f, notableId = n.id };
+            s.chronicle.Add(e);
+            Chronicled?.Invoke(e);
         }
 
         /// <summary>Debug (#788): puts an elder into their last days: the one given, else the pinned one if elderly, else the oldest living.

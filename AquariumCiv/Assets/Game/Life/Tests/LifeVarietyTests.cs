@@ -116,7 +116,7 @@ namespace AquariumCiv.Life.Tests
         const float HomeMeanLimit = 0.20f, HomeMaxLimit = 0.65f;
 
         [TestCase(1, 10, Era.Village)]
-        [TestCase(9, 10, Era.Village)] // #788: re-seeded from 6 (a frail elder sits at their own door all day); #715: re-seeded from 3: a village of ten sits on the 65 % line (seeds 2, 4, 5, 8, 11 measure 70 %; 3 moved from 60 to 70 when the story stream lost its weather and trait stories)
+        [TestCase(6, 10, Era.Village)] // #715: re-seeded from 3: a village of ten sits on the 65 % line (seeds 2, 4, 5, 8, 11 measure 70 %; 3 moved from 60 to 70 when the story stream lost its weather and trait stories)
         [TestCase(1, 10, Era.Town)]
         [TestCase(7, 25, Era.Town)]
         public void MeasureTheSpread(int seed, int minPeople, Era era)

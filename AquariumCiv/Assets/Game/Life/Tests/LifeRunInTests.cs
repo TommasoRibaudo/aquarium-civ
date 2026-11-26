@@ -70,7 +70,7 @@ namespace AquariumCiv.Life.Tests
                 waves += b.Count(x => x.kind == ActivityKind.Wave);
                 // mutual: if a is stopped with b at t, b is stopped with a at t
                 foreach (var x in b)
-                    Assert.IsTrue(b.Any(y => y.who == x.with && y.with == x.who && Math.Abs(y.start - x.start) < 0.85f), $"day {day}: {x.who} and {x.with} stop together"); // the goer's beat starts at their walk over: up to InterceptUnits 4 / WalkSpeed 5 = 0.8 h before the stopper's (#788: a shifted id exposed that the old 0.6 was tighter than the design)
+                    Assert.IsTrue(b.Any(y => y.who == x.with && y.with == x.who && Math.Abs(y.start - x.start) < 0.6f), $"day {day}: {x.who} and {x.with} stop together");
             }
             float perPersonDay = beats / (float)personDays;
             TestContext.WriteLine($"{era} seed {seed} pop {planner.People.Count}: {days} days, {beats} person-beats = {perPersonDay:0.000} per person per day ({beats / (float)days:0.0} a day for the box): chats {chats}, bickers {bickers}, waves {waves}; most for one person in a day {maxPer}");
