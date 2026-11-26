@@ -133,7 +133,7 @@ namespace AquariumCiv.View
             if (knew)
             {
                 var toward = whoAt + Unit(spot - whoAt, Vector2.up) * 0.03f;
-                s.Part(m, 1.1f, 1.5f, toward, spot, DollStyle.Stand, HandOn, PropKind.None, 0.2f);
+                s.Part(m, 1.1f, 1.5f, toward, spot, DollStyle.Stand, (ref DollPose p, float u, float len) => { p.armR = Lerp(p.armR, new Vector3(70f, 0f, 4f), Bump(u, 0f, len)); }, PropKind.None, 0.2f); // the hand out (x 70) and back
             }
             else s.Part(m, 1.1f, 1.4f, whoAt, spot, DollStyle.Stand);
             return s;

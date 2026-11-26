@@ -360,6 +360,16 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void TheStatue_Cheat_RefusesACamp_SaysWhy()
+        {
+            var camp = NewSim(87, new SimConfig { dilemmas = true, moments = true, ecology = true, historyPruneYears = 0 });
+            for (int m = 0; m < 12; m++) camp.Advance(1.0 / 12);
+            Assert.IsNull(camp.DebugStory(StoryEvent.FounderStatue, out string why));
+            StringAssert.Contains("village", why);
+            Assert.IsFalse(camp.StatueStands);
+        }
+
+        [Test]
         public void TheStatue_EventListsKnowIt()
         {
             Assert.Contains(StoryEvent.FounderStatue, StoryEvent.All);

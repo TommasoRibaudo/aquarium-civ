@@ -82,6 +82,7 @@ namespace AquariumCiv.Sim
         public ChronicleEntry DebugFounderStatue(out string why)
         {
             why = "";
+            if (State.era == Era.Camp) { why = "the statue is for a village or a town ('Jump: a village box' first)"; return null; }
             State.statueFor = -1; State.statueMonth = -1; statueSiteKnown = false;
             var who = StatueCandidate;
             if (who == null) { why = "nobody in the box"; return null; }
