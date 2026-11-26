@@ -29,6 +29,8 @@ namespace AquariumCiv.Sim.Eco
         /// <summary>The water table (terrain height units), its peak so far, and the pond's level (-1000 = no pond yet).</summary>
         public float table, tablePeak, pondLevel = -1000f;
         public float soaked;            // water the Keeper's mist has sent down since the last step
+        /// <summary>#564: the glass voice's first line on the first mist has been said (never again).</summary>
+        public bool firstMistWords;
         /// <summary>#687: the water the table took since the last season step (the monthly soaks and the strokes that fed the pond; the
         /// season's cap holds over it), and the monthly soaks done since then (0 in a run stepped by seasons only: the season step then
         /// soaks the old way). Both 0 in an old save.</summary>

@@ -710,6 +710,7 @@ namespace AquariumCiv.View
             if (Btn("Line on walker")) last = ShowMeDirector.DebugSayOverWalker();
             if (Btn("Stalls")) last = StallProps.DebugStock();
             if (Btn("Keeper Doll")) last = GlassVoice.DebugPlayMoment(AquariumCiv.Sim.RelicId.KeeperDoll);
+            if (Btn("First-mist line")) last = GlassVoice.DebugFirstMistLine(); // #564
             if (Btn("Start a ritual now")) last = GlassVoice.DebugStartRitual();
             if (Btn("Baby")) last = PeopleView.DebugBaby();
             if (Btn("Bicker")) last = PeopleView.DebugRunIn(true);

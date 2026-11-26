@@ -815,6 +815,9 @@ namespace AquariumCiv.View
         // ---------------- debug (#327 Option B)
 
         /// <summary>The named person nearest the screen's middle (a crowd person if no one named is on view), None with nobody on view.</summary>
+        /// <summary>#564: the named person nearest the middle of the screen (a crowd person if none is named), None if nobody is on view.</summary>
+        public static PersonRef MiddlePerson() => NearestMiddle(true);
+
         static PersonRef NearestMiddle(bool named)
         {
             var pv = PeopleView.Find(); var cam = Camera.main;
