@@ -2813,8 +2813,8 @@ the existing quiet-visit and mourning chain (B32.h), unchanged.
 | | |
 |---|---|
 | **Trigger** | **Never a timer and never a countdown.** The sim already decides an elder's death (the existing age roll). This beat only attaches to a death the sim has already set for that night: at dusk of that day `SimCore` stamps `lastEveningFor = notableId` (the death itself is not moved, no number shown). Needs: an elder (age ≥ `Config.elderAge`, 45 today), alive, and **at least one free person who is kin or a friend** (`PersonCardOf` ties: partner, child, grandchild, sibling, or a `friend` link). No such person: no scene, the death happens as today |
-| **How often** | **Once per death**, so as often as elders die: about one a game year or less in a normal box. Never two at once (a second elder dying the same night: the pinned one first, the other gets nothing). Never while another held moment, ritual or choice is playing; it waits at most until the dusk is over, then is dropped (never moved to the night) |
-| **Who decides** | The people, by the rule: no Keeper choice (one choice per visit). The Keeper learns it by seeing it. If the Keeper is **away**, it plays unseen and the return card says "{who} sat by the fire with {family} the last evening" (the dawn's death card follows as today, ranked first for a pinned person). If the Keeper is **watching**, it is a held moment (as B78/B81): the camera is not moved |
+| **How often** | **Only while the Keeper is watching, and at most once per visit.** It is a rare gift, not a rule every death gets: the sim never plays it unseen, and most elder deaths pass without it (the dawn death card and B32.h as today). When the Keeper is watching at dusk and one or more elders are in their last evening, **one** is chosen (the pinned one first, else the one with the most kin or friends free) and the others get nothing. After it has played, no other last evening plays for at least **two game years** [est], so it can never read as a scheduled die-off of the elders one night after another. Never while another held moment, ritual or choice is playing; if one is, it is skipped, not queued (user, 2026-11-26) |
+| **Who decides** | The people, by the rule: no Keeper choice (one choice per visit). The Keeper learns it only by seeing it: **nothing plays or is reported while the Keeper is away** (no return card for it) |
 | **Where: the fire** | **At the fire**, on the elder's own stool/log (the spot #788 gives them). Why: it is where the whole village is, it shows from the default home view with no fly-to, the light is warm and low at dusk, and the family can sit round in a ring (B50-style). Their own door is a hidden doorway in the home view; the Keeper's tree already carries the *after* (B32.h's visit at the next dusk) and must not be used twice. The **door** is only the exit (beat 5) |
 | **Who takes part** | the elder; up to **4 kin/friends** nearest the fire (partner first, then children, grandchildren, then friends; at most 2 kids, each only if a grown kin is also there); **the elder's own dog** if they have one (the dog code's keeper link; else any grown dog lying by the fire). Anyone else free at the fire carries on their evening and may turn to look (`Look`) |
 
@@ -2839,7 +2839,7 @@ feet; they all look up; two stand and walk the old one slowly to a tent. On a ph
 the slow walk with people on each side; the hand on the shoulder (a 3 px arm) and the kid on the knee are bonuses.
 
 ### Caption
-**One line, only if watched**, at beat 3: *"{who} looks up at the stars with {partner/family}."* [est; the writing guide wins, docs/research/21]. It names no death and no ending. The return card (away) has its own text above.
+**One line, only if watched**, at beat 3: *"{who} looks up at the stars with {partner/family}."* [est; the writing guide wins, docs/research/21]. It names no death and no ending.
 
 ### Reuse and new
 - **Reused:** `SitWithOld`, `Sit`, `Lie`, `LookUp`, `Look`, `Turn`, `Wave`, `Walk` (the frail speed from #788), B7.a's nod, B7.d's hug family, B50-style rings, the stool, the dog code's keeper link, the night sky, B32.h (after).
@@ -2847,10 +2847,10 @@ the slow walk with people on each side; the hand on the shoulder (a 3 px arm) an
 
 ### Debug cheats (one block "Last evening (#789)" in `View/SliceDebugPanel.cs`, tagged `// #789`)
 - **"Last evening: play now"**: picks the oldest elder with kin (else makes one: ages a person to 62 and sets a partner), clears busy moments (`HeldMomentStage.DebugEndPlaying`), jumps to dusk and plays B82.a. The result line names who.
-- **"Last evening: elder with no kin"** (the no-scene path: the elder just dies in the night), **"Last evening: with a dog"** (gives them a grown dog first), **"Last evening: Keeper away"** (plays unseen and shows the return card).
+- **"Last evening: elder with no kin"** (the no-scene path: the elder just dies in the night), **"Last evening: with a dog"** (gives them a grown dog first), **"Last evening: two elders at once"** (two elders in their last evening: only one scene plays).
 
 ### Tests (when built)
-Pure: the rule (`LastEveningRules.Ready`: stamped only on a death already set, needs elder + kin or friend, once per death, never two the same night, never moves the death). PlayMode: the scene plays at the fire and ends with the elder at their door and everyone back in their day; unseen play gives the return-card line. AnimLab: one clip per new pose, asserting motion (the arm or head actually moves).
+Pure: the rule (`LastEveningRules.Ready`: stamped only on a death already set, needs elder + kin or friend, once per death, never two the same night, only while watched, once per visit, two game years apart, never moves the death). PlayMode: the scene plays at the fire and ends with the elder at their door and everyone back in their day; with the Keeper away nothing plays; with two elders ready only one plays; a second one within two game years never plays. AnimLab: one clip per new pose, asserting motion (the arm or head actually moves).
 
 ### B82.9 Open questions for the user
 1. **Which elders get it?** Every elder death with kin or a friend nearby (★, it is rare and natural), or only the pinned one (fewer scenes, but unpinned deaths feel flatter)?
