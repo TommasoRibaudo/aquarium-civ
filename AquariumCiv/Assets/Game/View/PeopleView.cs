@@ -1691,6 +1691,15 @@ namespace AquariumCiv.View
             return new Vector2(q.x, q.z);
         }
 
+        /// <summary>#770: is a point inside a building's footprint (or the water)? The frozen pond counts as open (the kids slide on it). Null: no settlement.</summary>
+        internal System.Func<float, float, bool> FootprintBlocked()
+        {
+            var raw = LifePlanner.FootprintBlocked(plannerSim);
+            if (raw == null) return null;
+            var ice = IceView.Instance;
+            return (x, z) => raw(x, z) && !(ice != null && ice.OnIce(new Vector2(x, z)));
+        }
+
         internal int LotHitsNear(Vector2 c, float r)
         {
             var st = plannerSim != null ? plannerSim.Settlement : null;
