@@ -275,6 +275,7 @@ namespace AquariumCiv.View
                 var bc = Cam;
                 if (bc != null && !bc.IsFlying) bc.FlyTo(box.transform.TransformPoint(at), 0.62f, 1.4f);
             }
+            if (greened > 0 && !sim.CatchingUp) GlassVoice.SayFirstMist(sim); // #564: the glass voice's first line, once
             // keepers-hands §2.1: every early mist gets an answer. Those near it stand in it, hands out and faces up; the
             // kids splash about (the rain's reaction, at the mist's spot). Once every couple of seconds while it runs.
             if (Time.unscaledTime - lastReact > 2f)

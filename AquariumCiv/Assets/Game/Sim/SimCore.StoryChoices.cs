@@ -62,8 +62,8 @@ namespace AquariumCiv.Sim
             letDone = "{who} called the song {n}.",
             options = new[]
             {
-                new DilemmaOptionDef { touch = "call it {n1}", label = "{n1}", hint = "Everyone sings {n1} at it every year.", done = "The Keeper named {who}'s song {n1}." },
-                new DilemmaOptionDef { touch = "call it {n2}", label = "{n2}", hint = "Everyone sings {n2} at it every year.", done = "The Keeper named {who}'s song {n2}." },
+                new DilemmaOptionDef { touch = "call it {n1}", label = "{n1}", hint = "Everyone sings {n1} {ritual}, every year.", done = "The Keeper named {who}'s song {n1}." },
+                new DilemmaOptionDef { touch = "call it {n2}", label = "{n2}", hint = "Everyone sings {n2} {ritual}, every year.", done = "The Keeper named {who}'s song {n2}." },
             },
         };
 
@@ -79,6 +79,13 @@ namespace AquariumCiv.Sim
             RitualKind.Offering => ("To the Tree", "The Best Basket"),
             RitualKind.Woodpile => ("The First Log", "Snow on the Roof"),
             _ => ("", ""),
+        };
+
+        /// <summary>#781: where the song is sung, for 4.3's hint ({ritual}): "at the harvest feast", "when the woodpile is stacked".</summary>
+        public static string RitualAt(string ritual) => ritual switch
+        {
+            RitualKind.Berrying => "on the berrying walk", RitualKind.Feast => "at the harvest feast", RitualKind.Offering => "at the offering",
+            RitualKind.Woodpile => "when the woodpile is stacked", _ => "at the ritual",
         };
 
         /// <summary>2.2's {ritual}: "made up a song for the harvest feast".</summary>
