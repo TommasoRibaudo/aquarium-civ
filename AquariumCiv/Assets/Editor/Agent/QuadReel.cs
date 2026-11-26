@@ -26,7 +26,7 @@ namespace AquariumCiv.EditorTools
         public static readonly string[] Clips =
         {
             "deer-herd-walk", "deer-graze", "deer-look-round", "deer-startle", "deer-lie-down", "deer-drink",
-            "wolf-trot", "wolf-lie-down", "wolf-howl", "wolf-watch", "wolf-run", "wolf-den", "pups-play", "dogs-by-generation",
+            "wolf-trot", "wolf-idle-turn", "wolf-lie-down", "wolf-howl", "wolf-watch", "wolf-run", "wolf-den", "pups-play", "dogs-by-generation",
         };
 
         delegate void PoseFn(ref QuadPose p, float t);
@@ -110,6 +110,25 @@ namespace AquariumCiv.EditorTools
                         var lk = QuadLook.Of(QuadKind.Wolf, id); lk.paleFace = id == 0;
                         c.actors.Add(new Actor { look = lk, at = t => new Vector3(x0 + 0.2f * t, 0f, z0), yaw = Yaw(90f),
                             pose = (ref QuadPose p, float t) => { QuadMotion.Trot(ref p, t + (x0 + 0.2f * t) * 3f); p.tail = -6f; } });
+                    }
+                    break;
+                case "wolf-idle-turn": // #771: WolfView's idle turn on the spot (QuadTurn, eased) beside the old 60 deg/s linear turn (right), same looks
+                    c.dur = 7f; c.span = 0.9f;
+                    {
+                        var looks = new (float at, float yaw)[] { (0f, 0f), (0.8f, 150f), (3.2f, -60f), (5.2f, 100f) };
+                        int n = (int)(c.dur * 60f) + 1; var eased = new float[n]; var linear = new float[n];
+                        var tn = new QuadTurn { yaw = 0f, target = 0f, held = true }; float lin = 0f;
+                        for (int i = 0; i < n; i++)
+                        {
+                            float tt = i / 60f, want = 0f; foreach (var l in looks) if (tt >= l.at) want = l.yaw;
+                            tn.Look(want, 1f / 60f); tn.Step(1f / 60f); eased[i] = tn.yaw;
+                            lin = Mathf.MoveTowardsAngle(lin, want, 60f / 60f); linear[i] = lin;
+                        }
+                        float At(float[] a, float t) => a[Mathf.Clamp(Mathf.RoundToInt(t * 60f), 0, n - 1)];
+                        c.actors.Add(new Actor { look = QuadLook.Of(QuadKind.Wolf, 1), at = Still(-0.3f, 0f), yaw = t => At(eased, t),
+                            pose = (ref QuadPose p, float t) => { p.tail = -8f; p.neck = -4f; } });
+                        c.actors.Add(new Actor { look = QuadLook.Of(QuadKind.Wolf, 2), at = Still(0.3f, 0f), yaw = t => At(linear, t),
+                            pose = (ref QuadPose p, float t) => { p.tail = -8f; p.neck = -4f; } });
                     }
                     break;
                 case "wolf-lie-down": // WolfView: LieDown(actSince + 0.6) (in the game it is already down when it starts)
