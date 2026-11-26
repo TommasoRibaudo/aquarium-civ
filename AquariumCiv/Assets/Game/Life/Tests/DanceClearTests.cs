@@ -67,6 +67,7 @@ namespace AquariumCiv.Life.Tests
             Assert.IsNotNull(sc, $"{what}: {planner.LastHeldWhyNot}");
             var plan = sc.plan;
             var blocked = LifePlanner.FootprintBlocked(sim);
+            AssertNoLotInRing(sim, plan.centreX, plan.centreZ, plan.ringRadius, $"{what} {kind}");
             Assert.IsNotNull(blocked, "a settled box");
             Assert.Greater(plan.ringKeys.Count, 0, $"{what}: a ring dances");
             // Every dancer's place on the ring, turning, stepped in and out: the ring's samples, never inside a footprint.
@@ -82,6 +83,51 @@ namespace AquariumCiv.Life.Tests
                         Assert.IsFalse(blocked(x, z), $"{what}: a dancer at ({x:0.00},{z:0.00}) is inside a footprint");
                     }
                 }
+        }
+
+        /// <summary>#770 round 2: no building's lot rectangle (well, market, houses, church) has a corner or its middle inside the ring, or the ring on it.</summary>
+        static void AssertNoLotInRing(SimCore sim, float cx, float cz, float r, string what)
+        {
+            foreach (var b in sim.State.buildings)
+            {
+                if (b.lotId == 0) continue;
+                float yr = b.yaw * (float)Math.PI / 180f, co = (float)Math.Cos(yr), si = (float)Math.Sin(yr);
+                float hw = 0.5f * b.w, hd = 0.5f * b.d;
+                // the nearest point of the (turned) rectangle to the ring's centre must be farther than the ring
+                float dx = cx - b.x, dz = cz - b.z;
+                float lx = dx * co + dz * si, lz = -dx * si + dz * co;
+                float nx = Math.Max(-hw, Math.Min(hw, lx)), nz = Math.Max(-hd, Math.Min(hd, lz));
+                float dist = (float)Math.Sqrt((lx - nx) * (lx - nx) + (lz - nz) * (lz - nz));
+                // yaw sign is read both ways: the nearer reading must clear the ring
+                float lx2 = dx * co - dz * si, lz2 = dx * si + dz * co;
+                float nx2 = Math.Max(-hw, Math.Min(hw, lx2)), nz2 = Math.Max(-hd, Math.Min(hd, lz2));
+                float dist2 = (float)Math.Sqrt((lx2 - nx2) * (lx2 - nx2) + (lz2 - nz2) * (lz2 - nz2));
+                Assert.GreaterOrEqual(Math.Min(dist, dist2), r, $"{what}: the {b.type} lot at ({b.x:0.00},{b.z:0.00}) {b.w:0.00}x{b.d:0.00} is inside the ring at ({cx:0.00},{cz:0.00}) r {r:0.00}");
+            }
+        }
+
+        /// <summary>The kids' ring dance: the view picks its centre with the same search (OpenGround.RingFit) on the same footprint test.</summary>
+        [TestCaseSource(nameof(KidCases))]
+        public void TheKidsRingDance_KeepsOffEveryLot(int seed, Era era)
+        {
+            var sim = Grown(seed, era, 6);
+            var planner = LifePlanner.Wired(sim);
+            Assert.IsTrue(planner.Positions.TryGetPosition(planner.GatherPlace, out float gx, out float gz), "a gathering place");
+            var blocked = LifePlanner.FootprintBlocked(sim);
+            foreach (int n in new[] { 4, 8, 14 })
+            {
+                float R = 0.3f + 0.03f * Math.Max(0, n - 6);
+                var c = OpenGround.RingFit(gx, gz, R, Math.Max(0.3f, 0.7f * R), blocked, null, 2.2f);
+                AssertNoLotInRing(sim, c.x, c.z, c.r, $"{era} seed {seed} kids x{n}");
+                Assert.AreEqual(0, OpenGround.RingHits(c.x, c.z, c.r, blocked));
+            }
+        }
+
+        static System.Collections.Generic.IEnumerable<TestCaseData> KidCases()
+        {
+            foreach (var era in new[] { Era.Village, Era.Town })
+                foreach (int seed in new[] { 3, 7, 11, 19 })
+                    yield return new TestCaseData(seed, era).SetName($"KidsRing_{era}_seed{seed}");
         }
 
         static System.Collections.Generic.IEnumerable<TestCaseData> Cases()

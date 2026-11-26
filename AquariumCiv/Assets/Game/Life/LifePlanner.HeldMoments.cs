@@ -94,7 +94,27 @@ namespace AquariumCiv.Life
         {
             var st = sim?.Settlement;
             if (st == null || !sim.Config.settle) return null;
-            return (x, z) => { int c = AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z); return c >= 0 && st.WalkCost(c) == 0; };
+            // #770 round 2: also every building's lot rectangle (the well, the market, houses, the church: walkable ground the cells let through),
+            // grown by the ring's margin; the rectangle's turn is tried both ways, so a reading of the yaw's sign never lets a corner through
+            var rects = new List<(float x, float z, float c, float s, float hw, float hd)>();
+            foreach (var b in sim.State.buildings)
+            {
+                if (b.lotId == 0) continue;
+                float yr = b.yaw * (float)Math.PI / 180f;
+                rects.Add((b.x, b.z, (float)Math.Cos(yr), (float)Math.Sin(yr), 0.5f * b.w + OpenGround.RingMargin, 0.5f * b.d + OpenGround.RingMargin));
+            }
+            return (x, z) =>
+            {
+                int c = AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z);
+                if (c >= 0 && st.WalkCost(c) == 0) return true;
+                foreach (var r in rects)
+                {
+                    float dx = x - r.x, dz = z - r.z;
+                    if (Math.Abs(dx * r.c + dz * r.s) <= r.hw && Math.Abs(-dx * r.s + dz * r.c) <= r.hd) return true;
+                    if (Math.Abs(dx * r.c - dz * r.s) <= r.hw && Math.Abs(dx * r.s + dz * r.c) <= r.hd) return true;
+                }
+                return false;
+            };
         }
 
         /// <summary>t4-fixes: the buildings standing on their lots (tents, huts...) as x, z, radius triples, for the wedding's vow point to
