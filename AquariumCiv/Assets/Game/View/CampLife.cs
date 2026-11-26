@@ -63,6 +63,16 @@ namespace AquariumCiv.View
             if (d.magnitude > s.followReach) c = s.focus + d.normalized * s.followReach;
             return lastFocus = Vector2.Lerp(s.focus, c, s.followReach > 0.6f ? 0.85f : 0.5f); // the thing, pulled toward the lead actor (a far-following scene: mostly the lead)
         }
+        /// <summary>#783: where the newest scene's people are drawn now, and the scene's own thing (the camera frames both: a lead walking in
+        /// from far must not pull the lean off the fire).</summary>
+        public void CastDrawn(List<Vector2> into)
+        {
+            var s = Latest;
+            if (s == null) return;
+            into.Add(s.focus);
+            for (int i = 0; i < s.Count; i++)
+                if (s.TryPart(s.keys[i], clock, out _, out _) && pv.DrawnAt(s.keys[i]) is Vector2 p) into.Add(p);
+        }
         public bool Playing(CampUse use) { foreach (var s in scenes) if (s.use == use) return true; return false; }
         /// <summary>Tests and the readout: how many times each use started this session.</summary>
         public readonly Dictionary<CampUse, int> Started = new();

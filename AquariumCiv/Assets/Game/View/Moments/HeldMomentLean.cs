@@ -31,7 +31,7 @@ namespace AquariumCiv.View
         public static string LastWhy = "";
         /// <summary>The last lean's aim (world) and the zoom it was sent to (tests).</summary>
         public static Vector3 LastAim;
-        public static float LastZoomTo;
+        public static float LastZoomTo, LastDollPx, LastExtX, LastExtY;
         /// <summary>A lean holds the camera for a scene now.</summary>
         public static bool Holding => cur != null;
 
@@ -42,7 +42,7 @@ namespace AquariumCiv.View
         static Active cur;
         static float lastRelease = float.NegativeInfinity;
         /// <summary>How long a scene is given to have its cast drawn (real seconds), and how often a held lean looks at where the scene went.</summary>
-        const float WaitForCast = 4f, LookEvery = 1f;
+        const float WaitForCast = 4f, LookEvery = 1f, TightenBy = 0.02f;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reset() { pending = null; cur = null; lastRelease = float.NegativeInfinity; Leans = Cancelled = Framed = Refused = 0; LastWhy = ""; Enabled = true; }
@@ -69,12 +69,13 @@ namespace AquariumCiv.View
             if (!Playing(cur.id)) { Release(cam); return; }
             if (Time.unscaledTime < cur.nextLook) return;
             cur.nextLook = Time.unscaledTime + LookEvery;
-            if (!Look(cur.staging, cam, out var world, out _, out float vx, out float vy)) return;
+            if (!Look(cur.staging, cam, out var world, out float zoomTo, out float vx, out float vy)) return;
             if (StoryLean.LeftTheFrame(vx, vy)) { LastWhy = "the scene left the frame"; Release(cam); return; }
-            if (StoryLean.NeedsFollow(vx, vy) && !cam.Touching)
+            bool closer = zoomTo < cam.zoom - TightenBy; // the cast has gathered (a lead walked in from far): the lean comes closer, never farther out
+            if ((StoryLean.NeedsFollow(vx, vy) || closer) && !cam.Touching)
             {
                 var c = cur;
-                if (cam.LeanIn(world, cam.zoom, () => !c.dead && Playing(c.id), 0.9f)) { c.cancelsSeen = cam.LeanCancels; LastAim = world; }
+                if (cam.LeanIn(world, closer ? zoomTo : cam.zoom, () => !c.dead && Playing(c.id), 0.9f)) { c.cancelsSeen = cam.LeanCancels; LastAim = world; }
             }
         }
 
@@ -143,7 +144,12 @@ namespace AquariumCiv.View
             try { st.Cast?.Invoke(cast); } catch (Exception exc) { Debug.LogException(exc); }
             Vector2? focus = null;
             try { focus = st.Focus?.Invoke(); } catch (Exception exc) { Debug.LogException(exc); }
-            if (focus == null && cast.Count > 0) { var sum = Vector2.zero; foreach (var q in cast) sum += q; focus = sum / cast.Count; }
+            if (cast.Count > 0 && (focus == null || st.Cast != null && st.Focus != null))
+            {   // the middle of the cast's box (a story: the thing and its people), so a lead walking in does not pull the aim off the scene
+                Vector2 lo = cast[0], hi = cast[0];
+                foreach (var q in cast) { lo = Vector2.Min(lo, q); hi = Vector2.Max(hi, q); }
+                focus = (lo + hi) * 0.5f;
+            }
             if (focus == null) return false;
             var f = focus.Value;
             if (cast.Count == 0) cast.Add(f);
@@ -163,6 +169,7 @@ namespace AquariumCiv.View
                     if (v.z <= 0f) continue;
                     ex = Mathf.Max(ex, Mathf.Abs(v.x - fv.x) * 2f); ey = Mathf.Max(ey, Mathf.Abs(v.y - fv.y) * 2f);
                 }
+            LastDollPx = dollPx; LastExtX = ex; LastExtY = ey;
             zoomTo = StoryLean.ZoomFor(dollPx, c.pixelHeight, cam.zoom, StoryLean.CastExtent(ex, ey), cam.pitch, Mathf.Max(cam.pitch, BoxCamera.LeanPitch), cam.minZoom, PeopleView.DollScaleAmount);
             return true;
         }
