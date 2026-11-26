@@ -807,6 +807,7 @@ namespace AquariumCiv.View
             Show(scroll, true);
             headline.RemoveFromClassList("cards-ask");
             card.RemoveFromClassList("cards-dilcard");
+            sheet.RemoveFromClassList("cards--grow");
             head.EnableInClassList("cards-head--alone", true);
             // Every headline stays reachable by scrolling; what's past them is never counted (rule 8).
             for (int i = 0; i < alsoLines.Length; i++)
@@ -830,6 +831,7 @@ namespace AquariumCiv.View
             head.EnableInClassList("cards-head--alone", true);
             headline.AddToClassList("cards-ask");
             card.AddToClassList("cards-dilcard");
+            sheet.AddToClassList("cards--grow"); // #780: a choice card grows with its question, hints and buttons; it never lays them over each other
             string words = f.dilemmaChosen < 0 ? (string.IsNullOrEmpty(v.speaker) ? v.question : $"{v.speaker} asks: {v.question}")
                 : f.dilemmaLetThem ? $"The Keeper let the people decide. They chose {v.options[f.dilemmaChosen].label}."
                 : f.dilemmaLapsed ? $"The people chose {v.options[f.dilemmaChosen].label} themselves."
@@ -871,6 +873,7 @@ namespace AquariumCiv.View
             Show(scroll, true);
             headline.RemoveFromClassList("cards-ask");
             card.RemoveFromClassList("cards-dilcard");
+            sheet.RemoveFromClassList("cards--grow");
             Set(teaser, f.teaserLine, QuotePt, QuoteRatio);
             headline.text = GlassType.Lines(f.headline, TitlePt, TitleRatio);
             Set(body, f.body);

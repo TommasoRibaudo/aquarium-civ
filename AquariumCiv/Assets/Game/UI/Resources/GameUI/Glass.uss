@@ -509,6 +509,8 @@
 .cards-dil-hint { margin: 8px 0 0 0; white-space: normal; flex-shrink: 0; }
 .cards-dil--chosen { translate: 0 -16px; }
 .cards-dil--dim { opacity: 0.45; }
+/* #780: the choice card is at least the slim 30 %, and grows (to 60 %) when a long question or hints need it: the buttons flow after the content */
+.kg-sheet.cards--grow { height: auto; min-height: 30%; max-height: 60%; }
 /* a short phone has no room for the dots row on this card: the question, two options and the buttons are the moment */
 .cards--short .cards-dilcard .cards-dots-row { display: none; }
 .cards--short .cards-dilcard .cards-dilemma { margin-top: 0; }
