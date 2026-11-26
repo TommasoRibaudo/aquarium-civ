@@ -243,6 +243,8 @@ namespace AquariumCiv.Tests
             Assert.IsNotNull(m, "a held moment queues");
             Assert.AreEqual(MomentKind.Story, m.kind);
             Assert.AreEqual(StoryEvent.FounderStatue, sim.StoryOfEntry(line.id), "the view can tell which event it is");
+            sim.MomentWaitReason(); // the queue's look, which makes the stale ones cards
+            Assert.AreEqual(HeldMomentState.Waiting, m.state, "it waits to play: the person it is for is dead by design, never a reason to make it a card");
             // once a box: the pinned person changing later, and dying, raises nothing more
             var other = sim.State.notables.Where(n => n.alive && n.id != founder.id).OrderBy(n => n.id).First();
             sim.Config.pinLegendHours = 0f; sim.State.pinnedNotableId = other.id;

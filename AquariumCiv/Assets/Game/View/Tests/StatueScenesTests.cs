@@ -24,7 +24,7 @@ namespace AquariumCiv.View.Tests
             for (int i = 0; i < family; i++) famKid.Add(i >= family - kidsAmongFamily);
             var watch = Enumerable.Range(20, watchers).ToList();
             var watchKid = new List<bool>(); for (int i = 0; i < watchers; i++) watchKid.Add(i % 2 == 1);
-            return StatueScenes.Raise(1, Spot + new Vector2(1.2f, 0.2f), helper ? 2 : -1, helper ? Spot + new Vector2(1f, -0.4f) : default, fam, famAt, famKid,
+            return StatueScenes.Raise(1, Spot + new Vector2(1.2f, 0.2f), helper ? 2 : VillageScenes.Nobody, helper ? Spot + new Vector2(1f, -0.4f) : default, fam, famAt, famKid,
                 watch, At(watchers, 2f), watchKid, Spot, Spot + new Vector2(0.65f, 0f), ToCam, 0f);
         }
 
@@ -193,7 +193,7 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void TheClimb_WithNoKidBelow_StillPlays()
         {
-            var s = StatueScenes.Climb(1, Spot + new Vector2(1f, -1f), 2, Spot + new Vector2(-1f, -1f), -1, default, Spot, ToCam, 0f);
+            var s = StatueScenes.Climb(1, Spot + new Vector2(1f, -1f), 2, Spot + new Vector2(-1f, -1f), VillageScenes.Nobody, default, Spot, ToCam, 0f);
             Assert.AreEqual(2, s.Count);
             AssertContinuous(s);
         }
@@ -216,7 +216,7 @@ namespace AquariumCiv.View.Tests
         public void TheSit_IsOnTheLowerStep_ForTheSecondsAsked_AndTheSecondSitsBeside()
         {
             var side = new Vector2(0.6f, 0.8f);
-            var alone = StatueScenes.Sit(1, Spot + new Vector2(1f, 1f), -1, default, Spot, side, 8f, 0f);
+            var alone = StatueScenes.Sit(1, Spot + new Vector2(1f, 1f), VillageScenes.Nobody, default, Spot, side, 8f, 0f);
             AssertContinuous(alone);
             Assert.AreEqual(1, alone.Count);
             float seated = 0f;

@@ -139,7 +139,7 @@ namespace AquariumCiv.Sim
         ChronicleEntry StoryLine(string id, string text, float salience, int a, int b, int ownId = -1)
         {
             State.storyFlags.Add(StoryFlag(id));
-            return Record(StoryEvent.Kind(id), text, salience, a, b, ownId);
+            return RecordAs(ownId, StoryEvent.Kind(id), text, salience, a, b);
         }
 
         bool Summer => CalendarMonth >= 5 && CalendarMonth <= 7;

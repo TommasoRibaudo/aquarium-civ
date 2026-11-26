@@ -167,7 +167,8 @@ namespace AquariumCiv.Sim
                     break;
                 case MomentKind.Story:
                     if (age > MomentRules.StoryHoldMonths) return MomentCardReason.HeldTooLong; // #722
-                    if (m.personA >= 0 && Alive(m.personA) == null) return MomentCardReason.PeopleGone;
+                    // #776 (B81): the statue's line names the dead person it is for: that one is gone by design, never a reason to card it
+                    if (m.personA >= 0 && Alive(m.personA) == null && StoryOfEntry(m.entryId) != StoryEvent.FounderStatue) return MomentCardReason.PeopleGone;
                     break;
             }
             return MomentCardReason.None;

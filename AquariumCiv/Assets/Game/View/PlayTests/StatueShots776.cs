@@ -29,7 +29,7 @@ namespace AquariumCiv.View.PlayTests
     public class StatueShots776 : PlayTestBase
     {
         const int W = 750, H = 1334;
-        const float DollPx = 80f, Pitch = 36f, FrameEvery = 0.1f, MaxScene = 100f;
+        const float DollPx = 80f, Pitch = 48f, FrameEvery = 0.1f, MaxScene = 100f;
 
         static SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : null;
         static PeopleView Pv => PeopleView.Find();
@@ -41,6 +41,8 @@ namespace AquariumCiv.View.PlayTests
         {
             GlassMotion.Instant = false;
             CampLife.OnlyCheats = false;
+            aimYaw = 28f;
+            var pv = PeopleView.Find(); if (pv != null) pv.timeScale = 1f;
             var rig = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
             if (rig != null) rig.minZoom = CameraReach.MinZoom;
         }
@@ -83,6 +85,7 @@ namespace AquariumCiv.View.PlayTests
             var w = box.Root.TransformPoint(new Vector3(c.x, box.SurfaceHeight(c.x, c.y) + 0.06f, c.y));
             rig.target = snap ? w : Vector3.Lerp(rig.target, w, 0.1f);
             rig.pitch = Pitch;
+            rig.yaw = aimYaw;
             rig.Apply();
             float px = PersonPx(rig, box, c);
             if (px <= 1f) return px;
@@ -103,6 +106,42 @@ namespace AquariumCiv.View.PlayTests
             rig.Apply();
             return PersonPx(rig, box, c);
         }
+
+        /// <summary>The yaw the camera looks in from for this beat (set by <see cref="AimFromTheOpenSide"/>).</summary>
+        static float aimYaw = 28f;
+
+        /// <summary>Villages are packed and roofs hide people at the default angle: the camera looks in from the side of the statue with the most open
+        /// ground between it and the glass (the statue's spot is kept clear of building, the lots round it are not), its face side preferred.
+        /// Every yaw the rig allows, 5 degrees apart; per yaw the nearest lot to the sight line (out to 1.6 u toward the camera), less its half size.</summary>
+        static void AimFromTheOpenSide()
+        {
+            var rig = Rig; var sim = Sim; var at = Pv.Camp.StatueDrawnAt;
+            float fy = Pv.Camp.StatueDrawnYaw * Mathf.Deg2Rad;
+            var face = new Vector2(Mathf.Sin(fy), Mathf.Cos(fy));
+            float best = float.MinValue, bestYaw = 28f; string log = "";
+            for (float yaw = rig.minYaw; yaw <= rig.maxYaw + 0.1f; yaw += 5f)
+            {
+                var dir = new Vector2(-Mathf.Sin(yaw * Mathf.Deg2Rad), -Mathf.Cos(yaw * Mathf.Deg2Rad)); // from the statue toward the camera
+                float clear = 1f;
+                if (sim?.Settlement != null)
+                    foreach (var l in sim.Settlement.Lots)
+                    {
+                        if (l.retired) continue;
+                        var v = new Vector2(l.x, l.z) - at;
+                        float t = Vector2.Dot(v, dir);
+                        if (t < 0.05f || t > 1.6f) continue;
+                        float off = Mathf.Abs(v.x * dir.y - v.y * dir.x) - 0.5f * Mathf.Max(l.w, l.d);
+                        clear = Mathf.Min(clear, off);
+                    }
+                float score = Mathf.Min(clear, 0.6f) + 0.25f * Vector2.Dot(face, dir) - 0.001f * Mathf.Abs(yaw - 28f);
+                if (score > best) { best = score; bestYaw = yaw; log = $"yaw {yaw:0} clear {clear:0.00} face {Vector2.Dot(face, dir):0.00}"; }
+            }
+            aimYaw = bestYaw;
+            Debug.Log("[776 shots] aim from the open side: " + log);
+        }
+
+        /// <summary>The clock held still while the camera lands (the lesson of the 788 shots), then running again.</summary>
+        static void Freeze(bool on) { var pv = Pv; if (pv != null) pv.timeScale = on ? 0f : 1f; }
 
         static bool Where(int key, out Vector2 at)
         {
@@ -132,7 +171,10 @@ namespace AquariumCiv.View.PlayTests
             var times = new StringBuilder();
             var sc = Pv.Camp.Scenes.LastOrDefault(s => s.use == use);
             var last = Pts(sc);
-            for (int settle = 0; settle < 12; settle++) { Frame(last, settle == 0); yield return null; } // the zoom lands first
+            AimFromTheOpenSide();
+            Freeze(true);
+            for (int settle = 0; settle < 12; settle++) { Frame(last, settle == 0); yield return null; } // the zoom lands first, the clock held
+            Freeze(false);
             float t0 = Time.realtimeSinceStartup, lastAt = -1f; int n = 0;
             while (Time.realtimeSinceStartup - t0 < max && Pv.Camp.Playing(use))
             {
@@ -158,8 +200,11 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>The "after" still of what stays: the camera eased onto the statue, then a PNG.</summary>
         IEnumerator After(string beat)
         {
+            AimFromTheOpenSide();
+            Freeze(true);
             for (int i = 0; i < 45; i++) { Frame(new List<Vector2> { Pv.Camp.StatueDrawnAt }, i == 0); yield return null; }
             yield return Still(beat, "after");
+            Freeze(false);
         }
 
         static IEnumerator Still(string beat, string name)
@@ -180,7 +225,11 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(pv.Camp.StatueDrawn, "the statue stands");
             PeopleView.DebugSetHour(hour);
             yield return new WaitForSeconds(1.5f);
+            AimFromTheOpenSide();
+            Freeze(true);
+            for (int i = 0; i < 30; i++) { Frame(new List<Vector2> { pv.Camp.StatueDrawnAt }, i == 0); yield return null; }
             yield return Still(beat, "before");
+            Freeze(false);
             string r = cheat();
             Debug.Log($"[776 shots] {beat}: {r}");
             yield return Until(() => pv.Camp.Playing(use), 5f);
@@ -250,6 +299,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Until(() => pv.Camp.StatueDrawn, 8f);
             for (int i = 0; i < 4; i++)
             {
+                AimFromTheOpenSide();
                 for (int f = 0; f < 45; f++) { Frame(new List<Vector2> { pv.Camp.StatueDrawnAt }, f == 0); yield return null; }
                 yield return Still("season", $"{(int)LifeClock.SeasonOf(pv.Now.day)}-{LifeClock.SeasonOf(pv.Now.day)}-{pv.Camp.StatueWearDrawn}");
                 EcoDebug.SkipToNextSeason();

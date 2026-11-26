@@ -55,7 +55,8 @@ namespace AquariumCiv.View.PlayTests
             string r = CampCheats.StatueRaiseNow();
             Debug.Log("[776] " + r);
             yield return Until(() => pv.Camp.Playing(CampUse.StatueRaise), 25f); // the stage looks every second
-            Assert.IsTrue(pv.Camp.Playing(CampUse.StatueRaise), $"the raising plays ({r}; {StoryMoment.LastWhy})");
+            Assert.IsTrue(pv.Camp.Playing(CampUse.StatueRaise), $"the raising plays ({r}; story: {StoryMoment.LastWhy}; camp: {pv.Camp.LastStoryWhy}; stage: {HeldMomentStage.Instance?.LastWhy}; " +
+                $"playing: {string.Join(", ", sim.PlayingMoments().Select(m => m.kind + "#" + m.id))}; queue: {sim.MomentQueueStatus()})");
             Assert.Greater(StoryMoment.Started, started, "its held moment started");
             var who = sim.StatueNotable;
             Assert.IsNotNull(who, "the person is named");
@@ -186,6 +187,34 @@ namespace AquariumCiv.View.PlayTests
             Assert.Less(eat > 0f ? eatTaken / eat : 0f, 0.05f, "no meal lost");
             Assert.LessOrEqual(sleep > 0f ? sleepTaken / sleep : 0f, 0.02f, "no sleep lost");
             Assert.IsNotEmpty(uses, "the statue's uses ran by themselves");
+            CloseSlice();
+        }
+
+        /// <summary>B81.0 "Where" in a grown town (the "Jump: a town box" layout, then five more years lived with the view on): the spot is off every path,
+        /// field and building, and a load of the save works out the same spot.</summary>
+        [UnityTest, Timeout(900000)]
+        public IEnumerator TheSpot_InAGrownTown_IsOffPathsFieldsAndBuildings_AndTheSameAfterALoad()
+        {
+            yield return VillageBox(10f, town: true, onlyCheats: false);
+            var sim = Sim;
+            Debug.Log("[776 spot] " + CampCheats.StatueStand());
+            yield return Frames(10);
+            Assert.IsTrue(sim.FindStatueSite(out float x0, out float z0, out float yaw0), "a spot on the green");
+            for (int m = 0; m < 60; m++) { sim.Advance(1.0 / 12); yield return null; } // five years: the town keeps building round it
+            yield return Frames(10);
+            Assert.IsTrue(sim.FindStatueSite(out float x1, out float z1, out _));
+            Assert.AreEqual(x0, x1, 1e-4f); Assert.AreEqual(z0, z1, 1e-4f);
+            var w = sim.Settlement;
+            Assert.IsTrue(AquariumCiv.Sim.Settle.StatueSpot.Fits(w.Map, x1, z1, null), "its footprint and clear ring are still open ground (no path, lot or yard)");
+            Assert.IsFalse(RackSites.PathAt(sim, x1, z1), "not on a path");
+            Assert.IsFalse(RackSites.FieldAt(sim, x1, z1), "not on a field");
+            float nearLot = w.Lots.Where(l => !l.retired).Select(l => new Vector2(l.x - x1, l.z - z1).magnitude - 0.5f * Mathf.Max(l.w, l.d)).DefaultIfEmpty(9f).Min();
+            Assert.Greater(nearLot, 0f, "not in a building's lot");
+            var loaded = new SimCore(sim.Config, JsonUtility.FromJson<SimState>(JsonUtility.ToJson(sim.State)));
+            Assert.IsTrue(loaded.FindStatueSite(out float x2, out float z2, out float yaw2), "the loaded box finds it");
+            Debug.Log($"[776 spot] raised at ({x0:0.000}, {z0:0.000}) yaw {yaw0:0}; five years on ({x1:0.000}, {z1:0.000}); after a load ({x2:0.000}, {z2:0.000}) yaw {yaw2:0}; " +
+                      $"{w.Lots.Count(l => !l.retired)} lots, the nearest lot edge {nearLot:0.00} u, the green's centre ({w.Map.greenX:0.00}, {w.Map.greenZ:0.00}), pop {sim.State.population}");
+            Assert.AreEqual(x1, x2, 1e-4f, "the same spot after a load"); Assert.AreEqual(z1, z2, 1e-4f); Assert.AreEqual(yaw0, yaw2, 1e-3f);
             CloseSlice();
         }
     }
