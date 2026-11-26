@@ -342,7 +342,7 @@ namespace AquariumCiv.Sim
 
         string KeeperChildWeddingLine(Notable child, Notable other) => $"{child.name}, named by the Keeper, married {other.name} at the fire.";
 
-        /// <summary>5.2: the wedding moment's caption: its line when it is the Keeper's child's (said as the wedding starts), else null.</summary>
+        /// <summary>5.2: the wedding moment's caption: its line when it is the Keeper's child's (said on the caption when its vows begin, #764), else null.</summary>
         public string KeeperWeddingLine(int entryId)
         {
             if (!StoryMarks.keeperWeddings.Contains(entryId)) return null;

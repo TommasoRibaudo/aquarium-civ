@@ -4,6 +4,7 @@ using System.Linq;
 using AquariumCiv.Game;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.View.ShowMe;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -132,6 +133,54 @@ namespace AquariumCiv.View.PlayTests
             }
             pv.timeScale = 1f;
             AssertNoErrors("the cheats");
+        }
+
+        /// <summary>#764 (playtest 1): the wedding's lines came before the ceremony had begun. The Keeper's child's wedding says its line on the
+        /// caption, and the couple say "I do", only once the vows begin: the couple are at their places, face to face (the plan's vow beat), not as
+        /// it is queued or the people gather.</summary>
+        [UnityTest, Timeout(240000)]
+        public IEnumerator TheWeddingsLine_AndTheIDo_WaitForTheVows_TheCoupleAtTheirPlaces()
+        {
+            yield return Box();
+            var pv = PeopleView.Find();
+            pv.timeScale = 3f; // a 35 s ceremony in about 12 s
+            string r = StoryMoment.DebugKeeperChildWed();
+            Assert.IsTrue(r.StartsWith("playing"), r);
+            var sc = StagedMoments.LastScene;
+            Assert.IsNotNull(sc, "the wedding is staged");
+            Assert.AreEqual(MomentKind.Wedding, sc.kind);
+            var e = Sim.State.chronicle.Last(x => x.kind == "wedding");
+            Assert.AreEqual(e.text, Sim.KeeperWeddingLine(e.id), "the Keeper's child's wedding has its line");
+            Assert.Greater(sc.plan.vowAt, 5f, "the vows come after the people have gathered and the couple walked the aisle");
+            Assert.IsFalse(StagedMoments.VowsBegun(Sim), "just queued: the vows are far off");
+            Assert.IsNull(StagedMoments.LastCaption, "nothing on the caption as it is queued");
+            var director = ShowMeDirector.Instance;
+            Assert.IsNotNull(director, "the director is in the scene");
+            float t0 = Time.realtimeSinceStartup; int checks = 0;
+            while (StagedMoments.LastCaption == null && StagedMoments.Playing > 0 && Time.realtimeSinceStartup - t0 < 120f)
+            {
+                if (!StagedMoments.VowsBegun(Sim))
+                {
+                    Assert.IsNull(StagedMoments.LastCaption, "no line on the caption before the vows");
+                    Assert.AreNotEqual(PeopleVoice.VowLine, director.LastBubble?.text, "nobody says \"I do\" before the vows");
+                    checks++;
+                }
+                yield return null;
+            }
+            Assert.Greater(checks, 20, "many frames of the gathering and the aisle were watched");
+            Assert.AreEqual(e.text, StagedMoments.LastCaption, "the line comes on the caption");
+            Assert.IsTrue(StagedMoments.VowsBegun(Sim), "and only with the vows");
+            // the couple are at their places: in the vow beat or after it, standing where the plan puts them
+            foreach (int key in new[] { e.notableId, e.otherNotableId })
+            {
+                Assert.IsTrue(pv.Planner.HeldMomentAt(Ref(key), pv.Now, out _, out var mem, out int i, out float secs), $"{key} is in the ceremony");
+                Assert.GreaterOrEqual(mem.steps[i].t0, sc.plan.vowAt - 1e-3f, $"{key} is in the vows or past them");
+                Assert.IsTrue(pv.TryGetDollPosition(Ref(key), out var at));
+                Assert.Less((MomentBeats.Spot(sc.plan, mem, i, secs, out _) - at).magnitude, 0.25f, $"{key} stands at their place");
+            }
+            yield return Until(() => Sim.PlayingMoments().Count == 0, 90f);
+            pv.timeScale = 1f;
+            AssertNoErrors("the wedding's line");
         }
     }
 }

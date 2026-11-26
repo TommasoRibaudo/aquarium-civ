@@ -28,6 +28,9 @@ namespace AquariumCiv.View.ShowMe
             return l;
         }
 
+        /// <summary>#764: the wedding's vow, said when the vows begin and not before (WorldBubbles waits for StagedMoments.VowsBegun).</summary>
+        public const string VowLine = "I do. I really do.";
+
         /// <summary>The lines for a moment of <paramref name="kind"/>: (text, who) where who is -1 for the crowd, else a notable id.
         /// <paramref name="a"/> and <paramref name="b"/> are the moment's principals (the couple; the child and the parent; the new
         /// chief; a ritual's leader). Deterministic order; the caller says each at most once a moment. #721: a ritual's lines are its
@@ -72,7 +75,7 @@ namespace AquariumCiv.View.ShowMe
                     l.Add(("Round again! Round again!", -1));
                     break;
                 case MomentKind.Wedding:
-                    if (a >= 0) l.Add(("I do. I really do.", a));
+                    if (a >= 0) l.Add((VowLine, a));
                     l.Add(("Throw the petals!", -1));
                     if (b >= 0) l.Add(("My hands are shaking. Hold them.", b));
                     l.Add(("Look at the two of them!", -1));

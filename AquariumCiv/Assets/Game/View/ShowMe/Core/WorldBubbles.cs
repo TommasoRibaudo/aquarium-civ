@@ -58,6 +58,9 @@ namespace AquariumCiv.View.ShowMe
         /// getting up".</summary>
         public HeldMoment HeldNow { get; set; }
 
+        /// <summary>#764: a staged wedding's vows have begun: only then is the vow ("I do") a line to say. True when nothing says otherwise.</summary>
+        public bool VowsBegun { get; set; } = true;
+
         /// <summary>#717: the Keeper's pick is telling tonight's story now (their notable id, -1 = nobody): they say their manner's lines
         /// (<see cref="PeopleVoice.TellerLines"/>) before anything else.</summary>
         public int TellerNow { get; set; } = -1;
@@ -191,7 +194,10 @@ namespace AquariumCiv.View.ShowMe
                 var lines = PeopleVoice.MomentLines(HeldNow.kind, HeldNow.personA, HeldNow.personB,
                     HeldNow.kind == MomentKind.Ritual ? sim.RitualOfEntry(HeldNow.entryId) : null, PeopleVoice.KeeperName(sim), sim.State.era); // #721, #719
                 for (int i = 0; i < lines.Count; i++)
+                {
+                    if (!VowsBegun && HeldNow.kind == MomentKind.Wedding && lines[i].text == PeopleVoice.VowLine) continue; // #764: the key keeps its place
                     yield return Make($"held:{HeldNow.id}:{i}", lines[i].text, lines[i].speaker, BubbleSource.Moment, -1, 0);
+                }
                 yield break;
             }
             // #717: the picked teller's lines while they tell it (one telling, one evening: the key carries the month).
