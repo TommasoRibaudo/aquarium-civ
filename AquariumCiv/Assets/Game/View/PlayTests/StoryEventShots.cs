@@ -372,12 +372,23 @@ namespace AquariumCiv.View.PlayTests
             yield return UntilThing(ConsequenceKind.NameStone);
             yield return new WaitForSecondsRealtime(1.5f);
             started = StoryMoment.Started;
-            Debug.Log("[722 lived] stone: " + StoryMoment.DebugPlayNow(StoryEvent.SecondStone));
-            yield return Until(() => StoryMoment.Started > started, 20f);
-            if (StoryMoment.Started == started) fails.Add("the second stone: " + StoryMoment.LastWhy);
+            string sr = StoryMoment.DebugPlayNow(StoryEvent.SecondStone);
+            Debug.Log("[722 lived] stone: " + sr);
+            // the box may have made its second stone by itself (the deaths the season skips left): then its own moment is what must play
+            bool natural = sim.StoryMarks.secondStoneId >= 0 && sr.Contains("already stands");
+            bool StoneMomentLeft()
+            {
+                foreach (var x in sim.WaitingMoments()) if (sim.StoryOfEntry(x.entryId) == StoryEvent.SecondStone) return true;
+                foreach (var x in sim.PlayingMoments()) if (sim.StoryOfEntry(x.entryId) == StoryEvent.SecondStone) return true;
+                return false;
+            }
+            if (natural) yield return Until(() => !StoneMomentLeft(), MaxScene + 60f);
+            else yield return Until(() => StoryMoment.Started > started, 20f);
+            if (natural ? StoneMomentLeft() : StoryMoment.Started == started) fails.Add("the second stone: " + StoryMoment.LastWhy);
             else
             {
                 yield return Until(() => sim.PlayingMoments().Count == 0, MaxScene);
+                Assert.IsFalse(ConsequencePropsView.HeldBack.Contains(sim.StoryMarks.secondStoneId), "not left hidden");
                 yield return new WaitForSecondsRealtime(2f);
                 Assert.IsTrue(ConsequencePropsView.Instance.DrawnSpot(sim.StoryMarks.secondStoneId, out var drawn), "the second stone stands");
                 Assert.IsTrue(Pv.Camp.StoneRaisedAt.HasValue, "the scene raised it");
