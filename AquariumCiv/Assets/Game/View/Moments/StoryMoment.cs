@@ -168,6 +168,7 @@ namespace AquariumCiv.View
             if (id == StoryEvent.FirstSnow) SnowNow(pv);
             string dry = id == StoryEvent.DrySpell ? " | " + EcoDebug.DrySpell() : ""; // B80.g: the "Dry spell now" cheat first (the grass browns at once)
             ChronicleEntry e; string why;
+            int things = sim.ConsequenceProps.Count;
             sim.DebugCastable = CastFilter(pv);
             try { e = sim.DebugStory(id, out why); }
             finally { sim.DebugCastable = null; }
@@ -178,6 +179,9 @@ namespace AquariumCiv.View
                 ConsequencePropsView.HeldBack.Add(sim.StoryMarks.secondStoneId);
                 ConsequencePropsView.Instance.Settle();
             }
+            // #784: a thing the cheat had to stand (the name stone, the woodpile's roof) is drawn before the scene is cast; the second stone's own
+            // block above settles them all
+            if (id != StoryEvent.SecondStone && things != sim.ConsequenceProps.Count && ConsequencePropsView.Instance != null) ConsequencePropsView.Instance.Settle();
             var m = sim.MomentOfEntry(e.id);
             if (m == null) return $"{e.text} | {pv.Camp.Force(CampLife.UseOfStory(id))}{skipped}{dry}";
             skipped += dry;

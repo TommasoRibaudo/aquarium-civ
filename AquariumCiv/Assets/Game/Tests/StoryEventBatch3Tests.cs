@@ -338,6 +338,49 @@ namespace AquariumCiv.Tests
             sim.DebugCastable = null;
         }
 
+        /// <summary>#784: the cheats that need a thing from an earlier choice stand it, from a box where that choice was never made: "Stone: fill
+        /// it" stands the name stone with a death after it; "Trait: the joker's face" builds the woodpile's roof; the gardener's cheat the stone.</summary>
+        [Test]
+        public void TheCheats_StandTheNameStoneWithADeath_AndTheWoodpilesRoof_InABoxWithNeither()
+        {
+            var sim = Camp(61, 4);
+            Assert.IsNull(sim.FirstNameStone, "no name stone in this box");
+            Assert.IsNull(sim.WoodpileProp, "no woodpile roof in this box");
+            var second = sim.DebugStory(StoryEvent.SecondStone, out string why);
+            Assert.IsNotNull(second, "the second stone: " + why);
+            Assert.IsNotNull(sim.FirstNameStone, "the first stone stands now");
+            Assert.IsTrue(sim.FirstNameStone.placed);
+            Assert.GreaterOrEqual(sim.NamesSince(sim.FirstNameStone).Count, 1, "with a death after it");
+            Assert.GreaterOrEqual(sim.StoryMarks.secondStoneId, 0, "and the second beside it");
+            var face = sim.DebugStory(StoryEvent.JokerFace, out why);
+            Assert.IsNotNull(face, "the joker's face: " + why);
+            Assert.IsNotNull(sim.WoodpileProp, "the woodpile's roof stands now");
+            Assert.IsTrue(sim.FaceLogOn, "with the face log on it");
+        }
+
+        [Test]
+        public void TheGardenersCheat_StandsTheNameStone_InABoxWithoutOne()
+        {
+            var sim = Camp(62, 4);
+            Assert.IsNull(sim.FirstNameStone);
+            Assert.IsNotNull(sim.DebugStory(StoryEvent.GardenerFlowers, out string why), why);
+            Assert.IsTrue(sim.FlowersAtStone, "the flowers ring the stone it stood");
+        }
+
+        [Test]
+        public void TheStandingCheats_KeepTheThingsThatStandAlready_AndPlayAgain()
+        {
+            var sim = Camp(63, 4);
+            Assert.IsNotNull(sim.DebugStory(StoryEvent.GardenerFlowers, out string why), why);
+            int stones = sim.ConsequenceProps.Count(p => p.kind == ConsequenceKind.NameStone);
+            Assert.IsNotNull(sim.DebugStory(StoryEvent.SecondStone, out why), why);
+            Assert.AreEqual(stones + 1, sim.ConsequenceProps.Count(p => p.kind == ConsequenceKind.NameStone), "the stone that stood is the first; one more is the second");
+            Assert.IsNotNull(sim.DebugStory(StoryEvent.JokerFace, out why), why);
+            int roofs = sim.ConsequenceProps.Count(p => p.kind == ConsequenceKind.WoodpileRoof);
+            Assert.IsNotNull(sim.DebugStory(StoryEvent.JokerFace, out why), why);
+            Assert.AreEqual(roofs, sim.ConsequenceProps.Count(p => p.kind == ConsequenceKind.WoodpileRoof), "the roof is not built twice");
+        }
+
         /// <summary>5.1's cheat on a land that gives no work yet: the child still comes of age with work (they help make the tools), so the
         /// line and its scene happen.</summary>
         [Test]

@@ -24,7 +24,7 @@ namespace AquariumCiv.View
         /// <summary>A choice's thing as drawn now: its id, kind, spot (box x, z), yaw and transform.</summary>
         struct PropSpot { public int id; public string kind; public Vector2 at; public float yaw; public Transform t; public int personId; public bool onTree; }
         readonly List<PropSpot> propSpots = new();
-        int propFrame = -1;
+        int propFrame = -1, propCount = -1;
         /// <summary>#693 notes: logs laid on each woodpile (0-3, ConsequenceMeshes' slots), scratches and the re-cut day of each name post, and
         /// the sacks set down at doors (view-only [est]).</summary>
         readonly Dictionary<int, int> woodStacked = new(), postScratches = new();
@@ -52,8 +52,9 @@ namespace AquariumCiv.View
         // ================================================================== the things
         List<PropSpot> Props()
         {
-            if (propFrame == Time.frameCount && propSpots.Count > 0) return propSpots;
-            propFrame = Time.frameCount; propSpots.Clear();
+            int standingNow = sim != null ? sim.ConsequenceProps.Count : 0; // #784: a cheat stands a thing mid-frame: the frame's list is not the last word
+            if (propFrame == Time.frameCount && propSpots.Count > 0 && propCount == standingNow) return propSpots;
+            propFrame = Time.frameCount; propCount = standingNow; propSpots.Clear();
             var cv = ConsequencePropsView.Instance;
             if (sim == null || cv == null) return propSpots;
             var standing = cv.Standing;
