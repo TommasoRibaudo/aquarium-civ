@@ -229,7 +229,7 @@ namespace AquariumCiv.View
             {
                 if (kids.Count < 3) return; // two dancers: their partner dance (the Hop fallback) until more come
                 var sorted = new List<int>(kids); sorted.Sort();
-                Add(new Group { place = place, game = KidGame.Create(PlayGame.DanceRing, PlayGroups.Seed(real.GetHashCode(), viewNow.day, viewNow.hour, 9), time, sorted, Open(new Vector2(px, pz), new Vector2(px, pz))) });
+                Add(new Group { place = place, game = KidGame.Create(PlayGame.DanceRing, PlayGroups.Seed(real.GetHashCode(), viewNow.day, viewNow.hour, 9), time, sorted, OpenRing(new Vector2(px, pz), new Vector2(px, pz), RingGroup.RadiusFor(sorted.Count))) });
                 return;
             }
             bool rabbitsOk = !noRabbitsUntil.TryGetValue(place, out float until) || time > until;
@@ -302,6 +302,19 @@ namespace AquariumCiv.View
                     if (h < bestHits) { bestHits = h; best = q; }
                 }
             return bestHits <= pv.LotHitsNear(p, PlayRingR) ? best : p;
+        }
+
+        /// <summary>#770: a dance ring's centre: on dry open ground where the whole ring (its radius for this many dancers, turning and stepping in)
+        /// keeps off every building's footprint, the nearest such centre to the place's spot (the green or the square).</summary>
+        Vector2 OpenRing(Vector2 p, Vector2 home, float ringR)
+        {
+            p = Open(p, home);
+            var blocked = pv.FootprintBlocked();
+            if (blocked == null) return p;
+            var land = pv.LandForPlay;
+            bool Ok(float x, float z) => Mathf.Abs(x) <= Land.HX - 0.45f && Land.InZ(z, 0.45f) && (land == null || !land.IsWater(x, z));
+            var q = OpenGround.RingCentre(p.x, p.y, ringR, blocked, Ok, 1.6f, home.x - p.x, home.y - p.y);
+            return new Vector2(q.x, q.z);
         }
 
         /// <summary>Batch 2: the ground a play group's game covers round its centre, kept off the lots by <see cref="Open"/>.</summary>
@@ -412,6 +425,8 @@ namespace AquariumCiv.View
                     else g.splashed = false;
                     if (g.flight.landing == Landing.BounceRoll && Arc.LandedBetween(g.flight, g.lastT - g.game.t0, now - g.game.t0))
                         HitFx.Puff(PuffKind.Dust, root.TransformPoint(new Vector3(pos.x, ground, pos.z)), Vector3.up, 0.7f); // B2.b: a small dust where it lands
+                    if (Arc.HitGlassBetween(g.flight, g.lastT - g.game.t0, now - g.game.t0))
+                        AudioDirector.Instance?.Play(AquariumCiv.Audio.CueLibrary.TapGlass, -4f, 0.7f, 0f); // #772: a small thunk off the glass
                 }
                 g.ball.SetActive(true);
                 g.ball.transform.localPosition = pos;
@@ -436,6 +451,8 @@ namespace AquariumCiv.View
             if (!planner.Positions.TryGetPosition(gather, out float gx, out float gz)) return "no gathering place";
             var spot = new Vector2(gx, gz);
             var centre = Open(spot + new Vector2(0.6f, -0.2f), spot);
+            if (glassNext && game == PlayGame.Ball) centre = new Vector2(Land.HX - 0.5f, Land.CZ); // #772: the right pane's side, so a miss meets the glass
+            glassNext = false;
             Vector2? herd = null;
             if (game == PlayGame.ChaseRabbits)
             {
@@ -476,7 +493,7 @@ namespace AquariumCiv.View
             {
                 place = gather, forced = true, until = now + ForcedLead + ForcedSeconds,
                 game = KidGame.Create(game, (int)PlayGroups.Hash(who[0], (long)(now * 10f), 358) & 0x7fffffff, now + ForcedLead, who,
-                    game == PlayGame.DanceRing || game == PlayGame.Toddle ? Open(spot + new Vector2(0.5f, 0.3f), spot) : centre),
+                    game == PlayGame.DanceRing ? OpenRing(spot + new Vector2(0.5f, 0.3f), spot, RingGroup.RadiusFor(who.Count)) : game == PlayGame.Toddle ? Open(spot + new Vector2(0.5f, 0.3f), spot) : centre), // #770: the ring clear of the buildings
             };
             if (g.game is RabbitChaseGame chase) { var c = centre; chase.HerdAt = cyc => cyc == 0 ? herd : HerdNear(pv.Planner, pv.Now, c); }
             Add(g);
@@ -519,6 +536,16 @@ namespace AquariumCiv.View
         {
             var pv = PeopleView.Find();
             return pv == null ? "no people view" : pv.KidPlay.ForceTwo();
+        }
+
+        bool glassNext;
+        /// <summary>#772 cheat: the ball game, played 0.5 u from the right-hand pane (the land's middle in z), so the missed throws bounce off the glass.</summary>
+        public static string DebugBallAtGlass()
+        {
+            var pv = PeopleView.Find();
+            if (pv == null) return "no people view";
+            pv.KidPlay.glassNext = true;
+            return pv.KidPlay.Force(PlayGame.Ball);
         }
 
         public static string Debug(PlayGame game)
