@@ -29,7 +29,7 @@ namespace AquariumCiv.View.PlayTests
     public class StatueShots776 : PlayTestBase
     {
         const int W = 750, H = 1334;
-        const float Pitch = 56f, StatueShare = 0.18f, MinDollPx = 64f, FrameEvery = 0.1f, MaxScene = 100f;
+        const float Pitch = 56f, StatueShare = 0.14f, MinDollPx = 64f, FrameEvery = 0.1f, MaxScene = 100f;
         /// <summary>v2: the poses tried, 30 degrees apart through the default 28, and two pitches that look over the roofs.</summary>
         static readonly float[] Yaws = { -92f, -62f, -32f, -2f, 28f, 58f, 88f, 118f, 148f }, Pitches = { 56f, 62f };
 
@@ -96,11 +96,26 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>The carved statue's height on screen (px): its foot to the top of the head.</summary>
         static float StatuePx()
         {
-            var cam = Camera.main; var box = Box; var at = Pv.Camp.StatueDrawnAt;
-            float y = box.SurfaceHeight(at.x, at.y);
-            var a = cam.WorldToScreenPoint(box.Root.TransformPoint(new Vector3(at.x, y, at.y)));
-            var b = cam.WorldToScreenPoint(box.Root.TransformPoint(new Vector3(at.x, y + PegDoll.StatueHeight, at.y)));
-            return Mathf.Abs(b.y - a.y);
+            var cam = Camera.main;
+            StatueWorld(out var foot, out var top);
+            return Mathf.Abs(cam.WorldToScreenPoint(top).y - cam.WorldToScreenPoint(foot).y);
+        }
+
+        /// <summary>v3 (2026-11-26): the statue's foot and head in world space, from its own renderer's bounds when it is drawn (the v2 run showed the
+        /// box-root sum off-centre and ~1.5 x short in the village box), else from the drawn spot. The height is never less than the carved figure's.</summary>
+        static void StatueWorld(out Vector3 foot, out Vector3 top)
+        {
+            var r = StatueRenderer();
+            var box = Box; var at = Pv.Camp.StatueDrawnAt;
+            if (r != null)
+            {
+                var b = r.bounds;
+                float h = Mathf.Max(b.size.y, PegDoll.StatueHeight * r.transform.lossyScale.y);
+                foot = new Vector3(b.center.x, b.min.y, b.center.z); top = foot + Vector3.up * h;
+                return;
+            }
+            foot = box.Root.TransformPoint(new Vector3(at.x, box.SurfaceHeight(at.x, at.y), at.y));
+            top = box.Root.TransformPoint(new Vector3(at.x, box.SurfaceHeight(at.x, at.y) + PegDoll.StatueHeight, at.y));
         }
 
         /// <summary>v2 (2026-11-26): the camera on the statue: the target its middle at screen centre, the zoom that makes the statue
@@ -111,8 +126,9 @@ namespace AquariumCiv.View.PlayTests
             var rig = Rig; var box = Box;
             rig.CancelFlight();
             rig.minZoom = 0.03f; rig.minYaw = -180f; rig.maxYaw = 180f;
+            StatueWorld(out var foot, out var top);
             var at = Pv.Camp.StatueDrawnAt;
-            var w = box.Root.TransformPoint(new Vector3(at.x, box.SurfaceHeight(at.x, at.y) + PegDoll.StatueHeight * 0.5f, at.y));
+            var w = Vector3.Lerp(foot, top, 0.5f);
             rig.target = snap ? w : Vector3.Lerp(rig.target, w, 0.2f);
             rig.pitch = aimPitch; rig.yaw = aimYaw;
             rig.Apply();
@@ -142,12 +158,13 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>The screen box (px) of the statue and the foot of it where its people stand: <paramref name="reach"/> u round it, up to the statue's head.</summary>
         static RectInt ActorBox(float reach)
         {
-            var cam = Camera.main; var box = Box; var at = Pv.Camp.StatueDrawnAt;
-            float y = box.SurfaceHeight(at.x, at.y), h = PegDoll.StatueHeight + 0.01f;
+            var cam = Camera.main;
+            StatueWorld(out var foot, out var top);
+            float h = top.y - foot.y + 0.01f;
             float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
             foreach (float dx in new[] { -reach, reach }) foreach (float dz in new[] { -reach, reach }) foreach (float up in new[] { 0f, h })
             {
-                var v = cam.WorldToScreenPoint(box.Root.TransformPoint(new Vector3(at.x + dx, y + up, at.y + dz)));
+                var v = cam.WorldToScreenPoint(foot + new Vector3(dx, up, dz));
                 x0 = Mathf.Min(x0, v.x); x1 = Mathf.Max(x1, v.x); y0 = Mathf.Min(y0, v.y); y1 = Mathf.Max(y1, v.y);
             }
             int ix0 = Mathf.Clamp((int)x0, 0, Screen.width - 1), iy0 = Mathf.Clamp((int)y0, 0, Screen.height - 1);
@@ -221,7 +238,9 @@ namespace AquariumCiv.View.PlayTests
             }
             aimYaw = bestYaw; aimPitch = bestPitch;
             Frame(true);
-            aimLog = $"yaw {bestYaw:0} pitch {bestPitch:0} |{log}";
+            StatueWorld(out var f0, out var t0);
+            var sc = Camera.main.WorldToScreenPoint(Vector3.Lerp(f0, t0, 0.5f));
+            aimLog = $"yaw {bestYaw:0} pitch {bestPitch:0} statue at {sc.x:0},{sc.y:0} px {StatuePx():0} of {Screen.width}x{Screen.height} |{log}";
             Debug.Log("[776 shots] aim by cover: " + aimLog);
         }
 
@@ -304,13 +323,21 @@ namespace AquariumCiv.View.PlayTests
                 if (st != LifeStage.Adult && st != LifeStage.Elder) continue;
                 var p = new Vector2(xs[i], zs[i]);
                 float d = (p - at).magnitude;
-                if (d <= reach && d >= 0.15f && lastSeen.TryGetValue(who[i].Key, out var q) && (p - q).magnitude > 0.002f) found = true;
+                if (d <= reach && d >= 0.15f && lastSeen.TryGetValue(who[i].Key, out var q) && (p - q).magnitude > 0.002f && OnScreen(p)) found = true;
                 lastSeen[who[i].Key] = p;
             }
             if (found) lastSeen.Clear();
             return found;
         }
         static readonly Dictionary<int, Vector2> lastSeen = new();
+
+        /// <summary>v3: the walker is in the frame (the v2 nod was pressed for someone off screen: the clip showed no one).</summary>
+        static bool OnScreen(Vector2 p)
+        {
+            var box = Box;
+            var v = Camera.main.WorldToViewportPoint(box.Root.TransformPoint(new Vector3(p.x, box.SurfaceHeight(p.x, p.y), p.y)));
+            return v.z > 0f && v.x > 0.12f && v.x < 0.88f && v.y > 0.15f && v.y < 0.85f;
+        }
 
         /// <summary>A use on the standing statue: the cheat the user presses (once <paramref name="when"/> holds), the scene must start; filmed from
         /// <paramref name="preRoll"/> s before the cheat to 2 s after its end; the before and after stills.</summary>
