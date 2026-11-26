@@ -146,6 +146,8 @@ namespace AquariumCiv.View
         readonly Dictionary<(Place, SlotSpots.HomeSpot), int> homeRanks = new();
         /// <summary>Where the dolls placed so far this frame stand (rule 6: one doll per spot, also after a slot moved off a lot).</summary>
         readonly List<Vector2> claimed = new();
+        /// <summary>#779: where the people a held scene (a camp use, a staged moment, a life scene) places stand this frame, by key: camp life keeps a body's width off them.</summary>
+        readonly List<(int key, Vector2 at)> heldSpots = new();
         /// <summary>Sign-off 2026-11-14: the laid-out bedrolls (CampBedrolls) taken this frame, one person on each.</summary>
         readonly HashSet<int> restTaken = new();
         /// <summary>Batch 2: where the kids in a play group stand this frame (the still ones keep off them; the game's own members don't push each other).</summary>
@@ -527,6 +529,14 @@ namespace AquariumCiv.View
             // this frame are taken before anyone else picks a spot, so a settled doll's slot moves off them (Standable) instead of under a sitter
             for (int i = 0; i < acts.Count; i++)
                 if (Camp.Busy(acts[i].who.Key) && Camp.TryCue(acts[i].who.Key, time, out var held, out _) && !held.keepSpot) claimed.Add(held.pos);
+            heldSpots.Clear();
+            for (int i = 0; i < acts.Count; i++)
+            {
+                var ha = acts[i]; int hk = ha.who.Key;
+                if (Camp.Busy(hk) && Camp.TryCue(hk, time, out var hp, out _)) { if (!hp.keepSpot) heldSpots.Add((hk, hp.pos)); continue; }
+                if (StagedSpot != null && !Camp.CheatHolds(hk) && StagedSpot(ha, now, out float hx, out float hz, out _)) heldSpots.Add((hk, new Vector2(hx, hz)));
+                else if (LifeSpot != null && !Camp.CheatHolds(hk) && LifeSpot(ha, now, out hx, out hz, out _)) heldSpots.Add((hk, new Vector2(hx, hz)));
+            }
             restTaken.Clear();
             if (plannerSim != null && plannerSim.EcologyOn) // sign-off 2026-11-14: this session's laid-out bedrolls (CampBedrolls), drawn by the fire
             {
@@ -612,6 +622,7 @@ namespace AquariumCiv.View
             {
                 // 2026-11-24 (tester: two listeners 0.008 u apart): a listener's spot round the teller keeps a body's width from the others'
                 if (!hunting && a.kind == ActivityKind.ListenStory) target = Apart(target, claimed);
+                else if (!hunting && !started && a.tent != TentPhase.None) target = ApartFromHeld(Apart(target, claimed, BodySpots.BodyW), a.who.Key); // #779: the raising and the return to a tent's lot share spots with whoever stands there
                 face = huntFace; claimed.Add(target);
             }
             else if (!a.moving && !a.enRoute && !hidden && pins.TryGetValue(a.who.Key, out var pin)) // #224: the choice scene stands them on their own spot
@@ -626,6 +637,7 @@ namespace AquariumCiv.View
                 d.dbgSpot = spot; d.dbgSlot = target;
                 bool yard = a.place.kind == PlaceKind.Home && (target - spot).sqrMagnitude > SlotSpots.AtDoorReach * SlotSpots.AtDoorReach;
                 if (!d.atTower) target = Standable(target, spot, !InField(a.place), yard); // #404: a spot on the ladder or the platform is the tower's own
+                if (!d.atTower) target = Apart(target, claimed, BodySpots.BodyW); // #779: a place's slots collide (a notable and a crowd extra got the same one at a home): a body's width apart
                 d.dbgStand = target;
                 claimed.Add(target);
                 if (yard && lotOfBuilding.TryGetValue(a.place.buildingId, out var yardLot))
@@ -681,6 +693,9 @@ namespace AquariumCiv.View
             // #365 B9.c: someone at the fire gets up and pokes it with a stick
             float pokeSince = 0f; bool pokeBig = false;
             bool poking = !hidden && !paired && !playing && !tenting && !camping && !a.moving && meals.Poking(a.who.Key, time, out pokeSince, out pokeBig);
+            // #779: a camp-life standing spot (a slot, the laundry line's stand, the cook's) inside a held scene's ring moves off it: a body's width from each of the
+            // scene's people (the wedding's guests, a camp use's cast), never on top of one
+            if (!hidden && !hunting && !tenting && !camping && !paired && !a.moving && !a.enRoute && !d.atTower && heldSpots.Count > 0) target = ApartFromHeld(target, a.who.Key);
             if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && !(playing && playCue.sink > 0f) /* #359: wading in on purpose */ && land.IsWater(target.x, target.y)
                 && !(playing && BallGame.PondAt != null && !BallGame.PondAt(target)) /* #744 (tester): a dried pond's hollow is dry ground to play in */
                 && !(IceView.Instance != null && IceView.Instance.OnIce(target)) /* #618: on the ice */)
@@ -1445,19 +1460,35 @@ namespace AquariumCiv.View
         /// <summary>Batch 2: no still doll (and, with <paramref name="players"/>, no kid at play) within <see cref="Personal"/>.</summary>
         /// <summary>2026-11-24 (tester: two village kids at play fused into one body, 0.000-0.023 u apart for over a second): a spot within a body's
         /// width (<see cref="BodyGap"/>) of one already taken this frame is pushed out to that width, away from it (sideways when they coincide).</summary>
-        static Vector2 Apart(Vector2 t, List<Vector2> taken)
+        static Vector2 Apart(Vector2 t, List<Vector2> taken, float gap = BodyGap)
         {
             for (int pass = 0; pass < 6; pass++)
             {
-                int near = -1; float nd = BodyGap;
+                int near = -1; float nd = gap;
                 for (int i = 0; i < taken.Count; i++) { float d = (taken[i] - t).magnitude; if (d < nd) { nd = d; near = i; } }
                 if (near < 0) return t;
                 var away = t - taken[near];
                 away = away.sqrMagnitude > 1e-8f ? away.normalized : new Vector2(Mathf.Cos(pass * 2.4f), Mathf.Sin(pass * 2.4f));
-                t = taken[near] + away * BodyGap;
+                t = taken[near] + away * gap;
             }
             return t;
         }
+
+        /// <summary>#779: <paramref name="t"/> pushed out of a body's width (<see cref="HeldGap"/>) of every held scene person's spot but its own.</summary>
+        Vector2 ApartFromHeld(Vector2 t, int self)
+        {
+            for (int pass = 0; pass < 6; pass++)
+            {
+                int near = -1; float nd = HeldGap;
+                for (int i = 0; i < heldSpots.Count; i++) { if (heldSpots[i].key == self) continue; float dd = (heldSpots[i].at - t).magnitude; if (dd < nd) { nd = dd; near = i; } }
+                if (near < 0) return t;
+                var away = t - heldSpots[near].at;
+                away = away.sqrMagnitude > 1e-8f ? away.normalized : new Vector2(Mathf.Cos(pass * 2.4f + self), Mathf.Sin(pass * 2.4f + self));
+                t = heldSpots[near].at + away * HeldGap;
+            }
+            return t;
+        }
+        const float HeldGap = 0.09f;
 
         /// <summary>The least distance between two people's spots (the ADay test's "one doll per spot" is 0.05).</summary>
         const float BodyGap = 0.055f;

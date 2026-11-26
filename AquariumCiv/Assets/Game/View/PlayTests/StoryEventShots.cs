@@ -191,19 +191,18 @@ namespace AquariumCiv.View.PlayTests
         /// </summary>
         sealed class BodyWatch
         {
-            public const float Near = 1.2f, Least = BodySpots.BodyW - 0.02f;
+            public const float Near = 1.2f, Area = 0.4f, Fused = 0.05f, Least = BodySpots.BodyW - 0.02f;
             readonly Dictionary<int, List<(float t, Vector2 at)>> hist = new Dictionary<int, List<(float, Vector2)>>();
             /// <summary>People who may stand close on purpose (a couple at their vow's hug).</summary>
             public readonly HashSet<int> Together = new HashSet<int>();
-            float lastLog = -9f;
-            public float Closest = float.MaxValue, Bystanders = float.MaxValue; public string ByWhere = "none"; public string Where = "nobody close";
+            public float Slack = float.MaxValue, Closest = float.MaxValue, Bystanders = float.MaxValue; public string ByWhere = "none"; public string Where = "nobody close";
 
             /// <summary>#779: who, for the log: the key, whether the scene's cast, the camp use drawing them, whether a scene part holds them now.</summary>
             /// <summary>The scene (a camp use's part, or a staged moment's plan) holds this person now.</summary>
             /// <summary>The scene's own person: the cast (the couple, the teller, the two at the tree) or one a camp use's part holds now.</summary>
             static bool Mine(int key, HashSet<int> cast) => cast.Contains(key) || Pv.Camp.Cued(key);
             static bool Held(PersonRef r) => Pv.Camp.Cued(r.Key) || Pv.Planner != null && Pv.Planner.HeldMomentAt(r, Pv.Now, out _, out _, out _, out _);
-            static string Who(PersonRef r, HashSet<int> cast) { int k = r.Key; return $"{k}[{(cast.Contains(k) ? "cast" : "NOT cast")}, use {Pv.Camp.UseOf(k)}, {(Held(r) ? "held" : "free")}, {(Pv.TryGetActivityOf(r, out var act) ? act.kind + (act.moving ? " moving" : "") + (act.enRoute ? " enRoute" : "") + " tent " + act.tent + " at " + act.place.kind : "?")}, plan {(Pv.Planner.PositionAt(r, Pv.Now, out float qx, out float qz) ? $"({qx:0.00},{qz:0.00})" : "none")}]"; }
+            static string Who(PersonRef r, HashSet<int> cast) { int k = r.Key; return $"{k}[{(cast.Contains(k) ? "cast" : "NOT cast")}, use {Pv.Camp.UseOf(k)}, {(Held(r) ? "held" : "free")}, {(Pv.TryGetActivityOf(r, out var act) ? act.kind + (act.moving ? " moving" : "") + (act.enRoute ? " enRoute" : "") + " tent " + act.tent + " at " + act.place.kind : "?")}, {Pv.DebugSpotOf(r)}, plan {(Pv.Planner.PositionAt(r, Pv.Now, out float qx, out float qz) ? $"({qx:0.00},{qz:0.00})" : "none")}]"; }
 
             public void Sample(float now, IEnumerable<int> cast)
             {
@@ -214,12 +213,6 @@ namespace AquariumCiv.View.PlayTests
                 for (int i = 0; i < who.Count; i++) if (keys.Contains(who[i].Key)) { mid += new Vector2(xs[i], zs[i]); n++; }
                 if (n == 0) return;
                 mid /= n;
-                if (now - lastLog >= 0.5f)
-                {
-                    lastLog = now; var sb = new System.Text.StringBuilder($"[779 tl] {now:0.0}s mid ({mid.x:0.00},{mid.y:0.00}):");
-                    for (int i = 0; i < who.Count; i++) { var d = new Vector2(xs[i], zs[i]) - mid; if (d.magnitude < Near) sb.Append($" {Who(who[i], keys)}@({xs[i]:0.00},{zs[i]:0.00})"); }
-                    Debug.Log(sb.ToString());
-                }
                 var still = new List<(int key, Vector2 at)>(); var refOf = new Dictionary<int, PersonRef>(); foreach (var r in who) refOf[r.Key] = r;
                 for (int i = 0; i < who.Count; i++)
                 {
@@ -229,16 +222,22 @@ namespace AquariumCiv.View.PlayTests
                     bool stood = h[0].t <= now - 0.35f && (h[0].at - at).magnitude < 0.03f;
                     if (stood && (at - mid).magnitude < Near) still.Add((k, at));
                 }
+                // the scene's area: its own people (the cast, a camp use's part, a staged moment's plan: the wedding's guests) and a margin round each
+                var sceneAt = new List<Vector2>();
+                for (int i = 0; i < who.Count; i++) if (Mine(who[i].Key, keys) || Held(who[i])) sceneAt.Add(new Vector2(xs[i], zs[i]));
+                bool InArea(Vector2 p) { foreach (var q in sceneAt) if ((q - p).magnitude < Area) return true; return false; }
                 for (int i = 0; i < still.Count; i++)
                     for (int j = i + 1; j < still.Count; j++)
                     {
                         float d = (still[i].at - still[j].at).magnitude;
                         if (Together.Contains(still[i].key) && Together.Contains(still[j].key)) continue;
-                        // the scene's own people (its cast, or a part holds them now) against anybody; two people who are not the scene's are camp life (logged, and
-                        // reported: a wedding guest on a clothesline's stand)
-                        if (!(Mine(still[i].key, keys) || Mine(still[j].key, keys))) { if (d < Bystanders) { Bystanders = d; ByWhere = $"{Who(refOf[still[i].key], keys)} and {Who(refOf[still[j].key], keys)} {d:0.000} u apart, {now:0.0} s in"; } continue; }
-                        if (d >= Closest) continue;
-                        Closest = d; Where = $"{Who(refOf[still[i].key], keys)} and {Who(refOf[still[j].key], keys)} {d:0.000} u apart at ({still[i].at.x:0.00}, {still[i].at.y:0.00}) / ({still[j].at.x:0.00}, {still[j].at.y:0.00}), {now:0.0} s in";
+                        // every pair standing in the scene's area counts (cast or not); pairs elsewhere in the box are camp life: logged only
+                        if (!(InArea(still[i].at) || InArea(still[j].at))) { if (d < Bystanders) { Bystanders = d; ByWhere = $"{Who(refOf[still[i].key], keys)} and {Who(refOf[still[j].key], keys)} {d:0.000} u apart, {now:0.0} s in"; } continue; }
+                        // two of the scene's own people keep a body's width (Least); anyone else in its area at least the box's one-doll-per-spot rule (Fused)
+                        bool own = (Mine(still[i].key, keys) || Held(refOf[still[i].key])) && (Mine(still[j].key, keys) || Held(refOf[still[j].key]));
+                        float over = d - (own ? Least : Fused);
+                        if (over >= Slack) continue;
+                        Slack = over; Closest = d; Where = $"{Who(refOf[still[i].key], keys)} and {Who(refOf[still[j].key], keys)} {d:0.000} u apart at ({still[i].at.x:0.00}, {still[i].at.y:0.00}) / ({still[j].at.x:0.00}, {still[j].at.y:0.00}), {now:0.0} s in";
                     }
             }
         }
@@ -267,7 +266,7 @@ namespace AquariumCiv.View.PlayTests
             }
             frames.Add(f); every = FrameEvery;
             Debug.Log($"[722 shots] {ev}: {f} frames over {t:0.0} s, a person {lo:0}-{hi:0} px tall, framing {last.Count}");
-            if (watch != null) { Debug.Log($"[722 shots] {ev}: closest two standing: {watch.Where}; closest two the scene does not hold (camp life, not asserted): {watch.ByWhere}"); Assert.GreaterOrEqual(watch.Closest, BodyWatch.Least, $"{ev}: nobody stands inside anybody ({watch.Where})"); }
+            if (watch != null) { Debug.Log($"[722 shots] {ev}: closest two standing: {watch.Where}; closest two outside the scene's area (camp life, not asserted): {watch.ByWhere}"); Assert.GreaterOrEqual(watch.Slack, 0f, $"{ev}: nobody stands inside anybody ({watch.Where})"); }
         }
 
         /// <summary>The "after" still: the camera on <paramref name="spot"/> (eased in over ~1.5 s), then the shot.</summary>
