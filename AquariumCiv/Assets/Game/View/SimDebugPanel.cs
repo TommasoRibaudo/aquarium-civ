@@ -1012,14 +1012,23 @@ namespace AquariumCiv.View
             GUILayout.EndHorizontal();
             // #788/#790 last days: an elder into their last window (slower, longer sits, family beside; card line, glance line, pin tag)
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Elder: last days (selected)")) last = Done(LastDays(sim, sim.DebugLastDays(cur.id)));
-            if (GUILayout.Button("Elder: last days (pin or oldest)")) last = Done(LastDays(sim, sim.DebugLastDays()));
+            if (GUILayout.Button("Elder: last days (selected)")) last = Done(LastDaysCheat(sim, cur.id));
+            if (GUILayout.Button("Elder: last days (pin or oldest)")) last = Done(LastDaysCheat(sim, -1));
             GUILayout.EndHorizontal();
             // readout of everyone: name, trait, age, job, role
             var sb = new StringBuilder();
             foreach (var n in alive)
                 sb.AppendLine($"{(n.id == sel ? "> " : "  ")}{n.FullName}, {n.trait}, {n.age:0}, {(string.IsNullOrEmpty(n.job) ? "-" : n.job)}{(sim.RoleOf(n) is string r ? ", " + r : "")}");
             GUILayout.Label(sb.ToString());
+        }
+
+        /// <summary>#788 cheat: into their last days, and the planner reads the box again now. A second elder in the same year gets no glance
+        /// line, so nothing in the planner's signature moved and their walk stayed at pace 1 until the month turned.</summary>
+        public static string LastDaysCheat(SimCore sim, int id)
+        {
+            var n = sim.DebugLastDays(id);
+            PeopleView.Find()?.Planner?.Invalidate();
+            return LastDays(sim, n);
         }
 
         static string LastDays(SimCore sim, Notable n) =>
