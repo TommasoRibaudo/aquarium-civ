@@ -518,10 +518,11 @@ namespace AquariumCiv.View
         /// <summary>Tests and the panel: a new visit begins (the hunger line may be said again).</summary>
         public void DebugNewVisit() => OnReturn(default);
 
-        /// <summary>The line a hungry camp says now, or null when none is due (not hungry, the land gives food, the bushes are placed).</summary>
+        /// <summary>The line a hungry camp says now, or null when none is due (not hungry, the land gives food, the Keeper's tree has fruited
+        /// (#782: everyone ate its first fruit, so "nothing grows to eat" is no longer true), the bushes are placed).</summary>
         public static string HungerLineFor(SimCore sim)
         {
-            if (sim == null || !sim.NewStartOn || !sim.Hungry || sim.LandGivesFood) return null;
+            if (sim == null || !sim.NewStartOn || !sim.Hungry || sim.LandGivesFood || sim.StoryHappened(StoryEvent.FirstFruit)) return null;
             var thicket = AquariumCiv.Sim.Eco.LifeSpecies.Thicket;
             if (sim.LifeIsPlaced(thicket)) return null;
             var lines = sim.JarReady(thicket) ? HungryJarLines : sim.EcologyOn && sim.EcoBareShare < BareLandShare ? HungryGreenLines : HungryLandLines;
