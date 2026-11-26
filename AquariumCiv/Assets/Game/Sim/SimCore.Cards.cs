@@ -132,6 +132,7 @@ namespace AquariumCiv.Sim
             ["wish"] = (CardTone.Good, "wish"), ["dilemma"] = (CardTone.Neutral, "dilemma"), ["relic"] = (CardTone.Good, "relic"),
             ["tapback"] = (CardTone.Good, "keeper"), // a scholar taps back (SimCore.Relics.cs, #74)
             ["coming_of_age"] = (CardTone.Neutral, "hidden"),
+            ["slowing"] = (CardTone.Neutral, "people"), // #790: an elder in their last days (the glance line)
             ["story_marks_year"] = (CardTone.Good, "hidden"), // #722: later couples' marks are History only
         };
 
@@ -352,6 +353,7 @@ namespace AquariumCiv.Sim
                 "wedding" when e.otherNotableId >= 0 => $"{A} married {B}",
                 "birth" => BirthHeadline(e),
                 "death" or "role_death" => $"{A} died",
+                "slowing" => $"{A} is slowing down", // #790
                 "friendship" when e.otherNotableId >= 0 => $"{A} and {B} became friends",
                 "rivalry" when e.otherNotableId >= 0 => $"{A} and {B} fell out",
                 "reconcile" when e.otherNotableId >= 0 => $"{A} and {B} made up",

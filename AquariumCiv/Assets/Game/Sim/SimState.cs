@@ -258,6 +258,7 @@ namespace AquariumCiv.Sim
         public string trait;
         public float age;        // in years (advances at notableAgeFactor per game year)
         public float lifespan;
+        public bool slowingNoted; // #788/#790: the chronicle has said this elder is slowing down (once, in their last window)
         public bool alive = true;
         public int parentId = -1;
         public long bornMonth;

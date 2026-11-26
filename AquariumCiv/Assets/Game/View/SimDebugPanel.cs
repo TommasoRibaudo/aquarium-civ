@@ -1010,12 +1010,20 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Birth")) last = Done(sim.DebugBirth() is Notable c ? "born: " + c.FullName : "no adult to bear");
             if (GUILayout.Button("Oldest dies")) last = Done(sim.DebugKillOldest() is Notable k ? "died: " + k.FullName : "nobody");
             GUILayout.EndHorizontal();
+            // #788/#790 last days: an elder into their last window (slower, longer sits, family beside; card line, glance line, pin tag)
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Elder: last days (selected)")) last = Done(LastDays(sim, sim.DebugLastDays(cur.id)));
+            if (GUILayout.Button("Elder: last days (pin or oldest)")) last = Done(LastDays(sim, sim.DebugLastDays()));
+            GUILayout.EndHorizontal();
             // readout of everyone: name, trait, age, job, role
             var sb = new StringBuilder();
             foreach (var n in alive)
                 sb.AppendLine($"{(n.id == sel ? "> " : "  ")}{n.FullName}, {n.trait}, {n.age:0}, {(string.IsNullOrEmpty(n.job) ? "-" : n.job)}{(sim.RoleOf(n) is string r ? ", " + r : "")}");
             GUILayout.Label(sb.ToString());
         }
+
+        static string LastDays(SimCore sim, Notable n) =>
+            n == null ? "nobody" : $"last days: {n.FullName}, age {n.age:0}, frailty {sim.FrailtyOf(n):0.00} (the walk, the sits and the family show within a view hour)";
 
         void RolesGui(SimCore sim)
         {

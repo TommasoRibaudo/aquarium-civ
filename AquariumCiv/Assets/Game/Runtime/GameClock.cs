@@ -162,7 +162,7 @@ namespace AquariumCiv.Game
             ActiveSim?.MarkLandSeen(); // #281: what grew is seen now
             Save();
             EndTelemetrySession("quit");
-            if (!paused) Notifier?.Close(ActiveSim, DateTime.UtcNow, EraNotifier.Enabled); // a pause before it has done this already
+            if (!paused) Notifier?.Close(ActiveSim, DateTime.UtcNow, EraNotifier.Enabled, EraNotifier.DeathNotice); // a pause before it has done this already
         }
 
         void GoAway()
@@ -173,7 +173,7 @@ namespace AquariumCiv.Game
             ActiveSim?.MarkLandSeen(); // #281: the player has looked at the land; what grows while away is new
             Save();
             EndTelemetrySession("pause");
-            Notifier?.Close(ActiveSim, pausedUtc, EraNotifier.Enabled);
+            Notifier?.Close(ActiveSim, pausedUtc, EraNotifier.Enabled, EraNotifier.DeathNotice);
         }
 
         void Return()
@@ -456,7 +456,7 @@ namespace AquariumCiv.Game
         {
             var c = Instance;
             if (c == null || c.ActiveSim == null) return "no GameClock running";
-            c.Notifier.Close(c.ActiveSim, DateTime.UtcNow, true);
+            c.Notifier.Close(c.ActiveSim, DateTime.UtcNow, true, EraNotifier.DeathNotice);
             c.Notifier.WaitForRun(30000);
             return c.Notifier.Last?.ToString() ?? "nothing";
         }

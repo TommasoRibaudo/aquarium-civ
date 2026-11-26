@@ -16,11 +16,15 @@ namespace AquariumCiv.Game
         public bool scheduled;
         public TimeSpan after;
         public string title, body;
+        public bool deathScheduled;     // #790
+        public TimeSpan deathAfter;
+        public string deathTitle, deathBody;
 
         public override string ToString()
         {
             string found = result.Found ? $"{result.target} {result.era} in {result.realHours:0.00} real h" : result.miss.ToString();
             string what = scheduled ? $"scheduled in {after.TotalHours:0.00} h" : "nothing scheduled";
+            if (deathScheduled) what += string.Format(CultureInfo.InvariantCulture, " · a soft word for the pinned person in {0:0.00} h", deathAfter.TotalHours);
             return string.Format(CultureInfo.InvariantCulture, "{0} · {1} months · copy {2} ms and wait {3} ms on the main thread, {4} ms on the worker · {5}",
                 found, result.monthsRun, copyMs, waitMs, runMs, what);
         }
@@ -48,12 +52,21 @@ namespace AquariumCiv.Game
         /// <summary>A time already gone, or a moment away, still gives the phone a moment.</summary>
         public const double SoonestSeconds = 60;
         public const int NotificationId = 9701;
+        /// <summary>#790: the soft word when the pinned person is gone. OFF by default; it needs the notifications on as well.</summary>
+        public const string DeathNoticeKey = "moment.deathNotice";
+        public const int DeathNotificationId = 9702;
         const int StackBytes = 2 * 1024 * 1024; // iOS gives a new thread 512 KB unless asked
 
         public static bool Enabled
         {
             get => PlayerPrefs.GetInt(EnabledKey, 0) == 1;
             set { PlayerPrefs.SetInt(EnabledKey, value ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
+        public static bool DeathNotice
+        {
+            get => PlayerPrefs.GetInt(DeathNoticeKey, 0) == 1;
+            set { PlayerPrefs.SetInt(DeathNoticeKey, value ? 1 : 0); PlayerPrefs.Save(); }
         }
 
         /// <summary>The phone itself: logged on anything else.</summary>
@@ -71,6 +84,7 @@ namespace AquariumCiv.Game
             public Thread thread;
             public volatile bool stopped;
             public DateTime closeUtc;
+            public bool deathNotice;
             public string name, json;
             public RunAheadResult result;
             public Exception failed;
@@ -117,12 +131,12 @@ namespace AquariumCiv.Game
         }
 
         /// <summary>The player left at <paramref name="closeUtc"/>. Main thread, bounded by the JSON plus <see cref="WaitMs"/>.</summary>
-        public void Close(SimCore sim, DateTime closeUtc, bool enabled)
+        public void Close(SimCore sim, DateTime closeUtc, bool enabled, bool deathNotice = false)
         {
             Stop();
             if (!enabled || sim == null) return;
             var clock = Stopwatch.StartNew();
-            var run = new Run { closeUtc = closeUtc, name = sim.State.settlementName, json = JsonUtility.ToJson(sim.State) };
+            var run = new Run { closeUtc = closeUtc, deathNotice = deathNotice, name = sim.State.settlementName, json = JsonUtility.ToJson(sim.State) };
             run.copyMs = clock.ElapsedMilliseconds;
             run.thread = new Thread(() => Work(sim, run), StackBytes) { IsBackground = true, Name = "EraNotifier" };
             lock (gate) current = run;
@@ -176,10 +190,26 @@ namespace AquariumCiv.Game
                     try { phone.Schedule(NotificationId, report.after, report.title, report.body); report.scheduled = true; }
                     catch (Exception e) { problem = e.Message; }
                 }
+                // #790: the pinned person went in the days ahead, and the Keeper asked to be told: one soft word, never a count or a date
+                if (run.failed == null && run.deathNotice && run.result.pinnedGone)
+                {
+                    var after = run.closeUtc.AddHours(run.result.pinnedGoneRealHours) - DateTime.UtcNow;
+                    report.deathAfter = after.TotalSeconds < SoonestSeconds ? TimeSpan.FromSeconds(SoonestSeconds) : after;
+                    DeathWords(run.name, out report.deathTitle, out report.deathBody);
+                    try { phone.Schedule(DeathNotificationId, report.deathAfter, report.deathTitle, report.deathBody); report.deathScheduled = true; }
+                    catch (Exception e) { problem = e.Message; }
+                }
                 last = report;
             }
             if (problem != null) Debug.LogWarning("[Notify] no notification: " + problem);
             Debug.Log("[Notify] close: " + report);
+        }
+
+        /// <summary>#790: the soft word for a pinned person's passing: it says where, not who, nor when.</summary>
+        public static void DeathWords(string name, out string title, out string body)
+        {
+            title = string.IsNullOrEmpty(name) ? "Your box" : name;
+            body = "Something happened at the tree. They'll wait for you.";
         }
 
         /// <summary>The words: warm, and they ask for nothing (pillar 4). Never a count, a deadline or what was missed.</summary>
