@@ -106,12 +106,14 @@ namespace AquariumCiv.View
             doc.sortingOrder = 12; // over the HUD and the shaping labels, under the moment player
             Build(doc.rootVisualElement);
             UiInput.Add(IsOverUi);
+            ShowMeDirector.CaptionShown += StepAsideNow;
         }
 
         void OnDisable()
         {
             if (Instance != this) return;
             UiInput.Remove(IsOverUi);
+            ShowMeDirector.CaptionShown -= StepAsideNow;
             Release();
         }
 
@@ -472,6 +474,8 @@ namespace AquariumCiv.View
             ApplySafe();
         }
 
+        void StepAsideNow() { if (safe != null && skipRow != null) ApplySafe(); }
+
         void ApplySafe()
         {
             var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
@@ -739,8 +743,13 @@ namespace AquariumCiv.View
         {
             if (!ToPanel(box.transform.TransformPoint(new Vector3(0f, PlateY, PlateZ)), out var p)) return;
             float w = plate.resolvedStyle.width, h = plate.resolvedStyle.height;
+            // polish night 1: the frame the plate is first shown it has no width yet, so the keep-on-screen clamp cannot see it ("Tap to name your box" ran off the right edge): wait for layout
+            bool laid = !float.IsNaN(w) && w > 1f;
             var q = GameUiPanel.KeepOnScreen(plate, new Vector2(p.x - (float.IsNaN(w) ? 0f : w) * 0.5f, p.y - (float.IsNaN(h) ? 0f : h) * 0.5f), TopLimit);
             plate.style.left = q.x; plate.style.top = q.y;
+            // drawn only once its laid-out spot is the clamped one (the frame it is first shown, layout still holds the old left)
+            var lay = plate.layout;
+            plate.style.visibility = laid && Mathf.Abs(lay.x - q.x) < 1f && Mathf.Abs(lay.y - q.y) < 1f ? Visibility.Visible : Visibility.Hidden;
         }
 
         void UpdateBubble(FirstRunStep step, bool quiet, bool reward)
