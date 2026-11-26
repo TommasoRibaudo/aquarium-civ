@@ -1401,12 +1401,35 @@ namespace AquariumCiv.View
             if (town && !sim.State.buildings.Exists(b => b.type == BuildingType.Bakery)) SimLayoutSource.DebugBuild(BuildingType.Bakery);
             sim.State.festivalUntilMonth = sim.State.month; // an ordinary year (tooling.md 2026-11-11: the era's festival evenings override the rest)
             if (kids > 0) sim.DebugAddKids(kids);
+            string barn = EnsureBarn(); // #791: the barn uses need a barn, and a family's one outbuilding can be a shed
             var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
             if (box != null) box.Rebuild();
             ShowMeDirector.BubblesOn = false;
             PeopleView.DebugSetHour(hour);
             var c = Camp;
-            return r + $"{sim.State.era} at {hour:0.0} h, kids +{kids}; " + (c != null ? c.VillageStatus() : "");
+            return r + $"{sim.State.era} at {hour:0.0} h, kids +{kids}, {barn}; " + (c != null ? c.VillageStatus() : "");
+        }
+
+        /// <summary>#791 (debug): a barn in the box for the barn uses (CampLife.BarnOf takes Pieces.Barn variant 0). Every family yard gets one
+        /// outbuilding and 4 in 10 are drawn as a shed with a woodpile (SimLayout.DrawsBarn), so a small village can have none: then its first
+        /// outbuilding is drawn as a barn (SimLayout.DebugBarnOf, this world only) and the box refreshed. World generation is unchanged.</summary>
+        public static string EnsureBarn()
+        {
+            var sim = AquariumCiv.Game.GameClock.Instance != null ? AquariumCiv.Game.GameClock.Instance.Sim : null;
+            var st = sim?.Settlement;
+            if (st == null) return "no sim";
+            AquariumCiv.Sim.Settle.Lot first = null;
+            foreach (var l in st.Lots)
+                if (l.kind == AquariumCiv.Sim.Settle.LotKind.Outbuilding && !l.retired)
+                {
+                    if (SimLayout.DrawsBarn(sim.State, l)) return "a barn stands";
+                    first ??= l;
+                }
+            if (first == null) return "no outbuilding to make a barn of";
+            SimLayout.DebugBarnOf = sim.State; SimLayout.DebugBarnLot = first.id;
+            var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+            if (box != null) box.Refresh();
+            return $"the shed on lot {first.id} drawn as a barn";
         }
 
         /// <summary>AnimLab: the camera yaw (deg, AnimLabLive's convention) that looks at the front of the nearest standing <paramref name="kind"/>
@@ -1441,8 +1464,8 @@ namespace AquariumCiv.View
         public static string StreetChat() => Do(CampUse.StreetChat);
         public static string FenceFix() => Do(CampUse.FenceFix);
         public static string FenceLean() => Do(CampUse.FenceLean);
-        public static string BarnChores() => Do(CampUse.BarnChores);
-        public static string HayJump() => Do(CampUse.HayJump);
+        public static string BarnChores() { EnsureBarn(); return Do(CampUse.BarnChores); } // #791: a barn first
+        public static string HayJump() { EnsureBarn(); return Do(CampUse.HayJump); }
         public static string VillageStatus() { var c = Camp; return c == null ? "no PeopleView" : c.VillageStatus(); }
         public static string HouseLanternsLit() { var c = Camp; return c == null ? "no PeopleView" : c.LightAllHouseLanterns(); }
         public static string VillageDolls() { var c = Camp; return c == null ? "no PeopleView" : c.VillageDolls(); }
