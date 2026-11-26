@@ -71,7 +71,8 @@ namespace AquariumCiv.View.PlayTests
 
         void OnLog(string msg, string stack, LogType type)
         {
-            if (type == LogType.Exception || type == LogType.Error) errors.Add(msg);
+            if (type == LogType.Exception || type == LogType.Error) errors.Add(msg + " @ " + string.Join(" < ", (stack ?? "").Split('
+').Select(l => l.Trim()).Where(l => l.Length > 0).Take(4)));
         }
 
         /// <summary>Loads Slice with a new box (or the save on disk, <paramref name="freshSave"/> false) and every bootstrap.
