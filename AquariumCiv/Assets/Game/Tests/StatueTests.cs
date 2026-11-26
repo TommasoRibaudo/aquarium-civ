@@ -4,6 +4,7 @@ using AquariumCiv.Sim;
 using AquariumCiv.Sim.Settle;
 using NUnit.Framework;
 using UnityEngine;
+using Terrain = AquariumCiv.Sim.Settle.Terrain;
 using static AquariumCiv.Tests.SimCoreTests;
 
 namespace AquariumCiv.Tests
@@ -75,6 +76,22 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(StatueRules.Ready(N(1), 500, Era.Town, 40, 5, false), "never for the living");
             Assert.IsFalse(StatueRules.Ready(null, 500, Era.Town, 40, 5, false));
             Assert.IsFalse(StatueRules.Ready(N(1, alive: false, died: -1), 500, Era.Town, 40, 5, false), "dead with no month of death is a malformed person");
+        }
+
+        [Test]
+        public void Tell_TheLeadersCrook_TheJobsTool_TheKindHand_ElseNothing()
+        {
+            Assert.AreEqual(StatueRules.Tell.Crook, StatueRules.TellOf(JobType.Fisher, "the kind", true), "a leader first");
+            Assert.AreEqual(StatueRules.Tell.Axe, StatueRules.TellOf(JobType.Woodcutter, "the loud", false));
+            Assert.AreEqual(StatueRules.Tell.Axe, StatueRules.TellOf(JobType.Toolmaker, "", false));
+            Assert.AreEqual(StatueRules.Tell.Hammer, StatueRules.TellOf(JobType.Mason, "", false));
+            Assert.AreEqual(StatueRules.Tell.Rod, StatueRules.TellOf(JobType.Fisher, "", false));
+            Assert.AreEqual(StatueRules.Tell.Basket, StatueRules.TellOf(JobType.Gatherer, "", false));
+            Assert.AreEqual(StatueRules.Tell.Hoe, StatueRules.TellOf(JobType.Farmer, "", false));
+            Assert.AreEqual(StatueRules.Tell.Hand, StatueRules.TellOf(JobType.Elder, "the kind", false), "no tool: the kind hand");
+            Assert.AreEqual(StatueRules.Tell.Hand, StatueRules.TellOf("", "the kind", false));
+            Assert.AreEqual(StatueRules.Tell.Nothing, StatueRules.TellOf(JobType.Elder, "the loud", false));
+            Assert.AreEqual(StatueRules.Tell.Nothing, StatueRules.TellOf(null, null, false));
         }
 
         // ---------- where ----------

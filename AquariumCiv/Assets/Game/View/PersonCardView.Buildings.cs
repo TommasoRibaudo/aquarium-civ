@@ -69,6 +69,27 @@ namespace AquariumCiv.View
             return core >= 0 ? core : best; // the air round a house's eaves doesn't take a tap from the well behind it
         }
 
+        /// <summary>#776 (B81.1): the person the founder's statue is for, when the statue is drawn under a screen point (an upright box round the plinth and the
+        /// figure, a little generous), else -1. A tap on it opens that person's card, as for a person remembered.</summary>
+        public int PickStatue(Vector2 screenPos)
+        {
+            var sim = Sim;
+            var cam = Camera.main;
+            var box = FindAnyObjectByType<BoxView>();
+            var camp = PeopleView.Find()?.Camp;
+            if (sim == null || cam == null || box == null || camp == null || !camp.StatueDrawn || !sim.StatueStands) return -1;
+            var at = camp.StatueDrawnAt;
+            var ray = cam.ScreenPointToRay(screenPos);
+            var o = box.transform.InverseTransformPoint(ray.origin);
+            var v = box.transform.InverseTransformDirection(ray.direction);
+            var spot = new Lot { x = at.x, z = at.y, w = StatueTapSide, d = StatueTapSide };
+            float y0 = box.GroundHeight(at.x, at.y);
+            return HitsLot(spot, o, v, y0, y0 + PegDoll.StatueHeight + 0.03f, 1f, out _) ? sim.StatueFor : -1;
+        }
+
+        /// <summary>#776: the statue's tap box, a side (box units): the lower step and a little.</summary>
+        const float StatueTapSide = 0.2f;
+
         /// <summary>#404: the tower's tap box, a side (box units): its legs and the platform, a little generous.</summary>
         const float TowerTapSide = 0.3f;
 

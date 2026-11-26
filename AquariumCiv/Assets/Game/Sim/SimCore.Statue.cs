@@ -19,6 +19,11 @@ namespace AquariumCiv.Sim
         public int StatueFor => State.statueFor;
         public Notable StatueNotable => State.statueFor < 0 ? null : FindNotable(State.statueFor);
 
+        /// <summary>What the statue's figure carries (B81.1): the person's leader term, job and trait.</summary>
+        public StatueRules.Tell StatueTell(Notable who) =>
+            who == null ? StatueRules.Tell.Nothing
+            : StatueRules.TellOf(who.job, who.trait, TermsOf(who.id).Any(t => t.role == RoleType.Chief || t.role == RoleType.Headman));
+
         /// <summary>Who the statue would be for now: the most pinned (a day or more), else the first notable. Alive or not.</summary>
         public Notable StatueCandidate => StatueRules.Who(State.notables, PinnedHours, Config.pinLegendHours);
 

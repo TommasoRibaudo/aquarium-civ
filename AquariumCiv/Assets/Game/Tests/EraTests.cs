@@ -181,18 +181,18 @@ namespace AquariumCiv.Tests
             var sim = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             sim.State.era = Era.Town;
             sim.Advance(48);
-            Assert.AreEqual(3682534359u, Fingerprint(sim.State)); // #722 (3.3): the first snow's line (text only); #716: office and role lines name only real things (text only); #715: the weather and trait stories left the story stream (research 21); re-pinned for the bakery (#112); #82fix: quarrels gated on the box (text only); #67: job_fill lines and who holds the crafts; #74: the Left Sandal's loss (text only); #26: the town band (8–12 adults, +2 children) and 55–80 lifespans; #27: role lines in the chronicle (economy unchanged); #28: term lines and codas in the chronicle (economy unchanged); #59: the strange light is the Bright One's until the Lamp is used (text only); #60: town sweepers; #61: read-through text fixes (text and roles only) #148: a riser carries their crowd name; only the name text moved, dice and economy unchanged.
+            Assert.AreEqual(515858027u, Fingerprint(sim.State)); // #776: the founder statue's line (text and the story slot, as the #722 lines). #722 (3.3): the first snow's line (text only); #716: office and role lines name only real things (text only); #715: the weather and trait stories left the story stream (research 21); re-pinned for the bakery (#112); #82fix: quarrels gated on the box (text only); #67: job_fill lines and who holds the crafts; #74: the Left Sandal's loss (text only); #26: the town band (8–12 adults, +2 children) and 55–80 lifespans; #27: role lines in the chronicle (economy unchanged); #28: term lines and codas in the chronicle (economy unchanged); #59: the strange light is the Bright One's until the Lamp is used (text only); #60: town sweepers; #61: read-through text fixes (text and roles only) #148: a riser carries their crowd name; only the name text moved, dice and economy unchanged.
             var noRelics = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             noRelics.RelicsOn = false;
             noRelics.State.era = Era.Town;
             noRelics.Advance(48);
-            Assert.AreEqual(3682534359u, Fingerprint(noRelics.State), "without #74's relics"); // #148: a riser carries their crowd name; only the name text moved, dice and economy unchanged.
+            Assert.AreEqual(515858027u, Fingerprint(noRelics.State), "without #74's relics"); // #148: a riser carries their crowd name; only the name text moved, dice and economy unchanged.
             var before = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             before.CardsOn = false; // #59 off: the text as it was, so that is all that changed
             before.RelicsOn = false; // and #74's
             before.State.era = Era.Town;
             before.Advance(48);
-            Assert.AreEqual(3682534359u, Fingerprint(before.State)); // #148: a riser carries their crowd name; only the name text moved, dice and economy unchanged.
+            Assert.AreEqual(515858027u, Fingerprint(before.State)); // #148: a riser carries their crowd name; only the name text moved, dice and economy unchanged.
         }
 
         [Test]

@@ -340,6 +340,7 @@ namespace AquariumCiv.View
                 solids.Add(new Solid(pile.x, pile.z, CampStash.PileExtent));
             }
             solids.AddRange(ExtraSolids); // #694: a sleeping dog
+            if (StatueSolid.HasValue) solids.Add(StatueSolid.Value); // #776: the founder's statue on the green
             // B3 tester fixes: every choice thing standing on the ground is solid (people walked through the woodpile and stood in the pot)
             propSolids.Clear(); propSolidOf.Clear();
             var cpv = ConsequencePropsView.Instance;
@@ -1831,6 +1832,8 @@ namespace AquariumCiv.View
         public static StagedPoseHook DogPose;
         /// <summary>#694 (B56.e): things people step round this frame (a dog asleep by the fire), filled by CampLife.Dogs.</summary>
         public static readonly List<Solid> ExtraSolids = new();
+        /// <summary>#776 (B81): the founder's statue on the green is solid (people go round it); CampLife sets it while the statue is drawn.</summary>
+        public static Solid? StatueSolid;
         /// <summary>#695: spots kept clear of everyone but the people a use names (B58.c: the bakery door while the kids wait for a crust).</summary>
         public static readonly List<(Solid solid, HashSet<int> cast)> KeepClear = new();
 

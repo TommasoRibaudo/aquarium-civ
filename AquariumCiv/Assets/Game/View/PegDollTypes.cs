@@ -33,7 +33,15 @@ namespace AquariumCiv.View
         // the user's review of #692 part 1 (B30.b): the bowl before the ladle fills it (Bowl is a bowl of stew now)
         BowlEmpty,
         // #722 (2.1, B80.c): the tinkerer's crooked bucket: the bucket with a bent spout on its rim (full, empty)
-        SpoutBucket, SpoutBucketEmpty }
+        SpoutBucket, SpoutBucketEmpty,
+        // #776 (B81): the founder's statue on its two-step plinth (PegDoll.Statue; the carved one is a kit prop for the kit's test and AnimLab)
+        FounderStatue }
+
+    /// <summary>#776 (B81.1): how far the carving has come: the bare plinth, the plain block, the shoulders cut in, the head shown, the carved figure with its tell.</summary>
+    public enum StatueStage { Plinth, Block, Rough, Headed, Carved }
+
+    /// <summary>#776 (B81.1 "Wear", view only): a snow cap on the head and shoulders in winter, two leaves on the step in autumn.</summary>
+    public enum StatueWear { None, Snow, Leaves }
 
     /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
     /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>

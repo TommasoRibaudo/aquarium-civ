@@ -55,5 +55,25 @@ namespace AquariumCiv.Sim
             if (era == Era.Camp || people < MinPeople) return false;
             return SpringOrSummer(calendarMonth);
         }
+
+        /// <summary>What the figure carries (B81.1 "Its tell"): what the person was.</summary>
+        public enum Tell { Nothing, Axe, Hammer, Rod, Basket, Hoe, Crook, Hand }
+
+        /// <summary>The tell: a leader of the box (a chief or a headman: their term is in the history) the antlers' post's crook; else the job's tool
+        /// (a woodcutter or toolmaker the axe, a mason or smith the hammer, a fisher the rod, a gatherer or beekeeper the basket, a farmer or
+        /// shepherd the hoe); else a kind person the hand held out, palm up; else both hands at the sides.</summary>
+        public static Tell TellOf(string job, string trait, bool wasLeader)
+        {
+            if (wasLeader) return Tell.Crook;
+            switch (job)
+            {
+                case JobType.Woodcutter: case JobType.Toolmaker: return Tell.Axe;
+                case JobType.Mason: case JobType.Smith: return Tell.Hammer;
+                case JobType.Fisher: return Tell.Rod;
+                case JobType.Gatherer: case JobType.Beekeeper: return Tell.Basket;
+                case JobType.Farmer: case JobType.Shepherd: return Tell.Hoe;
+            }
+            return trait == "the kind" ? Tell.Hand : Tell.Nothing;
+        }
     }
 }

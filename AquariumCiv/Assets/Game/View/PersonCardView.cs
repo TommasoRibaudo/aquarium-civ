@@ -170,6 +170,7 @@ namespace AquariumCiv.View
             bool onMess = CareView.Instance != null && CareView.Instance.MessSaysSo(screenPos);
             if (!cardUp && onMess) { CareView.Instance.AnswerMessTap(); return true; }
             int building = PickBuilding(screenPos);
+            if (building < 0 && !onMess && !cardUp && PickStatue(screenPos) is int founder && founder >= 0) { Open(founder, true); return true; } // #776: the founder's statue opens their card
             if (building < 0 && !onMess && OpenWho(PickPerson(screenPos))) return true; // tester run 9: mess under the finger beats a doll merely near it
             if (IsOpen) { Close(); return true; }
             if (CrowdOpen) { CloseCrowd(); return true; }
