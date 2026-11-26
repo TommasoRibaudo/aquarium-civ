@@ -697,6 +697,10 @@ namespace AquariumCiv.Sim.Settle
         public float GreenRadius => SiteMap.GreenR;
         public TerrainSpec Terrain0 => Map.spec;
 
+        /// <summary>#762: ground the people keep for their things that live outside the lots (the camp's drying racks), as oriented rects set by
+        /// the life layer (not saved): a new field's lot keeps clear of them. Empty until the view asks where the racks stand.</summary>
+        public readonly List<Footprint> KeepClear = new List<Footprint>();
+
         public Lot LotById(int id)
         {
             if (id == 0) return null;

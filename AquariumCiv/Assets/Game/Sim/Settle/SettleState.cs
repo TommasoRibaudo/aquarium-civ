@@ -16,6 +16,13 @@ namespace AquariumCiv.Sim.Settle
         Bakery,
     }
 
+    /// <summary>An oriented rect on the ground (centre, yaw in degrees as for a lot, width across the front, depth along it).</summary>
+    public readonly struct Footprint
+    {
+        public readonly float x, z, yaw, w, d;
+        public Footprint(float x, float z, float yaw, float w, float d) { this.x = x; this.z = z; this.yaw = yaw; this.w = w; this.d = d; }
+    }
+
     /// <summary>A claimed lot: an oriented rectangle whose front (local −z) faces its door. Lots never move: an era
     /// change rebuilds on the same lot.</summary>
     [Serializable]
