@@ -21,7 +21,7 @@ namespace AquariumCiv.View
         public const float WeedUnit = 1f / MaxWeeds;
         const float LeaveSeconds = 0.4f, AppearSeconds = 0.35f, Gravity = 2.2f;
         /// <summary>The weed patches' size on the land (user 2026-10-30: bigger, clearly visible at default zoom; was 1.5).</summary>
-        public const float WeedScale = 2.4f;
+        public const float WeedScale = 3.1f;
 
         /// <summary>What a piece is (#311, #314): a weed patch (the overgrowth), a tuft of weed round the Keeper's tree, or a cell of the creeping vine.</summary>
         public enum Kind { Weed, TreeWeed, Vine }
@@ -267,8 +267,8 @@ namespace AquariumCiv.View
         public const int WeedBlades = 15, WeedStalks = 3;
         /// <summary>The widest a weed blade is at its foot, in mesh units (a blade is a sliver; tests pin it).</summary>
         public const float WeedBladeHalfWidth = 0.011f;
-        static readonly Color WeedFoot = new(0.36f, 0.27f, 0.16f), WeedDry = new(0.62f, 0.52f, 0.26f), WeedYellow = new(0.66f, 0.68f, 0.28f),
-            WeedGreen = new(0.46f, 0.58f, 0.24f), WeedSeed = new(0.45f, 0.33f, 0.18f);
+        static readonly Color WeedFoot = new(0.36f, 0.27f, 0.16f), WeedDry = new(0.70f, 0.55f, 0.24f), WeedYellow = new(0.82f, 0.74f, 0.30f),
+            WeedGreen = new(0.52f, 0.60f, 0.20f), WeedSeed = new(0.30f, 0.20f, 0.10f);
 
         /// <summary>A bent blade: a foot, a knee that leans out, a tip that droops further. Two thin triangles per segment (both faces).</summary>
         static void WeedBlade(MeshBuilder mb, Vector3 g, float h, float yaw, float lean, float halfW, Color mid)
@@ -326,7 +326,7 @@ namespace AquariumCiv.View
                 mb.Tri(knee - side, tip, knee + side, WeedDry); mb.Tri(knee + side, tip, knee - side, WeedDry);
                 // the seed head: a small dark, pointed spike on the tip
                 var up = (tip - knee).normalized;
-                mb.Prism(tip - up * 0.01f, 0.011f, 0f, 0.05f, 4, WeedSeed, Quaternion.FromToRotation(Vector3.up, up));
+                mb.Prism(tip - up * 0.01f, 0.009f, 0f, 0.04f, 4, WeedSeed, Quaternion.FromToRotation(Vector3.up, up));
                 mb.sway = 0f;
             }
             return mb.ToMesh("CareWeeds");
