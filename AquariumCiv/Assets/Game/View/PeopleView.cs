@@ -874,7 +874,11 @@ namespace AquariumCiv.View
             else
             {
                 if (!a.partner.IsNone && dolls.TryGetValue(a.partner.Key, out var p) && p.placed && (p.pos - d.pos).sqrMagnitude < 0.6f * 0.6f && p.pos != d.pos)
+                {
                     want = Yaw(d.pos, p.pos);
+                    // #767: a fisher talking keeps the rod over the water: the shoulders turn a little toward the partner, no more (the head is part of the body mesh, so it cannot turn alone)
+                    if (fishNow && face.HasValue && (face.Value - d.pos).sqrMagnitude > 1e-5f) want = FishBeats.ChatYaw(Yaw(d.pos, face.Value), want);
+                }
                 else if (face.HasValue && (face.Value - d.pos).sqrMagnitude > 1e-5f) want = Yaw(d.pos, face.Value);
             }
             // 2026-11-06: a carer standing near their toddler when it plops turns to it and bends (ToddleFollow.CarerPose below).

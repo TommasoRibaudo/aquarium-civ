@@ -16,10 +16,31 @@ namespace AquariumCiv.Life
             Sync();
             if (sim != null && !sim.FishingWater) return -1; // #421: no fishing of any kind until fish are placed
             debugFishers.Clear();
+            debugFishMate.Clear();
             int n = 0;
             foreach (var p in people)
                 if (p.Adult && p.job != JobType.Toolmaker && n < grownUps) { debugFishers[p.key] = (now.hour, now.hour + hours); n++; }
             return n == 0 ? -1 : n;
+        }
+
+        // #767: the "Fishers chat now" cheat: two fishers who fish with each other (the camp's rest day does the same with a couple)
+        readonly Dictionary<int, PersonRef> debugFishMate = new();
+
+        /// <summary>#767: sends two grown-ups (not the toolmaker) to fish the pond side by side, each the other's partner (the view turns them toward each other while they fish).
+        /// Returns 2, or -1 with no water / fewer than two free.</summary>
+        public int DebugFishersChat(ViewTime now, float hours = 2f)
+        {
+            int n = DebugFishNow(now, 2, hours);
+            debugFishMate.Clear();
+            if (n < 2) { debugFishers.Clear(); return -1; }
+            Person first = null;
+            foreach (var p in people)
+            {
+                if (!debugFishers.ContainsKey(p.key)) continue;
+                if (first == null) first = p;
+                else { debugFishMate[first.key] = p.who; debugFishMate[p.key] = first.who; break; }
+            }
+            return 2;
         }
 
         /// <summary>Keys of the people the cheat sent fishing (so the view can bring their first bite forward).</summary>
@@ -35,6 +56,7 @@ namespace AquariumCiv.Life
             a = new PersonActivity
             {
                 who = p.who, kind = ActivityKind.Fish, place = pond, from = pond, prop = Prop.Rod, slot = p.key % 3,
+                partner = debugFishMate.TryGetValue(p.key, out var mate) ? mate : PersonRef.None,
                 start = f.start, end = f.until, progress = (t.hour - f.start) / (f.until - f.start), pace = 1f, chronicleId = -1,
             };
             return true;
