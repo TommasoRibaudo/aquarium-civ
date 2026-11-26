@@ -81,6 +81,39 @@ namespace AquariumCiv.Tests
             Assert.Greater(full + slow, 5, "enough boxes were still waiting to mean something");
         }
 
+        /// <summary>#790: a pinned person near the end of their life, in a box that has years to go before its era is ready.</summary>
+        static SimCore PinnedNearTheEnd(int seed, float lifespanLeft, bool pin)
+        {
+            var sim = NewSim(seed);
+            var n = sim.State.notables.First(x => x.alive);
+            n.age = sim.Config.retireAge + 5f;
+            n.lifespan = n.age + lifespanLeft;
+            foreach (var o in sim.State.notables.Where(x => x.alive && x != n)) o.lifespan = o.age + 90f;
+            if (pin) sim.Pin(n.id);
+            return sim;
+        }
+
+        [TestCase(1801)]
+        [TestCase(1721)] // the seeds EraNotifierTests uses for the same setup
+        [TestCase(1722)]
+        [TestCase(1723)]
+        public void ThePinnedPersonGoneInTheDaysAheadIsReported(int seed)
+        {
+            var sim = PinnedNearTheEnd(seed, 0.5f, pin: true);
+            var r = sim.RunAhead(Copy);
+            Assert.IsTrue(r.pinnedGone, "the copy lived long enough for the pinned elder to go: " + r.miss);
+            Assert.Greater(r.pinnedGoneRealHours, 0.0);
+            Assert.LessOrEqual(r.pinnedGoneRealHours, SimCore.RunAheadMaxAwayHours * 4);
+            Assert.IsTrue(sim.State.notables.First(x => x.id == sim.State.pinnedNotableId).alive, "the live box is untouched");
+        }
+
+        [Test]
+        public void NobodyGoneWhenThePinnedLivesOrNobodyIsPinned()
+        {
+            Assert.IsFalse(PinnedNearTheEnd(1802, 90f, pin: true).RunAhead(Copy).pinnedGone, "far from the end");
+            Assert.IsFalse(PinnedNearTheEnd(1803, 0.5f, pin: false).RunAhead(Copy).pinnedGone, "not pinned: no word for them");
+        }
+
         [Test]
         public void TheSlowTailCountsFourRealHoursToTheSimHour()
         {

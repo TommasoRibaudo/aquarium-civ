@@ -306,6 +306,7 @@ namespace AquariumCiv.Sim
                     n.diedMonth = s.month;
                     Chronicle("death", $"{n.FullName}, {n.trait}, died of old age at {Math.Floor(n.age)}.", 0.85f, n.id);
                 }
+                else NoteSlowing(n); // #790: the glance line, once, as an elder enters their last days
             }
             // Births: a notable's child is a notable from birth and grows up one (never back into the crowd). Families
             // with fewer children come first: parents try in order of children born (then id, so it stays deterministic),

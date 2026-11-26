@@ -266,6 +266,7 @@ namespace AquariumCiv.Life
             public Place home;
             public Person partner, friend, rival, mentor, parent, trails, coworker;
             public PersonHints hints;
+            public float frail;         // #788: 0, or 0.1 to 1 in their last days (SimCore.FrailtyOf)
             public bool reconciledWithSomeone;
             public Person reconciled;
             public bool Adult => stage == LifeStage.Adult;
@@ -438,6 +439,7 @@ namespace AquariumCiv.Life
                 p.stage = n.age < 4f ? LifeStage.Baby : n.age < SimCore.AdultAge ? LifeStage.Kid
                     : (n.age >= sim.Config.retireAge || n.job == JobType.Elder) ? LifeStage.Elder : LifeStage.Adult;
                 roleOf.TryGetValue(n.id, out p.role);
+                if (p.stage == LifeStage.Elder) p.frail = sim.FrailtyOf(n); // #788
                 int fam = n.family != null && family.TryGetValue(n.family, out var fi) ? fi : 0;
                 if (positions.TryGetHome(n, out int homeId, out int headId) && buildingIds.Contains(homeId))
                 {
@@ -460,6 +462,8 @@ namespace AquariumCiv.Life
                 p.mentor = m != null && p.age < 20f && m.Adult ? m : null; // the sim's apprentices are 8–20
                 if (p.job == JobType.Farmer && farms.Count > 0) p.jobBuilding = farms[(int)(H(p.key, 0, 71) % (uint)farms.Count)];
             }
+
+            SnapshotFrail(); // #788: whose family sits with a frail elder
 
             // ---- reconciled pairs: a make-up in the last ten years, and not rivals again
             long since = s.month - 120;
@@ -616,7 +620,7 @@ namespace AquariumCiv.Life
         {
             if (a == b) return 0f;
             var route = RouteBetween(a, b);
-            float slow = HungerPace; // #656/#677: hungry, a little slower (shown, never punished)
+            float slow = HungerPace * walkPace; // #788: a frail elder's walks take longer; #656/#677: hungry, a little slower (shown, never punished)
             if (route != null && route.len > 1e-4f) return slow * Math.Max(MinWalk, Math.Min(MaxWalk, route.len / WalkSpeed));
             if (positions.TryWalkLength(a, b, out float len)) return slow * Math.Max(MinWalk, Math.Min(MaxWalk, len / WalkSpeed));
             if (positions.TryGetPosition(a, out float ax, out float az) && positions.TryGetPosition(b, out float bx, out float bz))

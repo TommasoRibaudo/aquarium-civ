@@ -122,6 +122,7 @@
     <!-- #113/#146/#162/#175: the light, lamp, glass-night, camera-reach and near-glass-fade logic and its tests -->
     <Compile Include="../../AquariumCiv/Assets/Game/View/Light/Core/**/*.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/LightTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/StoryLeanTests.cs" /><!-- #783 the held-scene lean maths -->
     <Compile Include="../../AquariumCiv/Assets/Game/View/Grime/Core/**/*.cs" /><!-- #121 -->
     <Compile Include="../../AquariumCiv/Assets/Game/View/Tests/GrimePatchTests.cs" />
     <Compile Include="Shims/*.cs" />

@@ -56,6 +56,13 @@ namespace AquariumCiv.GameUI
             set => AquariumCiv.Game.EraNotifier.Enabled = value;
         }
 
+        /// <summary>#790: a soft word when the pinned person is gone. Off unless the Keeper turns it on (and only when notifications are on).</summary>
+        public static bool DeathNotice
+        {
+            get => AquariumCiv.Game.EraNotifier.DeathNotice;
+            set => AquariumCiv.Game.EraNotifier.DeathNotice = value;
+        }
+
         /// <summary>The finger is off a slider: the volumes go to disk.</summary>
         public static void Commit() => PlayerPrefs.Save();
 

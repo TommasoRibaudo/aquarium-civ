@@ -36,7 +36,7 @@ namespace AquariumCiv.GameUI
 
         readonly GameHud hud;
         readonly Action<GlassSheet> tightened;
-        GlassToggle sound, haptics, notifications;
+        GlassToggle sound, haptics, notifications, deathNotice;
         GlassSlider music, effects, ambience;
         GlassTabs plays;
         VisualElement silent;
@@ -106,6 +106,7 @@ namespace AquariumCiv.GameUI
                 if (v) Sfx.Haptic(HapticKind.Light); // the toggle's own tick came while they were off
             });
             notifications = Switch("settings-notifications", "bell", "Notifications", GameSettings.Notifications, OnNotifications);
+            deathNotice = Switch("settings-death-notice", "bell", "A word if your pin is gone", GameSettings.DeathNotice, v => GameSettings.DeathNotice = v); // #790: off by default
 
             Scroll.Add(Heading("Your box"));
             renameRow = Link("settings-rename", "pencil", "Rename your box", () => hud.Open(Rename));
@@ -282,6 +283,7 @@ namespace AquariumCiv.GameUI
             sound.On = GameSettings.Sound;
             haptics.On = GameSettings.Haptics;
             notifications.On = GameSettings.Notifications;
+            deathNotice.On = GameSettings.DeathNotice;
             music.Value = GameSettings.MusicVolume;
             effects.Value = GameSettings.SfxVolume;
             ambience.Value = GameSettings.AmbienceVolume;

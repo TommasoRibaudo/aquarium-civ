@@ -363,7 +363,7 @@ namespace AquariumCiv.Tests
             Assert.GreaterOrEqual(on.FoundRelics.Count(), 3, string.Join(",", on.FoundRelics.Select(r => r.id)));
             TestContext.WriteLine($"seed {seed}: {string.Join(", ", on.FoundRelics.Select(r => $"{r.id} y{r.foundMonth / 12}"))}");
             Assert.AreEqual(JobTests.Economy(off.State), JobTests.Economy(on.State), "economy, dice and notables");
-            Assert.AreEqual(off.State.chronicle.Select(e => e.id + e.kind), on.State.chronicle.Where(e => e.id < SimCore.RelicLineIdBase).Select(e => e.id + e.kind),
+            Assert.AreEqual(off.State.chronicle.Select(e => e.id + e.kind), on.State.chronicle.Where(e => e.id < SimCore.RelicLineIdBase || e.id >= SimCore.SlowLineIdBase).Select(e => e.id + e.kind),
                 "the same stories, same ids; relic cards come on top");
             Assert.AreEqual(off.State.nextId, on.State.nextId);
         }
