@@ -117,7 +117,7 @@ namespace AquariumCiv.View.PlayTests
             pv.Planner.PositionAt(stop.who, new ViewTime(pv.Now.day, midH), out float wx, out float wz);
             pv.Planner.PositionAt(stop.with, new ViewTime(pv.Now.day, midH), out float hx, out float hz);
             Assert.IsNotEmpty(both, $"the two meet (gap {settled.Min(s => s.gap):0.00}; the plan has them {new Vector2(wx - hx, wz - hz).magnitude:0.00} apart mid-beat at ({wx:0.00},{wz:0.00}) and ({hx:0.00},{hz:0.00}), {stop.who} {string.Join(",", a.Select(x => x.why).Distinct())} / {stop.with} {string.Join(",", b.Select(x => x.why).Distinct())})");
-            Assert.Greater(both.Min(s => s.gap), 0.05f, "not on one spot");
+            Assert.Greater(both.Min(s => s.gap), 0.05f, $"not on one spot (the plan has them {new Vector2(wx - hx, wz - hz).magnitude:0.00} apart mid-beat; {stop.who} {pv.DebugSpotOf(stop.who)} / {stop.with} {pv.DebugSpotOf(stop.with)}; {stop.with} {string.Join(",", b.Select(x => x.why).Distinct())})");
             Assert.Greater(both.Average(s => s.facing), 0.8f, "they face each other");
         }
 

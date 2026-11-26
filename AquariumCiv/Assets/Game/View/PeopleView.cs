@@ -150,6 +150,8 @@ namespace AquariumCiv.View
         readonly Dictionary<(Place, SlotSpots.HomeSpot), int> homeRanks = new();
         /// <summary>Where the dolls placed so far this frame stand (rule 6: one doll per spot, also after a slot moved off a lot).</summary>
         readonly List<Vector2> claimed = new();
+        /// <summary>#791: this frame's rack crew stands and where the carriers are (the crew carry it round the fire): a pair's beat keeps a body's width off them.</summary>
+        readonly List<Vector2> rackStands = new();
         /// <summary>#779: where the people a held scene (a camp use, a staged moment, a life scene) places stand this frame, by key: camp life keeps a body's width off them.</summary>
         readonly List<(int key, Vector2 at)> heldSpots = new();
         /// <summary>Sign-off 2026-11-14: the laid-out bedrolls (CampBedrolls) taken this frame, one person on each.</summary>
@@ -534,6 +536,7 @@ namespace AquariumCiv.View
             meals.DrawPot(peopleRoot, Box.SolidMaterial, camp && planner.FireNow != CampFireStage.None /* #656: no pot by a fire that isn't lit */, (mx, mz) => Box.SurfaceHeight(mx, mz), LifeClock.SeasonOf(now.day) == Season.Winter, sim.StewOn(now.day)); // #676: it simmers, with what the camp has
             seen.Clear();
             claimed.Clear();
+            rackStands.Clear();
             // 2026-11-24 (the ADay test: a doll eating at the market stood on the log-pile sitter's seat): the spots a camp or village use holds
             // this frame are taken before anyone else picks a spot, so a settled doll's slot moves off them (Standable) instead of under a sitter
             for (int i = 0; i < acts.Count; i++)
@@ -541,7 +544,7 @@ namespace AquariumCiv.View
                 if (Camp.Busy(acts[i].who.Key) && Camp.TryCue(acts[i].who.Key, time, out var held, out _) && !held.keepSpot) claimed.Add(held.pos);
                 // #791: so is a rack crew's stand (the crew carry it round the fire, past the story's listeners): a listener's spot moves off it
                 else if (acts[i].kind == ActivityKind.MoveRack && !acts[i].moving && !acts[i].enRoute && planner.TryGetRackRole(acts[i].who, now, out var rp, out var rr, out float rs))
-                { rp.Stand(rr, rs, out float rx, out float rz, out _, out _, out _); claimed.Add(new Vector2(rx, rz)); }
+                { rp.Stand(rr, rs, out float rx, out float rz, out _, out _, out _); claimed.Add(new Vector2(rx, rz)); rackStands.Add(new Vector2(rx, rz)); if (dolls.TryGetValue(acts[i].who.Key, out var rd) && rd.placed) rackStands.Add(rd.drawn); }
             }
             heldSpots.Clear();
             for (int i = 0; i < acts.Count; i++)
@@ -695,7 +698,7 @@ namespace AquariumCiv.View
             if (hunting && a.hunt == HuntPhase.TakeSpear) HandSpear(d, a, time);
             PairCue pairCue = default; PairEvent pairEv = null;
             bool paired = !hidden && !playing && !tenting && PairStage.TryCue(a.who.Key, time, out pairEv, out pairCue);
-            if (paired) { target = pairCue.pos; face = pairCue.face; }
+            if (paired) { target = pairCue.pos; face = pairCue.face; if (rackStands.Count > 0) target = Apart(target, rackStands, BodySpots.BodyW); } // #791: a hand-over by the fire stood inside the rack crew carrying it round
             d.dbgBy = (playing ? "play " : "") + (camping ? "camp:" + Camp.UseOf(a.who.Key) + " " : "") + (paired ? "pair:" + pairEv : "") + (toddling ? "toddle" : "");
             if (toddling) // 2026-11-06: behind the walking carer, pottering in front of a standing one, sat down where it plopped
             {
@@ -921,7 +924,9 @@ namespace AquariumCiv.View
                 if (toCam.sqrMagnitude > 1e-4f) want = Yaw(d.pos, camPlane);
             }
             d.gaze = dt > 0f ? Mathf.MoveTowards(d.gaze, gazing ? 1f : 0f, dt / 0.8f) : (gazing ? 1f : 0f);
-            float most = walking || a.moving ? Mathf.Lerp(SlowTurn, MostTurn, d.speed / FaceFrom) : MostTurn; // nearly stopped in a crowd, a body doesn't spin
+            // nearly stopped in a crowd, a body doesn't spin. #791: by the slower of the smoothed speed and this frame's: the smoothed one lags, so a
+            // walker slowing to a crawl a few frames into a walk still turned at the walk's 300°/s on the spot
+            float most = walking || a.moving ? Mathf.Lerp(SlowTurn, MostTurn, Mathf.Min(d.speed, inst) / FaceFrom) : MostTurn;
             d.yaw = dt > 0f ? d.yaw + Mathf.Clamp(Mathf.DeltaAngle(d.yaw, want) * (1f - Mathf.Exp(-dt * (gazing ? GazeTurnRate : TurnRate))), -most * dt, most * dt) : want;
 
             // Pose: the apprentice copies the master a beat late (§4).
