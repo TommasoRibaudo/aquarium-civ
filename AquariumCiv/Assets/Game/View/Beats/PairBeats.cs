@@ -147,16 +147,20 @@ namespace AquariumCiv.View
 
         /// <summary>Lays "walking together" over a walk pose: the inner hands joined and swinging as one, a lean toward each other, and a turn
         /// to each other in turn (the lead on the first half of a 4 s cycle, the side on the second). <paramref name="lead"/>: the one whose right
-        /// side faces the other (the other walks at its right hand).</summary>
-        public static void WalkTogether(ref DollPose p, bool lead, float t, float stride, int seed)
+        /// side faces the other (the other walks at its right hand). #791: <paramref name="hold"/> (0..1) eases it in and out over the walk pose, and
+        /// <paramref name="lean"/> (-1 the lead's side .. +1 the other's, eased by the caller) is the lean's way, so falling into step, letting go or
+        /// swapping sides tilts the body over, not in one frame (the lean went ±6° to ∓6° whenever two walkers drew level one behind the other).</summary>
+        public static void WalkTogether(ref DollPose p, bool lead, float t, float stride, int seed, float hold = 1f, float lean = float.NaN)
         {
+            hold = Mathf.Clamp01(hold);
+            if (float.IsNaN(lean)) lean = lead ? -1f : 1f;
             float sw = Mathf.Sin(stride);
             var inner = new Vector3(28f + 8f * sw, 0f, lead ? 11f : -11f);
-            if (lead) p.armR = inner; else p.armL = inner;
-            p.roll = lead ? -LeanDegrees : LeanDegrees;
+            if (lead) p.armR = Vector3.Lerp(p.armR, inner, hold); else p.armL = Vector3.Lerp(p.armL, inner, hold);
+            p.roll = Mathf.Lerp(p.roll, LeanDegrees * Mathf.Clamp(lean, -1f, 1f), hold);
             float c = Mathf.Repeat(t + BeatHash.U01(seed, 4, 363) * TurnCycle, TurnCycle) - (lead ? 0f : TurnCycle * 0.5f);
             float k = c >= 0f && c < TurnSeconds ? Mathf.Sin(c / TurnSeconds * Mathf.PI) : 0f;
-            p.yaw += (lead ? -1f : 1f) * TurnDegrees * k;
+            p.yaw += (lead ? -1f : 1f) * TurnDegrees * k * hold;
         }
 
         // ------------------------------------------------------------------ hug (B7.d, behind BeatFlags.Hugs)

@@ -107,6 +107,10 @@ namespace AquariumCiv.View
             /// <summary>#363: who they last stood talking with, and when (a couple leaving together walks together, see <see cref="Mates"/>).</summary>
             public int mateKey;
             public float mateTime = -999f;
+            /// <summary>#791: walking together, eased: how much of the held hands and the lean is on (0..1), which side they walk on (true: the
+            /// lead, kept until the other is clearly on the other side) and the lean's way (-1..1, eased toward the side).</summary>
+            public float mateHold, mateLean;
+            public bool mateLead;
             /// <summary>#361: when the tip at the stash began (the first frame the doll stood still at the pile): the beat runs from there.</summary>
             public float tipStart;
             /// <summary>#404: at the lookout tower: since when (the first frame they stood still there), and where, how high, facing what, how (ApartGroupsView.TowerUse).</summary>
@@ -980,11 +984,9 @@ namespace AquariumCiv.View
                 float left = LifeClock.RealSecondsBetween(Mathf.Clamp(now.hour, a.start, a.end), a.end);
                 PairBeats.Talk(ref pose, PairBeats.TalkAt(a.who.Key, a.partner.Key, time, left), Desync.Of(a.who.Key, 363).amp, holds);
             }
-            else if (style == DollStyle.Walk && Mates(d, a, time, out bool mateLead, out var mate))
-            {
-                if (a.who.Key > d.mateKey) d.stride = mate.stride;   // strides in step (a pair is exempt from the neighbours rule)
-                PairBeats.WalkTogether(ref pose, mateLead, time, d.stride, PairBeats.PairSeed(a.who.Key, d.mateKey));
-            }
+            else if (style == DollStyle.Walk && (WalkMates(d, a, time, dt) || d.mateHold > 0f))
+                PairBeats.WalkTogether(ref pose, d.mateLead, time, d.stride, PairBeats.PairSeed(a.who.Key, d.mateKey), Mathf.SmoothStep(0f, 1f, d.mateHold), d.mateLean);
+            else d.mateHold = 0f;
             // #676 (tester): no opaque HitFx puff at each stir any more (it read as a lid or a dumpling at close zoom): the pot's own soft steam rises all the time
             if (d.gaze > 0f && !pose.lying) pose.lean -= GazeHeadUp * d.gaze; // #494: the head tilts up a little more toward the camera
             d.pose = pose;
@@ -1035,16 +1037,38 @@ namespace AquariumCiv.View
 
         /// <summary>True when this walker and the one they last stood talking with leave together: both walking, near, the same way. <paramref name="lead"/>
         /// is the one whose right side faces the other (the other walks at their right hand).</summary>
-        bool Mates(Doll d, in PersonActivity a, float time, out bool lead, out Doll mate)
+        bool Mates(Doll d, in PersonActivity a, float time, out float side, out Doll mate)
         {
-            lead = false; mate = null;
+            side = 0f; mate = null;
             if (time - d.mateTime > 120f || !dolls.TryGetValue(d.mateKey, out mate) || mate.mateKey != a.who.Key || time - mate.mateTime > 120f) return false;
             if (!mate.placed || !mate.walking || (mate.pos - d.pos).sqrMagnitude > 0.45f * 0.45f) return false;
             if (d.velocity.sqrMagnitude < 0.0025f || mate.velocity.sqrMagnitude < 0.0025f) return false;
             var h = d.velocity.normalized;
             if (Vector2.Dot(h, mate.velocity.normalized) < 0.8f) return false;
-            lead = Vector2.Dot(mate.pos - d.pos, new Vector2(h.y, -h.x)) > 0f;
+            side = Vector2.Dot(mate.pos - d.pos, new Vector2(h.y, -h.x)); // > 0: the mate is at this one's right hand (this one leads)
             return true;
+        }
+
+        /// <summary>#791: how far a side has to be clear before the pair swaps it (one walking behind the other draws level every few frames).</summary>
+        const float MateSwapSide = 0.04f, MateHoldSeconds = 0.3f, MateLeanSeconds = 0.5f;
+
+        /// <summary>#363 walking together, eased (#791): the hold comes on and off over <see cref="MateHoldSeconds"/>, the side is kept until the
+        /// mate is clearly on the other one, the lean follows the side over <see cref="MateLeanSeconds"/>, and the later of the two falls into the
+        /// other's stride by catching up, not by a jump of the legs. True while they walk together.</summary>
+        bool WalkMates(Doll d, in PersonActivity a, float time, float dt)
+        {
+            bool on = Mates(d, a, time, out float side, out var mate);
+            if (on)
+            {
+                if (d.mateHold <= 0f) d.mateLead = side > 0f;
+                else if (d.mateLead ? side < -MateSwapSide : side > MateSwapSide) d.mateLead = !d.mateLead;
+                if (a.who.Key > d.mateKey) // strides in step (a pair is exempt from the neighbours rule): the later one catches up, a step at most
+                    d.stride = Mathf.Repeat(d.stride + Mathf.Clamp(Mathf.DeltaAngle(d.stride * Mathf.Rad2Deg, mate.stride * Mathf.Rad2Deg) * Mathf.Deg2Rad, -Mathf.PI * dt, Mathf.PI * dt), Mathf.PI * 2f);
+            }
+            if (d.mateHold <= 0f) d.mateLean = d.mateLead ? -1f : 1f;
+            d.mateHold = dt > 0f ? Mathf.MoveTowards(d.mateHold, on ? 1f : 0f, dt / MateHoldSeconds) : (on ? 1f : 0f);
+            d.mateLean = dt > 0f ? Mathf.MoveTowards(d.mateLean, d.mateLead ? -1f : 1f, 2f * dt / MateLeanSeconds) : (d.mateLead ? -1f : 1f);
+            return on;
         }
 
         /// <summary>A hunter takes the spear (the hunt's TakeSpear step): if a toolmaker is knapping near, they walk it over and hand it across.
