@@ -201,6 +201,7 @@ namespace AquariumCiv.View
             EndRow();
             Row(); // #364
             if (Btn("Fish bite now")) last = FishingView.DebugBiteNow();
+            if (Btn("Three fishers now")) { var pvf = PeopleView.Find(); int nf = pvf != null && pvf.Planner != null ? pvf.Planner.DebugFishNow(pvf.Now, 3, 2f) : -1; last = nf < 0 ? "no water to fish (or nobody free)" : nf + " sent to fish the pond (#765: each on their own spot)"; }
             EndRow();
             Row(); // #708 (B70): the fish seen from above and through the glass; B39.c the kids' try by hand
             if (Btn("Fish: the shadows")) last = FishView.DebugShadows();

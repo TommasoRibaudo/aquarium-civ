@@ -70,15 +70,55 @@ namespace AquariumCiv.Sim.Eco
             ox /= len; oz /= len; // the unit step from the water out to the bank (an axis)
             float ex = wx + ox * SiteMap.Cell * 0.5f, ez = wz + oz * SiteMap.Cell * 0.5f; // the water's edge
             float sx = ex + ox * StandBack, sz = ez + oz * StandBack;
-            if (slot > 0)
-            {
-                float side = ((slot + 1) / 2) * (slot % 2 == 1 ? 1f : -1f) * SlotSpacing;
-                float tx = sx - oz * side, tz = sz + ox * side;
-                // only while the neighbour is still on the shore: dry here, water one step in
-                if (!IsWet(sim, tx, tz) && IsWet(sim, tx - ox * (StandBack + 0.04f), tz - oz * (StandBack + 0.04f))) { sx = tx; sz = tz; ex = tx - ox * StandBack; ez = tz - oz * StandBack; }
-            }
+            if (slot > 0 && SpreadAlongShore(sim, sx, sz, slot, out float px, out float pz, out float pex, out float pez, out float pox, out float poz))
+            { sx = px; sz = pz; ex = pex; ez = pez; ox = pox; oz = poz; } // #765: the n-th person has a spot of their own
             x = sx; z = sz;
             faceX = ex - ox * 0.04f; faceZ = ez - oz * 0.04f; // a little way into the water
+            return true;
+        }
+
+        /// <summary>#765: the <paramref name="slot"/>-th stand along the shore: every dry bank point by the water is a candidate, and slots 1, 2, 3...
+        /// take the candidate nearest slot 0's point that is at least <see cref="SlotSpacing"/> from every earlier slot (so two fishers never
+        /// share a spot, round a corner or on a small pond). When the whole shore is too short for that, the point farthest from everyone so far.</summary>
+        static bool SpreadAlongShore(SimCore sim, float x0, float z0, int slot, out float sx, out float sz, out float ex, out float ez, out float ox, out float oz)
+        {
+            sx = sz = ex = ez = ox = oz = 0f;
+            var cands = new System.Collections.Generic.List<(float sx, float sz, float ex, float ez, float ox, float oz)>();
+            for (int c = 0; c < SiteMap.N; c++)
+            {
+                if (sim.EcoCoverAt(c) != EcoCover.Water) continue;
+                int ci = c % SiteMap.NX, cj = c / SiteMap.NX;
+                float wx = SiteMap.CXc(c), wz = SiteMap.CZc(c);
+                for (int k = 0; k < 4; k++)
+                {
+                    if (!Cell(ci + DI[k], cj + DJ[k], out int o) || sim.EcoCoverAt(o) == EcoCover.Water) continue;
+                    float ux = DI[k], uz = DJ[k];
+                    float eX = wx + ux * SiteMap.Cell * 0.5f, eZ = wz + uz * SiteMap.Cell * 0.5f;
+                    float pX = eX + ux * StandBack, pZ = eZ + uz * StandBack;
+                    if (IsWet(sim, pX, pZ)) continue;
+                    cands.Add((pX, pZ, eX, eZ, ux, uz));
+                }
+            }
+            if (cands.Count == 0) return false;
+            var taken = new System.Collections.Generic.List<(float x, float z)> { (x0, z0) };
+            var pick = cands[0];
+            for (int s = 1; s <= slot; s++)
+            {
+                int best = -1; float bestFrom = float.MaxValue;
+                int far = -1; float farMin = -1f;
+                for (int i = 0; i < cands.Count; i++)
+                {
+                    float min = float.MaxValue;
+                    foreach (var t in taken) min = Math.Min(min, Terrain.Dist(cands[i].sx, cands[i].sz, t.x, t.z));
+                    if (min > farMin + 1e-5f) { farMin = min; far = i; }
+                    if (min < SlotSpacing - 1e-4f) continue;
+                    float from = Terrain.Dist(cands[i].sx, cands[i].sz, x0, z0);
+                    if (from < bestFrom - 1e-5f) { bestFrom = from; best = i; }
+                }
+                pick = cands[best >= 0 ? best : far];
+                taken.Add((pick.sx, pick.sz));
+            }
+            sx = pick.sx; sz = pick.sz; ex = pick.ex; ez = pick.ez; ox = pick.ox; oz = pick.oz;
             return true;
         }
 
