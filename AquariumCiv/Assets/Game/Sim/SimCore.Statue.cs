@@ -34,7 +34,7 @@ namespace AquariumCiv.Sim
             if (who == null) return null;
             if (force ? who.alive : !StatueRules.Ready(who, State.month, State.era, State.population, CalendarMonth, false)) return null;
             State.statueFor = who.id; State.statueMonth = State.month; statueSiteKnown = false;
-            return StoryLine(StoryEvent.FounderStatue, $"{who.name} is made of stone now, on the green.", 0.8f, who.id, -1);
+            return StoryLine(StoryEvent.FounderStatue, $"{who.name} is made of stone now, on the green.", 0.8f, who.id, -1, StatueLineId);
         }
 
         /// <summary>Where it stands on the green (box x, z) and the way it faces (yaw degrees); false with no settlement or no open ground.
@@ -61,6 +61,10 @@ namespace AquariumCiv.Sim
             x = statueX; z = statueZ; yaw = statueYaw;
             return statueSiteFound;
         }
+
+        /// <summary>The statue line's own id (once a box), far above the shared counter, the term, relic and glance lines: a line only some
+        /// boxes get must not shift the shared ids (and so the id-keyed dice) of everything after it (the #788 lesson, SlowLineIdBase).</summary>
+        public const int StatueLineId = 1_700_000_000;
 
         bool statueSiteKnown, statueSiteFound; float statueX, statueZ, statueYaw;
 

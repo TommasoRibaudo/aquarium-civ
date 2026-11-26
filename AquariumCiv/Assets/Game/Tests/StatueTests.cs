@@ -253,6 +253,18 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(founder.id, sim.State.statueFor, "the first statue stands");
         }
 
+        /// <summary>The #788 lesson: a line only some boxes get must not take a shared id (that shifts the id-keyed dice of everything after it).</summary>
+        [Test]
+        public void TheStatueLine_HasItsOwnId_AndTakesNoSharedId()
+        {
+            var sim = Village(84);
+            int next = sim.State.nextId;
+            var e = sim.DebugFounderStatue(out string why);
+            Assert.IsNotNull(e, why);
+            Assert.AreEqual(SimCore.StatueLineId, e.id);
+            Assert.AreEqual(next, sim.State.nextId, "the shared counter did not move");
+        }
+
         [Test]
         public void TheStatue_IsForTheMostPinned_NotTheFounder_AndWaitsUntilTheyDie()
         {

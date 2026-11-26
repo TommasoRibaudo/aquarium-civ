@@ -136,10 +136,10 @@ namespace AquariumCiv.Sim
         /// <summary>A first-time story line was written this game year.</summary>
         bool StoryFirstThisYear() => KindThisYear(StoryEvent.OncePerBox.Select(StoryEvent.Kind).ToArray());
 
-        ChronicleEntry StoryLine(string id, string text, float salience, int a, int b)
+        ChronicleEntry StoryLine(string id, string text, float salience, int a, int b, int ownId = -1)
         {
             State.storyFlags.Add(StoryFlag(id));
-            return Record(StoryEvent.Kind(id), text, salience, a, b);
+            return Record(StoryEvent.Kind(id), text, salience, a, b, ownId);
         }
 
         bool Summer => CalendarMonth >= 5 && CalendarMonth <= 7;
