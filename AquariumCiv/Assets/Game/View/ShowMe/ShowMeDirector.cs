@@ -456,6 +456,7 @@ namespace AquariumCiv.View
             captionEl.Set(text, LastWho);
             captionUntil = Time.unscaledTime + seconds;
             GlassMotion.Show(captionEl, GlassMotion.CaptionOff, null, GlassMotion.CaptionInMs);
+            CaptionShown?.Invoke(); // polish night 1: whoever shares the top lane steps aside in this same frame, before the first layout
             Debug.Log($"[ShowMe] line ({kind}) on the caption for {speaker}: {text}");
             return true;
         }
@@ -477,7 +478,24 @@ namespace AquariumCiv.View
         void EndSceneLine() { if (captionVoice == sceneVoice && sceneVoice != null) EndLine(); }
 
         /// <summary>The caption's box on the panel, empty with none up.</summary>
-        public Rect CaptionBound => captionUntil > 0f && captionEl != null ? captionEl.worldBound : default;
+        public Rect CaptionBound
+        {
+            get
+            {
+                if (captionUntil <= 0f || captionEl == null) return default;
+                var b = captionEl.worldBound;
+                if (b.height > 1f && !float.IsNaN(b.height)) return b;
+                // polish night 1 (#564): on the frame a line is first shown the plate has no layout yet; what sits under it (the first run's test row)
+                // must not wait a frame to step aside: a two-line plate's height is the stand-in until it lays out
+                float top = captionEl.style.top.keyword == StyleKeyword.Undefined ? captionEl.style.top.value.value : CaptionTop;
+                var panel = captionEl.panel;
+                float pw = panel != null ? panel.visualTree.layout.width : GameUiPanel.ReferenceWidth;
+                return new Rect(0f, top, pw, CaptionNominalHeight);
+            }
+        }
+        const float CaptionNominalHeight = 200f;
+        /// <summary>Raised the moment a caption line goes up (before its first layout).</summary>
+        public static event System.Action CaptionShown;
         /// <summary>A line in the caption lane now (tests, the debug panel).</summary>
         public bool CaptionUp => captionUntil > 0f;
         /// <summary>A caption's line up now (tests), or null.</summary>
