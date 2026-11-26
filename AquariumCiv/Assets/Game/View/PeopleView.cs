@@ -694,7 +694,7 @@ namespace AquariumCiv.View
             if (drawing) target = DrawStand(land, plannerSim, a.place.kind, spot, target, a.slot, out face);
             // #364: fishing: the fisher stands 0.06 u back from the real water edge facing the water (the water run's spot), so the line's end is on the water
             bool fishing = (a.kind == ActivityKind.Fish || a.kind == ActivityKind.Gather && a.prop == Prop.Basket /* #574: the egg pick at the reeds */) && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && !playing && a.place.kind == PlaceKind.Pond;
-            if (fishing && a.kind == ActivityKind.Fish && IceStand(plannerSim, a.who.Key, out var onIce, out var hole, FishBeats.LineReach * (v != null ? v.scale : 1f) * dollZoomScale)) { target = onIce; face = hole; } // #618: through a hole in the ice, the rod's tip over it
+            if (fishing && a.kind == ActivityKind.Fish && IceStand(plannerSim, a.slot, out var onIce, out var hole, FishBeats.LineReach * (v != null ? v.scale : 1f) * dollZoomScale)) { target = onIce; face = hole; } // #618: through a hole in the ice, the rod's tip over it
             else if (fishing) target = DrawStand(land, plannerSim, PlaceKind.Pond, spot, target, a.slot, out face);
             if (!hunting && !tenting && !a.moving && !drawing && !fishing && !playing /* #359 */ && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
             if (!hunting && !tenting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
@@ -999,7 +999,7 @@ namespace AquariumCiv.View
                 var fwd = Quaternion.Euler(0, d.yaw, 0) * Vector3.back;
                 fishLine = peopleRoot.TransformPoint(new Vector3(ground.x, level, ground.z) + fwd * (FishBeats.LineReach * s * dollZoomScale));
                 // #618: on the ice the line goes down through the fisher's own hole
-                if (a.kind == ActivityKind.Fish && IceView.Instance != null && IceView.Instance.OnIce(new Vector2(ground.x, ground.z)) && IceStand(plannerSim, a.who.Key, out _, out var iceHole, FishBeats.LineReach * s * dollZoomScale) && iceHole.HasValue)
+                if (a.kind == ActivityKind.Fish && IceView.Instance != null && IceView.Instance.OnIce(new Vector2(ground.x, ground.z)) && IceStand(plannerSim, a.slot, out _, out var iceHole, FishBeats.LineReach * s * dollZoomScale) && iceHole.HasValue)
                     fishLine = peopleRoot.TransformPoint(new Vector3(iceHole.Value.x, IceView.Instance.IceY, iceHole.Value.y));
                 Fishing?.Invoke(a.who, v, fishS, fishLeft, fishLine);
             }
@@ -1503,13 +1503,13 @@ namespace AquariumCiv.View
 
         /// <summary>#618: where an ice fisher sits on a frozen pond big enough (PondIce.FishingSpot, nearest the camp's fire, a hole each by
         /// the person's key) and the hole they face. False when nobody may be on the ice now.</summary>
-        static bool IceStand(SimCore sim, int key, out Vector2 sit, out Vector2? hole, float reach)
+        static bool IceStand(SimCore sim, int slot, out Vector2 sit, out Vector2? hole, float reach)
         {
             sit = default; hole = null;
             var ice = IceView.Instance;
             if (sim == null || ice == null || !ice.PeopleOnIce) return false;
             var g = sim.EcoGround;
-            if (!AquariumCiv.Sim.Eco.PondIce.FishingSpot(sim, g.campX, g.campZ, ((key % 5) + 5) % 5, out float sx, out float sz, out float hx, out float hz)) return false;
+            if (!AquariumCiv.Sim.Eco.PondIce.FishingSpot(sim, g.campX, g.campZ, ((slot % 5) + 5) % 5, out float sx, out float sz, out float hx, out float hz)) return false;
             // the fisher faces the hole, side-on to the camera, the rod's reach from it (so the line drops from the tip into the hole)
             var h = new Vector2(hx, hz);
             var side = new Vector2(sx - hx, sz - hz);
