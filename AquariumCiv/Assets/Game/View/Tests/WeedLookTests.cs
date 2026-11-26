@@ -8,7 +8,7 @@ namespace AquariumCiv.View.Tests
     /// (There is no trash any more: the heaps were removed in #313, so there is nothing of it to pin.)</summary>
     public class WeedLookTests
     {
-        const float DollHeight = 0.34f; // the old patch (a dome plus thistles) topped out near 0.27; the new one stays under this bound
+        const float DollHeight = 0.11f; // #559 round 2: a patch is low and wide, mesh units (x WeedScale 2.4): the tallest stalk tip is about a doll's height in the box
 
         [Test]
         public void WeedPatch_IsASpikyScatter_NotADome()
@@ -19,10 +19,10 @@ namespace AquariumCiv.View.Tests
                 try
                 {
                     var b = m.bounds;
-                    Assert.Greater(b.size.y, 0.18f, "tall enough to see at the default zoom");
+                    Assert.Greater(b.size.y, 0.06f, "tall enough to see at the default zoom");
                     Assert.Less(b.max.y, DollHeight, "lower than a doll");
-                    Assert.Greater(b.size.x, 0.16f, "it spreads and leans");
-                    Assert.Less(m.vertexCount, 450, "mobile budget");
+                    Assert.Greater(b.size.x, 0.2f, "it spreads and leans");
+                    Assert.Less(m.vertexCount, 600, "mobile budget");
 
                     // every triangle is a sliver: no face is wider than a blade (a dome's faces are fat)
                     var v = m.vertices; var t = m.triangles;
@@ -54,7 +54,7 @@ namespace AquariumCiv.View.Tests
                 Assert.GreaterOrEqual(m.triangles.Length / 3, MessProps.WeedBlades * 4 + MessProps.WeedStalks * 4);
                 // leaning every direction: tips spread on both sides of the middle in x and z
                 var v = m.vertices; float minX = 9, maxX = -9, minZ = 9, maxZ = -9;
-                foreach (var p in v) if (p.y > 0.12f) { minX = Mathf.Min(minX, p.x); maxX = Mathf.Max(maxX, p.x); minZ = Mathf.Min(minZ, p.z); maxZ = Mathf.Max(maxZ, p.z); }
+                foreach (var p in v) if (p.y > 0.035f) { minX = Mathf.Min(minX, p.x); maxX = Mathf.Max(maxX, p.x); minZ = Mathf.Min(minZ, p.z); maxZ = Mathf.Max(maxZ, p.z); }
                 Assert.Less(minX, -0.03f); Assert.Greater(maxX, 0.03f); Assert.Less(minZ, -0.03f); Assert.Greater(maxZ, 0.03f);
             }
             finally { Object.DestroyImmediate(m); }

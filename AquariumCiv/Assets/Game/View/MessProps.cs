@@ -21,7 +21,7 @@ namespace AquariumCiv.View
         public const float WeedUnit = 1f / MaxWeeds;
         const float LeaveSeconds = 0.4f, AppearSeconds = 0.35f, Gravity = 2.2f;
         /// <summary>The weed patches' size on the land (user 2026-10-30: bigger, clearly visible at default zoom; was 1.5).</summary>
-        public const float WeedScale = 3.1f;
+        public const float WeedScale = 2.4f;
 
         /// <summary>What a piece is (#311, #314): a weed patch (the overgrowth), a tuft of weed round the Keeper's tree, or a cell of the creeping vine.</summary>
         public enum Kind { Weed, TreeWeed, Vine }
@@ -264,9 +264,9 @@ namespace AquariumCiv.View
         // ---------------- looks ----------------
         // #559: weeds read as something to pull, not as a pretty bush: thin pointed blades and bent stalks in yellow-green and
         // straw, leaning every way, a few seed heads, dead brown at the base. No dome, no flowers (the garden's bushes have both).
-        public const int WeedBlades = 15, WeedStalks = 3;
+        public const int WeedBlades = 34, WeedStalks = 3;
         /// <summary>The widest a weed blade is at its foot, in mesh units (a blade is a sliver; tests pin it).</summary>
-        public const float WeedBladeHalfWidth = 0.011f;
+        public const float WeedBladeHalfWidth = 0.009f;
         static readonly Color WeedFoot = new(0.36f, 0.27f, 0.16f), WeedDry = new(0.70f, 0.55f, 0.24f), WeedYellow = new(0.82f, 0.74f, 0.30f),
             WeedGreen = new(0.52f, 0.60f, 0.20f), WeedSeed = new(0.30f, 0.20f, 0.10f);
 
@@ -298,35 +298,35 @@ namespace AquariumCiv.View
             {
                 float a = mb.Range(0f, 6.28f), r = mb.Range(0.02f, 0.07f);
                 var g = new Vector3(Mathf.Cos(a) * r, 0.004f, Mathf.Sin(a) * r);
-                var d = new Vector3(Mathf.Cos(a + 1.3f), 0f, Mathf.Sin(a + 1.3f)) * mb.Range(0.035f, 0.06f);
+                var d = new Vector3(Mathf.Cos(a + 1.3f), 0f, Mathf.Sin(a + 1.3f)) * mb.Range(0.025f, 0.04f);
                 var sd = new Vector3(-d.z, 0f, d.x) * 0.25f;
                 mb.Tri(g - sd, g + d, g + sd, WeedFoot);
                 mb.Tri(g + sd, g + d, g - sd, WeedFoot);
             }
             for (int k = 0; k < WeedBlades; k++)
             {
-                float a = mb.Range(0f, 6.28f), r = mb.Range(0.005f, 0.085f);
+                float a = mb.Range(0f, 6.28f), r = mb.Range(0.01f, 0.12f);
                 var g = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
                 // some blades are short and dry, some tall and yellow-green; the lean is outward-ish but uneven
-                var col = k % 4 == 0 ? WeedDry : k % 3 == 0 ? WeedYellow : WeedGreen;
-                float h = mb.Range(0.09f, 0.26f);
-                WeedBlade(mb, g, h, a + mb.Range(-1.2f, 1.2f), mb.Range(0.25f, 0.85f), mb.Range(0.006f, WeedBladeHalfWidth), col);
+                var col = k % 4 == 0 ? WeedDry : k % 5 == 0 ? WeedGreen : WeedYellow;
+                float h = mb.Range(0.035f, 0.07f);
+                WeedBlade(mb, g, h, a + mb.Range(-1.2f, 1.2f), mb.Range(0.25f, 0.85f), mb.Range(0.006f, 0.009f), col);
             }
             for (int k = 0; k < WeedStalks; k++)
             {
-                float a = k / (float)WeedStalks * 6.28f + mb.Range(0f, 1.2f), r = mb.Range(0.01f, 0.05f);
+                float a = k / (float)WeedStalks * 6.28f + mb.Range(0f, 1.2f), r = mb.Range(0.01f, 0.09f);
                 var g = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
-                float h = mb.Range(0.2f, 0.28f), yaw = a + mb.Range(-0.8f, 0.8f), lean = mb.Range(0.3f, 0.6f);
+                float h = mb.Range(0.06f, 0.078f), yaw = a + mb.Range(-0.8f, 0.8f), lean = mb.Range(0.3f, 0.6f);
                 var dir = new Vector3(Mathf.Cos(yaw), 0f, Mathf.Sin(yaw));
                 var knee = g + dir * (h * lean * 0.3f) + Vector3.up * (h * 0.55f);
                 var tip = g + dir * (h * lean) + Vector3.up * h;
-                var side = new Vector3(-dir.z, 0f, dir.x) * 0.0045f;
+                var side = new Vector3(-dir.z, 0f, dir.x) * 0.003f;
                 mb.sway = 0.35f;
                 mb.Tri(g - side, knee, g + side, WeedDry); mb.Tri(g + side, knee, g - side, WeedDry);
                 mb.Tri(knee - side, tip, knee + side, WeedDry); mb.Tri(knee + side, tip, knee - side, WeedDry);
                 // the seed head: a small dark, pointed spike on the tip
                 var up = (tip - knee).normalized;
-                mb.Prism(tip - up * 0.01f, 0.009f, 0f, 0.04f, 4, WeedSeed, Quaternion.FromToRotation(Vector3.up, up));
+                mb.Prism(tip - up * 0.004f, 0.005f, 0f, 0.02f, 4, WeedSeed, Quaternion.FromToRotation(Vector3.up, up));
                 mb.sway = 0f;
             }
             return mb.ToMesh("CareWeeds");

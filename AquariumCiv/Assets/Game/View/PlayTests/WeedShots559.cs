@@ -50,6 +50,17 @@ namespace AquariumCiv.View.PlayTests
             }
             yield return new WaitForSecondsRealtime(1.5f);
             yield return Shot("patch_close");
+            // a doll, the tent and a weed patch in one frame: sizes to compare
+            if (mp != null)
+            {
+                Vector3 w1 = default; bool found = false;
+                foreach (var r in mp.GetComponentsInChildren<Renderer>())
+                    if (r.name == "Weeds1") { w1 = r.transform.position; found = true; break; }
+                var fire = new Vector3(-0.25f, 1.03f, -0.34f);
+                if (found) rig.EaseTo((fire + w1) * 0.5f, rig.yaw, rig.pitch, 0.3f, 0.01f);
+                yield return new WaitForSecondsRealtime(1.5f);
+                yield return Shot("camp_compare");
+            }
             Debug.Log("[weedshot] tree weeds grown: " + sim.DebugGrowTreeWeeds());
             yield return new WaitForSecondsRealtime(2f);
             if (sim.EcoTree.cell >= 0)
