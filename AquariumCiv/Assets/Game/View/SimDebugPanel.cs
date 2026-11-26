@@ -375,6 +375,16 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Weather: the first snow")) last = StoryMoment.DebugPlayNow(StoryEvent.FirstSnow);
             }
             // ---- end #722 ----
+            // ---- #783: the camera leans in at a held scene ----
+            if (Section("Held scene camera (#783)"))
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Held scene: lean now")) last = HeldMomentLean.DebugLeanNow();
+                if (GUILayout.Button("Held scene lean: on/off")) last = HeldMomentLean.DebugToggle();
+                GUILayout.EndHorizontal();
+                GUILayout.Label($"lean {(HeldMomentLean.Enabled ? "on" : "off")}; leans {HeldMomentLean.Leans}, taken by the player {HeldMomentLean.Cancelled}, already framed {HeldMomentLean.Framed}, refused {HeldMomentLean.Refused}; last: {HeldMomentLean.LastWhy}");
+            }
+            // ---- end #783 ----
             // ---- fb4 #540: camp props ----
             if (Section("Camp props (fb4 #540)"))
                 if (GUILayout.Button("Camp props: show all (rack, every prop)")) last = ConsequenceCheats.ShowCampProps();

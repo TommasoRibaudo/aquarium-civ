@@ -24,7 +24,7 @@ namespace AquariumCiv.View.PlayTests
     // #779/#784: the class is not Explicit as a whole: every film is (a per-test [Explicit]), but the three scenes the people-inside-each-other check
     // watches (B78b_TwoMarks, B80c_TinkererBucket, KeeperChildWed) and the two #784 cheats run in CI with the rest.
     [Category("StoryEventShots")]
-    public class StoryEventShots : PlayTestBase
+    public partial class StoryEventShots : PlayTestBase
     {
         const int W = 750, H = 1334;
         /// <summary>Seconds of game time between two frames, and the person's height on screen the camera eases to (px).</summary>
@@ -52,12 +52,12 @@ namespace AquariumCiv.View.PlayTests
         /// to <paramref name="grownUps"/> and <paramref name="kids"/> kids; the far wood; the Keeper's tree grown; a pond if
         /// <paramref name="pond"/>. No natural camp use starts (CampLife.OnlyCheats), the staged moments the skips left are ended, the view
         /// at <paramref name="hour"/>. The recipe of Fb5PassShots.Stage and CampCheats.StageCamp.</summary>
-        IEnumerator LivedCamp(float hour, bool pond = false, int grownUps = 7, int kids = 4)
+        IEnumerator LivedCamp(float hour, bool pond = false, int grownUps = 7, int kids = 4, int w = W, int h = H)
         {
             UseLivingLand(true);
             GameUiPanel.AcceptInputUnfocused(true);
             ShowMeDirector.BubblesOn = false;
-            yield return OpenSlice(W, H, seed: 4242);
+            yield return OpenSlice(w, h, seed: 4242);
             GameUiPanel.AcceptInputUnfocused(true);
             ShowMeDirector.BubblesOn = false;
             var sim = Sim;
