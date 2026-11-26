@@ -47,8 +47,9 @@ namespace AquariumCiv.View
                 StatueLeaves(mb, at, s, wear);
                 return;
             }
-            mb.Prism(feet, 0.055f * f, 0.038f * f, bodyH, 6, stone, topCol: stone);
-            mb.Prism(feet + new Vector3(0f, bodyH * 0.42f, 0f), 0.049f * f, 0.046f * f, 0.012f * f, 6, dark); // the belt, cut shallow
+            // [est] a slimmer body than a person's (0.04 u radius at the foot instead of 0.055 x 1.3) so the feet fit the upper step (0.09 u wide)
+            mb.Prism(feet, 0.04f * f, 0.03f * f, bodyH, 6, stone, topCol: stone);
+            mb.Prism(feet + new Vector3(0f, bodyH * 0.42f, 0f), 0.036f * f, 0.034f * f, 0.012f * f, 6, dark); // the belt, cut shallow
             mb.Ico(feet + new Vector3(0f, HeadY * f, 0f), HeadR * f, Vector3.one, stone, stage == StatueStage.Headed ? 0.16f : 0.06f, lit);
             if (stage == StatueStage.Carved)
             {
