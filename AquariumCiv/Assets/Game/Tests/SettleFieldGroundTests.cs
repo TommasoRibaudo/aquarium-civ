@@ -131,5 +131,84 @@ namespace AquariumCiv.Tests
             }
             finally { spec.woodMargin = was; }
         }
+
+        // ---- #769 round 2: the eco wood round a church that stood on clear ground ----
+
+        /// <summary>Eco trees (seedling, young, tree) in the church's lot and margin.</summary>
+        static int EcoTreesAtChurch(SimCore sim)
+        {
+            var cells = new List<int>(); var cover = sim.State.eco.cover; int n = 0;
+            foreach (var l in sim.Settlement.Lots)
+            {
+                if (l.retired || l.kind != LotKind.Church) continue;
+                SiteMap.RectCells(l.x, l.z, l.yaw, l.w, l.d, Encyclopedia.Of(LotKind.Church).woodMargin, cells);
+                foreach (int c in cells)
+                {
+                    var cv = (AquariumCiv.Sim.Eco.EcoCover)cover[c];
+                    if (cv == AquariumCiv.Sim.Eco.EcoCover.Seedling || cv == AquariumCiv.Sim.Eco.EcoCover.Young || cv == AquariumCiv.Sim.Eco.EcoCover.Tree) n++;
+                }
+            }
+            return n;
+        }
+
+        /// <summary>A village (ecology on) given its church at year 30, with a wood grown on the ring just outside the church's margin,
+        /// then lived to year 60 with the birds spreading the wood. Returns the worst count of eco trees in the church's lot and margin.</summary>
+        static int WorstEcoTreesAtChurch(int seed, int preset, out int atBuild)
+        {
+            var sim = VillageWithChurch(seed, preset, true);
+            atBuild = EcoTreesAtChurch(sim);
+            var cover = sim.State.eco.cover; var cells = new List<int>(); Lot church = null;
+            foreach (var l in sim.Settlement.Lots) if (!l.retired && l.kind == LotKind.Church) church = l;
+            Assert.IsNotNull(church, $"seed {seed}: a church");
+            // a wood on the dry ground 0.35-0.6 out from the church's lot: what the Keeper's trees and the birds make of the ground round it
+            SiteMap.RectCells(church.x, church.z, church.yaw, church.w, church.d, 0.6f, cells);
+            var inner = new HashSet<int>(); var m = new List<int>();
+            SiteMap.RectCells(church.x, church.z, church.yaw, church.w, church.d, Encyclopedia.Of(LotKind.Church).woodMargin + 0.05f, m);
+            foreach (int c in m) inner.Add(c);
+            foreach (int c in cells)
+                if (!inner.Contains(c) && sim.Settlement.Map.lot[c] == 0 && !sim.Settlement.Map.Water(c) && cover[c] != (byte)AquariumCiv.Sim.Eco.EcoCover.Water)
+                    cover[c] = (byte)AquariumCiv.Sim.Eco.EcoCover.Tree;
+            int worst = 0;
+            while (sim.State.month < 60 * 12L)
+            {
+                sim.Step(); sim.State.simHours = sim.State.month * sim.Config.StepHours; if (sim.State.eraReady) sim.AdvanceEra();
+                if (sim.State.month % 12 == 0) worst = Math.Max(worst, EcoTreesAtChurch(sim));
+            }
+            return worst;
+        }
+
+        [Test]
+        public void TheEcoWoodNeverSpreadsRoundTheChurch()
+        {
+            foreach (var (seed, preset) in new[] { (7, 0), (11, 1), (1, 2), (3, 0), (5, 1) })
+            {
+                int worst = WorstEcoTreesAtChurch(seed, preset, out int atBuild);
+                Log($"seed {seed}: eco trees in the church's lot and margin: {atBuild} at build, worst {worst} to year 60");
+                Assert.AreEqual(0, atBuild, $"seed {seed}: no tree stands in the lot and margin when the church goes up");
+                Assert.AreEqual(0, worst, $"seed {seed}: no tree grows into the lot and margin");
+            }
+        }
+
+        [Test]
+        public void TreesAlreadyRoundTheChurchAreClearedWhenItGoesUp()
+        {
+            foreach (var (seed, preset) in new[] { (7, 0), (11, 1), (1, 2) })
+            {
+                var cfg = new SimConfig { terrainPreset = preset, settle = true, buildingSlots = 40, ecology = true };
+                var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+                void Month() { sim.Step(); sim.State.simHours = sim.State.month * sim.Config.StepHours; if (sim.State.eraReady) sim.AdvanceEra(); }
+                while (sim.State.month < 30 * 12L) Month();
+                var map = sim.Settlement.Map; var cover = sim.State.eco.cover; int woods = 0;
+                for (int c = 0; c < SiteMap.N; c++)
+                    if (map.lot[c] == 0 && !map.Water(c) && !map.Green(c) && cover[c] != (byte)AquariumCiv.Sim.Eco.EcoCover.Water
+                        && Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), map.greenX, map.greenZ) < 2.4f) { cover[c] = (byte)AquariumCiv.Sim.Eco.EcoCover.Tree; woods++; }
+                for (int slot = 0; slot < cfg.buildingSlots && sim.AddBuildingAt(BuildingType.Church, slot) == null; slot++) { }
+                for (int i = 0; i < 3; i++) Month();
+                int left = EcoTreesAtChurch(sim);
+                Log($"seed {seed}: wood on {woods} cells round the village, trees left in the church's lot and margin {left}");
+                Assert.IsTrue(ChurchWood(sim).found, $"seed {seed}: the church stands");
+                Assert.AreEqual(0, left, $"seed {seed}: the trees round the church are cleared");
+            }
+        }
     }
 }

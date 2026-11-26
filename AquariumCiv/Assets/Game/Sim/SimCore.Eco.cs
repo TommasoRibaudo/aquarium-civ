@@ -80,6 +80,7 @@ namespace AquariumCiv.Sim
                 if (ecoModel != null) return ecoModel;
                 Config.eco ??= new EcoTuning();
                 ecoModel = new EcoModel(State.eco, EcoLand.For(TerrainPreset), Config.eco);
+                ecoModel.NoWood = c => Settlement != null && Settlement.WoodKeptOff(c); // #769
                 ecoModel.BushBusy = BushBeingPicked; // #729: a shrinking thicket never sheds a bush the people are picking
                 return ecoModel;
             }

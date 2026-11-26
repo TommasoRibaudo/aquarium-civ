@@ -298,6 +298,7 @@ namespace AquariumCiv.Sim.Settle
                 }
             }
             if (lot == null) return false;
+            ClearWoodRound(lot);
             b.lotId = lot.id; b.yardId = lot.yard;
             b.x = lot.x; b.z = lot.z; b.yaw = lot.yaw; b.w = lot.w; b.d = lot.d; b.doorX = lot.doorX; b.doorZ = lot.doorZ;
             if (answer != null) answer.lotId = lot.id;
@@ -700,6 +701,40 @@ namespace AquariumCiv.Sim.Settle
         /// <summary>#762: ground the people keep for their things that live outside the lots (the camp's drying racks), as oriented rects set by
         /// the life layer (not saved): a new field's lot keeps clear of them. Empty until the view asks where the racks stand.</summary>
         public readonly List<Footprint> KeepClear = new List<Footprint>();
+
+        bool[] woodOff;
+        /// <summary>#769: true on the cells of a standing church's lot and margin (<see cref="KindSpec.woodMargin"/>): the ecology seeds no tree there.</summary>
+        public bool WoodKeptOff(int c)
+        {
+            if (woodOff == null)
+            {
+                woodOff = new bool[SiteMap.N];
+                foreach (var l in Lots)
+                {
+                    float m = Encyclopedia.Of(l.kind).woodMargin;
+                    if (l.retired || m <= 0f) continue;
+                    SiteMap.RectCells(l.x, l.z, l.yaw, l.w, l.d, m, tmpCells);
+                    foreach (int k in tmpCells) woodOff[k] = true;
+                }
+            }
+            return c >= 0 && c < woodOff.Length && woodOff[c];
+        }
+
+        /// <summary>#769: a church goes up: the trees already round it (its lot and margin) are cleared from the ecology's land, and no more seed there.</summary>
+        void ClearWoodRound(Lot lot)
+        {
+            woodOff = null;
+            float m = Encyclopedia.Of(lot.kind).woodMargin;
+            var eco = S.eco;
+            if (m <= 0f || eco == null || !eco.on || eco.cover == null) return;
+            SiteMap.RectCells(lot.x, lot.z, lot.yaw, lot.w, lot.d, m, tmpCells);
+            foreach (int k in tmpCells)
+            {
+                var cv = (Eco.EcoCover)eco.cover[k];
+                if ((cv == Eco.EcoCover.Seedling || cv == Eco.EcoCover.Young || cv == Eco.EcoCover.Tree) && k != eco.treeCell) eco.cover[k] = (byte)Eco.EcoCover.Grass;
+            }
+            SyncEco();
+        }
 
         public Lot LotById(int id)
         {
