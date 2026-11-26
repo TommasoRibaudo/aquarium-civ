@@ -227,6 +227,7 @@ namespace AquariumCiv.Life
             int seed = unchecked(sim.State.seed * 31 + m.id * 7919 + 370);
             var plan = MomentStagePlan.Build(m.kind, cast, geo, seed);
             if (plan == null) return NoHeld(MomentStagePlan.LastWhyNot);
+            if (m.kind == MomentKind.Festival) FestivalLayout.Ring = (plan.centreX, plan.centreZ, plan.ringRadius); // #770: the dressing follows the dancers
             float end = EndAfter(at, plan.Duration);
             var st = new Staging { glass = GlassPlace, spot = place, start = at.hour, end = end };
             foreach (var mem in plan.members)

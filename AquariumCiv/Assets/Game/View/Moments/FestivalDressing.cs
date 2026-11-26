@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using AquariumCiv.Sim.Settle;
 using UnityEngine;
@@ -37,7 +39,9 @@ namespace AquariumCiv.View
         {
             if (box == null || sim?.Settlement == null) return;
             var map = sim.Settlement.Map;
-            string key = sim.FestivalOn ? $"{sim.State.era}:{map.greenX:0.00}:{map.greenZ:0.00}:{sim.State.buildings.Count}" : "";
+            if (!sim.FestivalOn) FestivalLayout.Ring = null;
+            var ring = FestivalLayout.Ring; // #770: the dance ring the staged festival chose (dancers and dressing in one place)
+            string key = sim.FestivalOn ? $"{sim.State.era}:{map.greenX:0.00}:{map.greenZ:0.00}:{sim.State.buildings.Count}:{(ring.HasValue ? $"{ring.Value.x:0.00},{ring.Value.z:0.00},{ring.Value.r:0.00}" : "")}" : "";
             if (key == shown) return;
             shown = key;
             if (!sim.FestivalOn) { if (holder != null) holder.SetActive(false); Flags = Tables = 0; return; }
@@ -50,11 +54,11 @@ namespace AquariumCiv.View
             }
             holder.SetActive(true);
             if (mesh != null) Destroy(mesh);
-            mesh = Build(sim, map.greenX, map.greenZ);
+            mesh = Build(sim, FestivalLayout.Compute(sim));
             holder.GetComponent<MeshFilter>().sharedMesh = mesh;
         }
 
-        Mesh Build(SimCore sim, float gx, float gz)
+        Mesh Build(SimCore sim, FestivalLayout lay)
         {
             var mb = new MeshBuilder(91) { jitter = 0f };
             Vector3 G(float x, float z) => new(x, box.GroundHeight(x, z), z);
@@ -62,15 +66,14 @@ namespace AquariumCiv.View
             Flags = 0;
 
             // Poles in a ring (an arc left open towards the front, so the camera looks in), bunting strung between them.
-            var tops = new Vector3[Poles];
-            for (int i = 0; i < Poles; i++)
+            var tops = new List<Vector3>();
+            foreach (var (px, pz) in lay.poles)
             {
-                float a = Mathf.Lerp(-20f, 200f, i / (float)(Poles - 1)) * Mathf.Deg2Rad; // the back (+z) and the sides; the front stays open to the camera
-                var foot = G(gx + Mathf.Cos(a) * RingR, gz + Mathf.Sin(a) * RingR);
+                var foot = G(px, pz);
                 mb.Box(foot + new Vector3(0f, PoleH * 0.5f, 0f), new Vector3(0.022f, PoleH, 0.022f), Palette.Timber);
-                tops[i] = foot + new Vector3(0f, PoleH, 0f);
+                tops.Add(foot + new Vector3(0f, PoleH, 0f));
             }
-            for (int i = 0; i + 1 < Poles; i++)
+            for (int i = 0; i + 1 < tops.Count; i++)
             {
                 var a = tops[i]; var b = tops[i + 1];
                 const int n = 4; // big flags: they have to read at default zoom
@@ -86,11 +89,11 @@ namespace AquariumCiv.View
                 }
             }
 
-            // Two long tables with benches, on the open side of the green, the well and the stalls left free.
+            // Two long tables with benches, round the dance ring (FestivalLayout), clear of the dancers and every lot.
             Tables = 0;
-            for (int t = 0; t < 2; t++)
+            foreach (var (tx, tz) in lay.tables)
             {
-                var c = G(gx - 0.2f, gz + (t == 0 ? 0.12f : -0.2f));
+                var c = G(tx, tz);
                 const float len = 0.34f, w = 0.07f, h = 0.05f;
                 mb.Box(c + new Vector3(0f, h, 0f), new Vector3(len, 0.012f, w), Palette.WoodLight);
                 for (int leg = -1; leg <= 1; leg += 2)

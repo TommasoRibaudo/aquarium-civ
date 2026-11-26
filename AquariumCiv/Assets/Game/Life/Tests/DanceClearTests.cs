@@ -123,6 +123,49 @@ namespace AquariumCiv.Life.Tests
             }
         }
 
+        /// <summary>#770 round 3: the festival dressing is laid round the ring: poles outside it, tables clear of the dancers, none on a lot.</summary>
+        [TestCaseSource(nameof(KidCases))]
+        public void TheFestivalDressing_StandsOutsideTheRing_AndOffEveryLot(int seed, Era era)
+        {
+            var sim = Grown(seed, era, 6);
+            var blocked = LifePlanner.FootprintBlocked(sim);
+            foreach (bool staged in new[] { false, true })
+            {
+                FestivalLayout.Ring = null;
+                try
+                {
+                    if (staged)
+                    {
+                        var m = sim.DebugQueueMoment(MomentKind.Festival);
+                        if (m == null) continue;
+                        var sc = LifePlanner.Wired(sim).StageHeldMoment(m, new ViewTime(sim.State.month, 10f));
+                        Assert.IsNotNull(sc);
+                        Assert.IsTrue(FestivalLayout.Ring.HasValue, "staging sets the ring");
+                        Assert.AreEqual(sc.plan.centreX, FestivalLayout.Ring.Value.x, 1e-4f);
+                    }
+                    var lay = FestivalLayout.Compute(sim);
+                    string w = $"{era} seed {seed} staged {staged}";
+                    Assert.Greater(lay.poles.Count, 3, w + ": poles stand");
+                    Assert.AreEqual(2, lay.tables.Count, w + ": two tables");
+                    foreach (var (x, z) in lay.poles)
+                    {
+                        Assert.IsFalse(blocked(x, z), $"{w}: a pole at ({x:0.00},{z:0.00}) is on a lot");
+                        Assert.GreaterOrEqual(Math.Sqrt((x - lay.cx) * (x - lay.cx) + (z - lay.cz) * (z - lay.cz)), lay.ringR, w + ": a pole is inside the ring");
+                    }
+                    foreach (var (x, z) in lay.tables)
+                    {
+                        for (int i = -2; i <= 2; i++)
+                            for (int j = -1; j <= 1; j++)
+                                Assert.IsFalse(blocked(x + FestivalLayout.TableLen * 0.5f * i / 2f, z + FestivalLayout.TableW * 0.5f * j), $"{w}: a table at ({x:0.00},{z:0.00}) is on a lot");
+                        float nearest = (float)Math.Sqrt((x - lay.cx) * (x - lay.cx) + (z - lay.cz) * (z - lay.cz)) - FestivalLayout.TableLen * 0.5f;
+                        Assert.GreaterOrEqual(nearest, lay.ringR, w + ": a table is among the dancers");
+                    }
+                    if (staged) { Assert.AreEqual(FestivalLayout.Ring.Value.x, lay.cx, 1e-4f, "dressed round the dancers' ring"); }
+                }
+                finally { FestivalLayout.Ring = null; }
+            }
+        }
+
         static System.Collections.Generic.IEnumerable<TestCaseData> KidCases()
         {
             foreach (var era in new[] { Era.Village, Era.Town })
