@@ -6,7 +6,7 @@ body{margin:0;padding:20px;background:#2b2622;font-family:Georgia,'Palatino Lino
 h1,h2{color:#EFE3CC;font-weight:600}
 .row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
 .cap{color:#d9cdb4;font:13px/1.35 system-ui,sans-serif;margin:6px 0 0;max-width:393px}
-.phone{position:relative;overflow:hidden;border-radius:26px;border:3px solid #111;background:linear-gradient(#9fc7b4 0,#7fae86 38%,#5d8b6b 100%)}
+.phone{flex:none;position:relative;overflow:hidden;border-radius:26px;border:3px solid #111;background:linear-gradient(#9fc7b4 0,#7fae86 38%,#5d8b6b 100%)}
 .f375{width:375px;height:667px}.f393{width:393px;height:852px}
 .tank{position:absolute;inset:0}
 .tank i{position:absolute;display:block}
@@ -29,7 +29,7 @@ h4 small{font:400 11px system-ui;text-transform:none;letter-spacing:0;color:var(
 .doll.here{box-shadow:0 0 0 3px var(--brass)}
 .doll .st{position:absolute;right:-5px;bottom:-4px;width:12px;height:14px;background:#cfc8bd;border:1.5px solid #7d766c;border-radius:6px 6px 1px 1px}
 .doll .al{position:absolute;right:-3px;bottom:-2px;width:10px;height:10px;border-radius:50%;background:var(--moss);border:1.5px solid var(--paper)}
-.chips{display:flex;gap:10px;overflow:hidden}
+.chips{display:flex;gap:10px;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
 .kin{display:flex;flex-direction:column;align-items:center;width:58px;font:11.5px/1.1 Georgia,serif;text-align:center;flex:none}
 .kin b{font-weight:600}.kin span{font-size:10px;color:var(--ink-soft);font-family:system-ui}
 .kin .doll{margin-bottom:3px}
@@ -61,7 +61,8 @@ h4 small{font:400 11px system-ui;text-transform:none;letter-spacing:0;color:var(
 .nd{position:absolute;width:62px;text-align:center;font:600 10.5px/1.05 Georgia,serif}
 .nd .doll{display:block;margin:0 auto 2px}
 .nd span{display:block;font:9.5px system-ui;color:var(--ink-soft);font-weight:400}
-.gen{position:absolute;left:0;font:700 9.5px system-ui;color:var(--timber);background:rgba(243,233,214,.9);padding:2px 6px;border-radius:0 8px 8px 0;border:1px solid var(--edge);border-left:0;z-index:2}
+.gut{position:absolute;left:0;top:0;bottom:0;width:56px;background:var(--paper);border-right:2px solid var(--edge);z-index:2}
+.gen{position:absolute;left:0;width:56px;text-align:center;font:700 10px/1.2 system-ui;color:var(--timber)}.gen b{font:700 14px Georgia}
 .fold{position:absolute;font:600 10px system-ui;background:var(--pressed);border:1.5px dashed var(--timber);border-radius:12px;padding:5px 7px;text-align:center}
 .mini{position:absolute;right:8px;bottom:8px;width:74px;height:96px;background:rgba(243,233,214,.95);border:1.5px solid var(--timber);border-radius:8px;z-index:3}
 .mini i{position:absolute;border-radius:50%;width:4px;height:4px;background:var(--timber)}
@@ -71,7 +72,7 @@ h4 small{font:400 11px system-ui;text-transform:none;letter-spacing:0;color:var(
 .nav .on{color:var(--primary);border-bottom:2px solid var(--primary)}
 .line{display:flex;gap:10px;padding:10px 14px;border-top:1px solid rgba(106,75,54,.18);position:relative}
 .spine{position:absolute;left:36px;top:0;bottom:0;width:2px;background:var(--edge)}
-.gl{width:44px;flex:none;font:700 10px system-ui;color:var(--timber);text-align:center;z-index:1}
+.gl{background:var(--paper);width:44px;flex:none;font:700 10px system-ui;color:var(--timber);text-align:center;z-index:1}
 .gl b{display:block;font-size:15px;font-family:Georgia}
 .lp{flex:1}.lp .n{font-weight:700;font-size:14px}.lp .m{font:11.5px system-ui;color:var(--ink-soft)}
 .lp .s{font-size:12.5px;margin:3px 0 5px;line-height:1.28}
