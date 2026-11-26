@@ -35,6 +35,8 @@ namespace AquariumCiv.Sim.Settle
         readonly bool[] netMark = new bool[SiteMap.N];
         readonly int[] reach = new int[SiteMap.N];
         readonly List<Candidate> cands = new List<Candidate>();
+        const float FarmGroundFrom = 1.6f; // #768: fertile-ground candidates start this far from the green
+        bool relaxed; // #768/#769: no spot off the ring and clear of the wood was found: the floors (KindSpec.minGreenDist, woodMargin) are waived
         // One per thread: the run ahead at close (#97) lives a copy of the box off the main thread.
         [ThreadStatic] static List<int> scratch;
         static List<int> Scratch => scratch ??= new List<int>();
@@ -48,9 +50,15 @@ namespace AquariumCiv.Sim.Settle
             var spec = Encyclopedia.Of(site.kind);
             cands.Clear();
             Generate(site, spec, nudge, cands);
+            relaxed = false;
             foreach (var c in cands) Evaluate(site, spec, nudge, c, reach);
             order.Clear();
             for (int i = 0; i < cands.Count; i++) if (cands[i].valid) order.Add(i);
+            if (order.Count == 0 && (spec.minGreenDist > 0f || spec.woodMargin > 0f))
+            {   // #768/#769: nothing off the ring and clear of the wood: the lot may take either rather than wait
+                relaxed = true;
+                foreach (var c in cands) if (c.reject == "ring" || c.reject == "wood") { Evaluate(site, spec, nudge, c, reach); if (c.valid) order.Add(cands.IndexOf(c)); }
+            }
             int seed = w.Seed, id = site.id;
             order.Sort((a, b) =>
             {
@@ -61,7 +69,15 @@ namespace AquariumCiv.Sim.Settle
             foreach (int i in order)
             {
                 var c = cands[i];
-                if (w.Claim(site, c.x, c.z, c.yaw, c.w, c.d, c.door, site.kind == LotKind.Shop)) return true;
+                if (w.Claim(site, c.x, c.z, c.yaw, c.w, c.d, c.door, site.kind == LotKind.Shop))
+                {
+                    if (relaxed && spec.woodMargin > 0f)
+                    {   // #769: no clear ground to be had: the trees round it are cleared as it is built
+                        SiteMap.RectCells(c.x, c.z, c.yaw, c.w, c.d, spec.woodMargin, cells);
+                        foreach (int k in cells) if (w.Map.Forest(k)) w.Map.Set(k, SiteMap.FForest, false);
+                    }
+                    return true;
+                }
                 c.valid = false; c.reject = "cut off";
             }
             return false;
@@ -125,6 +141,21 @@ namespace AquariumCiv.Sim.Settle
                         float x = map.greenX + MathF.Cos(ang) * r, z = map.greenZ + MathF.Sin(ang) * r;
                         into.Add(Facing(x, z, map.greenX, map.greenZ, lw, ld, 1));
                     }
+
+            // F (#768): fields and orchards also try the good ground itself: fertile, free cells, facing the nearest path, so the
+            // score (fertility, damp, access, rows) picks among them instead of only among the spots the paths and rays offer.
+            if (spec.w[(int)Term.Fertility] >= 1f && site.kind != LotKind.Shop)
+                for (int c = 0; c < SiteMap.N; c += 3)
+                {
+                    int i = SiteMap.I(c), j = SiteMap.J(c);
+                    if ((i + j) % 2 != 0) continue;
+                    if (map.Water(c) || map.lot[c] != 0 || map.Green(c) || map.Fertility(c, w.Month, w.Nudges) < 0.5f) continue;
+                    float x = SiteMap.CXc(c), z = SiteMap.CZc(c);
+                    if (Terrain.Dist(x, z, map.greenX, map.greenZ) < FarmGroundFrom) continue; // the families' yards keep the ground round the green
+                    int near = NearestNetwork(x, z);
+                    float tx = near >= 0 ? SiteMap.CXc(near) : map.greenX, tz = near >= 0 ? SiteMap.CZc(near) : map.greenZ;
+                    into.Add(Facing(x, z, tx, tz, lw, ld, 7));
+                }
 
             // R: strip fields side by side, fronts in line.
             if (spec.rows)
@@ -298,6 +329,16 @@ namespace AquariumCiv.Sim.Settle
             for (int k = 0; k < 4; k++) if (MathF.Abs(cx[k]) > mx || MathF.Abs(cz[k] - Terrain.CZ) > mz) return "glass";
             SiteMap.RectCells(c.x, c.z, c.yaw, c.w, c.d, 0f, cells);
             if (cells.Count == 0) return "tiny";
+            if (!relaxed)
+            {
+                if (spec.minGreenDist > 0f && Terrain.Dist(c.x, c.z, map.greenX, map.greenZ) < spec.minGreenDist) return "ring";
+                if (spec.woodMargin > 0f)
+                {   // #769: no tree (or thicket) in the lot or its margin
+                    SiteMap.RectCells(c.x, c.z, c.yaw, c.w, c.d, spec.woodMargin, cells);
+                    foreach (int k in cells) if (map.Overgrown(k) > 0f) return "wood";
+                    SiteMap.RectCells(c.x, c.z, c.yaw, c.w, c.d, 0f, cells);
+                }
+            }
             float slope = 0f, minWater = 99f;
             foreach (int k in cells)
             {
@@ -325,6 +366,9 @@ namespace AquariumCiv.Sim.Settle
                 if (dx * dx + dz * dz > rr * rr) continue;
                 if (SiteMap.RectGap(o.x, o.z, o.yaw, o.w, o.d, c.x, c.z, c.yaw, c.w, c.d) < Gap) return "overlap";
             }
+            if (spec.trips == TripGroup.Field)
+                foreach (var k in w.KeepClear) // #762: a field keeps clear of the drying racks
+                    if (SiteMap.RectGap(k.x, k.z, k.yaw, k.w, k.d, c.x, c.z, c.yaw, c.w, c.d) < Gap) return "rack";
             // The door: just outside the front edge, reachable from the network.
             float r = c.yaw * (MathF.PI / 180f);
             float fx = -MathF.Sin(r), fz = -MathF.Cos(r);

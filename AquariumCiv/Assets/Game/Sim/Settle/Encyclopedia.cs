@@ -26,6 +26,8 @@ namespace AquariumCiv.Sim.Settle
         public bool edgeCandidates;            // also try spots out on rays from the green (fields, mills)
         public bool backland;                  // also try spots behind existing house lots (Town infill)
         public bool rows;                      // strip-field rows beside lots of the same kind (round 1)
+        public float minGreenDist;             // #768: lot centres keep this far from the green's middle (fields keep off the town centre's ring); 0 = no floor
+        public float woodMargin;               // #769: the lot and this margin round it keep clear of trees and thicket (the church); 0 = no rule
         public float greenNear, greenFar;      // Green term: 1 inside [near, far], falling to −1 at far + 1.5
         public LotKind[] nearKinds = Array.Empty<LotKind>();
         public readonly float[] w = new float[Enum.GetValues(typeof(Term)).Length];
@@ -84,7 +86,8 @@ namespace AquariumCiv.Sim.Settle
             // Fields: flat, fertile, next to other fields, out at the edge (strip-field rows).
             var farm = S(LotKind.Farm, 0.4f, 0.5f, 0.7f, 0.9f);
             farm.maxSlope = 0.3f; farm.edgeCandidates = true; farm.rows = true; farm.trips = TripGroup.Field; farm.greenNear = 1.2f; farm.greenFar = 2.6f;
-            farm.W(Term.Edge, 1.0f).W(Term.Fertility, 1.6f).W(Term.Slope, 1.2f).W(Term.SameKind, 0.8f).W(Term.Access, 0.6f).W(Term.Water, 0.3f).W(Term.Forest, 0.8f).W(Term.Nudge, 4.0f);
+            farm.minGreenDist = 1.1f; // #768: not on the centre's ring, and fertile, damp ground counts for more than the way in
+            farm.W(Term.Edge, 1.0f).W(Term.Fertility, 3.0f).W(Term.Slope, 1.2f).W(Term.SameKind, 0.8f).W(Term.Access, 0.6f).W(Term.Water, 1.2f).W(Term.Forest, 0.8f).W(Term.Nudge, 4.0f);
 
             var orchard = S(LotKind.Orchard, 0.44f, 0.5f, 0.5f, 0.6f);
             orchard.maxSlope = 0.4f; orchard.edgeCandidates = true; orchard.trips = TripGroup.Field; orchard.greenNear = 1.0f; orchard.greenFar = 2.4f;
@@ -124,7 +127,7 @@ namespace AquariumCiv.Sim.Settle
             bakery.W(Term.Busy, 1.0f).W(Term.NearKind, 0.8f).W(Term.Green, 0.8f).W(Term.Access, 1.0f).W(Term.Slope, 0.4f).W(Term.Nudge, 4.0f);
 
             var church = S(LotKind.Church, 0.42f, 0.46f, 0.7f, 0.76f);
-            church.trips = TripGroup.Gathering; church.tall = true; church.edgeCandidates = true; church.maxSlope = 0.5f; church.greenNear = 0.5f; church.greenFar = 1.5f;
+            church.trips = TripGroup.Gathering; church.tall = true; church.edgeCandidates = true; church.maxSlope = 0.5f; church.woodMargin = 0.25f; church.greenNear = 0.5f; church.greenFar = 1.5f;
             church.W(Term.Height, 1.2f).W(Term.Green, 1.0f).W(Term.Access, 0.8f).W(Term.FrontTall, 1.0f).W(Term.Slope, 0.4f).W(Term.Nudge, 4.0f);
 
             var water = S(LotKind.Watermill, 0.44f, 0.48f, 0.38f, 0.42f);
