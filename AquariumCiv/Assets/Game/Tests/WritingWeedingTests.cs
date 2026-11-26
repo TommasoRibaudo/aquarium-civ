@@ -538,6 +538,9 @@ namespace AquariumCiv.Tests
             var box = NewSim(5);
             var adults = box.State.notables.Where(n => n.alive && n.age >= SimCore.AdultAge).OrderBy(n => n.id).ToList();
             foreach (var n in adults) { n.friendId = -1; n.rivalId = -1; n.partnerId = -1; }
+            // the chief's rival has a teaser of its own that comes first (the seat): the quarrel is between two who aren't the chief
+            int chief = (box.State.roles ?? new List<RoleSeat>()).Where(r => r.role == RoleType.Chief).Select(r => r.holderId).DefaultIfEmpty(-1).First();
+            adults = adults.Where(n => n.id != chief).ToList();
             var a = adults[0]; var b = adults[1];
             a.rivalId = b.id; b.rivalId = a.id;
             box.State.chronicle.Add(new ChronicleEntry { id = 900001, month = box.State.month, kind = "rivalry", text = "x", notableId = a.id, otherNotableId = b.id });
@@ -552,7 +555,7 @@ namespace AquariumCiv.Tests
                 Assume.That(again, Does.Contain("aren't speaking"));
                 StringAssert.EndsWith("aren't speaking again.", again, "after they made up once");
             }
-            else Assert.Inconclusive("another teaser came first: " + first);
+            else Assert.Fail("another teaser came first: " + first);
         }
 
         [Test]

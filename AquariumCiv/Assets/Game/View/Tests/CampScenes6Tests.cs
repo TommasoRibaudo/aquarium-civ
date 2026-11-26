@@ -248,7 +248,7 @@ namespace AquariumCiv.View.Tests
             }
             Assert.Less(ConsequenceMeshes.Build(ConsequenceKind.Baskets, 1).vertexCount, ConsequenceMeshes.Build(ConsequenceKind.Baskets).vertexCount, "a basket fewer");
             Assert.Greater(ConsequenceMeshes.Build(ConsequenceKind.NameStone, 1).vertexCount, ConsequenceMeshes.Build(ConsequenceKind.NameStone).vertexCount, "a row more");
-            Assert.AreEqual(CampUse.FruitPick, System.Enum.GetValues(typeof(CampUse)).Cast<CampUse>().Max(), "#722's story uses are the last (after S-ritual's and #687's look up)"); Assert.Less(CampUse.SkyLook, CampUse.FirstFruit, "appended, never inserted"); Assert.Less(CampUse.BoatHouse, CampUse.SkyLook); Assert.Less(CampUse.HayJump, CampUse.OfferingEmpty, "#695's village uses come before S-ritual's"); Assert.Less(CampUse.KidsClose, CampUse.FieldTag, "#694's dog and wolf uses come before #695's");
+            Assert.AreEqual(CampUse.FirstSnow, System.Enum.GetValues(typeof(CampUse)).Cast<CampUse>().Max(), "#722's story uses are the last (after S-ritual's and #687's look up; batch 3 ends with the first snow)"); Assert.Less(CampUse.FruitPick, CampUse.AntlersPass, "#722 batch 3 appended after the first ones"); Assert.Less(CampUse.SkyLook, CampUse.FirstFruit, "appended, never inserted"); Assert.Less(CampUse.BoatHouse, CampUse.SkyLook); Assert.Less(CampUse.HayJump, CampUse.OfferingEmpty, "#695's village uses come before S-ritual's"); Assert.Less(CampUse.KidsClose, CampUse.FieldTag, "#694's dog and wolf uses come before #695's");
             foreach (CampUse u in System.Enum.GetValues(typeof(CampUse))) if (u >= CampUse.BasketTake && u <= CampUse.PenPet) Assert.IsNotEmpty(CampLife.KindFor(u), u + " has its thing");
         }
     }

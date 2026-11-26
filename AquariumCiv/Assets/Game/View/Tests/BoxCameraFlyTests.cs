@@ -43,7 +43,7 @@ namespace AquariumCiv.View.Tests
             Run(cam, 0.5f);
             Assert.IsFalse(cam.IsFlying); Assert.IsTrue(arrived);
             Assert.AreEqual(0.5f, cam.zoom, 1e-4f);
-            var eb = B(0.5f); Assert.AreEqual(Mathf.Min(1.5f, eb.x), cam.target.x, 1e-4f); Assert.AreEqual(-Mathf.Min(1f, eb.y), cam.target.z, 1e-4f);
+            var eb = B(0.5f); Assert.AreEqual(Mathf.Min(1.5f, eb.x), cam.target.x, 1e-4f); Assert.AreEqual(Land.CZ + Mathf.Clamp(-1f - Land.CZ, -eb.y, eb.y), cam.target.z, 1e-4f, "#658: the bounds are offsets from the box centre (z = Land.CZ)");
             Assert.AreEqual(1f, cam.target.y, "stays on the ground plane");
         }
 

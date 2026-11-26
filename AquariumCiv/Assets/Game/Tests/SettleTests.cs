@@ -141,7 +141,9 @@ namespace AquariumCiv.Tests
             foreach (var kind in SimCore.NudgeKind.Gifts)
             {
                 bool first = Array.IndexOf(SimCore.NudgeKind.All, kind) >= 0;
-                int n = first ? 30 : 12, ok = 0, answered = 0;
+                // the channel is measured over 120 trials (its rate is 78-79 %): over 30 it sat on its 75 % bar, 23 under .NET and 22 under
+                // Unity's float math (the 0.4.1 release CI), one trial deciding the result
+                int n = kind == SimCore.NudgeKind.Channel ? 120 : first ? 30 : 12, ok = 0, answered = 0;
                 float sum = 0f;
                 var kinds = new Dictionary<LotKind, int>();
                 for (int i = 0; i < n; i++)
