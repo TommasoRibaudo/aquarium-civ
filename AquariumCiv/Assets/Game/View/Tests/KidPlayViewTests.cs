@@ -27,5 +27,15 @@ namespace AquariumCiv.View.Tests
             Assert.Greater(Mathf.Abs(toddle.roll), 1f, "a wobble");
             Assert.AreEqual(0f, toddle.offset.x, 1e-5f, "no circle");
         }
+
+        /// <summary>#772: the ball's glass box is the glass panes' inner faces (BoxView.Glass: the land's half sizes + 0.075, minus half the 0.02 pane).</summary>
+        [Test]
+        public void TheBallsGlassBox_IsThePanesInnerFaces_OfTheLand()
+        {
+            Assert.AreEqual(Land.HX + 0.075f - 0.01f, GlassBox.HalfX, 1e-4f);
+            Assert.AreEqual(Land.ZMin - 0.075f + 0.01f, GlassBox.ZMin, 1e-4f, "the front pane (the land is not centred on z = 0)");
+            Assert.AreEqual(Land.ZMax + 0.075f - 0.01f, GlassBox.ZMax, 1e-4f, "the back pane");
+            Assert.AreEqual(Land.CZ - Land.HZ, Land.ZMin, 1e-4f);
+        }
     }
 }
