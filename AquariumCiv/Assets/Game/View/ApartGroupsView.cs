@@ -173,6 +173,12 @@ namespace AquariumCiv.View
             foreach (var g in sim.ApartGroups.ToList()) // #578: FinishApartJoin removes the group while it is driven
             {
                 if (!camps.TryGetValue(g.id, out var c)) camps[g.id] = c = new Camp { groupId = g.id, dilemmaId = g.dilemmaId, kind = g.kind, home = new Vector2(g.x, g.z) };
+                if (!ReplayGate.Shows(g.sinceMonth)) // #669: the camp of the people living apart stands in a replay from the month they went
+                {
+                    if (c.root != null && c.root.gameObject.activeSelf) c.root.gameObject.SetActive(false);
+                    continue;
+                }
+                if (c.root != null && !c.root.gameObject.activeSelf) c.root.gameObject.SetActive(true);
                 if (c.root == null || clock >= c.nextCheck) Place(sim, c);
                 bool alive = g.AnyAlive;
                 if (c.root == null || alive != c.lit) Build(sim, c, alive);

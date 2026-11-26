@@ -109,6 +109,15 @@ namespace AquariumCiv.View
         public static string PuddleVisit() { var p = PuddleLife.Instance; return p != null ? p.VisitNow() : "no puddle life"; }
 
         /// <summary>"Rabbit tracks now": the tracks show at the meadow's edge at once (#282).</summary>
+        /// <summary>"Rabbit trails: count" (#665): the living trails drawn now (fresh prints while rabbits live), and the season's share.</summary>
+        public static string LiveTrailsNow()
+        {
+            var rv = RabbitView.Instance; var pv = PeopleView.Find();
+            if (rv == null || pv == null) return "no rabbit view";
+            var season = AquariumCiv.Life.LifeClock.SeasonOf(pv.Now.day);
+            return $"{rv.LiveTrails} living trails (at most {RabbitView.LiveTrailsMax}; {season}: {RabbitView.LiveTrailShare(season):0%} of slots), a new slot every {RabbitView.LiveTrailEvery:0} view hours";
+        }
+
         public static string RabbitTracksNow()
         {
             var s = Sim;
@@ -212,6 +221,20 @@ namespace AquariumCiv.View
             return $"hunt started: rabbit {plan.rabbitId}, {(plan.catches ? "will catch" : "will miss")}, strike in {(plan.strikeStart - pv.Now.hour):0.0} h";
         }
 
+        /// <summary>"Hunt: miss, then try again" (#680): a hunt starts now, misses, and the hunter tries once more (that try misses too, so
+        /// the walk home after it shows), even late in the day.</summary>
+        public static string HuntMissThenRetry()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no people";
+            pv.Planner.DebugRetryNext = true;
+            if (!pv.Planner.DebugStartHunt(pv.Now, out var plan)) { pv.Planner.DebugRetryNext = false; return "no hunt: no rabbit shown, or nobody free"; }
+            return plan.retry != null ? $"hunt started: misses rabbit {plan.rabbitId}, then tries rabbit {plan.retry.rabbitId}; first strike in {(plan.strikeStart - pv.Now.hour):0.0} h"
+                                      : "hunt started, but no second try: no other rabbit, or no time left today";
+        }
+
         /// <summary>"Next hunt succeeds / misses" (#283): fixes how the next hunt that has not struck yet ends.</summary>
         public static string ForceHunt(bool catches)
         {
@@ -303,6 +326,15 @@ namespace AquariumCiv.View
             return Refresh($"{n} pond cells dried; ducks {s.EcoDucks}, fish {s.EcoFish}");
         }
 
+        /// <summary>#687 cheat: a dry spell now (the grass pales and wilts, the people look up for rain); the box shows it at once.</summary>
+        public static string DrySpell()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int n = s.DebugDrySpell();
+            return Refresh($"dry spell: {n} cells dry, thirst {s.EcoThirst:0.00}");
+        }
+
         public static string Table(float aboveFlood)
         {
             var s = Sim;
@@ -356,7 +388,7 @@ namespace AquariumCiv.View
         {
             var s = Sim;
             if (s == null || !s.EcologyOn) return "living land off";
-            float x = -AquariumCiv.Sim.Settle.Terrain.HX + 0.02f, z = AquariumCiv.Sim.Settle.Terrain.HZ - 0.02f;
+            float x = -AquariumCiv.Sim.Settle.Terrain.HX + 0.02f, z = AquariumCiv.Sim.Settle.Terrain.ZMax - 0.02f;
             int at = AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z), to = s.TreeCellFor(x, z);
             if (!s.PlantTree(x, z)) return "can't plant at the edge (no seed yet, or a tree stands)";
             return Refresh($"edge cell {at} -> tree cell {to}");
@@ -386,6 +418,13 @@ namespace AquariumCiv.View
             var src = SimLayoutSource.Find(); var bv = src != null ? src.GetComponent<BoxView>() : null;
             // #573: only cells where the box has room to draw the tree (BoxView.Free: paths, clearings, props), or the cheat plants a tree nobody sees
             return Refresh(s.DebugWildTrees(beside, 1, bv == null ? null : (x, z, r) => bv.FreeForProp(new UnityEngine.Vector2(x, z), r)));
+        }
+        /// <summary>#692 p3: young wild trees near the camp where <paramref name="ok"/> says (the camp uses' "clear of the glass").</summary>
+        public static string SaplingsWhere(System.Func<float, float, bool> ok)
+        {
+            var s = Sim; if (s == null) return "no sim";
+            var src = SimLayoutSource.Find(); var bv = src != null ? src.GetComponent<BoxView>() : null;
+            return Refresh(s.DebugSaplingsWhere(ok, 3, bv == null ? null : (x, z, r) => bv.FreeForProp(new UnityEngine.Vector2(x, z), r)));
         }
         public static string TreeStage(int stage) { var s = Sim; return s != null && s.DebugTreeStage(stage) ? Refresh($"tree stage {stage}") : "no tree"; }
     }

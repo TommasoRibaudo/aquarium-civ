@@ -1,0 +1,24 @@
+{
+ "name": "692-b32f-newborn",
+ "notes": "B32.f: a parent walks to the tree with the bundle, lifts it toward the crown with a slow sway, a leaf drifts down past it, cradles it again, a small bow, walks back.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(9.0f, 2);",
+   "return AquariumCiv.View.CampCheats.GrowTree();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TreeNewborn());"
+  ],
+  "warm": 0.5,
+  "seconds": 18,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.8,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

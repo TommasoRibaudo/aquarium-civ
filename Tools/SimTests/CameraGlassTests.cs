@@ -8,7 +8,8 @@ namespace AquariumCiv.Tests
 {
     public class CameraGlassTests
     {
-        const float HX = 3f, HZ = 2.2f, HullX = 3.3f, HullZ = 2.5f, Bottom = -0.3f, Top = 2.95f;
+        const float HX = 3f, HZ = 3f, HullX = 3.3f, HullZ = 3.3f, // #658: the land is 6 x 6 (offsets from the centre, CZ = 0.8)
+             Bottom = -0.3f, Top = 2.95f;
 
         static float Dist(float zoom, float baseDist = 41f) => baseDist * zoom;
 
@@ -82,7 +83,7 @@ namespace AquariumCiv.Tests
         [Test]
         public void Camera_NeverEntersTheBox_AnyYawPitchZoomAndPivot_AtTheLimits()
         {
-            foreach (float baseDist in new[] { 30f, 41f, 55f })           // other aspects change the fit distance
+            foreach (float baseDist in new[] { 34f, 46f, 62f })           // other aspects change the fit distance (#658: the fit grew 12 % with the 6-deep box, so these did too)
                 for (float zoom = 0.2f; zoom <= 1.3f + 1e-4f; zoom += 0.025f)
                     for (float yaw = -30f; yaw <= 55f + 1e-4f; yaw += 2.5f)
                         for (float pitch = CameraReach.PitchFloor(zoom); pitch <= 68f + 1e-4f; pitch += 2f)

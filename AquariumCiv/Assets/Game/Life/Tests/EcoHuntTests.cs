@@ -27,6 +27,9 @@ namespace AquariumCiv.Life.Tests
         {
             var cfg = new SimConfig { ecology = true };
             var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+            // #656: these hunt tests were measured on the old start (food 20, growing from month 1), whose births give the kid who follows a
+            // hunt; the carried-basket start (NewStartTests) runs the food down first. Keep the old start here.
+            sim.State.newStart = new NewStartState(); sim.State.food = 20f; sim.State.wood = 4f;
             for (int i = 0; i < 12; i++) { var s = Spots[i % Spots.Length]; sim.DebugMistBig(sim.EcoGround.campX + s.dx, sim.EcoGround.campZ + s.dz); sim.Advance(1.0 / 12); }
             sim.DebugAddRabbits(rabbits);
             if (hunters)
@@ -93,12 +96,17 @@ namespace AquariumCiv.Life.Tests
                 Assert.Less(System.Math.Abs(rx - p.targetX) + System.Math.Abs(rz - p.targetZ), 0.15f, "the spear flies at where the rabbit is");
                 Assert.Less(Dist(p.stalkX, p.stalkZ, p.targetX, p.targetZ), LifePlanner.StalkRange + 1e-3f, "stalks from close");
                 Assert.IsTrue(s.field.IsGreenAt(p.targetX, p.targetZ), "the rabbit is on the green");
-                Assert.AreEqual(HuntPhase.ToFire, p.steps[0].phase);
-                Assert.AreEqual(HuntPhase.TakeSpear, p.steps[1].phase);
-                Assert.AreEqual(Prop.Spear, p.steps[1].prop, "takes a spear at the fire");
-                Assert.AreEqual(HuntPhase.WalkOut, p.steps[2].phase);
-                Assert.AreEqual(HuntPhase.Stalk, p.steps[3].phase);
-                Assert.AreEqual(HuntPhase.Strike, p.steps[4].phase);
+                if (p.IsRetry)   // #680: the second try after a miss: spear in hand, from where it was pulled out
+                    CollectionAssert.AreEqual(new[] { HuntPhase.WalkOut, HuntPhase.Stalk, HuntPhase.Strike }, p.steps.Take(3).Select(x => x.phase).ToList());
+                else
+                {
+                    Assert.AreEqual(HuntPhase.ToFire, p.steps[0].phase);
+                    Assert.AreEqual(HuntPhase.TakeSpear, p.steps[1].phase);
+                    Assert.AreEqual(Prop.Spear, p.steps[1].prop, "takes a spear at the fire");
+                    Assert.AreEqual(HuntPhase.WalkOut, p.steps[2].phase);
+                    Assert.AreEqual(HuntPhase.Stalk, p.steps[3].phase);
+                    Assert.AreEqual(HuntPhase.Strike, p.steps[4].phase);
+                }
                 for (int i = 1; i < p.steps.Count; i++) Assert.AreEqual(p.steps[i - 1].end, p.steps[i].start, 1e-4f, "beats run one into the next");
                 Assert.AreEqual(p.steps[p.steps.Count - 1].end, p.end, 1e-4f);
             }
@@ -109,8 +117,8 @@ namespace AquariumCiv.Life.Tests
         public void TheBeatsReachThePersonThroughThePlanner()
         {
             var s = Herd();
-            var p = AllPlans(s, 24).First(x => x.catches);
-            p = s.planner.HuntsOn(p.day).First(x => x.catches && x.hunter == p.hunter && x.start == p.start); // the day as the planner keeps it
+            var p = AllPlans(s, 24).First(x => x.catches && !x.IsRetry);
+            p = s.planner.HuntsOn(p.day).First(x => x.catches && !x.IsRetry && x.hunter == p.hunter && x.start == p.start); // the day as the planner keeps it
             var who = p.hunter;
             PersonActivity At(float h) => s.planner.Plan(who, new ViewTime(p.day, h));
             var take = p.steps[1]; var stalk = p.steps[3]; var carry = p.steps.First(x => x.phase == HuntPhase.CarryBack);

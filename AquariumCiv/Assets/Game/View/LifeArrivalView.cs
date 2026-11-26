@@ -33,6 +33,10 @@ namespace AquariumCiv.View
 
         /// <summary>B12.0: people this near the spot react (box units); the reaction lasts this long (real seconds).</summary>
         public const float ReactRadius = 2.5f, ReactSeconds = 4f;
+        /// <summary>Batch 3 leftovers [est]: the wolves come to the far wood's edge and the people turn from the camp, where they stand
+        /// (nobody walks over). On batch 3's land (the deeper box) the nearest den stood 2.66 u from the nearest person, past the 2.5 u
+        /// every other arrival uses, and nobody turned at all.</summary>
+        public const float WolfReactRadius = 3.5f;
 
         /// <summary>The proposed lines, one per species, in the people's words (closed world: the gift comes from the sky). The user signs these off.</summary>
         public static readonly string[] Lines =
@@ -87,6 +91,9 @@ namespace AquariumCiv.View
         /// <summary>The people sent by the last reaction: who turned, who points, who walks over.</summary>
         public int LastTurned { get; private set; }
         public int LastWalkers { get; private set; }
+        /// <summary>The last reaction: how many stood out in the box, and the nearest one's distance to the spot (u; -1 with nobody out).</summary>
+        public int LastStanding { get; private set; }
+        public float LastNearest { get; private set; } = -1f;
         public PersonRef LastPointer { get; private set; }
         public PersonRef LastRunner { get; private set; }
         public string LastLine { get; private set; } = "";
@@ -287,7 +294,7 @@ namespace AquariumCiv.View
         {
             if (cam.LeanCancels != cancelsSeen) { cancelsSeen = cam.LeanCancels; leanRefused = true; }
             var hud = GameUI.GameHud.Instance;
-            bool inHand = hud != null && hud.Hand == GameUI.GameHud.KitTool.Life;
+            bool inHand = hud != null && (hud.Hand == GameUI.GameHud.KitTool.Life || hud.Hand == GameUI.GameHud.KitTool.Bush);
             if (leanRefused && !inHand && playing.Count == 0 && !cam.Leaning) leanRefused = false; // the next placing may lean again
         }
 
@@ -495,7 +502,7 @@ namespace AquariumCiv.View
             dir.Normalize();
             var p = at + dir * dist;
             p.x = Mathf.Clamp(p.x, -Land.HX + 0.15f, Land.HX - 0.15f);
-            p.z = Mathf.Clamp(p.z, -Land.HZ + 0.15f, Land.HZ - 0.15f);
+            p.z = Land.ClampZ(p.z, 0.15f);
             return box.land.OnGround(p.x, p.z);
         }
 
@@ -873,10 +880,12 @@ namespace AquariumCiv.View
             var spot = new Vector2(a.at.x, a.at.z);
             pv.StandingNow(whoBuf, px, pz);
             var order = new List<(float d, int i)>();
+            LastStanding = whoBuf.Count; LastNearest = -1f;
             for (int i = 0; i < whoBuf.Count; i++)
             {
                 float d = (new Vector2(px[i], pz[i]) - spot).magnitude;
-                if (d <= ReactRadius) order.Add((d, i));
+                if (LastNearest < 0f || d < LastNearest) LastNearest = d;
+                if (d <= (a.s == LifeSpecies.Wolves ? WolfReactRadius : ReactRadius)) order.Add((d, i));
             }
             order.Sort((p, q) => p.d.CompareTo(q.d));
             var planner = pv.Planner;
@@ -987,7 +996,7 @@ namespace AquariumCiv.View
         public string Status()
         {
             string p = playing.Count == 0 ? "none playing" : string.Join(", ", playing.ConvertAll(a => $"{a.s} {a.t:0.0}/{a.length:0.0}s"));
-            return $"arrivals: {p}; played {Played}, last {LastSpecies} (turned {LastTurned}, walkers {LastWalkers}); hints {HintsPlayed} ({LastHint}, leaned {HintLeans}, framed {HintFramed}); howls {Howls} (heard {HowlsVoiced}, silent {HowlsSilent})" +
+            return $"arrivals: {p}; played {Played}, last {LastSpecies} (turned {LastTurned}, walkers {LastWalkers}, {LastStanding} out, nearest {LastNearest:0.00} u); hints {HintsPlayed} ({LastHint}, leaned {HintLeans}, framed {HintFramed}); howls {Howls} (heard {HowlsVoiced}, silent {HowlsSilent})" +
                    (Sim != null && Sim.WolfFirstHowlDue ? ", first howl due at dusk" : "");
         }
     }

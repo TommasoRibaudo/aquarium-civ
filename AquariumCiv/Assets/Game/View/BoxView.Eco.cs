@@ -46,6 +46,11 @@ namespace AquariumCiv.View
             return false;
         }
 
+        /// <summary>#687 (the thirst signs, the user 2026-11-24): dry grass's colour, and how thirsty a cell reads from its moisture, 0 (at or over
+        /// <see cref="AquariumCiv.Sim.SimCore.ThirstMoist"/> + a little) to 1 (dust).</summary>
+        static readonly Color Straw = new Color(0.80f, 0.72f, 0.44f);
+        public static float Thirst(float moist) => Mathf.Clamp01((AquariumCiv.Sim.SimCore.ThirstMoist + 0.05f - moist) / (AquariumCiv.Sim.SimCore.ThirstMoist + 0.02f));
+
         /// <summary>The ground under the living land: dry cracked dirt, darker when wet, turning to the box's grass as the cover greens.</summary>
         Color EcoGround(float x, float z, float y, float n)
         {
@@ -63,6 +68,7 @@ namespace AquariumCiv.View
             if (EcoLayer.Wooded(cv)) grass = Color.Lerp(grass, Co.moss, 0.35f);          // the forest floor
             else if (cv == EcoLayer.Tall) grass = Color.Lerp(grass, Co.grassC, 0.3f);
             grass = Color.Lerp(grass, grass * 0.82f, Mathf.Clamp01(m - 0.4f));         // wet grass is a little darker
+            grass = Color.Lerp(grass, Straw, 0.5f * Thirst(m));                          // #687: thirsty grass pales to straw
             return Color.Lerp(dry, grass, g);
         }
 
@@ -79,6 +85,78 @@ namespace AquariumCiv.View
         }
         /// <summary>#359: where each grown tree was drawn (site cell -> ground point, crown radius), as BushSpots: the kids play round the real trunks.</summary>
         public readonly Dictionary<int, (Vector3 pos, float r)> TreeSpots = new();
+        /// <summary>#692 part 3 (B34): where each wild young tree or seedling was drawn (site cell -> ground point, size), so the people water and ring
+        /// the little trees the player sees (a young tree is drawn on ~80 % of its cells).</summary>
+        public readonly Dictionary<int, (Vector3 pos, float r)> SaplingSpots = new();
+        /// <summary>#692 part 3 (B33.c): the flowers baked into tall-grass tufts (cell x 2 + tuft -> the flower's point), so a picker walks to a real one.</summary>
+        public readonly Dictionary<int, Vector3> FlowerSpots = new();
+
+        /// <summary>#730 (landscaping phase 2): the spots are written as chunks build and were never taken out, so a tree or a bush the landscaping
+        /// tool lifted (or one that died) stayed a "tree to play round" until the box was rebuilt. Each refresh drops the spots whose cell no
+        /// longer holds what was drawn there.</summary>
+        void PruneSpots()
+        {
+            var ec = layout.eco;
+            if (ec == null || ec.cover == null) return;
+            var gone = new List<int>();
+            lock (TreeSpots)
+            {
+                foreach (var kv in TreeSpots)
+                {
+                    bool keepers = kv.Key == ec.treeCell && ec.treeStage >= 4;
+                    if (!keepers && (kv.Key < 0 || kv.Key >= ec.cover.Length || ec.cover[kv.Key] != EcoLayer.Tree)) gone.Add(kv.Key);
+                }
+                foreach (int c in gone) TreeSpots.Remove(c);
+            }
+            gone.Clear();
+            lock (SaplingSpots)
+            {
+                foreach (var kv in SaplingSpots) if (kv.Key < 0 || kv.Key >= ec.cover.Length || ec.cover[kv.Key] != EcoLayer.Young && ec.cover[kv.Key] != EcoLayer.Seedling) gone.Add(kv.Key);
+                foreach (int c in gone) SaplingSpots.Remove(c);
+            }
+            gone.Clear();
+            lock (FlowerSpots)
+            {
+                foreach (var kv in FlowerSpots) { int c = kv.Key / 2; if (c < 0 || c >= ec.cover.Length || ec.cover[c] != EcoLayer.Tall) gone.Add(kv.Key); }
+                foreach (int c in gone) FlowerSpots.Remove(c);
+            }
+            gone.Clear();
+            lock (BushSpots)
+            {
+                foreach (var kv in BushSpots) if (kv.Key < 0 || kv.Key >= ec.cover.Length || ec.cover[kv.Key] != EcoLayer.Bush) gone.Add(kv.Key);
+                foreach (int c in gone) BushSpots.Remove(c);
+            }
+        }
+
+        /// <summary>The radius round the Keeper's tree inside which a grown wild tree drops branches the people gather (SimCore.DeadfallTreeCell).</summary>
+        static readonly float DeadfallRadius = new AquariumCiv.Sim.Eco.EcoTuning().woodsClearRadius;
+
+        /// <summary>#677 (the user, 2026-11-14): a grown wild tree near the Keeper's tree has fallen branches lying round its foot, the deadfall
+        /// the people pick up by hand: two to four, each a shape of four and maybe mirrored, its own size, angle and weathering,
+        /// all from the cell's hash (a rebuild never shuffles them).</summary>
+        void FallenBranches(MeshBuilder mb, int c, Vector2 p, float s, EcoLayer ec, List<(Vector2 p, float r)> near, System.Func<int, int, float> H)
+        {
+            if (ec.treeCell < 0) return;
+            if (Vector2.Distance(p, new Vector2(Site.CXc(ec.treeCell), Site.CZc(ec.treeCell))) >= DeadfallRadius) return;
+            int n = 2 + (int)(H(c, 40) * 2.99f);
+            float a0 = H(c, 41) * 360f;
+            for (int b = 0; b < n; b++)
+            {
+                float ang = (a0 + b * (360f / n) + (H(c, 42 + b) - 0.5f) * 50f) * Mathf.Deg2Rad;
+                float d = (0.19f + 0.10f * H(c, 46 + b)) * s;
+                var q = p + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * d;
+                if (!AquariumCiv.Sim.Settle.Terrain.InBox(q.x, q.y, AquariumCiv.Sim.Settle.Terrain.GlassMargin)) continue;
+                if (!Free(q, 0.025f, near)) continue;
+                var ib = MeshBuilder.Rent(seed * 7919 + c * 104729 + (20 + b) * 15485863);
+                int variant = (int)(H(c, 50 + b) * 3.99f);
+                bool mirror = H(c, 54 + b) < 0.5f;
+                float len = Mathf.Lerp(0.10f, 0.18f, H(c, 58 + b)) * (variant == 3 ? 0.8f : 1f);
+                float yaw = ang * Mathf.Rad2Deg + 90f + (H(c, 62 + b) - 0.5f) * 70f; // lying roughly round the trunk, never all one way
+                Pieces.FallenBranch(ib, land.OnGround(q), len, yaw, variant, mirror, H(c, 66 + b));
+                mb.AppendFree(ib);
+                near.Add((q, 0.03f));
+            }
+        }
 
         /// <summary>What grows in this chunk, from the cover cell by cell (deterministic per cell, so a rebuild never shuffles it).</summary>
         void EcoNature(MeshBuilder mb, int k, List<(Vector2 p, float r)> near)
@@ -122,6 +200,8 @@ namespace AquariumCiv.View
                         mb.AppendFree(ib);
                         near.Add((p, 0.16f * s));
                         if (grown) lock (TreeSpots) TreeSpots[c] = (land.OnGround(p), 0.16f * s); // #359
+                        else lock (SaplingSpots) SaplingSpots[c] = (land.OnGround(p), 0.16f * s); // #692 part 3
+                        if (grown) FallenBranches(mb, c, p, s, ec, near, H);
                     }
                     else if (pass == 1 && (cv == EcoLayer.Bush || cv == EcoLayer.Seedling))
                     {
@@ -146,6 +226,7 @@ namespace AquariumCiv.View
                             Pieces.Tree(ib, land.OnGround(p), s, H(c, 5) < 0.3f, co);
                             mb.AppendFree(ib);
                             near.Add((p, 0.05f));
+                            lock (SaplingSpots) SaplingSpots[c] = (land.OnGround(p), 0.05f); // #692 part 3
                         }
                     }
                     else if (pass == 2)
@@ -172,9 +253,16 @@ namespace AquariumCiv.View
                             float h = cv == EcoLayer.Tall ? Mathf.Lerp(0.08f, 0.13f, H(c, 30 + t)) : Mathf.Lerp(0.035f, 0.065f, H(c, 30 + t));
                             float c3 = H(c, 32 + t);
                             var g = land.OnGround(q);
-                            Pieces.GrassTuft(ib, g, h, c3 < 0.33f ? co.tuftA : c3 < 0.66f ? co.tuftB : co.tuftC, cv == EcoLayer.Tall);
+                            // #687: a thirsty cell's tufts wilt: lower and limper, and straw-coloured
+                            float th = Thirst(ec.moist[c]);
+                            h *= 1f - 0.4f * th;
+                            var tuft = Color.Lerp(c3 < 0.33f ? co.tuftA : c3 < 0.66f ? co.tuftB : co.tuftC, Straw, 0.6f * th);
+                            Pieces.GrassTuft(ib, g, h, tuft, cv == EcoLayer.Tall);
                             if (cv == EcoLayer.Tall && H(c, 34 + t) < 0.12f)
+                            {
                                 ib.Ico(g + Vector3.up * h * 0.8f, 0.014f, Vector3.one, Palette.Flowers[Mathf.Min(Palette.Flowers.Length - 1, (int)(H(c, 36) * Palette.Flowers.Length))], 0.1f);
+                                lock (FlowerSpots) FlowerSpots[c * 2 + t] = g + Vector3.up * h * 0.8f; // #692 part 3 (B33.c)
+                            }
                             mb.AppendFree(ib);
                         }
                     }
@@ -189,10 +277,42 @@ namespace AquariumCiv.View
         /// and are 2 cm thick.</summary>
         public const float GlassInner = 0.062f;
 
+        /// <summary>#701 round 2: where the pond's sheet and its face at a pane end: 4 mm proud of the land's edge (the soil cut), not out at the
+        /// glass. The water stands on the cut face like the land does, so nothing of it hangs past the dug edge and the pane's own
+        /// thickness reads the same beside water as beside land.</summary>
+        public const float WaterFace = 0.0005f; // #701 (the user, 2026-11-24): the water ends on the same line as the dirt (half a mm out, only so the face doesn't flicker into the soil cut)
+
         /// <summary>The pond: a flat sheet at the water level over the water cells and their neighbours; the ground above the
         /// water hides the sheet's square edge, so the shoreline is where the land meets the level. Where the water reaches the
         /// box's edge the sheet runs on to the glass (clamped there) and a wall of water stands from the ground up to the level,
         /// so you see the pond through the side pane (#269).</summary>
+        /// <summary>#701: how far under the level the ground must be, at all four corners, for a piece of the sheet to be drawn (the mud band reads up to +2 cm).</summary>
+        public const float RimMargin = 0.012f;
+
+        /// <summary>#701: whether a piece of the water sheet (the box-local rectangle) lies under the level by <see cref="RimMargin"/> at all four corners.
+        /// The water and the ice share it, so the ice ends where the water ends.</summary>
+        public bool WaterPieceUnder(float x0, float z0, float x1, float z1)
+        {
+            float lvl = layout.eco.waterY;
+            float hi = Mathf.Max(Mathf.Max(land.Height(x0, z0), land.Height(x0, z1)), Mathf.Max(land.Height(x1, z0), land.Height(x1, z1)));
+            return hi < lvl - RimMargin;
+        }
+
+        /// <summary>#708 p3 (the user's review: the kid knelt on sand short of the water): is the pond's sheet drawn over box point (x, z)? The
+        /// same pieces <see cref="EcoWaterMesh"/> keeps (a cell near water, cut 3 x 3, every corner under the level by the rim margin).</summary>
+        public bool WaterDrawnAt(float x, float z)
+        {
+            var ec = layout.eco;
+            if (!ec.on || ec.pondCells <= 0) return false;
+            int c = Site.CellAt(x, z);
+            if (c < 0 || c >= Site.N || !ec.NearWater(c)) return false;
+            float h = Site.Cell * 0.5f + 0.003f, step = 2f * h / 3f;
+            float cx = Site.CXc(c), cz = Site.CZc(c);
+            int si = Mathf.Clamp(Mathf.FloorToInt((x - (cx - h)) / step), 0, 2), sj = Mathf.Clamp(Mathf.FloorToInt((z - (cz - h)) / step), 0, 2);
+            float x0 = cx - h + si * step, z0 = cz - h + sj * step;
+            return WaterPieceUnder(x0, z0, x0 + step, z0 + step);
+        }
+
         Mesh EcoWaterMesh()
         {
             var mb = new MeshBuilder(seed + 3) { jitter = 0f };
@@ -201,28 +321,46 @@ namespace AquariumCiv.View
             if (ec.pondCells > 0)
             {
                 float y = ec.waterY, h = Site.Cell * 0.5f + 0.003f;
-                float HX = Land.HX, HZ = Land.HZ;
+                float HX = Land.HX;
                 for (int c = 0; c < Site.N; c++)
                 {
                     if (!ec.NearWater(c)) continue;
                     float x = Site.CXc(c), z = Site.CZc(c);
-                    float depth = ec.waterY - land.Height(x, z);
-                    var col = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01(depth / 0.12f));
-                    float x0 = x - h, x1 = x + h, z0 = z - h, z1 = z + h;
                     int i = Site.I(c), j = Site.J(c);
-                    // At the box's edge the sheet goes on to the glass where the ground there is under the water, and no further.
-                    bool eL = i == 0 && land.Height(-HX + 0.001f, z) < y, eR = i == Site.NX - 1 && land.Height(HX - 0.001f, z) < y;
-                    bool eF = j == 0 && land.Height(x, -HZ + 0.001f) < y, eB = j == Site.NZ - 1 && land.Height(x, HZ - 0.001f) < y;
-                    if (eL) x0 = -HX - GlassInner; if (eR) x1 = HX + GlassInner;
-                    if (eF) z0 = -HZ - GlassInner; if (eB) z1 = HZ + GlassInner;
-                    x0 = Mathf.Max(x0, -HX - GlassInner); x1 = Mathf.Min(x1, HX + GlassInner);
-                    z0 = Mathf.Max(z0, -HZ - GlassInner); z1 = Mathf.Min(z1, HZ + GlassInner);
-                    QuadUp(mb, new Vector3(x0, y, z0), new Vector3(x0, y, z1), new Vector3(x1, y, z1), new Vector3(x1, y, z0), col);
-                    // The wall at the glass, seen through the pane: from the ground at the edge up to the level.
-                    if (eL) WaterWall(mb, new Vector2(-HX, z0), new Vector2(-HX, z1), -HX - GlassInner, new Vector3(-1, 0, 0), y, co);
-                    if (eR) WaterWall(mb, new Vector2(HX, z0), new Vector2(HX, z1), HX + GlassInner, new Vector3(1, 0, 0), y, co);
-                    if (eF) WaterWall(mb, new Vector2(x0, -HZ), new Vector2(x1, -HZ), -HZ - GlassInner, new Vector3(0, 0, -1), y, co);
-                    if (eB) WaterWall(mb, new Vector2(x0, HZ), new Vector2(x1, HZ), HZ + GlassInner, new Vector3(0, 0, 1), y, co);
+                    // #701: the sheet is cut into a grid inside the cell and keeps only the pieces whose corners are all under the
+                    // level by a margin: it follows the dug bank and ends a little inside the dirt rim, never over the grass.
+                    const int Sub = 3;
+                    float step = 2f * h / Sub;
+                    for (int sj = 0; sj < Sub; sj++)
+                        for (int si = 0; si < Sub; si++)
+                        {
+                            float x0 = x - h + si * step, x1 = x0 + step, z0 = z - h + sj * step, z1 = z0 + step;
+                            bool eL = i == 0 && si == 0 && land.Height(-HX + 0.001f, (z0 + z1) * 0.5f) < y, eR = i == Site.NX - 1 && si == Sub - 1 && land.Height(HX - 0.001f, (z0 + z1) * 0.5f) < y;
+                            bool eF = j == 0 && sj == 0 && land.Height((x0 + x1) * 0.5f, Land.ZMin + 0.001f) < y, eB = j == Site.NZ - 1 && sj == Sub - 1 && land.Height((x0 + x1) * 0.5f, Land.ZMax - 0.001f) < y;
+                            if (!WaterPieceUnder(x0, z0, x1, z1))
+                            {
+                                // 2026-11-25 (the user: the section stopped in a straight cut): a bank piece against the pane draws no sheet,
+                                // but its section does, down to nothing where the ground comes up, so the side view follows the bank
+                                if (i == 0 && si == 0) WaterWall(mb, new Vector2(-HX, z0), new Vector2(-HX, z1), -HX - WaterFace, new Vector3(-1, 0, 0), y, co);
+                                if (i == Site.NX - 1 && si == Sub - 1) WaterWall(mb, new Vector2(HX, z0), new Vector2(HX, z1), HX + WaterFace, new Vector3(1, 0, 0), y, co);
+                                if (j == 0 && sj == 0) WaterWall(mb, new Vector2(x0, Land.ZMin), new Vector2(x1, Land.ZMin), Land.ZMin - WaterFace, new Vector3(0, 0, -1), y, co);
+                                if (j == Site.NZ - 1 && sj == Sub - 1) WaterWall(mb, new Vector2(x0, Land.ZMax), new Vector2(x1, Land.ZMax), Land.ZMax + WaterFace, new Vector3(0, 0, 1), y, co);
+                                continue; // the sheet ends inside the bank
+                            }
+                            // At the box's edge the sheet ends on the soil cut's face (4 mm proud), where the ground there is under the water.
+                            if (eL) x0 = -HX - WaterFace; if (eR) x1 = HX + WaterFace;
+                            if (eF) z0 = Land.ZMin - WaterFace; if (eB) z1 = Land.ZMax + WaterFace;
+                            x0 = Mathf.Max(x0, -HX - WaterFace); x1 = Mathf.Min(x1, HX + WaterFace);
+                            z0 = Mathf.Max(z0, Land.ZMin - WaterFace); z1 = Mathf.Min(z1, Land.ZMax + WaterFace);
+                            float depth = ec.waterY - land.Height((x0 + x1) * 0.5f, (z0 + z1) * 0.5f);
+                            var col = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01(depth / 0.12f));
+                            QuadUp(mb, new Vector3(x0, y, z0), new Vector3(x0, y, z1), new Vector3(x1, y, z1), new Vector3(x1, y, z0), col);
+                            // The wall at the glass, seen through the pane: from the ground at the edge up to the level.
+                            if (eL) WaterWall(mb, new Vector2(-HX, z0), new Vector2(-HX, z1), -HX - WaterFace, new Vector3(-1, 0, 0), y, co);
+                            if (eR) WaterWall(mb, new Vector2(HX, z0), new Vector2(HX, z1), HX + WaterFace, new Vector3(1, 0, 0), y, co);
+                            if (eF) WaterWall(mb, new Vector2(x0, Land.ZMin), new Vector2(x1, Land.ZMin), Land.ZMin - WaterFace, new Vector3(0, 0, -1), y, co);
+                            if (eB) WaterWall(mb, new Vector2(x0, Land.ZMax), new Vector2(x1, Land.ZMax), Land.ZMax + WaterFace, new Vector3(0, 0, 1), y, co);
+                        }
                 }
             }
             return mb.ToMesh("Water");
@@ -231,22 +369,65 @@ namespace AquariumCiv.View
         /// <summary>One cell's face of the pond against a pane: its top edge at the water level, its foot on the soil cut's top,
         /// lighter at the top and deeper below, drawn facing out (to the eye behind the glass). <paramref name="a"/>/<paramref name="b"/>
         /// are the points on the land's edge (their height gives the foot); the wall stands at <paramref name="glassAt"/> on its axis.</summary>
+        /// <summary>#708 (the user 2026-11-15: "the deeper basin after the deeper box"): where the pond meets a pane, the water's section seen
+        /// through the glass reaches <see cref="BasinBelow"/> under the pond's floor there (view only: the sim's pond is as it was).
+        /// 2026-11-25 (the user: "the water level just stops on the left"): the extra depth grows with the distance along the pane from the
+        /// bank (where the ground comes up to the water line), over <see cref="BankRamp"/>, so the section slopes down from the bank like a
+        /// basin instead of dropping straight to its full depth. The fish swim down into it.</summary>
+        public const float BasinBelow = 0.16f, SiltBand = 0.012f, BankRamp = 0.5f;
+
+        /// <summary>The foot of the section at <paramref name="ground"/>, <paramref name="fromBank"/> along the pane from the bank.</summary>
+        public static float WallFoot(float ground, float y, float fromBank)
+        {
+            if (ground >= y) return y; // the bank: no water here
+            float u = Mathf.Clamp01(fromBank / BankRamp);
+            float extra = Mathf.Lerp(0.005f, BasinBelow, u * u * (3f - 2f * u));
+            return ground - extra;
+        }
+
+        /// <summary>How far along the pane point <paramref name="q"/> (on the land's edge) is from the nearest bank: a point where the ground
+        /// reaches the water line <paramref name="y"/>. At most <see cref="BankRamp"/>. 2026-11-25 (the user: where the pond runs into the
+        /// side pane, its bottom curved up short of the glass): the box's corner is glass, not a bank, so the basin keeps its full depth
+        /// up to the other pane; only ground at the water line counts.</summary>
+        public float FromBank(Vector2 q, bool alongX, float y)
+        {
+            const float Step = 0.02f;
+            float lo = alongX ? Land.ZMin : -Land.HX, hi = alongX ? Land.ZMax : Land.HX, t0 = alongX ? q.y : q.x;
+            for (float d = 0f; d < BankRamp; d += Step)
+                for (int sgn = -1; sgn <= 1; sgn += 2)
+                {
+                    float t = t0 + sgn * d;
+                    if (t <= lo || t >= hi) continue; // past the corner: the other pane, no bank that way
+                    float g = alongX ? land.Height(q.x, t) : land.Height(t, q.y);
+                    if (g >= y) return d;
+                }
+            return BankRamp;
+        }
+
         void WaterWall(MeshBuilder mb, Vector2 a, Vector2 b, float glassAt, Vector3 outward, float y, LandColors co)
         {
             bool alongX = outward.x != 0f;
             Vector3 P(Vector2 q, float h) => alongX ? new Vector3(glassAt, h, q.y) : new Vector3(q.x, h, glassAt);
             // The foot sits just under the soil cut's top so no gap shows between the ground and the wall.
-            float ha = land.Height(a.x, a.y) - 0.03f, hb = land.Height(b.x, b.y) - 0.03f;
-            if (ha >= y && hb >= y) return;
-            ha = Mathf.Min(ha, y - 0.01f); hb = Mathf.Min(hb, y - 0.01f);
+            float ga = land.Height(a.x, a.y), gb = land.Height(b.x, b.y);
+            if (ga >= y && gb >= y) return;
+            float ha = WallFoot(ga, y, FromBank(a, alongX, y)), hb = WallFoot(gb, y, FromBank(b, alongX, y));
             var top = Color.Lerp(co.water, Color.white, 0.12f);
-            var da = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01((y - ha) / 0.3f));
-            var db = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01((y - hb) / 0.3f));
-            Vector3 fa = P(a, ha), fb = P(b, hb), ta = P(a, y), tb = P(b, y);
+            // #708: a deeper section darkens slower, so it still reads as water near the floor (at most 55 % of the deep colour)
+            var da = Color.Lerp(co.water, co.waterDeep, 0.55f * Mathf.Clamp01((y - ha) / 0.25f));
+            var db = Color.Lerp(co.water, co.waterDeep, 0.55f * Mathf.Clamp01((y - hb) / 0.25f));
+            // #708 (the deeper basin): the floor of the section is a band of silt over the soil, so the water's bottom reads
+            float sa = Mathf.Min(ha + SiltBand, Mathf.Lerp(ha, y, 0.5f)), sb = Mathf.Min(hb + SiltBand, Mathf.Lerp(hb, y, 0.5f));
+            var silt = Color.Lerp(co.waterDeep, co.pondBed, 0.55f);
+            Vector3 fa = P(a, sa), fb = P(b, sb), ta = P(a, y), tb = P(b, y), ua = P(a, ha), ub = P(b, hb);
             // Front faces are the ones whose cross product points at the viewer (as QuadUp has it).
-            if (Vector3.Dot(Vector3.Cross(ta - fa, tb - fa), outward) > 0f) { mb.TriC(fa, ta, tb, da, top, top); mb.TriC(fa, tb, fb, da, top, db); }
-            else { mb.TriC(fa, tb, ta, da, top, top); mb.TriC(fa, fb, tb, da, db, top); }
+            bool front = Vector3.Dot(Vector3.Cross(ta - fa, tb - fa), outward) > 0f;
+            float emWas = mb.emission; mb.emission = SectionLight; // #708: the side face catches little light; a little of its own so it reads as water
+            if (front) { mb.TriC(fa, ta, tb, da, top, top); mb.TriC(fa, tb, fb, da, top, db); mb.TriC(ua, fa, fb, silt, silt, silt); mb.TriC(ua, fb, ub, silt, silt, silt); }
+            else { mb.TriC(fa, tb, ta, da, top, top); mb.TriC(fa, fb, tb, da, db, top); mb.TriC(ua, fb, fa, silt, silt, silt); mb.TriC(ua, ub, fb, silt, silt, silt); }
+            mb.emission = emWas;
         }
+        const float SectionLight = 0.35f;
 
         /// <summary>The meshes as drawn, for the tests and the shots (#269, #270).</summary>
         public Mesh DebugWaterMesh => waterFilter != null ? waterFilter.sharedMesh : null;
@@ -299,8 +480,8 @@ namespace AquariumCiv.View
         /// down, and reaches the top of the cut where the pond surfaces.</summary>
         Mesh EcoTableMesh()
         {
-            float HX = Land.HX, HZ = Land.HZ, table = layout.eco.tableY;
-            var corners = new[] { new Vector2(-HX, -HZ), new Vector2(HX, -HZ), new Vector2(HX, HZ), new Vector2(-HX, HZ) };
+            float HX = Land.HX, table = layout.eco.tableY;
+            var corners = new[] { new Vector2(-HX, Land.ZMin), new Vector2(HX, Land.ZMin), new Vector2(HX, Land.ZMax), new Vector2(-HX, Land.ZMax) };
             // The heights the damp is sampled at: coarse far under the table, fine around the fade.
             var ys = new List<float> { 0f };
             float lo = Mathf.Max(0.05f, table - 0.3f), hi = table + 0.12f;

@@ -59,7 +59,8 @@ namespace AquariumCiv.View.PlayTests
     public abstract class PlayTestBase : InputTestFixture
     {
         protected const string ScenePath = "Assets/Game/Scenes/Slice.unity";
-        protected const string Shots = "F:/GameDev/AquariumCiv/Temp/agent/";
+        /// <summary>The running project's own Temp/agent folder (a worktree's shots stay in the worktree).</summary>
+        protected static string Shots => Application.dataPath + "/../Temp/agent/";
         protected Touchscreen touch;
         protected int touchId = 1;
         protected readonly List<string> errors = new();
@@ -89,6 +90,7 @@ namespace AquariumCiv.View.PlayTests
             }
             GameUiPanel.Toasts.ClearHolds(); // static: a prompt or peek an earlier test left up still holds the lane after its scene went
             if (seed != 0) GameClock.DebugNextSeed = seed;
+            NewStartView.AutoArrival = !skipFirstRun; // #656/#677: a test that skips the first run has the stock set down at once (no walk-in)
             CampFrameView.Auto = false; // t1-camera: a test that stands still keeps the camera where it opened; its own tests turn it on
             SetSize(w, h);
             float waited = 0f;
@@ -123,6 +125,7 @@ namespace AquariumCiv.View.PlayTests
             MomentPlayer.DebugHoldHurry = false;
             GameClock.DebugNextSeed = 0;
             CampFrameView.Auto = true;
+            NewStartView.AutoArrival = true;
             if (!opened) return;
             opened = false;
             GameSettings.Sound = soundWas;
@@ -165,7 +168,7 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return new WaitForEndOfFrame();
             var tex = ScreenCapture.CaptureScreenshotAsTexture();
-            Directory.CreateDirectory(Shots);
+            Directory.CreateDirectory(Path.GetDirectoryName(Shots + name + ".png")); // a name may carry a folder ("night/...")
             File.WriteAllBytes(Shots + name + ".png", tex.EncodeToPNG());
             UnityEngine.Object.Destroy(tex);
         }
@@ -205,18 +208,29 @@ namespace AquariumCiv.View.PlayTests
         protected static IEnumerator Frames(int n) { for (int i = 0; i < n; i++) yield return null; }
 
         /// <summary>#558: with the Kit open, the seed is a choice in the life jar: the life slot, then the seed beside the species (the slot
-        /// takes the seed straight when it is the only choice). Asserts the seed ends up in hand.</summary>
+        /// #643: the chooser always opens, the seed alone too). Asserts the seed ends up in hand.</summary>
         protected IEnumerator PickSeedFromLifeJar(GameHud hud, string shot = null)
         {
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
-            yield return new WaitForSecondsRealtime(0.4f);
-            if (hud.LifeRowOpen)
+            // #668 (mock-up A): the seed is a tile on the kit's Ready shelf: no jar to open first
+            if (shot != null) yield return Shot(shot);
+            yield return TakeFromKit(hud, "kit-life-seed");
+            Assert.AreEqual(GameHud.KitTool.Seed, hud.Hand, "the seed in hand, picked from the kit");
+        }
+
+        /// <summary>#668 (kit-redesign.md §4): takes a tile from the Keeper's kit by touch, the way a player does: Kit (if it isn't open),
+        /// then the tile (a tool, the seed, a bush, a ready group or a shut jar). One place to change when the kit's layout changes.</summary>
+        protected IEnumerator TakeFromKit(GameHud hud, string tile)
+        {
+            if (hud.OpenSheet != GameHud.Kit)
             {
-                if (shot != null) yield return Shot(shot);
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-seed"));
-                yield return new WaitForSecondsRealtime(0.4f);
+                if (hud.Hand != GameHud.KitTool.None || hud.CleanMode) { yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean")); yield return Frames(10); }
+                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
+                yield return new WaitForSecondsRealtime(0.5f);
             }
-            Assert.AreEqual(GameHud.KitTool.Seed, hud.Hand, "the seed in hand, picked from the life jar");
+            Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Kit opens the kit");
+            Assert.IsNotNull(UnityEngine.UIElements.UQueryExtensions.Q(hud.Root, tile), tile + " is in the kit");
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, tile));
+            yield return new WaitForSecondsRealtime(0.4f);
         }
 
         /// <summary>P9 (#417-#419, #423): the Keeper places a ready jar's founding group near the camp by touch, the way a player
@@ -235,16 +249,11 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Kit opens the kit");
-            Assert.IsTrue(hud.LifeSlotShown, "the life slot is in the kit while a jar is ready");
+            Assert.IsTrue(hud.LifeSlotShown, "a ready jar's tile is in the kit");
             if (shotPrefix != null) yield return Shot(shotPrefix + "_kit");
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+            Assert.IsTrue(hud.LifeRowOpen, "#668: the Ready shelf shows the jar's group");
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-" + s.ToString().ToLowerInvariant()));
             yield return new WaitForSecondsRealtime(0.4f);
-            if (hud.LifeRowOpen)
-            {
-                if (shotPrefix != null) yield return Shot(shotPrefix + "_row");
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-" + s.ToString().ToLowerInvariant()));
-                yield return new WaitForSecondsRealtime(0.4f);
-            }
             Assert.AreEqual(GameHud.KitTool.Life, hud.Hand, "the life tool in hand");
             Assert.AreEqual(s, hud.HeldLife, "the species in hand");
             var lpv = LifePlaceView.Instance;
@@ -357,7 +366,7 @@ namespace AquariumCiv.View.PlayTests
                                 fault = $"{name} point {p} at depth {v.z:0.0} is outside near {c.nearClipPlane:0.0} far {c.farClipPlane:0} ({Pose(c)})";
                         }
             }
-            Hull(box.transform.TransformPoint, new Vector3(-Land.HX - 0.25f, -0.3f, -Land.HZ - 0.25f), new Vector3(Land.HX + 0.25f, Land.GlassTop + 0.05f, Land.HZ + 0.25f), "the box");
+            Hull(box.transform.TransformPoint, new Vector3(-Land.HX - 0.25f, -0.3f, Land.ZMin - 0.25f), new Vector3(Land.HX + 0.25f, Land.GlassTop + 0.05f, Land.ZMax + 0.25f), "the box");
             var shelf = box.transform.Find("Shelf");
             if (shelf != null)
                 foreach (Transform t in shelf)

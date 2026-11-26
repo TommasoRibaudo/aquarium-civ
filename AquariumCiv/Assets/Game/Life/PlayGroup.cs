@@ -30,6 +30,8 @@ namespace AquariumCiv.Life
         Snowball,
         /// <summary>#618: on a frozen pond big enough: in turn, a run-up and a long slide across the ice, arms out; now and then a fall.</summary>
         IceSlide,
+        /// <summary>#708 with B39.c: one or two kids kneel at the pond's edge in summer and try to catch a fish by hand (they never do).</summary>
+        FishGrab,
     }
 
     /// <summary>#359: what a group's spot offers (the owner looks at the real land): the B3 games need their real thing.</summary>
@@ -49,6 +51,8 @@ namespace AquariumCiv.Life
         Snow = 16,
         /// <summary>#618: the kids are at a frozen pond big enough to go on: they slide.</summary>
         Ice = 32,
+        /// <summary>#708 (B39.c): the kids are at the pond's edge, fish swim in it, it is summer: sometimes they try to catch one by hand.</summary>
+        Fish = 64,
     }
 
     /// <summary>One play group the split asks for: its game, its members (person keys, in order) and where it plays.</summary>
@@ -69,7 +73,9 @@ namespace AquariumCiv.Life
     public static class PlayGroups
     {
         /// <summary>Tag takes up to four (more and three runners share one move), the ball and the rabbit chase three.</summary>
-        public const int MaxGroup = 4, MaxBall = 3, MaxChase = 3;
+        public const int MaxGroup = 4, MaxBall = 3, MaxChase = 3, MaxFishGrab = 2;
+        /// <summary>#708 (B39.c): "sometimes": the share of groups of one or two at a fish pond in summer that try to catch a fish by hand.</summary>
+        public const float FishGrabShare = 0.5f;
         /// <summary>Two groups at one place play at least this far apart (§0.8).</summary>
         public const float Apart = 1f;
         /// <summary>How far from the place's spot a group plays (off the fire, onto open ground), and the hours a game lasts before the group picks again.</summary>
@@ -102,6 +108,7 @@ namespace AquariumCiv.Life
             PlayGame.HideSeek => size >= 3 && size <= MaxGroup,
             PlayGame.Snowball => size >= 2 && size <= MaxGroup,
             PlayGame.IceSlide => size >= 2 && size <= MaxGroup, // #618
+            PlayGame.FishGrab => size >= 1 && size <= MaxFishGrab, // #708 (B39.c)
             _ => false,
         };
 
@@ -115,6 +122,7 @@ namespace AquariumCiv.Life
         {
             bool Free(PlayGame g) => Fits(g, size) && (taken == null || !taken.Contains(g));
             if ((sites & PlaySites.Ice) != 0 && Fits(PlayGame.IceSlide, size)) return PlayGame.IceSlide; // #618: the ice is the game
+            if ((sites & PlaySites.Water) != 0 && (sites & PlaySites.Fish) != 0 && Fits(PlayGame.FishGrab, size) && U01(seed, size, 16) < FishGrabShare) return PlayGame.FishGrab; // #708 (B39.c)
             if ((sites & PlaySites.Water) != 0 && Fits(PlayGame.Splash, size)) return PlayGame.Splash;
             if (roomy)
             {

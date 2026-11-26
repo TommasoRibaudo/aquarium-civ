@@ -288,7 +288,7 @@ namespace AquariumCiv.Sim.Settle
             {
                 bool blocked = map.lot[c] != 0 || map.pond[c] || map.NoBuild(c) || (map.flags[c] & blockFlags) != 0 || map.ring[c] != 0
                                || map.tier[c] >= PathNet.PathTier
-                               || MathF.Abs(SiteMap.CXc(c)) > mx || MathF.Abs(SiteMap.CZc(c)) > mz;
+                               || MathF.Abs(SiteMap.CXc(c)) > mx || MathF.Abs(SiteMap.CZc(c) - Terrain.CZ) > mz;
                 clear[c] = blocked ? 0f : 99f;
             }
             const float o = SiteMap.Cell, dg = SiteMap.Cell * 1.41421356f;
@@ -351,7 +351,7 @@ namespace AquariumCiv.Sim.Settle
         {
             var map = w.Map;
             const float mx = Terrain.HX - Terrain.GlassMargin - 0.15f, mz = Terrain.HZ - Terrain.GlassMargin - 0.15f;
-            if (MathF.Abs(x) > mx || MathF.Abs(z) > mz) return false;
+            if (MathF.Abs(x) > mx || MathF.Abs(z - Terrain.CZ) > mz) return false;
             foreach (var k in w.Yards)
                 if (Terrain.Dist(k.x, k.z, x, z) < spacing) return false;
             SiteMap.RectCells(x, z, 0f, r * 1.6f, r * 1.6f, 0f, cells);
@@ -485,7 +485,7 @@ namespace AquariumCiv.Sim.Settle
             const float mx = Terrain.HX - Terrain.GlassMargin, mz = Terrain.HZ - Terrain.GlassMargin;
             var cx = new float[4]; var cz = new float[4];
             SiteMap.Corners(c.x, c.z, c.yaw, c.w, c.d, cx, cz);
-            for (int q = 0; q < 4; q++) if (MathF.Abs(cx[q]) > mx || MathF.Abs(cz[q]) > mz) return "glass";
+            for (int q = 0; q < 4; q++) if (MathF.Abs(cx[q]) > mx || MathF.Abs(cz[q] - Terrain.CZ) > mz) return "glass";
             SiteMap.RectCells(c.x, c.z, c.yaw, c.w, c.d, 0f, cells);
             if (cells.Count == 0) return "tiny";
             float slope = 0f;
@@ -524,7 +524,7 @@ namespace AquariumCiv.Sim.Settle
                 float rad = CommonsRMin + (CommonsRMax - CommonsRMin) * Terrain.Hash3(seed, 902, tries);
                 float x = map.greenX + MathF.Cos(ang) * r, z = map.greenZ + MathF.Sin(ang) * r;
                 const float mx = Terrain.HX - Terrain.GlassMargin, mz = Terrain.HZ - Terrain.GlassMargin;
-                if (MathF.Abs(x) > mx - rad * 0.5f || MathF.Abs(z) > mz - rad * 0.5f) continue;
+                if (MathF.Abs(x) > mx - rad * 0.5f || MathF.Abs(z - Terrain.CZ) > mz - rad * 0.5f) continue;
                 int c0 = SiteMap.CellAt(x, z);
                 if (c0 < 0 || map.waterDist[c0] < rad + 0.1f || map.slope[c0] > 0.35f || map.Forest(c0)) continue;
                 if (Terrain.Dist(x, z, map.greenX, map.greenZ) < SiteMap.GreenR + rad + 0.35f) continue;

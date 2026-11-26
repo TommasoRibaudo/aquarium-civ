@@ -1,0 +1,25 @@
+{
+ "name": "692-b43b-thicket-peek",
+ "notes": "B43.b: two kids lie on their bellies at the thicket's edge, part a bush with both arms and watch the rabbits; they freeze; then slide back out.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.ThicketReady();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.ThicketPeek());"
+  ],
+  "warm": 0.5,
+  "seconds": 9,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.5,
+  "yaw": 28,
+  "pitch": 38,
+  "lead": 2.5
+ }
+}

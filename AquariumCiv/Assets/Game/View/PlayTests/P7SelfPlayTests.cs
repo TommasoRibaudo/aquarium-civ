@@ -46,7 +46,7 @@ namespace AquariumCiv.View.PlayTests
         void Watch(bool firstRun)
         {
             var d = Sim.OpenDilemma;
-            if (d != null && Sim.OpenWish != null) { overlaps++; Debug.Log($"[P7Self] OVERLAP month {Sim.State.month}: wish + {d.defId}"); }
+            if (d != null && Sim.State.wishes.Exists(w => w.state == WishState.Open)) { overlaps++; Debug.Log($"[P7Self] OVERLAP month {Sim.State.month}: wish + {d.defId}"); }
             if (d != null && firstRun) { duringFirstRun++; Debug.Log($"[P7Self] DURING FIRST RUN: {d.defId}"); }
             if (d != null && !raised.Contains(d.defId)) { raised.Add(d.defId); Debug.Log($"[P7Self] raised {d.defId} at month {Sim.State.month} (year {Sim.State.month / 12f:0.0}, era {Sim.State.era})"); }
         }

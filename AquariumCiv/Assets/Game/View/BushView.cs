@@ -314,6 +314,13 @@ namespace AquariumCiv.View
 
         void StepSign(PeopleView pv, float dt)
         {
+            // the bird went with its box (a reload or a box swap mid-sign): the sign ends
+            if (bird == null)
+            {
+                if (!pointer.IsNone && pv != null) pv.ClearLookAt(pointer);
+                signT = -1f;
+                return;
+            }
             signT += dt;
             Vector3 p;
             bool flying;

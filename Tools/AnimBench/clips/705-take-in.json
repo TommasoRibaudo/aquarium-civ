@@ -1,0 +1,20 @@
+{
+  "name": "705-take-in",
+  "notes": "#705 B28.d: the hung line dries (70 % to 100 % brightness over the stay, shown here compressed to 6 s: about 4x speed of a 24 s stay), swaying; then a housemate steps out, plucks the cloths one by one near end first (each pops into the basket) and carries them in; the stakes pop out after the last.",
+  "duration": 12,
+  "fps": 30,
+  "warmup": 1,
+  "camera": { "view": "default", "focus": [0.0, -0.04], "span": 0.85 },
+  "sheet": { "from": 0.2, "to": 11.5, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.3, "reactSeconds": 0.2 },
+  "knownGaps": ["react", "arcs", "hitNear", "endBeat", "neighbours"],
+  "objects": [
+    { "id": "line", "kind": "line", "pos": [0.0, 0.0, 0.0], "yaw": 0, "state": { "start": -8.2, "chore": 7.2, "stay": 6.0, "cloths": 3, "taken": 1, "seed": 3 } }
+  ],
+  "dolls": [
+    { "id": "taker", "seed": 12, "camp": false,
+      "timeline": [ { "t": 0.0, "dur": 5.0, "hidden": true, "style": "Stand", "pos": [0.0, -0.2] },
+                    { "t": 5.0, "dur": 3.0, "activity": "TakeInWashing", "prop": "Basket", "slot": "Hand", "pos": [0.0, -0.1], "atLine": "line", "count": 3 },
+                    { "t": 8.0, "dur": 4.0, "style": "Stand", "prop": "Basket", "slot": "Hand", "pos": [0.0, -0.1] } ] }
+  ]
+}

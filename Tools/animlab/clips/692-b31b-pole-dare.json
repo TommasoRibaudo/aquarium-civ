@@ -1,0 +1,23 @@
+{
+ "name": "692-b31b-pole-dare",
+ "notes": "B31.b: kids bunch near the pole; one is pushed, creeps in looking back, touches it (flutter), squeals and runs back; the next; a grown-up turns, they scatter.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11f, 3);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.PoleDare());"
+  ],
+  "warm": 0.5,
+  "seconds": 24,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.4,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 42
+ }
+}

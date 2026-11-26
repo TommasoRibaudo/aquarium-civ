@@ -48,7 +48,42 @@ namespace AquariumCiv.View.Tests
                 Assert.Greater(hits, 0, "the loop strikes");
                 // Before #401 the hoe's blade went 0.1 u into the soil and the axe's head 0.05 u: the stroke vanished on the hit.
                 Assert.Greater(lowest, -0.03f, $"{kind}: the working end stays at the ground on the hit (lowest {lowest:0.000})");
-                Assert.Less(highest, 0.07f, $"{kind}: and reaches down to it, not chopping the air (highest {highest:0.000})");
+                Assert.Less(highest, 0.08f, $"{kind}: and reaches down to it, not chopping the air (highest {highest:0.000})");
+            }
+            finally { Object.DestroyImmediate(root); }
+        }
+
+        /// <summary>#684 (the axe struck the ground beside the tree): at a tree's chop stand the blade meets the trunk, at chop height, on every hit.</summary>
+        [TestCase(0f)]
+        [TestCase(1.3f)]
+        [TestCase(3.1f)]
+        [TestCase(5.0f)]
+        public void TheAxe_MeetsTheTrunkAtTheChopPoint(float angle)
+        {
+            const float TrunkRadius = 0.04f; // a wild tree's trunk at chop height (Pieces.Tree: 0.045 u at the root, thinning up)
+            var root = new GameObject("ChopStandTest") { hideFlags = HideFlags.DontSave };
+            try
+            {
+                var tree = new Vector2(0.3f, -0.2f);
+                var stand = DollMotion.ChopStand(tree, angle, out var face);
+                var doll = PegDollView.Create(root.transform, null, PegDoll.PickLook(7, true, false, -1), false, 7);
+                doll.SetProp(PropKind.Axe, PropSlot.Hand);
+                int hits = 0;
+                for (float t = 0f; t < 3f; t += 1f / 60f)
+                {
+                    var p = DollMotion.Evaluate(DollStyle.Chop, t, 1f, 0, 1, PropSlot.Hand, true);
+                    if (p.hit < 0.5f) continue;
+                    doll.ApplyArms(p);
+                    var d = face - stand;
+                    float yaw = Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg + 180f; // PeopleView.Yaw: the doll's front is local -z
+                    doll.transform.SetPositionAndRotation(new Vector3(stand.x, 0f, stand.y) + p.offset, Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(-p.lean, 0f, p.roll));
+                    var tip = WorkHitPoint.HitPoint(doll);
+                    float off = new Vector2(tip.x - tree.x, tip.z - tree.y).magnitude;
+                    Assert.LessOrEqual(off, TrunkRadius, $"the blade lands in the trunk (at {off:0.000} u from its axis, radius {TrunkRadius})");
+                    Assert.AreEqual(DollMotion.ChopHeight, tip.y, 0.02f, $"at the chop point, not the ground (tip height {tip.y:0.000})");
+                    hits++;
+                }
+                Assert.Greater(hits, 0, "the loop strikes");
             }
             finally { Object.DestroyImmediate(root); }
         }

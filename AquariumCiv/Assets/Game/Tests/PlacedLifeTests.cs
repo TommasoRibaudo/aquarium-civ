@@ -117,7 +117,7 @@ namespace AquariumCiv.Tests
             var sim = Camp();
             Seasons(sim, 8);
             Assert.AreEqual(0, sim.EcoDeerCount, "nothing arrives by itself");
-            Assert.AreEqual(JarState.Ready, sim.JarStateOf(LifeSpecies.Deer), "5 grown trees and the camp's rabbits");
+            Assert.AreEqual(JarState.Ready, sim.JarStateOf(LifeSpecies.Deer), "a wood and the camp's rabbits (#690)");
             int c = sim.LifePlaceCellNearCamp(LifeSpecies.Deer);
             Assert.IsTrue(sim.PlaceLife(LifeSpecies.Deer, c));
             Assert.AreEqual(1, sim.EcoDeerStags); Assert.AreEqual(2, sim.EcoDeerDoes);
@@ -247,7 +247,7 @@ namespace AquariumCiv.Tests
             DeerHerd.Field a = new DeerHerd.Field(), b = new DeerHerd.Field();
             sim.EcoDeerRefresh(a); sim.EcoDeerRefresh(b);
             a.Sync(sim.EcoDeerShown()); b.Sync(sim.EcoDeerShown());
-            Assert.AreEqual(8, a.Alive.Count);
+            Assert.AreEqual(AnimalBudget.Deer, a.Alive.Count, "the herd drawn is the budget's deer, not the sim's 8");
             Assert.IsTrue(a.HasRange);
             Assert.IsFalse(a.HasPond);
             Assert.IsTrue(a.IsStag(0), "id 0 is the stag");
@@ -367,7 +367,7 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(cap, sim.EcoFishCap);
             Seasons(sim, 4);
             Assert.AreEqual(sim.EcoFishCap, sim.EcoFish, "full within a year");
-            Assert.AreEqual(Math.Min(8, sim.EcoFish), sim.EcoFishShown());
+            Assert.AreEqual(Math.Min(AnimalBudget.Fish, sim.EcoFish), sim.EcoFishShown());
             Assert.AreEqual(1f, sim.FishBiteRate, 1e-4f, "a full pond bites");
             int caught = 0;
             while (sim.FishCatch()) caught++;
@@ -714,7 +714,7 @@ namespace AquariumCiv.Tests
             Assert.GreaterOrEqual(sim.EcoPondCells, sim.Config.eco.pondGateCells, "the pond is there");
             Assert.GreaterOrEqual(sim.EcoGrownTrees, sim.Config.eco.villageTrees, "the wood is there");
             Assert.IsFalse(sim.VillageGateOpen, "but no village without the ducks and the fish");
-            Assert.AreEqual(JarState.Ready, sim.JarStateOf(LifeSpecies.Ducks), "the jar waits");
+            Assert.IsTrue(sim.JarStateOf(LifeSpecies.Ducks) == JarState.Ready || sim.JarNeed(LifeSpecies.Ducks) == EcoModel.IceNeedLine, "the jar waits (shut under the ice in winter, #703)");
             Assert.AreEqual(Era.Camp, sim.State.era);
             // #519: the old "a family of ducks moved into the pond" story never comes by itself on a living-land box
             Assert.AreEqual(0, sim.State.chronicle.Count(x => x.kind == "ducks"), "no duck story without placed ducks");

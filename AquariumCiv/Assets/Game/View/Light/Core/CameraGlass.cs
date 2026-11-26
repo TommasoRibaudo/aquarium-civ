@@ -3,6 +3,7 @@ using System;
 namespace AquariumCiv.Lighting
 {
     /// <summary>
+    /// #658: every position here is an OFFSET from the box centre (x = 0, z = CZ = 0.8): the callers subtract it, so the maths stays symmetric.
     /// #273 (pure floats, runs in dotnet test): the camera reaches the glass on every side at every zoom and never goes past it.
     /// The pivot may travel to the glass's inner face (less a hair, <see cref="Margin"/>) whatever the zoom; past the rest limit a
     /// drag meets a soft band of <see cref="Gap"/> that it can only approach (<see cref="Step"/>), never cross, and that settles

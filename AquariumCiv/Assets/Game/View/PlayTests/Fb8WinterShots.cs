@@ -18,7 +18,7 @@ namespace AquariumCiv.View.PlayTests
     public class Fb8WinterShots : PlayTestBase
     {
         static SimCore Sim => GameClock.Instance.ActiveSim;
-        const string Dir = "F:/GameDev/AquariumCiv/Temp/agent/fb8/";
+        static readonly string Dir = UnityEngine.Application.dataPath + "/../Temp/agent/fb8/";
 
         static IEnumerator Snap(string name)
         {

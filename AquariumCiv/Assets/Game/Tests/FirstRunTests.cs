@@ -5,6 +5,7 @@ using AquariumCiv.Game;
 using AquariumCiv.Sim;
 using NUnit.Framework;
 using static AquariumCiv.Tests.SimCoreTests;
+using Terrain = AquariumCiv.Sim.Settle.Terrain;
 
 namespace AquariumCiv.Tests
 {
@@ -108,8 +109,8 @@ namespace AquariumCiv.Tests
                 Assert.GreaterOrEqual(sim.State.grime, FirstRun.StartGrime);
                 Assert.GreaterOrEqual(sim.State.overgrowth, FirstRun.StartOvergrowth);
                 var (px, pz) = run.PatchSpot; var (rx, rz) = run.SuggestedRainSpot;
-                Assert.LessOrEqual(Math.Abs(px), 3f); Assert.LessOrEqual(Math.Abs(pz), 2.2f);
-                Assert.LessOrEqual(Math.Abs(rx), 3f); Assert.LessOrEqual(Math.Abs(rz), 2.2f);
+                Assert.LessOrEqual(Math.Abs(px), 3f); Assert.IsTrue(Terrain.InZ(pz, 0f));
+                Assert.LessOrEqual(Math.Abs(rx), 3f); Assert.IsTrue(Terrain.InZ(rz, 0f));
                 Assert.Greater(Math.Sqrt((px - rx) * (px - rx) + (pz - rz) * (pz - rz)), 1f, "the rain does not fall on the patch");
                 Assert.IsTrue(SettlementNaming.IsValid(run.SuggestedName));
                 Assert.AreEqual("", run.PlateName, "blank brass plate until kept");
@@ -151,26 +152,23 @@ namespace AquariumCiv.Tests
                 var n = sim.State.nudges.Single(x => x.id == sim.State.firstRun.rainNudgeId);
                 Assert.IsTrue(n.credited);
                 Assert.LessOrEqual(n.answerMonth - n.month, SimCore.FirstRainAnswerMonths + 1, $"seed {seed}");
-                Assert.AreEqual(sim.State.firstRun.rainNotableId, sim.State.chronicle.Last(e => e.keeper).notableId, "credited to the wisher");
-                Assert.AreEqual(WishState.Given, run.RainWish.state);
+                Assert.AreEqual(sim.State.firstRun.rainNotableId, sim.State.chronicle.Last(e => e.keeper).notableId, "credited to the one the rain was for");
             }
         }
 
         [Test]
-        public void RainStepRaisesARealRainWish()
+        public void RainStepPicksWhoTheRainIsFor_AndRaisesNoWish()
         {
             var (sim, run) = Fresh();
             TickTo(run, 3);
             sim.CleanGrime(1f); run.Tick(0.1f, true);
             sim.Prune(1f); run.Tick(0.1f, true);
-            Assert.IsNull(run.RainWish);
+            Assert.AreEqual(-1, sim.State.firstRun.rainNotableId);
             run.KeepName(null);
             Assert.AreEqual(FirstRunStep.Rain, run.Step);
-            var w = run.RainWish;
-            Assert.IsNotNull(w);
-            Assert.AreEqual(WishState.Open, w.state);
-            Assert.AreEqual(SimCore.NudgeKind.Rain, w.kind);
-            Assert.AreSame(w, sim.OpenWish);
+            Assert.GreaterOrEqual(sim.State.firstRun.rainNotableId, 0, "a grown-up the rain is credited to");
+            Assert.IsEmpty(sim.State.wishes, "#718: no wish");
+            Assert.IsFalse(sim.State.chronicle.Any(e => e.kind == "wish"));
         }
 
         [Test]

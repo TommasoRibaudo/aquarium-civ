@@ -301,6 +301,24 @@ namespace AquariumCiv.View
 
         // ---------- debug (the #369 cheats) ----------
 
+        /// <summary>#722 cheats ("Stories (#722)"; the panel's "End staged moments" path made whole): every held moment playing now ends at once:
+        /// its staging stopped (its people go back to their day) and the sim told it was seen, so a cheat's own moment plays next. How many.</summary>
+        public static int DebugEndPlaying()
+        {
+            int n = 0;
+            var stage = Instance;
+            if (stage != null) { n = stage.playing.Count; stage.StopAll(); }
+            n = Mathf.Max(n, StagedMoments.StopAll());
+            var sim = Sim;
+            if (sim != null)
+            {
+                var on = sim.PlayingMoments();
+                n = Mathf.Max(n, on.Count);
+                foreach (var m in on) sim.FinishMoment(m.id, true);
+            }
+            return n;
+        }
+
         /// <summary>Cheat: one moment of each kind waits now.</summary>
         public static string DebugQueueOneOfEach()
         {

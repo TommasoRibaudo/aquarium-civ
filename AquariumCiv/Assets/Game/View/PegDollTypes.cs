@@ -21,7 +21,19 @@ namespace AquariumCiv.View
         // P9 #426 (B13): the hunter's bow (a bark arc with a string) and the carrying pole
         Bow, Pole,
         // #543: the fish basket (a fisher's catch, carried to the rack)
-        FishBasket }
+        FishBasket,
+        // #656/#677: an armful of dry grass and thin twigs for the grass fire (never a log); a fallen branch gathered under a wild
+        // tree (never chopped); the carried basket of food and the tied bundle of sticks the founders walk in with
+        Tinder, Branch, FoodBasket, StickBundle,
+        // sign-off 2026-11-14 (ChoreBeats): the flat scraper stone held in both hands at the hide rack; a hide spread on the ground to
+        // mend (a bedroll), in front of someone seated
+        Scraper, Pelt,
+        // #692 (B29.d, B31.a): a torn piece of roast meat; a single feather for the pole
+        MeatPiece, Feather,
+        // the user's review of #692 part 1 (B30.b): the bowl before the ladle fills it (Bowl is a bowl of stew now)
+        BowlEmpty,
+        // #722 (2.1, B80.c): the tinkerer's crooked bucket: the bucket with a bent spout on its rim (full, empty)
+        SpoutBucket, SpoutBucketEmpty }
 
     /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
     /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>

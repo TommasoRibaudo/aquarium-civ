@@ -247,7 +247,9 @@ namespace AquariumCiv.GameUI
             {
                 verticalScrollerVisibility = ScrollerVisibility.Hidden,
                 horizontalScrollerVisibility = ScrollerVisibility.Hidden,
-                touchScrollBehavior = ScrollView.TouchScrollBehavior.Clamped,
+                // #667: a little give at the ends (iOS-like) instead of a hard stop; low, so a sheet doesn't wobble [est: check on the phone]
+                touchScrollBehavior = ScrollView.TouchScrollBehavior.Elastic,
+                elasticity = Elasticity,
                 scrollDecelerationRate = Deceleration,
             };
             hierarchy.Add(view);
@@ -256,25 +258,106 @@ namespace AquariumCiv.GameUI
             hierarchy.Add(bar);
             RegisterCallback<GeometryChangedEvent>(_ => Snap());
             view.contentContainer.RegisterCallback<GeometryChangedEvent>(_ => Snap());
+            // #667: the fit to whole lines waits while a finger is on the sheet or it still glides (a layout change mid-flick re-fit it)
+            view.RegisterCallback<PointerDownEvent>(_ => fingers++, TrickleDown.TrickleDown);
+            view.RegisterCallback<PointerUpEvent>(_ => fingers = Mathf.Max(0, fingers - 1), TrickleDown.TrickleDown);
+            view.RegisterCallback<PointerCancelEvent>(_ => fingers = Mathf.Max(0, fingers - 1), TrickleDown.TrickleDown);
+            view.verticalScroller.valueChanged += _ => movedAt = Time.unscaledTime;
             view.RegisterCallback<GeometryChangedEvent>(_ => Bar()); // the height just set lands a layout later
             view.verticalScroller.valueChanged += _ => Bar();
             // A slider takes its finger before the view can, or a drag that wanders a little moves the sheet instead of the thumb.
+            // #654 (playtest): a finger a little above or below the thin strip landed on the row and scrolled the sheet; the slider's whole
+            // row is its grab area now (within the strip's width, a little either side).
             RegisterCallback<PointerDownEvent>(e =>
             {
-                if (e.target is not GlassSlider slider) return;
+                var slider = SliderFor(e.target as VisualElement, e.position);
+                if (slider == null) return;
                 slider.Grab(e.pointerId, e.position);
+                held = slider; heldOffset = view.scrollOffset; heldDecel = view.scrollDecelerationRate;
+                view.scrollDecelerationRate = 0f; // no momentum left over from a scroll just before
                 e.StopPropagation();
             }, TrickleDown.TrickleDown);
+            // #654 (tester): on a sheet already scrolled, the view still took a sideways drag mid-way (it captured the finger and scrolled).
+            // While a slider holds the finger, the sheet feeds it every move itself and keeps the view where it was.
+            RegisterCallback<PointerMoveEvent>(e =>
+            {
+                if (held == null || held.Holding != e.pointerId) return;
+                held.DragAt(e.position);
+                view.scrollOffset = heldOffset;
+                e.StopPropagation();
+            }, TrickleDown.TrickleDown);
+            RegisterCallback<PointerUpEvent>(e => { if (held != null && held.Holding == e.pointerId) { var s = held; LetGo(); s.Let(); e.StopPropagation(); } }, TrickleDown.TrickleDown);
+            RegisterCallback<PointerCancelEvent>(e => { if (held != null && held.Holding == e.pointerId) { var s = held; LetGo(); s.Let(); } }, TrickleDown.TrickleDown);
+            view.verticalScroller.valueChanged += _ => { if (held != null && view.scrollOffset != heldOffset) view.scrollOffset = heldOffset; };
         }
 
+        GlassSlider held;
+        Vector2 heldOffset;
+        float heldDecel;
+        void LetGo() { held = null; view.scrollDecelerationRate = heldDecel; }
+
+        /// <summary>The slider a finger at <paramref name="at"/> (panel space) belongs to: the one it is on, or the one in the row it is on
+        /// when the finger is within its strip's width plus <see cref="SliderReach"/> either side. Null when it's a scroll.</summary>
+        GlassSlider SliderFor(VisualElement target, Vector2 at)
+        {
+            if (target is GlassSlider direct) return direct;
+            for (var e = target; e != null && e != this; e = e.parent)
+            {
+                if (!e.ClassListContains(RowClass)) continue;
+                var s = e.Q<GlassSlider>();
+                if (s == null) return null;
+                var b = s.worldBound;
+                return at.x >= b.xMin - SliderReach && at.x <= b.xMax + SliderReach ? s : null;
+            }
+            return null;
+        }
+
+        /// <summary>#654: how far either side of a slider's strip a finger in its row still takes the slider (panel px).</summary>
+        public const float SliderReach = 24f;
+
+        /// <summary>#667: the ends' give (Unity's default is 0.1).</summary>
+        public const float Elasticity = 0.08f;
+        /// <summary>#667: the sheet is at rest when it hasn't moved for this long (s).</summary>
+        public const float RestAfter = 0.15f;
+        int fingers;
+        float movedAt = -99f;
+        bool snapWaits;
+        /// <summary>#667: a finger is on the sheet or it is still gliding.</summary>
+        public bool Moving => fingers > 0 || Time.unscaledTime - movedAt < RestAfter;
+
         void Snap()
+        {
+            if (Moving)
+            {   // #667: never re-fit mid-drag or mid-glide: once, at rest
+                if (snapWaits) return;
+                snapWaits = true;
+                schedule.Execute(() => { if (Moving) return; snapWaits = false; Fit(); }).Every(100).Until(() => !snapWaits);
+                return;
+            }
+            Fit();
+        }
+
+        void Fit()
         {
             float room = layout.height;
             if (float.IsNaN(room) || room <= 0f || LinePitch <= 0f) return;
             float fit = WholeRows ? LastWholeRow(room) : 0f;
+            // #674 (tester): a view snapped under the first rows could be shorter than a taller row further down (the person card's
+            // pencil, 121 against 113): that row then never showed whole at any scroll. The view is at least as tall as its tallest row.
+            if (fit > 0f) fit = Mathf.Max(fit, Mathf.Min(room, TallestRow()));
             float lead = WholeRows ? FirstRowTop() : 0f; // a first row's top margin isn't a line
             view.style.height = fit > 0f ? fit : lead + Mathf.Floor((room - lead) / LinePitch) * LinePitch;
             Bar();
+        }
+
+        float TallestRow()
+        {
+            float tall = 0f;
+            view.contentContainer.Query(className: RowClass).ForEach(r =>
+            {
+                if (r.resolvedStyle.display != DisplayStyle.None) tall = Mathf.Max(tall, r.worldBound.height);
+            });
+            return tall;
         }
 
         float FirstRowTop()

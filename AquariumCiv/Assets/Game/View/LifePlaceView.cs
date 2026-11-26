@@ -75,6 +75,13 @@ namespace AquariumCiv.View
         /// <summary>The ghost is shown, at <see cref="GhostCell"/>.</summary>
         /// <summary>fb4 #542: the pond tool (ducks, fish) is in hand: the camera keeps the pond framed.</summary>
         public bool FramingWater => framedFor == (hud != null ? hud.HeldLife : framedFor) && IsWater(framedFor) && hud != null && hud.Hand == GameHud.KitTool.Life;
+        /// <summary>#731: an earned bush is in hand (<see cref="GameHud.KitTool.Bush"/>): the thicket's ground glows, a tap shows the ghost, a tap on it
+        /// founds a small thicket (<see cref="SimCore.PlaceBush"/>), a refused tap says why (<see cref="SimCore.ThicketRefusal"/>, as #664).</summary>
+        public bool BushMode => hud != null && hud.Hand == GameHud.KitTool.Bush;
+        /// <summary>#731: the hint while the bush's ghost waits.</summary>
+        public const string BushTapAgainHint = "Tap again to plant the bush here.";
+        /// <summary>#731: the last refusal's words (tests).</summary>
+        public string LastRefusal { get; private set; } = "";
         public bool GhostShown => ghostGo != null && ghostGo.activeSelf;
         public int GhostCell => Ghost.Cell;
         GhostTap Ghost => ghost ??= new GhostTap(TapAgainHintFor(LifeSpecies.Thicket), ghostReach);
@@ -115,7 +122,7 @@ namespace AquariumCiv.View
         {
             var sim = Sim;
             hud ??= GameHud.Instance;
-            bool holding = sim != null && sim.EcologyOn && box != null && hud != null && hud.Hand == GameHud.KitTool.Life;
+            bool holding = sim != null && sim.EcologyOn && box != null && hud != null && (hud.Hand == GameHud.KitTool.Life || hud.Hand == GameHud.KitTool.Bush);
             if (!holding)
             {
                 if (glowGo != null && glowGo.activeSelf) glowGo.SetActive(false);
@@ -123,12 +130,14 @@ namespace AquariumCiv.View
                 if (dimGo != null && dimGo.activeSelf) dimGo.SetActive(false); // the moment the tool is put down
                 HideGhost();
                 GlowCells = 0; glowStamp = -1; press.Reset(); framedFor = (LifeSpecies)(-1);
+                if (saidRefusal != null) { GameUiPanel.Toasts.Withdraw(saidRefusal); saidRefusal = null; } // tester 11-24: no "no" left up for a tool put away
                 DrawNo();
                 return;
             }
-            var s = hud.HeldLife;
-            // the glow follows the land: rebuilt when the species changes or the land moved on (a season, a placing)
-            int stamp = (int)(sim.State.month * 8 + (int)s);
+            bool bush = BushMode;
+            var s = bush ? LifeSpecies.Thicket : hud.HeldLife;
+            // the glow follows the land: rebuilt when the species changes or the land moved on (a season, a placing); #731: and per thicket placed
+            int stamp = (int)(sim.State.month * 8 + (int)s) + (bush ? 1000003 * (1 + sim.BushThicketCount) : 0);
             if (s != glowFor || stamp != glowStamp)
             {
                 if (GhostShown && (s != ghostFor || !sim.LifeGroundOk(s, GhostCell))) HideGhost(); // #516: the ghost is always the species in hand
@@ -142,6 +151,7 @@ namespace AquariumCiv.View
                 glowGo.GetComponent<MeshRenderer>().SetPropertyBlock(mpb);
             }
             if (IsWater(s) && framedFor != s) { framedFor = s; FramePond(); }
+            else if (!IsWater(s) && framedFor != s) { framedFor = s; FrameGround(sim, s); }
             Dim();
             DrawGhost();
             DrawNo();
@@ -166,6 +176,7 @@ namespace AquariumCiv.View
             // fb4 #542: the player taps the water they SEE; the ray goes on to the pond's bed, which can sit a cell or more further on
             if (IsWater(s) && (cell < 0 || !sim.LifeGroundOk(s, cell)) && SurfaceCell(screen, out int sc) && sim.LifeGroundOk(s, sc)) { cell = sc; at = box.land.OnGround(SiteMap.CXc(sc), SiteMap.CZc(sc)); }
             Ghost.reach = ghostReach;
+            if (BushMode) { TapBush(sim, cell, at); return; }
             // fb4 #542: on the pond any tap on its water sets the group down where the ghost stands (the first tap on the water showed it)
             bool onWater = IsWater(s) && cell >= 0 && sim.LifeGroundOk(s, cell);
             if (GhostShown && (onWater || Ghost.OnGhost(at)) && sim.CanPlaceLife(s, GhostCell))
@@ -179,12 +190,66 @@ namespace AquariumCiv.View
                 Last = $"no: cell {cell}";
                 Ghost.Wobble();
                 noAt = box.land.OnGround(at.x, at.z); noT = Time.unscaledTime;
+                if (s == LifeSpecies.Thicket)
+                {   // #664: the bushes' "no" says why (the fire, the wet, the room), not only the wobble
+                    string why = cell < 0 ? "Not here" : sim.ThicketRefusal(cell) ?? "Not here";
+                    LastRefusal = why;
+                    Last = $"no: cell {cell}: {why}";
+                    SayRefusal(why, GameHud.LifeHintFor(s));
+                }
                 return;
             }
             bool moved = GhostShown;
             ShowGhost(s, cell); // the tap-again hint stays while the ghost waits and goes with it (GhostTap)
             LifeArrivalView.Instance?.LeanOnGhost(s, Ghost.At); // user 2026-11-08: the camera leans in so the group reads at phone size
             Last = moved ? $"ghost moved to {cell}" : $"ghost at {cell}";
+        }
+
+        /// <summary>#731: a tap with an earned bush in hand: on the ghost it plants; on good ground it shows (or moves) the ghost; elsewhere the
+        /// ghost wobbles and the toast says why (#664).</summary>
+        void TapBush(SimCore sim, int cell, Vector3 at)
+        {
+            if (GhostShown && Ghost.OnGhost(at) && sim.CanPlaceBush(GhostCell)) { PlaceBush(sim, GhostCell); return; }
+            string why = cell < 0 ? "Not here" : sim.ThicketRefusal(cell);
+            if (why != null)
+            {
+                Refusals++;
+                LastRefusal = why;
+                Last = $"no: cell {cell}: {why}";
+                Ghost.Wobble();
+                noAt = box.land.OnGround(at.x, at.z); noT = Time.unscaledTime;
+                SayRefusal(why, GameHud.BushHint);
+                return;
+            }
+            bool moved = GhostShown;
+            ShowGhost(LifeSpecies.Thicket, cell, BushTapAgainHint, GameHud.BushHint);
+            LifeArrivalView.Instance?.LeanOnGhost(LifeSpecies.Thicket, Ghost.At);
+            Last = moved ? $"ghost moved to {cell}" : $"ghost at {cell}";
+        }
+
+        /// <summary>#664: the answer to this tap shows now: the hint and the last tap's answer give way to it (not after their time).</summary>
+        void SayRefusal(string why, string hint)
+        {
+            GameUiPanel.Toasts.Withdraw(hint);
+            if (!string.IsNullOrEmpty(saidRefusal) && saidRefusal != why + ".") GameUiPanel.Toasts.Withdraw(saidRefusal);
+            saidRefusal = why + ".";
+            hud?.Toast(saidRefusal, 3f, through: true);
+        }
+        string saidRefusal;
+
+        void PlaceBush(SimCore sim, int cell)
+        {
+            if (!sim.PlaceBush(cell)) { Last = "refused"; return; }
+            Placings++;
+            Last = $"placed a bush at {cell}";
+            HideGhost();
+            box.Refresh();
+            GameClock.Instance?.Save();
+            int left = sim.BushesInPouch;
+            hud?.SetHand(GameHud.KitTool.None); // one at a time: the next bush is taken from the jar again
+            hud?.Toast(left > 0 ? $"A small thicket starts here. {(left == 1 ? "1 more bush waits" : left + " more bushes wait")} in the life jar." : "A small thicket starts here.", 4f);
+            var pv = PeopleView.Find();
+            if (pv != null && pv.Planner != null) pv.Planner.ReactAt(AquariumCiv.Life.KeeperGesture.Rain, pv.Now, SiteMap.CXc(cell), SiteMap.CZc(cell), 1.4f);
         }
 
         /// <summary>fb4 #542: the water tool was just taken: the camera frames the whole pond (the glow's cells), so the first tap is on a big target.</summary>
@@ -199,6 +264,34 @@ namespace AquariumCiv.View
             }
             float width = Mathf.Max(x1 - x0, (z1 - z0) * 1.3f) + 0.6f;
             LifeArrivalView.Instance?.LeanOnPond(hud.HeldLife, new Vector3((x0 + x1) * 0.5f, 0f, (z0 + z1) * 0.5f), width);
+        }
+
+        /// <summary>#643 (playtest): a land group was just taken and too little of its glowing ground is on screen (the wolves' den spots sit
+        /// deep in the wood, often out of view): the camera flies to the valid cell nearest the camp, close enough for the glow to read.
+        /// Ground already in view is left alone.</summary>
+        public float GroundFrameZoom = 0.5f;
+        public const int SmallGround = 30;
+        public int GroundFrames { get; private set; }
+        void FrameGround(SimCore sim, LifeSpecies s)
+        {
+            var cam = Camera.main;
+            var bc = cam != null ? cam.GetComponent<BoxCamera>() : null;
+            if (bc == null || cells.Count == 0) return;
+            int seen = 0;
+            foreach (int c in cells)
+            {
+                var v = cam.WorldToViewportPoint(box.transform.TransformPoint(box.land.OnGround(SiteMap.CXc(c), SiteMap.CZc(c))));
+                if (v.z > 0f && v.x > 0.08f && v.x < 0.92f && v.y > 0.2f && v.y < 0.85f) seen++;
+            }
+            bool small = cells.Count < SmallGround && bc.zoom > GroundFrameZoom + 0.15f; // a few cells, seen from far: a speck
+            if (seen * 2 >= cells.Count && !small) return;
+            int at = sim.LifePlaceCellNearCamp(s);
+            if (at < 0) at = cells[0];
+            // tester batch 3: a lean still on its way home (the group just placed) keeps that way home; this flight used to cancel it,
+            // and the camera stayed at the lean's close zoom for the rest of the visit (an earned bush taken right after a placing)
+            if (bc.GlideArmed) bc.ReturnAfterFlight();
+            bc.FlyTo(box.transform.TransformPoint(box.land.OnGround(SiteMap.CXc(at), SiteMap.CZc(at))), Mathf.Min(bc.zoom, GroundFrameZoom));
+            GroundFrames++;
         }
 
         /// <summary>The cell under the water's surface at a screen point (the ray meets the water plane, not the bed).</summary>
@@ -310,7 +403,7 @@ namespace AquariumCiv.View
                 if (index.TryGetValue(key, out int v)) return v;
                 float x = SiteMap.X0 + i * SiteMap.Cell, z = SiteMap.Z0 + j * SiteMap.Cell;
                 v = verts.Count;
-                verts.Add(new Vector3(x, GroundY(Mathf.Clamp(x, -Land.HX, Land.HX), Mathf.Clamp(z, -Land.HZ, Land.HZ), s), z));
+                verts.Add(new Vector3(x, GroundY(Mathf.Clamp(x, -Land.HX, Land.HX), Land.ClampZ(z), s), z));
                 float a = lit[key];
                 float soft = a * a * (3f - 2f * a);
                 cols.Add(new Color(1f, 1f, 1f, soft)); // smoothstep: a soft rim (the restore)
@@ -352,13 +445,13 @@ namespace AquariumCiv.View
             _ => new[] { (-0.07f, 0f, 0.05f, 0.09f), (0.07f, 0f, 0.05f, 0.09f) },
         };
 
-        void ShowGhost(LifeSpecies s, int cell)
+        void ShowGhost(LifeSpecies s, int cell, string hint = null, string withdraw = null)
         {
             var target = new Vector3(SiteMap.CXc(cell), 0f, SiteMap.CZc(cell));
             if (ghostGo == null) ghostGo = Child("LifeGhost", out ghostMesh);
             ghostGo.SetActive(true);
-            Ghost.SetHint(TapAgainHintFor(s), hud);
-            Ghost.Show(cell, target, hud, GameHud.LifeHint);
+            Ghost.SetHint(hint ?? TapAgainHintFor(s), hud);
+            Ghost.Show(cell, target, hud, withdraw ?? GameHud.LifeHintFor(s));
             ghostFor = s;
         }
 
@@ -387,7 +480,7 @@ namespace AquariumCiv.View
         {
             look ??= new GhostLook(box.transform, "LifeGhost");
             bool water = ghostFor == LifeSpecies.Ducks || ghostFor == LifeSpecies.Fish;
-            float y = GroundY(Mathf.Clamp(c.x, -Land.HX, Land.HX), Mathf.Clamp(c.z, -Land.HZ, Land.HZ), ghostFor) - (water ? 0.008f : 0.012f);
+            float y = GroundY(Mathf.Clamp(c.x, -Land.HX, Land.HX), Land.ClampZ(c.z), ghostFor) - (water ? 0.008f : 0.012f);
             look.Draw(LifeLooks.Ghost(ghostFor, box, false), LifeLooks.Ghost(ghostFor, box, true), new Vector3(c.x, y, c.z), scale, ghostFill, ghostEdge);
         }
 
@@ -450,8 +543,8 @@ namespace AquariumCiv.View
                     float a = i * Mathf.PI * 2f / seg, cs = Mathf.Cos(a), sn = Mathf.Sin(a);
                     float xo = c.x + cs * (rx + width * 0.5f), zo = c.z + sn * (rz + width * 0.5f);
                     float xi = c.x + cs * (rx - width * 0.5f), zi = c.z + sn * (rz - width * 0.5f);
-                    verts.Add(new Vector3(xo, GroundY(Mathf.Clamp(xo, -Land.HX, Land.HX), Mathf.Clamp(zo, -Land.HZ, Land.HZ), s) + 0.004f, zo));
-                    verts.Add(new Vector3(xi, GroundY(Mathf.Clamp(xi, -Land.HX, Land.HX), Mathf.Clamp(zi, -Land.HZ, Land.HZ), s) + 0.004f, zi));
+                    verts.Add(new Vector3(xo, GroundY(Mathf.Clamp(xo, -Land.HX, Land.HX), Land.ClampZ(zo), s) + 0.004f, zo));
+                    verts.Add(new Vector3(xi, GroundY(Mathf.Clamp(xi, -Land.HX, Land.HX), Land.ClampZ(zi), s) + 0.004f, zi));
                     cols.Add(c32); cols.Add(c32);
                     if (i == seg) continue;
                     int o = b + i * 2;
@@ -473,7 +566,7 @@ namespace AquariumCiv.View
                 var cam = Camera.main;
                 if (cam == null || box == null || !GhostShown) return Vector2.zero;
                 var c = Ghost.At;
-                float y = GroundY(Mathf.Clamp(c.x, -Land.HX, Land.HX), Mathf.Clamp(c.z, -Land.HZ, Land.HZ), ghostFor);
+                float y = GroundY(Mathf.Clamp(c.x, -Land.HX, Land.HX), Land.ClampZ(c.z), ghostFor);
                 return cam.WorldToScreenPoint(box.transform.TransformPoint(new Vector3(c.x, y, c.z)));
             }
         }

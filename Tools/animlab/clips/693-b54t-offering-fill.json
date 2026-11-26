@@ -1,0 +1,30 @@
+{
+ "name": "693-b54t-offering-fill",
+ "notes": "B54.t: the best basket is carried up, the cloth lifted, the food tipped in, the cloth laid back; a bow to the glass.",
+ "animlab": {
+  "issue": 693
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 4);",
+   "return AquariumCiv.View.CampCheats.GrowTree();",
+   "return \"waiting for the tree\";",
+   "return AquariumCiv.View.CampCheats.OnlyThing(\"offering_basket\");",
+   "return \"waiting for the things\";",
+   "return \"waiting for the things\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11.0f);",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.OfferingFill());"
+  ],
+  "warm": 0.5,
+  "seconds": 8,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.9,
+  "yaw": 28,
+  "pitch": 30,
+  "lead": 2.0
+ }
+}

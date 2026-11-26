@@ -22,7 +22,7 @@ namespace AquariumCiv.View.PlayTests
     public class CarePlayTests : InputTestFixture
     {
         const string ScenePath = "Assets/Game/Scenes/Slice.unity";
-        const string Shots = "F:/GameDev/AquariumCiv/Temp/agent/";
+        static readonly string Shots = UnityEngine.Application.dataPath + "/../Temp/agent/";
         Touchscreen touch;
         int touchId = 1;
         string savePath, backup;
@@ -368,9 +368,16 @@ namespace AquariumCiv.View.PlayTests
             return s / n;
         }
 
+        /// <summary>The world the glass test runs in (pinned so a failure replays; tooling.md).</summary>
+        const int GlassSeed = 4242;
+
         [UnityTest, Timeout(180000)]
         public IEnumerator Glass_CleanIsClear_DirtyIsObvious_AndAWipeShows()
         {
+            // batch 3 leftovers: the grime's pattern follows the world seed (GlassMask's per-pane weights) and the world's seed was random, so
+            // the one spot measured was heavy grime on one run and light on the next (the wiped trail read 74, 40 and 33 on the same code).
+            // Now a pinned world, and the spot is the dirtiest of a few along the middle of the wiped strip, so a light patch can't decide it.
+            GameClock.DebugNextSeed = GlassSeed;
             yield return Open();
             try
             {
@@ -382,26 +389,31 @@ namespace AquariumCiv.View.PlayTests
                 var sim = GameClock.Instance.Sim;
                 var care = CareView.Instance;
                 var cam = Camera.main;
-                // a spot of the front pane over the land, well inside the pane
+                // spots of the front pane over the land, well inside the pane and inside the strip wiped below (u 0.3..0.7)
                 var front = panes.First(r => r.name == "GlassFront");
                 var c = front.bounds.center;
-                var spot = (Vector2)cam.WorldToScreenPoint(new Vector3(c.x, 1.7f, c.z));
+                var spots = Enumerable.Range(-5, 11).Select(k => k * 0.035f)
+                    .Select(k => (Vector2)cam.WorldToScreenPoint(new Vector3(c.x + k * front.bounds.size.x, 1.7f, c.z))).ToArray();
                 sim.CleanAll();
                 for (int i = 0; i < 6; i++) yield return null;
                 front.enabled = false;
                 var bare = Render(null);
                 front.enabled = true;
                 var clean = Render("t3_glass_clean");
-                Vector3 bareC = Mean(bare, spot, 60), cleanC = Mean(clean, spot, 60);
-                Debug.Log($"[care] pixels: no pane {bareC}, clean {cleanC}");
-                Assert.Less((cleanC - bareC).magnitude, 26f, "clean glass barely changes what is behind it");
+                foreach (var sp in spots)
+                {
+                    Vector3 bareC = Mean(bare, sp, 60), cleanC = Mean(clean, sp, 60);
+                    Debug.Log($"[care] pixels at {sp}: no pane {bareC}, clean {cleanC}");
+                    Assert.Less((cleanC - bareC).magnitude, 26f, "clean glass barely changes what is behind it");
+                }
 
                 sim.State.grime = 0.8f;
                 for (int i = 0; i < 6; i++) yield return null;
                 var dirty = Render("t3_glass_dirty");
-                Vector3 dirtyC = Mean(dirty, spot, 60);
-                Debug.Log($"[care] pixels: grime 0.8 {dirtyC}, mask means {string.Join(", ", care.Masks.Select(m => m.Mean.ToString("0.00")))}");
-                Assert.Greater((dirtyC - cleanC).magnitude, 45f, "0.8 grime is obviously dirty");
+                var spot = spots.OrderByDescending(sp => (Mean(dirty, sp, 30) - Mean(clean, sp, 30)).magnitude).First();
+                Vector3 dirtyC = Mean(dirty, spot, 60), cleanAt = Mean(clean, spot, 60);
+                Debug.Log($"[care] pixels: grime 0.8 {dirtyC} at {spot} (seed {sim.State.seed}), mask means {string.Join(", ", care.Masks.Select(m => m.Mean.ToString("0.00")))}");
+                Assert.Greater((dirtyC - cleanAt).magnitude, 45f, "0.8 grime is obviously dirty");
 
                 // wipe a trail across the front pane: the wiped strip comes back to the clean look
                 int fi = Array.FindIndex(care.Masks, m => Mathf.Approximately(m.size.y, front.bounds.size.y) && Mathf.Approximately(m.size.x, front.bounds.size.x));
@@ -411,11 +423,11 @@ namespace AquariumCiv.View.PlayTests
                 for (int i = 0; i < 3; i++) yield return null;
                 var wiped = Render("t3_glass_wiped");
                 Vector3 wipedC = Mean(wiped, spot, 30), wasC = Mean(dirty, spot, 30);
-                Debug.Log($"[care] pixels: wiped {wipedC}, same spot dirty {wasC}");
+                Debug.Log($"[care] pixels: wiped {wipedC}, same spot dirty {wasC} (seed {sim.State.seed})");
                 Assert.Greater((wipedC - wasC).magnitude, 40f, "the wiped trail shows");
                 UnityEngine.Object.Destroy(bare); UnityEngine.Object.Destroy(clean); UnityEngine.Object.Destroy(dirty); UnityEngine.Object.Destroy(wiped);
             }
-            finally { Close(); }
+            finally { GameClock.DebugNextSeed = 0; Close(); }
         }
 
         [UnityTest]

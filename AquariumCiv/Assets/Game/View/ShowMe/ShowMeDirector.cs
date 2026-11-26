@@ -209,7 +209,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < 8; i++)
             {
                 var f = world - fwd * s;
-                if (Mathf.Abs(f.x) <= b.x && Mathf.Abs(f.z) <= b.y) return f;
+                if (Mathf.Abs(f.x) <= b.x && Mathf.Abs(f.z - Land.CZ) <= b.y) return f;
                 s *= 0.6f;
             }
             return world;
@@ -220,7 +220,7 @@ namespace AquariumCiv.View
             if (box == null) return;
             flower = new GameObject("ShowMeFlower") { hideFlags = HideFlags.DontSave };
             flower.transform.SetParent(box.transform, false);
-            float y = box.GroundHeight(Mathf.Clamp(t.x, -Land.HX, Land.HX), Mathf.Clamp(t.z, -Land.HZ, Land.HZ));
+            float y = box.GroundHeight(Mathf.Clamp(t.x, -Land.HX, Land.HX), Land.ClampZ(t.z));
             flower.transform.localPosition = new Vector3(t.x + 0.06f, y, t.z - 0.05f);
             var stem = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             Destroy(stem.GetComponent<Collider>());
@@ -428,7 +428,7 @@ namespace AquariumCiv.View
         public static bool Placing()
         {
             var hud = GameHud.Instance;
-            if (hud != null && (hud.Hand == GameHud.KitTool.Life || hud.Hand == GameHud.KitTool.Seed)) return true;
+            if (hud != null && (hud.Hand == GameHud.KitTool.Life || hud.Hand == GameHud.KitTool.Seed || hud.Hand == GameHud.KitTool.Bush)) return true;
             var lp = LifePlaceView.Instance;
             if (lp != null && lp.GhostShown) return true;
             var sp = SeedPlaceView.Instance;
@@ -605,9 +605,19 @@ namespace AquariumCiv.View
             var now = pv.Now;
             string moment = now.hour >= 18f && now.hour < 21f ? PeopleMoment.Evening : null;
             bubbles.HeldNow = StagedMoments.PlayingMoment(Sim); // t1-moments: a staged moment's own words, not the stories
+            bubbles.TellerNow = TellerNow(pv, now); // #717: the Keeper's pick telling tonight's story
+            if (StagedMoments.SpeaksItsOwnLines(Sim) || TellerBeats.SpeaksItsOwnLines) return; // S-ritual, B76: the beats say their own lines
             var b = bubbles.Next(Time.unscaledTime, moment, visibleNotables);
             if (b == null) return;
             ShowBubble(b);
+        }
+
+        /// <summary>#717: the notable telling the Keeper's picked story at this moment (-1 = none).</summary>
+        int TellerNow(PeopleView pv, ViewTime now)
+        {
+            var sim = Sim;
+            if (sim == null || pv.Planner == null || !sim.StoryTellerOn(now.day, out int id, out _)) return -1;
+            return pv.Planner.Plan(PersonRef.Notable(id), now).kind == ActivityKind.StoryTell ? id : -1;
         }
 
         void Visible(PeopleView pv, Camera cam)

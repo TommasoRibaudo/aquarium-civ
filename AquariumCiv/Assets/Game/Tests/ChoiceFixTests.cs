@@ -21,8 +21,8 @@ namespace AquariumCiv.Tests
             id = id, kind = DilemmaKind.WhichWay, cast = DilemmaCast.None, question = "The fields, or the woods?",
             options = new[]
             {
-                new DilemmaOptionDef { label = "the fields", hint = "h", lean = SimCore.Lean.Food },
-                new DilemmaOptionDef { label = "the woods", hint = "h", lean = SimCore.Lean.Craft },
+                new DilemmaOptionDef { label = "the fields", hint = "h", custom = "way:fields" },
+                new DilemmaOptionDef { label = "the woods", hint = "h", custom = "way:woods" },
             },
         };
 
@@ -252,7 +252,7 @@ namespace AquariumCiv.Tests
             var line = sim.State.chronicle.Single(e => e.id == d.answerEntryId);
             Assert.IsTrue(line.keeper, "the Keeper's line");
             StringAssert.Contains("let the people decide", line.text);
-            Assert.AreEqual(1, sim.State.dilemmaLeans.Count, "the default's effects apply");
+            Assert.IsTrue(sim.HasCustom(d.option == 0 ? "way:fields" : "way:woods"), "the default's effects apply");
             Assert.IsFalse(sim.LetThemDecide(d.id), "once");
             Assert.IsFalse(sim.AnswerDilemma(d.id, 0, DilemmaPath.Card), "and final");
         }

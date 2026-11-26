@@ -27,12 +27,15 @@ namespace AquariumCiv.Sim
         /// <summary>t4-fixes: a story or supper choice is asked at most this many times in a box (each leaves its thing).</summary>
         public const int RepeatMax = 2;
 
+        /// <summary>#717: how the picked teller tells tonight's story (the option's hint): slow, with all the voices; or short, for a laugh.</summary>
+        public const int MannerSlow = 0, MannerShort = 1;
+
         /// <summary>A newborn can be named by the Keeper until this age (game years).</summary>
         public const float NewbornNameAge = 4f;
 
         static DilemmaOptionDef Name(int n) => new DilemmaOptionDef
         {
-            label = "{n" + n + "}", hint = n == 1 ? "{a}'s name for the baby." : "{b}'s name for the baby.",
+            touch = "call it {n" + n + "}", label = "{n" + n + "}", hint = n == 1 ? "{a}'s name for the baby." : "{b}'s name for the baby.",
             done = "The Keeper named the baby {n" + n + "}.",
             prop = ConsequenceKind.NamePeg, propAt = PropAnchor.Home,
         };
@@ -59,9 +62,9 @@ namespace AquariumCiv.Sim
             letDone = "{n} told the story at the fire.",
             options = new[]
             {
-                new DilemmaOptionDef { label = "{a}", hint = "{a} tells it slow, with all the voices.", done = "The Keeper picked {a} to tell the story.",
+                new DilemmaOptionDef { touch = "{a} tells it", label = "{a}", hint = "{a} tells it slow, with all the voices.", done = "The Keeper picked {a} to tell the story.",
                     prop = ConsequenceKind.Feather, propAt = PropAnchor.Home },
-                new DilemmaOptionDef { label = "{b}", hint = "{b} tells it short, and gets a laugh.", done = "The Keeper picked {b} to tell the story.",
+                new DilemmaOptionDef { touch = "{b} tells it", label = "{b}", hint = "{b} tells it short, and gets a laugh.", done = "The Keeper picked {b} to tell the story.",
                     prop = ConsequenceKind.Feather, propAt = PropAnchor.Home },
             },
         };
@@ -113,6 +116,28 @@ namespace AquariumCiv.Sim
         /// <see cref="SupperPick.None"/> on every other day.</summary>
         public int SupperOn(long day) => State.supperPick != SupperPick.None && (day == State.supperMonth || day == State.supperMonth + 1) ? State.supperPick : SupperPick.None;
 
+        /// <summary>#717: the story the Keeper picked a teller for is told at the fire the evening it was picked (the view day of that
+        /// month): who tells it and how (<see cref="SmallChoices.MannerSlow"/>, <see cref="SmallChoices.MannerShort"/>). False on every
+        /// other evening (the planner's own rule picks the teller), or if the teller has died.</summary>
+        public bool StoryTellerOn(long day, out int tellerId, out int manner)
+        {
+            tellerId = State.storyTellerId; manner = State.storyTellerManner;
+            return tellerId >= 0 && day == State.storyTellerMonth && Alive(tellerId) != null;
+        }
+
+        /// <summary>#717: the camp's woodpile stands (a living land's first wild wood is in; the slice always has one).</summary>
+        public bool WoodpileStands => !NewStartOn || FirstWildWoodReached;
+
+        /// <summary>Debug (#717): the story choice raised and answered now (option 0: slow, 1: short); its teller tells it tonight.
+        /// Null if there are not two adults.</summary>
+        public Dilemma DebugTellStoryTonight(int option)
+        {
+            var d = DebugRaiseSmall(SmallChoices.Story);
+            if (d == null) return null;
+            AnswerDilemma(d.id, option == 1 ? 1 : 0, DilemmaPath.Card);
+            return d;
+        }
+
         /// <summary>Debug (#589): settle supper now, as if the Keeper had picked.</summary>
         public void DebugSupper(int pick) { if (FestivalOn) State.festivalUntilMonth = State.month; State.supperPick = pick; State.supperMonth = State.month; } // the cheat ends a festival year so the supper is seen
 
@@ -123,6 +148,7 @@ namespace AquariumCiv.Sim
         {
             a = b = -1;
             if (LifeChoices.Is(def)) return LifeWhyNot(def); // #437/#438
+            if (StoryChoices.Is(def)) return StoryAskWhyNot(def, out a, out b, false); // #722 §4
             if (def.smallKind == SmallChoices.Naming)
             {
                 var c = NamingNewborn();
@@ -182,6 +208,9 @@ namespace AquariumCiv.Sim
             // #437/#438: a wolves' or dogs' moment that waits comes next (the first in the catalog's order: thief, pup, kill, pen)
             var life = EligibleLife();
             if (life.Count > 0) return new List<(DilemmaDef def, int a, int b)> { life[0] };
+            // #722 §4: a story event's ask that waits (its window is short: the months before its ritual) comes before the everyday ones
+            var story = EligibleStoryAsks();
+            if (story.Count > 0) return new List<(DilemmaDef def, int a, int b)> { story[0] };
             return list;
         }
 
@@ -193,6 +222,7 @@ namespace AquariumCiv.Sim
         void PrepareSmall(Dilemma d, DilemmaDef def)
         {
             if (LifeChoices.Is(def)) { PrepareLife(d, def); return; } // #437/#438
+            if (StoryChoices.Is(def)) { PrepareStoryAsk(d, def); return; } // #722 §4
             if (def.smallKind != SmallChoices.Naming) return;
             var c = NamingNewborn();
             if (c == null) return;
@@ -222,6 +252,16 @@ namespace AquariumCiv.Sim
         void ApplySmall(Dilemma d, DilemmaDef def, int option)
         {
             if (LifeChoices.Is(def)) { ApplyLife(d, def, option); return; } // #437/#438
+            if (StoryChoices.Is(def)) { ApplyStoryAsk(d, def, option); return; } // #722 §4
+            if (def.smallKind == SmallChoices.Story)
+            {
+                // #717: the one picked (by the Keeper, by "Let them decide" or by the people on a lapse) tells it at the fire tonight,
+                // in the manner of their option's hint.
+                State.storyTellerId = option == 0 ? d.personA : d.personB;
+                State.storyTellerMonth = State.month;
+                State.storyTellerManner = option == 0 ? SmallChoices.MannerSlow : SmallChoices.MannerShort;
+                return;
+            }
             if (def.smallKind == SmallChoices.Supper)
             {
                 // #589: the pick is played out that evening (and the next): one pot at the fire, or a basket each at home.
@@ -243,7 +283,8 @@ namespace AquariumCiv.Sim
 
         /// <summary>The words of the name placeholders on a small card.</summary>
         string SmallText(string t, Dilemma d) =>
-            t.Replace("{n1}", d.nameA ?? "").Replace("{n2}", d.nameB ?? "").Replace("{child}", FindNotable(d.subjectId)?.name ?? "the baby");
+            t.Replace("{n1}", d.nameA ?? "").Replace("{n2}", d.nameB ?? "").Replace("{child}", FindNotable(d.subjectId)?.name ?? "the baby")
+             .Replace("{who}", FindNotable(d.subjectId)?.name ?? "One of the hunters"); // #714: who saw the wolves
 
         /// <summary>True if the Keeper named this person (the person card shows "chosen by the Keeper", C4).</summary>
         public bool NamedByKeeper(int notableId) => FindNotable(notableId)?.namedByKeeper ?? false;
@@ -254,6 +295,7 @@ namespace AquariumCiv.Sim
         {
             var def = DilemmaDefOf(d);
             if (LifeChoices.Is(def)) return LifeDefaultOption(d, def); // #437/#438: the chief's trait
+            if (StoryChoices.Is(def) && def.smallKind == StoryChoices.PupHolder) return Alive(d.personA) != null || Alive(d.personB) == null ? 0 : 1; // #722 (4.4): today's rule
             bool a = Alive(d.personA) != null, b = Alive(d.personB) != null;
             if (a != b) return a ? 0 : 1;
             return (int)(DilemmaRoll(31, d.id, d.month) * 2f) % 2;

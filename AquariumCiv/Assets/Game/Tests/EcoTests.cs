@@ -53,7 +53,12 @@ namespace AquariumCiv.Tests
             public void Play(SimCore sim)
             {
                 var e = sim.State.eco;
-                if (!VisitsAt(e.season)) return;
+                if (!VisitsAt(e.season))
+                {
+                    // #703: the duck jar is shut while the pond is ice, and this Keeper's yearly visit falls in winter: a thawed jar is placed the season it opens
+                    if (care && places) PlaceReadyJars(sim, s => s == LifeSpecies.Ducks && (which == null || which(s)));
+                    return;
+                }
                 if (places) PlaceReadyJars(sim, which); // #417-#419: the Keeper places every jar that is ready, by the camp
                 var land = sim.EcoGround;
                 // The lab plans the whole visit from the land as it stands on arrival, then does it.
@@ -79,7 +84,7 @@ namespace AquariumCiv.Tests
                     float a = Terrain.Hash3(e.seed * 31 + 101, e.season * 16 + k, tries) * MathF.PI * 2f;
                     float r = MathF.Sqrt(Terrain.Hash3(e.seed * 31 + 102, e.season * 16 + k, tries)) * reach;
                     float x = land.campX + MathF.Cos(a) * r, z = land.campZ + MathF.Sin(a) * r;
-                    if (MathF.Abs(x) > Terrain.HX - 0.2f || MathF.Abs(z) > Terrain.HZ - 0.2f) continue;
+                    if (MathF.Abs(x) > Terrain.HX - 0.2f || !Terrain.InZ(z, 0.2f)) continue;
                     int c = SiteMap.CellAt(x, z);
                     if (c < 0 || (EcoCover)e.cover[c] == EcoCover.Water) continue;
                     float score = e.moisture[c] + ((EcoCover)e.cover[c] == EcoCover.Bare ? 0f : 0.3f);
@@ -209,7 +214,7 @@ namespace AquariumCiv.Tests
             var sim = NewSim(5);
             sim.Advance(6);
             string json = JsonUtility.ToJson(sim.State);
-            string old = Regex.Replace(json, "\"eco\":\\{[^{}]*\\},", "");
+            string old = Regex.Replace(json, "\"eco\":\\{(?:[^{}]|\\{[^{}]*\\})*\\},", ""); // #709: the eco block holds the nest object (one level of braces)
             Assert.AreNotEqual(json, old, "the eco block was cut out");
             var loaded = JsonUtility.FromJson<SimState>(old);
             Assert.IsNotNull(loaded.eco);
@@ -247,7 +252,7 @@ namespace AquariumCiv.Tests
             Assert.Less(e.table, sim.EcoGround.minHeight, "the water table starts below the lowest ground");
             Assert.AreEqual(0, sim.EcoPondCells);
             Assert.AreEqual(-1, e.treeCell, "no tree yet");
-            Assert.IsFalse(sim.CanPlantTree);
+            Assert.IsTrue(sim.CanPlantTree, "2026-11-14: the seed is in the jar from the start");
             Assert.AreEqual(1f, sim.EcoBareShare, 1e-6f);
             Assert.Greater(sim.EcoFloodLine, sim.EcoGround.main.bottom);
             Assert.Greater(sim.EcoGround.main.cells.Count, 50, "a real hollow");
@@ -309,19 +314,27 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void TheSeedWaitsForBushes_ThenOneTreeCanBePlanted()
+        public void TheSeedComesFirst_BushesWaitForIt_ThenOneTreeCanBePlanted()
         {
+            // 2026-11-14: seed, then bushes, then rabbits
             var sim = EcoWorld();
-            Assert.IsFalse(sim.CanPlantTree);
-            Assert.IsFalse(sim.PlantTree(sim.EcoGround.campX + 0.9f, sim.EcoGround.campZ));
+            Assert.IsTrue(sim.CanPlantTree, "the seed is there from the start");
+            sim.DebugSkipSeasons(1);
+            Assert.IsTrue(sim.State.eco.Reached(EcoMilestones.SeedUnlocked), "reached at the first step");
+            LifeJarTests.Meadow(sim, 0.3f, true, false);
+            Assert.AreEqual(JarState.Locked, sim.JarStateOf(LifeSpecies.Thicket), "meadow enough, but the seed is not in the ground");
+            Assert.AreEqual("Bushes need the seed in the ground first", sim.JarNeed(LifeSpecies.Thicket));
+            Assert.IsTrue(sim.PlantTree(sim.EcoGround.campX + 0.9f, sim.EcoGround.campZ));
+            sim.DebugSkipSeasons(1);
+            Assert.AreEqual(JarState.Ready, sim.JarStateOf(LifeSpecies.Thicket), "the seed in the ground opens the bushes");
+            Assert.AreEqual(JarState.Locked, sim.JarStateOf(LifeSpecies.Rabbits), "the rabbits wait for the bushes");
+            Assert.IsFalse(sim.CanPlantTree, "one tree only");
             var run = Play(true, Seasons30);
             Assert.IsTrue(run.sim.State.eco.Reached(EcoMilestones.SeedUnlocked));
-            Assert.GreaterOrEqual(run.Year(EcoMilestones.TreePlanted), run.Year(EcoMilestones.SeedUnlocked));
+            Assert.GreaterOrEqual(run.Year(EcoMilestones.TreePlanted), 0f, "the Keeper planted it");
             Assert.IsFalse(run.sim.CanPlantTree, "one tree only");
             // never in the hollow
             var fresh = EcoWorld();
-            fresh.DebugOpenCampGate();
-            fresh.State.eco.milestoneKeys.Add(EcoMilestones.SeedUnlocked); fresh.State.eco.milestoneMonths.Add(0);
             var main = fresh.EcoGround.main;
             int hollow = main.cells[main.cells.Count / 2];
             Assert.IsTrue(fresh.CanPlantTree);
@@ -415,8 +428,8 @@ namespace AquariumCiv.Tests
             Assert.Greater(water, 0f, "water surfaced");
             Assert.Greater(village, 0f, "village gate");
             Assert.LessOrEqual(green, camp, "green before the camp");
-            Assert.LessOrEqual(camp, seed, "the seed comes after the camp");
-            Assert.LessOrEqual(seed, planted);
+            Assert.LessOrEqual(seed, 0.5f, "the seed is there from the first step (2026-11-14: seed first)");
+            Assert.LessOrEqual(planted, bush, "the bushes wait for the planted seed");
             Assert.Less(planted, grown, "the tree grows after it is planted");
             Assert.Less(grown, water, "the water rises after the tree");
             Assert.LessOrEqual(water, village, "water before the village");
@@ -601,6 +614,7 @@ namespace AquariumCiv.Tests
             for (int m = 0; m < 30 * 12; m++)
             {
                 if (m % 3 == 0) sim.Mist(map.greenX + 0.6f + (m % 7) * 0.08f, map.greenZ - 0.2f, 2f);
+                if (m == 0) LifeJarTests.PlantKeepersTree(sim); // 2026-11-14: the seed first, the bushes wait for it
                 if (m % 3 == 0) PlaceReadyJars(sim); // #419: the camp waits on the Keeper's rabbits
                 sim.Advance(1.0 / 12);
                 var d = sim.OpenDilemma;

@@ -84,7 +84,7 @@ namespace AquariumCiv.Sim
         {
             string era = EraNoun(State.era);
             string tail = leader == null ? "" : State.era == Era.Village
-                ? (Count(BuildingType.Well) > 0 ? $" {leader.name} fell in the well (they're fine)." : $" {leader.name} tripped over a goat (they're fine).")
+                ? (Count(BuildingType.Well) > 0 ? $" {leader.name} fell in the well (they're fine)." : $" {leader.name} tripped over a tent rope (they're fine).") // #715 [est]: no goat
                 : $" {leader.name} danced on the market steps until the lanterns went out.";
             return $"{Place} danced for three days to welcome the new {era}.{tail}";
         }
@@ -179,7 +179,8 @@ namespace AquariumCiv.Sim
                 string who = lord != null && r.leader.parentId == lord.id ? $"The lord's younger child, {r.leader.FullName}," : r.leader.FullName;
                 var e = Chronicle("founders_left", $"{who} left{with} to found a new home across the shelf. {Place} waved them off from the glass.", 0.9f, r.leader.id);
                 if (r.founders.Count > 1) e.otherNotableId = r.founders[1].id;
-                string carrying = r.relics.Count > 0 ? $"carrying the {r.relics[0]} wrapped in cloth" : $"carrying a little of {Place} wrapped in cloth";
+                string named = r.relics.FirstOrDefault(x => x != SimCore.RelicName(RelicId.SkyCrumb) && x != SimCore.RelicName(RelicId.Lens)); // #718: never the Sky Crumb or the Lens
+                string carrying = named != null ? $"carrying the {named} wrapped in cloth" : $"carrying a little of {Place} wrapped in cloth";
                 r.foundersLine = $"{r.leader.FullName} and {(others.Count == 1 ? "a young family" : "two young families")} crossed to a new land, {carrying}.";
             }
             s.boxComplete = true;

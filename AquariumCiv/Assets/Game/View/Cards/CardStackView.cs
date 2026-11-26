@@ -14,7 +14,7 @@ namespace AquariumCiv.View
     /// The chronicle cards on screen (#75, Keeper's Glass in #166; chronicle-and-history §2, §7, spec §4): the peek in its own lane and
     /// one <see cref="GlassSheet"/> at 30 %, holding a <see cref="GlassCard"/>. All the logic is <see cref="CardStackModel"/>; this file only
     /// draws <see cref="CardStackModel.Face"/> and passes touches on. Order in the row: Back, Next, Show me, then the one primary at the
-    /// right (Give, Watch, Remember; Done on Also…). A story has no filled button, its headline leads. Long cards scroll inside the sheet
+    /// right (Watch, Remember; Done on Also…). A story has no filled button, its headline leads. Long cards scroll inside the sheet
     /// in whole lines. During Show me the sheet slides off so the place stays clear, and a bar in the tools' lane brings it back: at a tap,
     /// or when the echo is over (board S33Return). Stable names for tests and the tester agent: <c>cards-peek</c>, <c>cards-sheet</c>,
     /// <c>cards-next</c>, <c>cards-back</c>, <c>cards-skip</c>, <c>cards-showme</c>, <c>cards-action</c>, <c>cards-portrait-0/1</c>,
@@ -298,8 +298,6 @@ namespace AquariumCiv.View
             var recall = RecallPromptView.Instance;
             if (recall != null && recall.IsOpen) return true;
             if (PulseQuestionView.Instance != null && PulseQuestionView.Instance.IsOpen) return true; // #636
-            var tool = ShapingView.Instance;
-            if (tool != null && tool.WishArmed) return true;
             var sm = ShowMeDirector.Instance;
             if (sm != null && sm.Busy) return true;
             var fr = FirstRunView.Instance;
@@ -320,6 +318,7 @@ namespace AquariumCiv.View
         {
             if (on == barUp) return;
             barUp = on;
+            hud?.SetBarClear(on ? GameUiPanel.ToastOverStrip : 0f); // #563: a toast rides above the bar, never under it
             showBar.pickingMode = on ? PickingMode.Position : PickingMode.Ignore; // a leaving bar takes no taps
             if (on) GlassMotion.Show(showBar, GlassMotion.SlideOff, null, GlassMotion.SlideMs);
             else GlassMotion.Hide(showBar, GlassMotion.SlideOff, GlassMotion.SlideMs);
@@ -654,7 +653,7 @@ namespace AquariumCiv.View
             if (model != null && model.DilemmaShowMe())
             {
                 // The choice scene (#224) took it: the sheet slides off so the people can be touched, the bar keeps the ask.
-                showBar.Set(ChoiceNote, null); // the ask itself is said in the box, by the one who asks
+                showBar.Set(ChoiceSceneView.Instance != null ? ChoiceSceneView.Instance.AskLine : ChoiceNote, null); // #706: names the options; the ask itself is said in the box, by the one who asks
                 showingPlace = true;
                 choiceUp = true;
                 return;
@@ -692,11 +691,6 @@ namespace AquariumCiv.View
             if (face == null) return;
             switch (face.action)
             {
-                case CardAction.Give:
-                    var o = model.Give();
-                    if (!o.ok) { Sfx.Play(AquariumCiv.View.Shaping.ShapingShow.FailCue); break; } // the card says why
-                    ShapingView.Instance?.ArmWish(o.wish.id);
-                    break;
                 case CardAction.Remember:
                     int id = model.Remember();
                     // Their page in the book (#80), and until they have one, their card.
@@ -835,7 +829,7 @@ namespace AquariumCiv.View
             head.EnableInClassList("cards-head--alone", true);
             headline.AddToClassList("cards-ask");
             card.AddToClassList("cards-dilcard");
-            string words = f.dilemmaChosen < 0 ? v.question
+            string words = f.dilemmaChosen < 0 ? (string.IsNullOrEmpty(v.speaker) ? v.question : $"{v.speaker} asks: {v.question}")
                 : f.dilemmaLetThem ? $"The Keeper let the people decide. They chose {v.options[f.dilemmaChosen].label}."
                 : f.dilemmaLapsed ? $"The people chose {v.options[f.dilemmaChosen].label} themselves."
                 : $"The Keeper chose {v.options[f.dilemmaChosen].label}.";
@@ -861,7 +855,7 @@ namespace AquariumCiv.View
         }
 
         static string PlaceIcon(DilemmaView v, DilemmaOptionView o) =>
-            !string.IsNullOrEmpty(o.buildingType) ? "hill" : v.kind switch
+            !string.IsNullOrEmpty(o.icon) ? o.icon : !string.IsNullOrEmpty(o.buildingType) ? "hill" : v.kind switch
             {
                 DilemmaKind.Tradition => "scroll",
                 DilemmaKind.Strangers => "herd",
@@ -932,7 +926,6 @@ namespace AquariumCiv.View
             var who = sim.State.notables.Find(n => n.alive);
             switch (kind)
             {
-                case CardKind.Wish: sim.DebugForceWish(); break;
                 case CardKind.EraReady: sim.ForceEraReady(); break;
                 case CardKind.Relic: sim.DebugGiveRelic(RelicId.All[0]); break;
                 case CardKind.Legend: sim.DebugKillOldest(); break;

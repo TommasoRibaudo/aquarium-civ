@@ -1,0 +1,30 @@
+{
+ "name": "695-b57b-scarecrow",
+ "notes": "B57.b: two grown-ups and a kid make a scarecrow by the field's gate: the cross, the straw, the hat; they laugh; a bird lands on it.",
+ "animlab": {
+  "issue": 695
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(10.5f, false, 6);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return AquariumCiv.View.CampCheats.ToSeason(AquariumCiv.Life.Season.Spring);",
+   "return \"waiting for the season\";",
+   "return \"waiting for the village\";",
+   "return \"waiting for the village\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(10.5f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.Scarecrow());"
+  ],
+  "warm": 0.5,
+  "seconds": 14,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.4,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 42,
+  "lead": 1.5
+ }
+}

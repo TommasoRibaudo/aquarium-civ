@@ -3,7 +3,7 @@ using NUnit.Framework;
 
 namespace AquariumCiv.View.ShowMe.Tests
 {
-    /// <summary>#327 Option B: every spoken line goes to the one caption, only the first run's wish keeps its bubble; scene lines wait
+    /// <summary>#327 Option B: every spoken line goes to the one caption (#718: the first run's wish bubble is gone); scene lines wait
     /// for the word, ambient talk doesn't; the caption's "who" line. Pure: no Editor.</summary>
     public class LineRouteTests
     {
@@ -11,21 +11,15 @@ namespace AquariumCiv.View.ShowMe.Tests
         public void EverySpokenLineGoesToTheCaption()
         {
             foreach (LineKind k in Enum.GetValues(typeof(LineKind)))
-            {
-                if (k == LineKind.FirstRunWish) continue;
                 Assert.AreEqual(LineChannel.Caption, LineRoute.ChannelFor(k), k.ToString());
-            }
         }
-
-        [Test]
-        public void OnlyTheFirstRunsWishKeepsTheBubble() => Assert.AreEqual(LineChannel.Bubble, LineRoute.ChannelFor(LineKind.FirstRunWish));
 
         [Test]
         public void SceneLinesWaitAndAmbientTalkDoesNot()
         {
-            foreach (var k in new[] { LineKind.Relic, LineKind.Crumb, LineKind.Wish, LineKind.Echo, LineKind.Death, LineKind.Ask })
+            foreach (var k in new[] { LineKind.Relic, LineKind.Echo, LineKind.Death, LineKind.Ask })
                 Assert.IsTrue(LineRoute.Waits(k), k.ToString());
-            foreach (var k in new[] { LineKind.Ambient, LineKind.Want, LineKind.Tree, LineKind.FirstRunWish })
+            foreach (var k in new[] { LineKind.Ambient, LineKind.Want, LineKind.Tree })
                 Assert.IsFalse(LineRoute.Waits(k), k.ToString());
         }
 

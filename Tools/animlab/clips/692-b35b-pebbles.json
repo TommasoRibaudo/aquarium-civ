@@ -1,0 +1,25 @@
+{
+ "name": "692-b35b-pebbles",
+ "notes": "B35.b: a kid crouches by a boulder and stacks five pebbles on its top, each smaller, balancing each (the stack wobbles); on the fifth the hands come away slowly, then a cheer. (A second press of the cheat plays the topple.)",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.StackPebbles());"
+  ],
+  "warm": 0.5,
+  "seconds": 15,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.4,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

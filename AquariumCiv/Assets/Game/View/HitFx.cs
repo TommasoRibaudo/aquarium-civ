@@ -63,6 +63,12 @@ namespace AquariumCiv.View
 
         public static HitFx Instance { get; private set; }
 
+        /// <summary>#692 p3 (AnimLab): the camera the puffs are drawn for (pixel floors, outlines, facing); null = <see cref="Camera.main"/>. AnimLab's
+        /// close camera sets it and calls <see cref="Redraw"/> before each shot, so a puff's outline is sized for the shot, not the far game view.</summary>
+        public static Camera DrawCamera;
+        /// <summary>#692 p3: rebuild the puff mesh now for <see cref="DrawCamera"/> (AnimLab, before a render).</summary>
+        public void Redraw() => Draw(Now);
+
         /// <summary>After the glass, like the chatter marks' neighbours: the transparent queue's +2 (ShapingFx).</summary>
         const int Queue = 3002;
 
@@ -96,6 +102,19 @@ namespace AquariumCiv.View
         public int HitsSeen { get; private set; }
         public PuffKind LastKind { get; private set; }
         public int LastHitPuffs { get; private set; }
+        /// <summary>The live puffs now: kind, where (world), age in seconds and scale (probes, the cheat pass).</summary>
+        public string DebugLive()
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int s = 0; s < pool.SlotCount; s++)
+            {
+                var p = pool[s];
+                if (!p.live) continue;
+                if (sb.Length > 0) sb.Append("; ");
+                sb.Append($"{p.kind} at {p.origin.x:0.00},{p.origin.y:0.00},{p.origin.z:0.00} age {Now - p.start:0.00}s x{p.scale:0.00} on {p.ground}");
+            }
+            return sb.Length == 0 ? "no puffs" : sb.ToString();
+        }
         /// <summary>The renderer, for the draw-call count (tests): one.</summary>
         public MeshRenderer Renderer { get; private set; }
         /// <summary>The last frame's vertex count (tests).</summary>
@@ -219,6 +238,9 @@ namespace AquariumCiv.View
             if (style == DollStyle.Cheer && place is PlaceKind.Fire or PlaceKind.Green) return new HitAnswer { hasPuff = true, puff = PuffKind.Sparks, fire = true, gold = true };
             // ---- end #370 ----
             // #365 B9.c: the stick into the fire: its sparks float up; every third poke is bigger (the flare stand-in, as the thrown log's)
+            // sign-off 2026-11-14 (ChoreBeats): the armful of dry grass pushed into the fire flares it; the scraper's stroke drops shavings
+            if (style == DollStyle.FeedFire && place == PlaceKind.Fire) return new HitAnswer { hasPuff = true, puff = PuffKind.Sparks, fire = true, big = 1.5f };
+            if (style == DollStyle.ScrapeHide) return new HitAnswer { hasPuff = true, puff = PuffKind.Dust, big = 0.7f };
             if (style is DollStyle.PokeFire or DollStyle.PokeFireBig && place == PlaceKind.Fire) return new HitAnswer { hasPuff = true, puff = PuffKind.Sparks, fire = true, big = style == DollStyle.PokeFireBig ? 1.7f : 1f };
             switch (style)
             {
@@ -359,11 +381,17 @@ namespace AquariumCiv.View
 
         // ================================================================== spawning
 
+        /// <summary>#708: every ring or droplets puff asked for (world point, before the view check): the pond's fish dart from it (FishView).</summary>
+        public static event System.Action<PuffKind, Vector3> WaterPuff;
+
         bool Spawn(PuffKind kind, Vector3 at, Vector3 dir, float scale, in PuffOptions o, bool force)
         {
+            if (kind is PuffKind.Ring or PuffKind.Droplets) WaterPuff?.Invoke(kind, at);
             if (!force && !InView(at)) return false;
             if (kind == PuffKind.Sparks && o.fire) at += Vector3.up * 0.07f * ZoomScale; // look-fix: the fire's sparks start over the flames, not inside them
-            var puff = pool.Spawn(kind, at, dir, scale * Mathf.Max(ZoomScale, ViewBoost(at)), Now, unchecked(++seedCounter * 7919 + (int)kind * 104729), o);
+            float boost = Mathf.Max(ZoomScale, ViewBoost(at));
+            if (kind == PuffKind.Droplets) boost = Mathf.Min(boost, 1.5f); // the user 2026-11-15: a splash stays small, also from far off
+            var puff = pool.Spawn(kind, at, dir, scale * boost, Now, unchecked(++seedCounter * 7919 + (int)kind * 104729), o);
             puff.ground = GroundUnder(at);
             LastKind = kind;
             return true;
@@ -467,7 +495,7 @@ namespace AquariumCiv.View
 
         void Draw(double now)
         {
-            var cam = Camera.main;
+            var cam = DrawCamera != null ? DrawCamera : Camera.main;
             if (pool.Live == 0 || cam == null) { Hide(); VertsDrawn = 0; return; }
             BuildPalette();
             verts.Clear(); colors.Clear(); tris.Clear();
@@ -496,9 +524,11 @@ namespace AquariumCiv.View
                     var back = cam.transform.forward * Mathf.Max(0.002f, perPx * 0.5f); // the outline sits just behind the fill
                     if (b.shape == PuffShape.Ring)
                     {
-                        float line = Mathf.Max(HitFxMath.Line(b, age), perPx * 2f * Shrink(age, b.life));
-                        HitFxShapes.RingTris(size, line * 2.4f, pos + back, verts, tris); // a dark band under the pale ring
-                        for (int k = 0; k < HitFxShapes.RingSides * 2; k++) colors.Add(rim);
+                        // #692 p3 (the user's review: black discs): a thin pale ring, never filled, never dark. The line keeps 1.5 px but never
+                        // more than a quarter of the radius; a slightly bluer band just outside it, no dark outline.
+                        float line = HitFxMath.RingDrawLine(HitFxMath.Line(b, age), size, perPx, Shrink(age, b.life));
+                        HitFxShapes.RingTris(size + line * 0.5f, line * 1.8f, pos + back, verts, tris);
+                        for (int k = 0; k < HitFxShapes.RingSides * 2; k++) colors.Add(HitFxMath.RingBand(col));
                         HitFxShapes.RingTris(size, line, pos, verts, tris);
                         for (int k = 0; k < HitFxShapes.RingSides * 2; k++) colors.Add(col);
                         continue;
@@ -535,7 +565,7 @@ namespace AquariumCiv.View
             Upload();
         }
 
-        /// <summary>Visit loop: a brief white flash ring under every puff (about 3 frames) so the eye catches the moment, over a dark band.</summary>
+        /// <summary>Visit loop: a brief white flash ring under every puff (about 3 frames) so the eye catches the moment, over a soft band (PuffContrast.PopBand).</summary>
         void DrawPop(Camera cam, Puff p, float since)
         {
             var pos = p.origin;
@@ -546,7 +576,7 @@ namespace AquariumCiv.View
             if (r <= 0f) return;
             float line = r * 0.45f;
             var back = cam.transform.forward * Mathf.Max(0.002f, perPx * 0.5f);
-            AddPopRing(cam, r * 1.12f, line * 1.5f, pos + back * 1.5f, MeshBuilder.Linear(new Color(0.15f, 0.15f, 0.2f)));
+            AddPopRing(cam, r * 1.06f, line * PuffContrast.PopBandLine, pos + back * 1.5f, MeshBuilder.Linear(PuffContrast.PopBand(p.ground)));
             AddPopRing(cam, r, line, pos - back * 0.5f, MeshBuilder.Linear(Color.white));
         }
 

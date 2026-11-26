@@ -10,7 +10,7 @@ namespace AquariumCiv.View.Tests
 {
     public class MomentBeatsTests
     {
-        static readonly MomentGeometry Geo = new MomentGeometry { fireX = 0f, fireZ = 0.2f, glassX = 0f, glassZ = -1.95f, nx = 0f, nz = -1f, halfX = 3f, halfZ = 2.2f };
+        static readonly MomentGeometry Geo = new MomentGeometry { fireX = 0f, fireZ = 0.2f, glassX = 0f, glassZ = -1.95f, nx = 0f, nz = -1f, halfX = 3f, halfZ = AquariumCiv.Sim.Settle.Terrain.HZ, centreZ = AquariumCiv.Sim.Settle.Terrain.CZ }; // #658
 
         static MomentStagePlan Plan(MomentKind kind)
         {

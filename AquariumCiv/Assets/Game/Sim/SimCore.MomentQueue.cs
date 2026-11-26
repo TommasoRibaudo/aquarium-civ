@@ -69,7 +69,7 @@ namespace AquariumCiv.Sim
         public bool MomentHidesCard(ChronicleEntry e)
         {
             if (e == null || State.moments == null || State.moments.Count == 0) return false;
-            var m = MomentOfEntry(e.id);
+            var m = MomentOfEntry(HeldEntryOf(e)); // #722 (B80.d): the song's line is shown by its ritual's moment
             return m != null && m.state != HeldMomentState.Carded && !MomentRules.AlsoACard(m.kind);
         }
 
@@ -77,7 +77,7 @@ namespace AquariumCiv.Sim
         public bool MomentStillHeld(ChronicleEntry e)
         {
             if (e == null || State.moments == null || State.moments.Count == 0) return false;
-            var m = MomentOfEntry(e.id);
+            var m = MomentOfEntry(HeldEntryOf(e));
             return m != null && (m.state == HeldMomentState.Waiting || m.state == HeldMomentState.Playing) && !MomentRules.AlsoACard(m.kind);
         }
 
@@ -89,8 +89,18 @@ namespace AquariumCiv.Sim
             if (!Config.moments || e == null) return;
             if (MomentRules.KindOfLine(e.kind, out var kind))
             {
+                // B3 tester fixes (rituals never played on their own): a ritual is a held moment, and held moments "wait for the Keeper and play
+                // live" (decisions.md 2026-11-06, the visit loop). Away, it is queued too and waits; MomentStale cards it once its season is
+                // over (RitualHoldMonths), so a return within the season sees it played, a later one reads its line.
                 int a = e.notableId, b = e.otherNotableId;
                 if (kind == MomentKind.Newborn) b = FindNotable(e.notableId)?.parentId ?? -1; // the child, then the parent who holds them up
+                if (kind == MomentKind.Story && a < 0)
+                {   // #722 (3.3): the first snow with no kid has no one to stage: a card at once (it never takes a place in the queue)
+                    bool was = momentNoTrim; momentNoTrim = true;
+                    CardMoment(QueueMoment(kind, e, a, b), MomentCardReason.PeopleGone);
+                    momentNoTrim = was;
+                    return;
+                }
                 QueueMoment(kind, e, a, b);
                 return;
             }
@@ -151,6 +161,13 @@ namespace AquariumCiv.Sim
                     break;
                 case MomentKind.NewLeader:
                     if (Alive(m.personA) == null || (SeatOf(LeaderOf(State.era))?.holderId ?? -1) != m.personA) return MomentCardReason.PeopleGone;
+                    break;
+                case MomentKind.Ritual:
+                    if (age > MomentRules.RitualHoldMonths) return MomentCardReason.HeldTooLong; // #721: its season is over
+                    break;
+                case MomentKind.Story:
+                    if (age > MomentRules.StoryHoldMonths) return MomentCardReason.HeldTooLong; // #722
+                    if (m.personA >= 0 && Alive(m.personA) == null) return MomentCardReason.PeopleGone;
                     break;
             }
             return MomentCardReason.None;
@@ -410,6 +427,7 @@ namespace AquariumCiv.Sim
             {
                 // A cheat line is a real chronicle line (the history shows it), recorded without the hook so it isn't queued twice.
                 var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = 0.6f, notableId = x, otherNotableId = y };
+                e.text = LandWords(e.text); // #656/#677
                 State.chronicle.Add(e);
                 Chronicled?.Invoke(e);
                 return e;

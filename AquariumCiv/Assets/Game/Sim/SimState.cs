@@ -397,6 +397,7 @@ namespace AquariumCiv.Sim
         public List<int> founderIds = new(); // the notables who crossed to the next box
         public int boxIndex;                 // which box of the shelf this is (0 = the first; SimShelf.cs, #87)
         public FirstRunState firstRun = new(); // the first run's progress; inactive unless FirstRun.Begin ran (#94)
+        public NewStartState newStart = new(); // #656/#677: the carried stock, its set-down and the camp fire of a new living-land box (SimCore.NewStart.cs); an old save: off
         public HistoryState history = new(); // time-lapse and book records (SimCore.History.cs, #73)
         public CardLedger cards = new();     // which cards have been read, across kills (SimCore.CardLedger.cs, #75)
         public List<string> crowdNames = new(); // first names of the crowd, by crowd index (SimCore.Crowd.cs, #148); old saves fill it from the seed
@@ -408,7 +409,6 @@ namespace AquariumCiv.Sim
         public double dilemmaLastRaiseHours = -1e9; // #368: the clock hour the last choice was raised at (nothing yet: very long ago)
         public double clockHours;            // #368: real hours the box has run: live play adds what Advance gets, a catch-up adds the real hours away
         public int visitCount;               // #368: visits so far (an open after >= 15 minutes away; SimCore.BeginVisit)
-        public List<DilemmaLean> dilemmaLeans = new(); // the leans an answer left, 36 months each
         public List<DilemmaCallback> dilemmaCallbacks = new(); // scheduled callbacks (SimCore.DilemmaCallbacks.cs, #221)
         public List<string> customs = new(); // the box's customs, set by answers ("burial:stone"); read by the world and the book
         // #369: the ceremonies held for the Keeper and the director's pacing (SimCore.MomentQueue.cs). An old save loads with none.
@@ -418,8 +418,13 @@ namespace AquariumCiv.Sim
         public WelcomeMemo welcomeMemo = new(); // t3-welcome: the box at the last watched step, to tell what is new at the next open
         /// <summary>#589: how supper was settled last (SupperPick: 0 none, 1 one big pot, 2 a basket each) and the month (the view day) it was.</summary>
         public int supperPick; public long supperMonth;
+        /// <summary>#717: the teller the Keeper picked (or "Let them decide" did) for tonight's story (-1 none), the month (the view day)
+        /// it was picked and how they tell it (StoryManner: 0 slow, with all the voices; 1 short, for a laugh).</summary>
+        public int storyTellerId = -1; public long storyTellerMonth = -1; public int storyTellerManner;
+        public StoryMarks storyMarks = new(); // #722: what the story events left in the box (SimCore.StoryEvents.cs)
         public List<ConsequenceProp> consequenceProps = new(); // #371: the things the Keeper's choices left in the box
         public bool featherPoleSet; public float featherPoleX, featherPoleZ; // fb4 #566: the one feather pole's spot (SimCore.FeatherPole.cs); an old save has none until asked
+        public List<PoleFeather> poleFeathers = new(); // #692 (B31.a): the feathers tied on the pole after good events (SimCore.PoleFeathers.cs)
         public List<ApartGroup> apartGroups = new(); // strangers who live apart in the box (#231): not the settlement's people
 
         /// <summary>#603: months added before the calendar reads the season (SeasonCalendar). New boxes: 2 (they open in spring); a save without it: 0.</summary>

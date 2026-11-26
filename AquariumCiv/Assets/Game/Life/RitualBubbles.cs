@@ -159,6 +159,34 @@ namespace AquariumCiv.Life
             return Pick(cand);
         }
 
+        /// <summary>#722 (2.2, animation-specs B80.d): the singer's song at its ritual: <paramref name="bubbles"/> (the moment's own,
+        /// <see cref="ForHeldMoment"/>) with the first <see cref="MaxBubbleSeconds"/> the singer's alone (music notes over them, nobody else's
+        /// bubble then: they start the tune), and the last <see cref="MaxBubbleSeconds"/> music notes over everyone it can show (the singer
+        /// first, then the cast in order, at most <see cref="MaxAlive"/>: by the end everyone joins in). <paramref name="singerKey"/> not in the
+        /// cast: the bubbles as they were. Still wordless (#276): the song's name is on the caption only.</summary>
+        public static List<RitualBubble> SongFirst(List<RitualBubble> bubbles, HeldMomentScene sc, int singerKey)
+        {
+            if (sc?.plan == null || bubbles == null) return bubbles;
+            var members = sc.plan.members;
+            int si = members.FindIndex(m => m.key == singerKey);
+            if (si < 0) return bubbles;
+            var start = new ViewTime(sc.day, sc.start);
+            float Hour(float secs) { var t = LifeClock.Advance(start, secs); return t.day > sc.day ? 24f : t.hour; }
+            float len = Math.Max(sc.plan.Duration, MaxBubbleSeconds * 2f);
+            float a0 = Hour(0f), a1 = Hour(MaxBubbleSeconds), b0 = Hour(len - MaxBubbleSeconds), b1 = Hour(len);
+            PersonRef Ref(MomentMember m) => m.key > 0 ? PersonRef.Notable(m.key) : PersonRef.Crowd(-m.key - 1);
+            bool Over(RitualBubble b, float x0, float x1) => b.start < x1 - 1e-5f && b.end > x0 + 1e-5f;
+            var kept = new List<RitualBubble>();
+            foreach (var b in bubbles) if (!Over(b, a0, a1) && !Over(b, b0, b1)) kept.Add(b);
+            kept.Add(new RitualBubble { who = Ref(members[si]), symbol = RitualSymbol.Notes, start = a0, end = a1, role = RelicCast.Owner });
+            var order = new List<MomentMember> { members[si] };
+            foreach (var m in members) if (m != members[si]) order.Add(m);
+            for (int i = 0; i < order.Count && i < MaxAlive; i++)
+                kept.Add(new RitualBubble { who = Ref(order[i]), symbol = RitualSymbol.Notes, start = b0, end = b1, role = i == 0 ? RelicCast.Owner : RelicCast.Grown });
+            kept.Sort((x, y) => x.start != y.start ? x.start.CompareTo(y.start) : x.symbol.CompareTo(y.symbol));
+            return kept;
+        }
+
         static int Rank(RelicCast c) => c switch
         {
             RelicCast.Owner => 0, RelicCast.Second => 1, RelicCast.Holder => 1, RelicCast.Heir => 1,

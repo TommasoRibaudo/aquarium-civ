@@ -43,7 +43,7 @@ namespace AnimBench
         /// <summary>Moves that can close a loop: told once or held (a flinch, a held-up catch, a cheer, a bow).</summary>
         static readonly HashSet<DollStyle> EndStyles = new HashSet<DollStyle>
         {
-            DollStyle.Flinch, DollStyle.Peer, DollStyle.Knock, DollStyle.HoldUp, DollStyle.Bow, DollStyle.Freeze, DollStyle.Cheer, DollStyle.Wave,
+            DollStyle.Flinch, DollStyle.Knock, DollStyle.HoldUp, DollStyle.Bow, DollStyle.Freeze, DollStyle.Cheer, DollStyle.Wave,
             DollStyle.Laugh, DollStyle.PoseBig, DollStyle.HopBack,
         };
 

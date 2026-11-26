@@ -10,12 +10,12 @@ namespace AquariumCiv.Life
     /// and <see cref="SimCore.BeliefHalfNow"/>, #74) decides how they behave at the front glass:
     /// <list type="bullet">
     /// <item><b>Stage 1 (camp, a bit scared):</b> after a wipe 3–6 people stand a step back from the glass and look up, at
-    /// most once a view day; once the Sky Crumb fell, a few come most afternoons to look up where the bread came from.</item>
+    /// most once a view day.</item>
     /// <item><b>Stage 2 (village, play):</b> 1–3 kids most afternoons pressing their hands to the glass (after the Keeper
     /// Doll they wave at the doll first), a few adults sitting facing it at dusk; when you return the kids run to the glass to
     /// look for you.</item>
-    /// <item><b>Stage 3 (town, study):</b> the clever argue about "the wall" at it; after the Lens a scholar measures along it
-    /// most mornings, the Lens's scholar looks through it some evenings, and a scholar taps back when you tap.</item>
+    /// <item><b>Stage 3 (town, study):</b> the clever argue about "the wall" at it. (#718: the Lens, its visits and the
+    /// tap-back are gone.)</item>
     /// </list>
     /// The relic moments (<see cref="RelicMoments"/>) are live scenes the view starts when the sim finds a relic
     /// (<see cref="SimCore.RelicFound"/>). Everything is a hash of (seed, person, day): no sim dice, no sim writes. Walks to
@@ -41,6 +41,7 @@ namespace AquariumCiv.Life
         {
             double a = yawDegrees * Math.PI / 180.0;
             double dx = -Math.Sin(a), dz = -Math.Cos(a);
+            // a direction only, so the box's centre does not matter
             if (Math.Abs(dz) / Terrain.HZ >= Math.Abs(dx) / Terrain.HX) return dz < 0 ? 0 : 2;
             return dx > 0 ? 1 : 3;
         }
@@ -60,8 +61,7 @@ namespace AquariumCiv.Life
         public bool BeliefLaterSeen { get { Sync(); return beliefLater; } }
 
         /// <summary>
-        /// A gathering at the glass (§3 "Gathering"): stage 1, 3–6 people a step back looking up (after a wipe or the Sky
-        /// Crumb); stage 2 and 3, the kids run to it to look for you (after a return). Only people who can walk there at the
+        /// A gathering at the glass (§3 "Gathering"): stage 1, 3–6 people a step back looking up (after a wipe); stage 2 and 3, the kids run to it to look for you (after a return). Only people who can walk there at the
         /// walking pace come, at most 6. <see cref="React"/> starts one by itself (a wipe in stage 1, a return later), at most
         /// once a view day; <paramref name="force"/> (debug) ignores that. Returns how many come.
         /// </summary>
@@ -103,72 +103,8 @@ namespace AquariumCiv.Life
         }
 
         /// <summary>
-        /// Stage 3's tap-back (Choice 9): the Keeper tapped <paramref name="taps"/> times and the sim named the scholar who
-        /// taps back (<see cref="SimCore.KeeperTapped"/>, or <see cref="SimCore.DebugTapBack"/> from the panel; the view calls
-        /// the sim, then this). The scholar walks to the glass at the walking pace, knocks the same number of times
-        /// (<see cref="ActivityKind.TapBack"/>, <see cref="PersonActivity.count"/>), then writes it on a slate. False if the
-        /// scholar isn't in the box.
-        /// </summary>
-        public bool TapBack(ViewTime at, int scholarId, int taps)
-        {
-            Sync();
-            EnsureDay(at.day);
-            var p = Alive(scholarId);
-            if (p == null || taps <= 0) return false;
-            var glass = GlassPlace;
-            float len = WalkLen(StopPlace(p, at.hour), glass);
-            // From where they really stand (a relic moment may have taken them elsewhere), so they reach the glass before the
-            // knock begins instead of walking through it.
-            if (PositionAt(p.who, at, out float px, out float pz) && RouteFromPoint(px, pz, glass) is Poly here) len = Math.Max(len, here.len);
-            float walk = WalkSecs(len);
-            var t = at;
-            var st = new Staging { glass = glass };
-            var list = new List<Seg>(3);
-            if (walk > 0f)
-            {
-                var arrive = LifeClock.Advance(t, walk + 0.5f); // hurrying over at the walking pace, a look up, then the knocks
-                var s0 = Mk(ActivityKind.Gaze, t.hour, HourOf(at, arrive), glass, Prop.Slate, ActivitySource.Scene);
-                s0.faces = true;
-                list.Add(s0);
-                t = arrive;
-            }
-            var knocked = LifeClock.Advance(t, 1f + 0.5f * taps);
-            var s1 = Mk(ActivityKind.TapBack, HourOf(at, t), HourOf(at, knocked), glass, Prop.Slate, ActivitySource.Scene);
-            s1.faces = true; s1.count = taps;
-            list.Add(s1);
-            var written = LifeClock.Advance(knocked, 3f);
-            // The view day turns at midnight and drops the day's live scenes: a tap-back that can't finish before then would
-            // be credited and never seen (tester batch 2). Late at night nobody answers.
-            if (written.day > at.day) return false;
-            var s2 = Mk(ActivityKind.WriteDown, HourOf(at, knocked), HourOf(at, written), glass, Prop.Slate, ActivitySource.Scene);
-            s2.count = taps;
-            list.Add(s2);
-            st.segs[p.key] = list;
-            st.order.Add(p.key);
-            AddLive(SceneKind.TapBack, at, HourOf(at, written), st, p.key);
-            return true;
-        }
-
-        /// <summary>
-        /// The Keeper's knock is over (<paramref name="taps"/> taps): if the sim says someone taps back now (stage 3, the Lens),
-        /// the first scholar the planner can stage today knocks back, overriding what else they are doing, and only then the
-        /// sim credits it (the chronicle card, <see cref="SimCore.CreditTapBack"/>). Returns the scholar's id, or −1 when
-        /// nobody answers (not yet believed, no scholar in the box, or too late in the day to finish before midnight).
-        /// </summary>
-        public int AnswerKnock(ViewTime at, int taps)
-        {
-            foreach (int id in sim.TapBackCandidates(taps))
-                if (TapBack(at, id, taps))
-                {
-                    sim.CreditTapBack(id, taps);
-                    return id;
-                }
-            return -1;
-        }
-
-        /// <summary>
         /// Stage a relic's moment now (§1; <see cref="RelicMoments"/>): the view calls it when <see cref="SimCore.RelicFound"/>
-        /// fires while it watches (the Lens best at dusk: <see cref="RelicMomentDef.preferredHour"/>), the debug panel any
+        /// fires while it watches (at its hour, if it has one: <see cref="RelicMomentDef.preferredHour"/>), the debug panel any
         /// time. The principals come from the relic (owner, holder), the rest are whoever can walk there at the walking pace.
         /// Null when the relic isn't found or nobody can play it.
         /// </summary>
@@ -195,13 +131,6 @@ namespace AquariumCiv.Life
             }
             Cast(st, RelicCast.Owner, owner, at, used);
             if (relicId == RelicId.LeftSandal) Cast(st, heir ? RelicCast.Heir : RelicCast.Holder, holder, at, used);
-            if (relicId == RelicId.SkyCrumb)
-            {
-                foreach (var p in people)
-                    if (p.n != null && p.Grown && p.n.trait == "the brave" && !used.Contains(p.key)) { second = p; break; }
-                second ??= Nearest(st.spot, at, used, q => q.Grown);
-                Cast(st, RelicCast.Second, second, at, used);
-            }
             if (relicId == RelicId.LeftSandal)
             {
                 second = Nearest(st.spot, at, used, q => q.Grown);
@@ -210,7 +139,6 @@ namespace AquariumCiv.Life
             // The crowd: nearest first.
             CastCrowd(st, RelicCast.Kids, at, used, def.maxKids, q => q.stage == LifeStage.Kid);
             CastCrowd(st, RelicCast.Grown, at, used, def.maxGrown, q => q.Grown);
-            CastCrowd(st, RelicCast.Queue, at, used, def.maxQueue, q => q.stage != LifeStage.Baby);
             if (st.segs.Count == 0) return null;
             AddLive(SceneKind.Relic, at, end, st);
             return st.Info(at.day);
@@ -276,7 +204,6 @@ namespace AquariumCiv.Life
         bool beliefLater;
         readonly bool[] relicHere = new bool[5];
         readonly List<Person> scholars = new List<Person>();
-        Person lensKeeper;
         long gatheredDay = long.MinValue;
 
         void SnapshotGlass()
@@ -286,8 +213,6 @@ namespace AquariumCiv.Life
             for (int i = 0; i < RelicId.All.Length; i++) relicHere[i] = sim.FindRelic(RelicId.All[i]) != null;
             scholars.Clear();
             foreach (var n in sim.Scholars) if (byKey.TryGetValue(n.id, out var p)) scholars.Add(p);
-            var lens = sim.FindRelic(RelicId.Lens);
-            lensKeeper = lens != null && lens.Found ? Alive(lens.holderId) : null;
         }
 
         bool RelicFoundHere(string id) { int i = Array.IndexOf(RelicId.All, id); return i >= 0 && relicHere[i] && sim.HasRelic(id); }
@@ -314,16 +239,8 @@ namespace AquariumCiv.Life
             kids.Sort((a, b) => H(a.key, day, 960).CompareTo(H(b.key, day, 960)));
             int Count(int max, int salt) => 1 + (int)(H(5, day, salt) % (uint)max);
 
-            if (belief == 1)
-            {
-                // Early: they only come after a wipe (GatherAtGlass). Later: "Maybe it'll drop another one."
-                if (!beliefLater || R(5, day, 950) >= 0.5f) return;
-                int n = Count(3, 970);
-                for (int i = 0; i < kids.Count && i < n; i++) Visit(kids[i], ActivityKind.GazeWary, 15f, 15.8f);
-                foreach (var p in people)
-                    if (p.stage == LifeStage.Elder && R(p.key, day, 971) < 0.3f) { Visit(p, ActivityKind.GazeWary, 15f, 15.8f); break; }
-                return;
-            }
+            // Stage 1: they only come after a wipe (GatherAtGlass). (#718: the Sky Crumb's later visits are gone.)
+            if (belief == 1) return;
             // Stage 2 and 3: the kids most afternoons (stage 3 less: "kids still play").
             if (R(5, day, 951) < (belief == 2 ? 0.7f : 0.4f))
             {
@@ -355,27 +272,15 @@ namespace AquariumCiv.Life
                 }
                 return;
             }
-            // Stage 3: the scholars, on work days.
+            // Stage 3: the scholars, on work days. "The wall is not sky. It is a thing." The clever argue about it at the glass.
+            // (#718: the Lens's visits are gone.)
             if (d.rest || scholars.Count == 0) return;
-            if (!beliefLater)
-            {
-                // "The wall is not sky. It is a thing." The clever argue about it at the glass.
-                if (R(5, day, 953) >= 0.4f) return;
-                var a = scholars[(int)(H(5, day, 975) % (uint)scholars.Count)];
-                Person b = null;
-                foreach (var s in scholars) if (s != a && s.Grown) { b = s; break; }
-                Visit(a, b != null ? ActivityKind.Argue : ActivityKind.Study, 9f, 10f, Prop.Notebook, b);
-                if (b != null) Visit(b, ActivityKind.Argue, 9f, 10f, Prop.Notebook, a);
-                return;
-            }
-            // The Lens is up: a scholar measures along the glass most mornings; the Lens's keeper looks through it some evenings.
-            if (R(5, day, 954) < 0.7f)
-            {
-                var m = scholars[(int)(H(5, day, 976) % (uint)scholars.Count)];
-                if (m.Grown) Visit(m, ActivityKind.Measure, 8f, 10f, Prop.MeasuringRod);
-            }
-            if (lensKeeper != null && lensKeeper.Grown && !EveningBusy(lensKeeper) && R(5, day, 955) < 0.4f && !d.glass.ContainsKey(lensKeeper.key))
-                Visit(lensKeeper, ActivityKind.LookThroughLens, 18.4f, 19.2f, Prop.Lens, null, false, RelicPlace(RelicId.Lens));
+            if (R(5, day, 953) >= 0.4f) return;
+            var a = scholars[(int)(H(5, day, 975) % (uint)scholars.Count)];
+            Person b = null;
+            foreach (var s in scholars) if (s != a && s.Grown) { b = s; break; }
+            Visit(a, b != null ? ActivityKind.Argue : ActivityKind.Study, 9f, 10f, Prop.Notebook, b);
+            if (b != null) Visit(b, ActivityKind.Argue, 9f, 10f, Prop.Notebook, a);
         }
 
         /// <summary>Lays this person's glass visits over their day (a plain stay: Stitch walks them there at the walking pace,
@@ -511,15 +416,6 @@ namespace AquariumCiv.Life
                 }
                 if (!target.IsNone) { cur = target; moved = true; }
                 var place = target.IsNone ? (moved ? cur : Place.None) : target;
-                if (beat.cast == RelicCast.Queue && beat.kind == ActivityKind.LookThroughLens && turns > 0)
-                {
-                    // One turn each: wait, look (lean back, laugh: the loop's steps), then watch the next ones.
-                    float len = (b1 - b0) / turns, t0 = b0 + turn * len, t1 = t0 + len;
-                    if (t0 > b0) list.Add(StagedSeg(ActivityKind.Queue, b0, t0, place, Prop.None, false, false));
-                    list.Add(StagedSeg(beat.kind, t0, t1, place, beat.prop, beat.facesGlass, false));
-                    if (t1 < b1) list.Add(StagedSeg(ActivityKind.Watch, t1, b1, place, Prop.None, false, false));
-                    continue;
-                }
                 list.Add(StagedSeg(beat.kind, b0, b1, place, beat.prop, beat.facesGlass, beat.carry));
             }
             return any ? list : null;
@@ -606,7 +502,7 @@ namespace AquariumCiv.Life
         // ======================================================================== echo of a relic card ("Show me")
 
         /// <summary>A relic card's echo: its owner at the relic doing its gesture (tasting, dancing in the mask, by the doll, the
-        /// lopsided dance, at the lens), where they stand if they can't get there at the walking pace in time.</summary>
+        /// lopsided dance), where they stand if they can't get there at the walking pace in time.</summary>
         bool EchoRelic(ChronicleEntry e, ViewTime at, float seconds)
         {
             var r = sim.FindRelic(e.relicId);
@@ -615,11 +511,9 @@ namespace AquariumCiv.Life
             if (p == null) return false;
             var (kind, prop, faces) = e.relicId switch
             {
-                RelicId.SkyCrumb => (ActivityKind.Taste, Prop.Crumb, false),
                 RelicId.FestivalMask => (ActivityKind.Dance, Prop.Mask, true),
                 RelicId.KeeperDoll => (ActivityKind.Point, Prop.None, false),
                 RelicId.LeftSandal => (ActivityKind.LopsidedDance, Prop.Sandal, false),
-                RelicId.Lens => (ActivityKind.LookThroughLens, Prop.Lens, false),
                 _ => (ActivityKind.Point, Prop.None, false),
             };
             float end = EndAfter(at, Math.Max(3f, Math.Min(5f, seconds)));

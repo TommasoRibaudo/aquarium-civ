@@ -34,6 +34,8 @@ namespace AquariumCiv.Game
         public const string TimelapseOpen = "timelapse_open"; // prompted
         public const string TimelapseScrub = "timelapse_scrub"; // from_year, to_year
         public const string TimelapsePlay = "timelapse_play";
+        /// <summary>#647: photo mode on or off (it hides the whole UI), with whether the first run was on.</summary>
+        public const string PhotoMode = "photo_mode";
         public const string PinTap = "pin_tap";               // person
         public const string Snapshot = "snapshot";
         public const string BookPage = "book_page";           // page

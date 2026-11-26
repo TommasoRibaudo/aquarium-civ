@@ -10,7 +10,7 @@ namespace AquariumCiv.View
         Saw, Lift, Talk, Argue, Speech, Haggle, Wave, Cheer, Point, LookUp, Hop, Mourn, Swim, Bell, Bless, Reach, Stretch,
         Hang, Look,
         // #92: at the glass and in the relic moments
-        LookUpWary, PressHands, WaveSmall, Flinch, Peek, HopBack, Laugh, Measure, Knock, Write, Peer, Freeze, Bow, PoseBig,
+        LookUpWary, PressHands, WaveSmall, Flinch, Peek, HopBack, Laugh, Measure, Knock, Write, Freeze, Bow, PoseBig,
         Lopsided, Taste, HoldUp,
         // P8 #266: stamping in a puddle
         Stomp,
@@ -28,6 +28,14 @@ namespace AquariumCiv.View
         EatMeal, PokeFire, PokeFireBig,
         // fb4 #566: hands together, a small bow, at the feather pole
         Pray,
+        // sign-off 2026-11-14 (#651/#677, View/Beats/ChoreBeats.cs): the camp's hand work
+        FeedFire, ScrapeHide, SortBasket, Mend,
+        // #700 (B27, View/Beats/RackMoveBeats.cs): the rack taken down and set up again; the pose is laid over by RackMoveBeats.Apply
+        RackMove,
+        // #705 (B28, View/Beats/LaundryBeats.cs): hanging out the washing, taking it in
+        HangWash, TakeInWash,
+        // B76 (View/Beats/TellerBeats.cs): the Keeper's pick telling tonight's story (the pose is laid over by TellerBeats; the unpicked teller keeps Speech)
+        Tell,
     }
 
     /// <summary>
@@ -40,6 +48,9 @@ namespace AquariumCiv.View
     {
         /// <summary>Offset of the feet in the doll's own frame (x right, y up, z back), adult units (scaled by the doll).</summary>
         public Vector3 offset;
+        /// <summary>B3 tester fixes: a lift onto a seat in box units, NOT scaled by the doll (a kid's 0.68 scale sank kids into the stump: a
+        /// seat's height is the thing's, whoever sits on it).</summary>
+        public float lift;
         public float yaw, lean, roll, squash;
         public Vector3 armL, armR;
         public bool extend, hidden, lying;
@@ -74,9 +85,12 @@ namespace AquariumCiv.View
             ActivityKind.Play or ActivityKind.Snowball => DollStyle.Hop, // #358: Play is a play group's (KidPlayDirector); Hop is what a kid out of one shows
             ActivityKind.Toddle => DollStyle.Toddle, ActivityKind.Dance => DollStyle.RingDance, // #358
             ActivityKind.SweepStep or ActivityKind.Sweep => DollStyle.Sweep,
-            ActivityKind.HangWashing or ActivityKind.HangFish => DollStyle.Hang, // #543
+            ActivityKind.HangFish => DollStyle.Hang, // #543
+            ActivityKind.HangWashing => DollStyle.HangWash, ActivityKind.TakeInWashing => DollStyle.TakeInWash, // #705 (B28)
             ActivityKind.TakeDownFish => DollStyle.Lift, // #543
             ActivityKind.Pray => DollStyle.Pray, // fb4 #566
+            ActivityKind.MoveRack => DollStyle.RackMove, // #700
+            ActivityKind.FeedFire => DollStyle.FeedFire, ActivityKind.ScrapeHide => DollStyle.ScrapeHide, // sign-off 2026-11-14 (ChoreBeats)
             ActivityKind.ChopKindling or ActivityKind.Chop or ActivityKind.CutStone => DollStyle.Chop,
             ActivityKind.Hammer or ActivityKind.Repair => DollStyle.Hammer,
             ActivityKind.Saw => DollStyle.Saw,
@@ -106,10 +120,8 @@ namespace AquariumCiv.View
             ActivityKind.HopBack => DollStyle.HopBack,
             ActivityKind.LaughPoint => DollStyle.Laugh,
             ActivityKind.Measure => DollStyle.Measure,
-            ActivityKind.TapBack => DollStyle.Knock,
             ActivityKind.WriteDown => DollStyle.Write,
-            ActivityKind.LookThroughLens => DollStyle.Peer,
-            ActivityKind.TurnLens or ActivityKind.Poke or ActivityKind.Give => DollStyle.Point,
+            ActivityKind.Poke or ActivityKind.Give => DollStyle.Point,
             ActivityKind.Freeze => DollStyle.Freeze,
             ActivityKind.Bow => DollStyle.Bow,
             ActivityKind.CopyPose => DollStyle.PoseBig,
@@ -159,6 +171,27 @@ namespace AquariumCiv.View
         /// the arm overhead, down with it level). Before, the blade trailed: the hoe was raised blade-back, the axe struck edge-up.
         /// Striking tools also tip forward from the arm (<see cref="StrikeTip"/>), so they land on the ground or block in front
         /// rather than going on down the arm into the ground (the hoe's blade ended ~0.1 u under the soil on the hit).</summary>
+        /// <summary>#684: the axe's stroke ends this high (u over the ground, the doll's own scale): where it bites a trunk, and at the
+        /// chopping block's top (0.05). It struck the ground (tip at about -0.03) before, short of the tree.</summary>
+        public const float ChopHeight = 0.06f;
+        /// <summary>#684: the arm's lowest angle in the axe's stroke (degrees), which puts the blade at <see cref="ChopHeight"/> on the hit.</summary>
+        public const float ChopLow = 52f;
+
+        /// <summary>#684: where the axe's blade lands on the hit, from the doll's root: <see cref="ChopReach"/> u away, <see cref="ChopSide"/>
+        /// degrees round to the right-arm side of straight ahead (measured over the stroke's hit frames, ToolGripTests).</summary>
+        public const float ChopReach = 0.204f, ChopSide = 18.8f, ChopBite = 0.02f;
+
+        /// <summary>#684: where a woodcutter stands at a tree (box-local x, z), at <paramref name="angle"/> round the trunk, and the point
+        /// they face, so the axe's blade lands on the trunk's axis side, <see cref="ChopBite"/> into it, at <see cref="ChopHeight"/>.</summary>
+        public static Vector2 ChopStand(Vector2 tree, float angle, out Vector2 face)
+        {
+            var stand = tree + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * (ChopReach + ChopBite);
+            float toTree = angle + Mathf.PI; // the way from the stand to the trunk, as atan2(z, x)
+            float front = toTree - ChopSide * Mathf.Deg2Rad; // turned so the blade (that much to the right) points at the trunk
+            face = stand + new Vector2(Mathf.Cos(front), Mathf.Sin(front));
+            return stand;
+        }
+
         public static Quaternion ToolGrip(PropKind kind) => Quaternion.Euler(StrikeTip(kind), 0f, 0f) * Quaternion.Euler(180f, 0f, 0f);
 
         /// <summary>#401: degrees a striking tool's handle leans forward of the arm while it is swung (the fist turns the tool out).
@@ -266,7 +299,7 @@ namespace AquariumCiv.View
                     bool hammer = style == DollStyle.Hammer;
                     float period = (hammer ? 0.75f : 1.15f) / pace;
                     float u = Frac(t / period);
-                    float top = hammer ? 120f : 165f, low = hammer ? 50f : 40f;
+                    float top = hammer ? 120f : 165f, low = hammer ? 50f : ChopLow; // #684: the axe bites the trunk at ChopHeight, not the ground
                     float a = u < 0.62f ? Smooth(low + 5f, top, u / 0.62f) : u < 0.76f ? Mathf.Lerp(top, low, (u - 0.62f) / 0.14f) : Mathf.Lerp(low, low + 5f, (u - 0.76f) / 0.24f);
                     p.armR = new Vector3(a, 0, 8f);
                     p.armL = new Vector3(hammer ? 45f : 30f, 0, -12f);
@@ -331,6 +364,15 @@ namespace AquariumCiv.View
                     p.lean = -2f;
                     break;
                 }
+
+                // sign-off 2026-11-14 (#651/#677): the camp's hand work, told on what you can see (ChoreBeats)
+                case DollStyle.HangWash: LaundryBeats.Hang(ref p, since, count); break; // #705: count = the line's cloths
+                case DollStyle.TakeInWash: LaundryBeats.TakeIn(ref p, since, count); break;
+                case DollStyle.FeedFire: ChoreBeats.Feed(ref p, ChoreBeats.Clock(ChoreBeats.FeedBeat, t, pace)); break;
+                case DollStyle.ScrapeHide: ChoreBeats.Scrape(ref p, ChoreBeats.Clock(ChoreBeats.ScrapeBeat, t, pace)); break;
+                case DollStyle.SortBasket: ChoreBeats.Sort(ref p, ChoreBeats.Clock(ChoreBeats.SortBeat, t, pace)); break;
+                case DollStyle.Mend: ChoreBeats.Mend(ref p, ChoreBeats.Clock(ChoreBeats.MendBeat, t, pace)); break;
+                case DollStyle.RackMove: break; // #700: RackMoveBeats.Apply lays the beat over a rest pose (it needs the plan)
 
                 case DollStyle.Stir:
                     p.extend = hasProp;
@@ -607,16 +649,6 @@ namespace AquariumCiv.View
                     p.armL = new Vector3(70f, 0, -6f);
                     p.armR = new Vector3(65f + w * 6f, w * 10f, 6f);
                     p.lean = 14f;
-                    break;
-                }
-
-                case DollStyle.Peer:
-                {
-                    // Look through the lens, lean back startled, then laugh (the queue's turn, 1.5).
-                    float u = Mathf.Clamp01(progress);
-                    if (u < 0.5f) { p.lean = 16f; p.armL = new Vector3(70f, 0, -8f); p.armR = new Vector3(70f, 0, 8f); }
-                    else if (u < 0.7f) { p.lean = -16f; p.offset.z = 0.03f; p.armL = new Vector3(60f, 0, -40f); p.armR = new Vector3(60f, 0, 40f); }
-                    else { float w = Mathf.Abs(Mathf.Sin(t * 9f)); p.offset.y = w * 0.012f; p.lean = -6f; p.armL = new Vector3(20f, 0, -30f); p.armR = new Vector3(20f, 0, 30f); p.roll = Mathf.Sin(t * 9f) * 3f; }
                     break;
                 }
 

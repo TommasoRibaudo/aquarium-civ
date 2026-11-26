@@ -29,6 +29,13 @@ namespace AquariumCiv.Sim.Eco
         /// <summary>The water table (terrain height units), its peak so far, and the pond's level (-1000 = no pond yet).</summary>
         public float table, tablePeak, pondLevel = -1000f;
         public float soaked;            // water the Keeper's mist has sent down since the last step
+        /// <summary>#687: the water the table took since the last season step (the monthly soaks and the strokes that fed the pond; the
+        /// season's cap holds over it), and the monthly soaks done since then (0 in a run stepped by seasons only: the season step then
+        /// soaks the old way). Both 0 in an old save.</summary>
+        public float soakTaken;
+        public int soakMonths;
+        /// <summary>#687, not saved: all the water the table has taken since this state was loaded (the paired-run totals read it).</summary>
+        [NonSerialized] public double soakedIn;
         public float rabbits, birds;
         /// <summary>#282: the cells where rabbit tracks show (chosen once, at the meadow's edge, when the tracks come), the cell
         /// the first rabbit hops in at (-1 = none yet), whether the view has played that arrival, and rabbits caught so far.</summary>
@@ -36,6 +43,8 @@ namespace AquariumCiv.Sim.Eco
         public int rabbitArrivalCell = -1;
         public bool rabbitArrivalSeen;
         public int rabbitsCaught;
+        /// <summary>#676: the view day a hunt last brought a rabbit home (-1 never): the camp pot makes rabbit stew that day and the next.</summary>
+        public long rabbitCatchDay = -1;
         /// <summary>#283: hides drying by the fire (one per catch; #284 turns them into tents and takes them with TakeHides), all hides ever
         /// taken, and the hunt resolver's mark: on view day <see cref="huntDay"/> the first <see cref="huntDone"/> hunts are settled.</summary>
         public int hidesDrying, hidesTotal;
@@ -71,6 +80,21 @@ namespace AquariumCiv.Sim.Eco
         /// <summary>#418: the placed thicket's radius (box units) round <see cref="thicketA"/>; 0 = no placed thicket. thicketB is no longer
         /// set (one thicket per box, placed-life spec §5.1): it stays in the save so an old one loads.</summary>
         public float thicketRadius;
+        /// <summary>#728 (landscaping.md 8.2): the berry thickets, in the order they were placed (up to <see cref="EcoTuning.thicketMax"/>). The first is
+        /// the thicket jar's; every further one is an earned bush (#726). <see cref="thicketA"/> / <see cref="thicketRadius"/> stay in step with the
+        /// first, and a save from before the list (one thicket in those two fields) is read as a one-thicket list.</summary>
+        public List<Thicket> thickets = new List<Thicket>();
+        /// <summary>#709 (B71): the one nest, in a bush of a thicket. An old save has none (built = false: no nest yet).</summary>
+        public Nest nest = new Nest();
+
+        /// <summary>#726 (landscaping.md §8.1, decision 2026-11-14): what the Keeper has earned to plant. <see cref="seedsPouch"/> seeds (each
+        /// plants a normal tree seedling, #727) and <see cref="bushesPouch"/> bushes (each plants a small thicket, #728), at most
+        /// <see cref="EcoTuning.landscapePouchCap"/> waiting each. <see cref="seedSteps"/> / <see cref="bushSteps"/> count the civ steps
+        /// already paid out to each counter, <see cref="peakPeople"/> the most people, <see cref="peakKinds"/> the most kinds of building and <see cref="peakTrees"/> the most grown trees the box ever had. A save from before has all zero:
+        /// the first month pays what the civ's size owes, up to the cap.</summary>
+        public int seedsPouch, bushesPouch, seedSteps, bushSteps, peakPeople, peakKinds, peakTrees;
+        /// <summary>#730: the game month the history last said a corner was cleared (-1 never): one line a month, however many plants come out.</summary>
+        public long clearedLineMonth = -1;
 
         /// <summary>#417 the life jar (placed-life spec §2, §9): one entry per <see cref="LifeSpecies"/>, keyed by name so adding a
         /// species never breaks a save. <see cref="jarOn"/> is false in a save from before the jar: the model migrates it once
@@ -161,6 +185,19 @@ namespace AquariumCiv.Sim.Eco
         }
 
         public bool Reached(string key) => milestoneKeys.Contains(key);
+    }
+
+    /// <summary>#728: one berry thicket, a disc round a placed cell (a ragged edge, see EcoModel.Thickets). Saved.</summary>
+    [Serializable]
+    public class Thicket
+    {
+        /// <summary>The site cell it was placed on (its centre).</summary>
+        public int cell = -1;
+        /// <summary>Its disc radius now (box units). #729 lets it shrink as the box holds more thickets.</summary>
+        public float radius;
+        /// <summary>#730: bushes the Keeper plucked out of this thicket: its target is lower by this many (a plucked bush does not grow back; the
+        /// pluck means "make room"). [est: the other choice was a short memory of the cleared cell, then regrowth.]</summary>
+        public int trim;
     }
 
     /// <summary>#437: what became of a wolf kill: the ravens circle it (Open), the wolves ate it, or the people took the meat (choice 6.3).</summary>

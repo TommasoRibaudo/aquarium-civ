@@ -55,6 +55,10 @@ namespace AquariumCiv.Sim
     /// <summary>Game hours (real hours at the default pace) a notable has been the player's pin.</summary>
     [Serializable] public class PinTime { public int notableId; public float hours; }
 
+    /// <summary>#669: the first month a thing with no building or placing record of its own was seen standing live (the fish rack,
+    /// the woodpile, the hide frame). The replay hides it before that month. Observes only.</summary>
+    [Serializable] public class ThingSince { public string kind; public long month; }
+
     /// <summary>The history records (#73, chronicle-and-history.md section 6): what the time-lapse and the book need that the
     /// live state no longer shows. Everything here is write-only for the sim: nothing reads it back into the economy.</summary>
     [Serializable]
@@ -65,6 +69,7 @@ namespace AquariumCiv.Sim
         public List<ShapeRec> shapes = new();
         public List<PathStep> paths = new();
         public int lastPathYear = -1;
+        public List<ThingSince> things = new();  // #669: when each standing thing was first seen live
         public List<LandStep> land = new();      // #287: the living land per year (Sim/Replay/LandRecords.cs); empty with the ecology off
         public int lastLandYear = -1;
         public List<RoleTerm> roleTerms = new();
@@ -125,6 +130,23 @@ namespace AquariumCiv.Sim
 
         HistoryState Hist => State.history ??= new HistoryState();
 
+        /// <summary>#669: the month a thing (a kind the views name: "rack", "stash", "frame") was first seen standing, -1 if it never was.
+        /// A box saved before this record has none until the thing is next drawn live, so the replay hides it before then.</summary>
+        public long ThingSince(string kind)
+        {
+            var l = State.history?.things;
+            if (l == null) return -1;
+            foreach (var t in l) if (t.kind == kind) return t.month;
+            return -1;
+        }
+
+        /// <summary>#669: a view drew this thing live: records the month once (the sim's own month, never a replay's).</summary>
+        public void NoteThing(string kind)
+        {
+            if (ThingSince(kind) >= 0) return;
+            (Hist.things ??= new List<ThingSince>()).Add(new ThingSince { kind = kind, month = State.month });
+        }
+
         /// <summary>End of every month (and once at founding): records what changed. Prunes once a year.</summary>
         public void HistoryStep()
         {
@@ -178,22 +200,24 @@ namespace AquariumCiv.Sim
             long from = (int)era < Hist.eraStarts.Count ? Hist.eraStarts[(int)era] : 0;
             long to = (int)era + 1 < Hist.eraStarts.Count ? Hist.eraStarts[(int)era + 1] : long.MaxValue;
             var top = s.chronicle
-                .Where(e => e.month >= from && e.month < to && e.salience >= 0.5f && !ChapterSkips(e.kind) && e.kind != "era_festival" && e.kind != "era_cleared")
+                .Where(e => e.month >= from && e.month < to && e.salience >= 0.5f && !ChapterSkips(e.kind) && e.kind != "era_festival" && e.kind != "era_cleared"
+                            && Array.IndexOf(DroppedStoryKinds, e.kind) < 0) // #715: an old save's dropped kinds never title an era
                 .OrderByDescending(e => e.salience).ThenBy(e => e.month).ThenBy(e => e.id).FirstOrDefault();
             string noun = EraNoun(era);
             string fallback = $"The {char.ToUpperInvariant(noun[0])}{noun.Substring(1)} Years";
             if (top == null) return fallback;
             string relic = top.relicId switch
             {
-                RelicId.SkyCrumb => "the Sky Bread", RelicId.FestivalMask => "the Festival Mask", RelicId.KeeperDoll => "the Keeper Doll",
-                RelicId.LeftSandal => "the Lost Sandal", RelicId.Lens => "the Great Eye-Glass", _ => null,
+                // #718: no era is titled by the Sky Crumb or the Lens (an old save's written title stays)
+                RelicId.FestivalMask => "the Festival Mask", RelicId.KeeperDoll => "the Keeper Doll", RelicId.LeftSandal => "the Lost Sandal", _ => null,
             };
             if (relic != null) return $"The Years of {relic}";
             string thing = top.kind switch
             {
-                "keeper" => "the Keeper's Hand", "storm" => "the Great Storm", "drought" => "the Dry Summer", "bumper" => "the Full Barns",
-                "lean_winter" => "the Hungry Winter", "snow" => "the Deep Snow", "fog" => "the Long Fog", "strange_light" => "the Strange Light",
-                "rainbow" => "the Rainbow", "festival" or "anniversary" => "the Feast", "sheep" => "the Wandering Sheep", "ducks" => "the Ducks",
+                // #715: no titles from the dropped kinds (storm, drought, bumper, fog, strange light, rainbow, sheep, ducks); titles an
+                // old save already wrote stay as they are (they are stored when the era ends)
+                "keeper" => "the Keeper's Hand", "lean_winter" => "the Hungry Winter", "snow" => "the Deep Snow",
+                "festival" or "anniversary" => "the Feast",
                 "peak-ready" => "the Full Glass", "sweepers" => "the Sweepers", "milestone" => "the Growing Crowd",
                 _ => null,
             };

@@ -1,0 +1,24 @@
+{
+ "name": "692-b32g-old-one",
+ "notes": "B32.g: the old one's slow bent walk to the tree, the sit against the trunk, dozing; a kid brings a flower and sits beside them, a pat on the head; their grown kid pulls them up and walks them home.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(15.0f, 2);",
+   "return AquariumCiv.View.CampCheats.GrowTree();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TreeOld());"
+  ],
+  "warm": 0.5,
+  "seconds": 26,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.8,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

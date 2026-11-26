@@ -39,7 +39,7 @@ namespace AquariumCiv.View
                 if (!any) break;
             }
             x = Mathf.Clamp(x, -Land.HX + 0.1f, Land.HX - 0.1f);
-            z = Mathf.Clamp(z, -Land.HZ + 0.1f, Land.HZ - 0.1f);
+            z = Land.ClampZ(z, 0.1f);
             return moved;
         }
 
@@ -243,6 +243,7 @@ namespace AquariumCiv.View
                     }
                 }
                 var dayPose = Field.Sample(id, t, hour);
+                if (Time.unscaledTime < grazeUntil) { var g = grazeAt + new Vector2(Mathf.Cos(id * 2.3f), Mathf.Sin(id * 2.3f)) * (0.12f + 0.05f * (id % 3)); dayPose.x = g.x; dayPose.z = g.y; dayPose.act = DeerAct.Graze; } // #692 part 4 cheat
                 if (HuntHolds(s, pv, ref dayPose, out bool hide)) { if (hide) { s.doll.SetActive(false); continue; } }
                 Step(sim, s, dayPose, dt, (float)t, hour);
             }
@@ -259,7 +260,7 @@ namespace AquariumCiv.View
             refreshT -= dt;
             if (refreshT > 0f && fieldKey != int.MinValue) return;
             refreshT = 0.8f;
-            int key = (int)(sim.State.month / 3) * 7919 + sim.EcoDeerHome * 31 + sim.EcoDeerStags * 7 + box.TreeSpots.Count;
+            int key = (int)(sim.State.month / 3) * 7919 + sim.EcoDeerHome * 31 + sim.EcoDeerStags * 7 + box.TreeSpots.Count + sim.EcoDeerGroundKey() * 13; // #699: a new tent changes it
             if (key == fieldKey) return;
             fieldKey = key;
             sim.EcoDeerRefresh(Field);
@@ -290,7 +291,9 @@ namespace AquariumCiv.View
                 float d = (new Vector2(px[i], pz[i]) - at2).magnitude;
                 if (d < near) { near = d; who = new Vector2(px[i], pz[i]); }
             }
-            if (s.boltT < 0f && s.alertT < 0f && near < AlertRadius && !s.off) { s.alertT = 0f; s.cause = who; }
+            bool calm = Time.unscaledTime < grazeUntil; // #692 part 4: the cheats' herd is not shy of the camp (only a look-up or a knock moves it)
+            if (calm) s.off = false;
+            if (!calm && s.boltT < 0f && s.alertT < 0f && near < AlertRadius && !s.off) { s.alertT = 0f; s.cause = who; }
             Vector2 goal = new(dx, dz);
             float speed = WalkSpeed;
             bool bolting = false;
@@ -307,7 +310,7 @@ namespace AquariumCiv.View
                 if (s.alertT >= AlertSeconds)
                 {
                     s.alertT = -1f;
-                    if (near < ShyRadius)
+                    if (near < ShyRadius && !calm)
                     {   // walk off a little, away from them
                         var away = (at2 - who); if (away.sqrMagnitude < 1e-4f) away = Vector2.right;
                         var to = at2 + away.normalized * WalkOff;
@@ -333,6 +336,7 @@ namespace AquariumCiv.View
             {
                 float step = Mathf.Min(dist, Mathf.Max(speed, day.act == DeerAct.Walk ? DeerHerd.WalkSpeed * 1.2f : speed) * dt);
                 at2 += dv / dist * step;
+                { float sx = at2.x, sz = at2.y; Field.Steer(s.cur.x, s.cur.z, ref sx, ref sz, s.id); at2 = new Vector2(sx, sz); } // #699: round the fire and the tents
                 float want = Mathf.Atan2(dv.x, dv.y) * Mathf.Rad2Deg;
                 s.yaw = Mathf.MoveTowardsAngle(s.yaw, want, (bolting ? 540f : 200f) * dt);
             }
@@ -462,6 +466,67 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Is deer <paramref name="id"/> a hunt's target being held now (tests)?</summary>
+        /// <summary>#699 cheat: deer 0 stands <paramref name="out"/> from the camp's fire on one side and walks to the other, straight through it
+        /// (it should go round). False with no camp or no deer. <paramref name="fireX"/>/<paramref name="fireZ"/>: box-local.</summary>
+        public bool DebugAcrossTheFire(float fireX, float fireZ, float outDist = 1.3f)
+        {
+            foreach (var s in slots.Values)
+            {
+                if (s.doll == null || !s.doll.go.activeSelf) continue;
+                s.cur = box.land.OnGround(fireX - outDist, fireZ); s.yaw = 90f;
+                s.off = true; s.offTo = new Vector2(fireX + outDist, fireZ); s.clearT = -30f; s.alertT = -1f; s.boltT = -1f;
+                return true;
+            }
+            return false;
+        }
+
+        // ---------------------------------------------------------------- #692 part 4 (B38): the herd as the camp's uses see it
+        float grazeUntil = -1f; Vector2 grazeAt;
+
+        /// <summary>B38: the shown deer grazing calmly (not bolting, alert or walked off) nearest <paramref name="from"/> within <paramref name="reach"/>,
+        /// and the middle of those. False when none.</summary>
+        public bool HerdNear(Vector2 from, float reach, out Vector2 nearest, out Vector2 middle)
+        {
+            nearest = middle = default; float bd = reach; var sum = Vector2.zero; int n = 0;
+            foreach (var s in slots.Values)
+            {
+                if (s.doll == null || !s.doll.go.activeSelf || s.boltT >= 0f || s.knockT >= 0f || s.alertT >= 0f || s.off) continue;
+                var p = new Vector2(s.cur.x, s.cur.z);
+                float d = (p - from).magnitude;
+                if (d > reach) continue;
+                sum += p; n++;
+                if (d < bd) { bd = d; nearest = p; }
+            }
+            if (n == 0) return false;
+            middle = sum / n;
+            return true;
+        }
+
+        /// <summary>B38.a: the doe nearest <paramref name="cause"/> looks up at it (the alert), then grazes on. Its id, or −1.</summary>
+        public int LookUpOne(Vector2 cause)
+        {
+            Slot best = null; float bd = float.MaxValue;
+            foreach (var s in slots.Values)
+            {
+                if (s.doll == null || !s.doll.go.activeSelf || s.stag || s.boltT >= 0f || s.knockT >= 0f) continue;
+                float d = (new Vector2(s.cur.x, s.cur.z) - cause).sqrMagnitude;
+                if (d < bd) { bd = d; best = s; }
+            }
+            if (best == null) foreach (var s in slots.Values) if (s.doll != null && s.doll.go.activeSelf && s.boltT < 0f) { best = s; break; }
+            if (best == null) return -1;
+            best.alertT = 0f; best.cause = cause;
+            return best.id;
+        }
+
+        /// <summary>B38's cheat: the herd walks over and grazes round <paramref name="at"/> (box-local) for <paramref name="seconds"/>.</summary>
+        public string DebugGrazeAt(Vector2 at, float seconds)
+        {
+            grazeAt = at; grazeUntil = Time.unscaledTime + seconds;
+            foreach (var s in slots.Values) { s.off = false; s.alertT = -1f; if (s.boltT < 0f && s.knockT < 0f) s.cur = box.land.OnGround(at.x + Mathf.Cos(s.id * 2.3f) * 0.15f, at.y + Mathf.Sin(s.id * 2.3f) * 0.15f); }
+            return $"{Shown} deer graze at ({at.x:0.00}, {at.y:0.00}) for {seconds:0} s";
+        }
+        public void StopGrazeHold() => grazeUntil = -1f;
+
         public bool IsHuntTarget(int id) { foreach (var p in hunts) if (!p.white && p.targetId == id) return true; return false; }
 
         /// <summary>Where a shown deer stands now (box-local), by id. False when not shown.</summary>

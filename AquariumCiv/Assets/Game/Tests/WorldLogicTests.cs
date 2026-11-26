@@ -31,7 +31,7 @@ namespace AquariumCiv.Tests
             {
                 var c = sim.BuildingCardOf(b.id);
                 Assert.IsNotNull(c);
-                Assert.AreEqual((int)(b.foundedMonth / SimConfig.MonthsPerYear), c.year);
+                Assert.AreEqual(SimCore.YearNo(sim.BuiltMonthOf(b)), c.year); // years count from 1 (#689: the camp's things read as built at the village)
                 Assert.IsNotEmpty(c.title);
                 StringAssert.StartsWith("Built by", c.builderLine);
                 if (c.builderId >= 0) Assert.IsNotNull(sim.FindNotable(c.builderId), "a named builder is a real notable");
@@ -112,22 +112,6 @@ namespace AquariumCiv.Tests
         }
 
         // ---------- #147: the label ----------
-        [Test]
-        public void TheCrumbsShelfTextNamesTheRealShaping()
-        {
-            var sim = Aged(9, 3, false);
-            var r = new Relic { id = RelicId.SkyCrumb, foundMonth = 1, cause = SimCore.NudgeKind.Herd };
-            sim.State.relics.Add(r);
-            string herd = sim.RelicLabel(RelicId.SkyCrumb);
-            StringAssert.Contains("sent the herd", herd);
-            StringAssert.DoesNotContain("made the trees", herd);
-            r.cause = SimCore.NudgeKind.Rain;
-            StringAssert.Contains("made rain", sim.RelicLabel(RelicId.SkyCrumb));
-            r.cause = "";
-            StringAssert.Contains("shaped the land", sim.RelicLabel(RelicId.SkyCrumb)); // old saves and carried crumbs
-            StringAssert.Contains("fed us", sim.RelicLabel(RelicId.SkyCrumb));           // what it did for the people
-        }
-
         // ---------- #154 ----------
         [Test]
         public void StallsFillWithStockAndAnEmptyStockIsBare()

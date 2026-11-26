@@ -40,7 +40,7 @@ namespace AquariumCiv.Sim
     public enum CardTone { Good, Neutral, Sad }
 
     /// <summary>The card looks of §2.1 ("Also…" is <see cref="ReturnStack.also"/>).</summary>
-    public enum CardKind { Story, Keeper, Wish, Relic, Legend, EraReady, Dilemma }
+    public enum CardKind { Story, Keeper, Relic, Legend, EraReady, Dilemma }
 
     /// <summary>One card on return: one entry, or several that share a thread (merged, Choice 2). Not saved.</summary>
     public sealed class ChronicleCard
@@ -132,15 +132,19 @@ namespace AquariumCiv.Sim
             ["wish"] = (CardTone.Good, "wish"), ["dilemma"] = (CardTone.Neutral, "dilemma"), ["relic"] = (CardTone.Good, "relic"),
             ["tapback"] = (CardTone.Good, "keeper"), // a scholar taps back (SimCore.Relics.cs, #74)
             ["coming_of_age"] = (CardTone.Neutral, "hidden"),
+            ["story_marks_year"] = (CardTone.Good, "hidden"), // #722: later couples' marks are History only
         };
 
         /// <summary>Good, neutral or sad, by story kind (§2.2: from the table, never the text). Unknown kinds are neutral.</summary>
         public static CardTone ToneOf(string kind) =>
-            KindTable.TryGetValue(kind ?? "", out var k) ? k.tone : kind != null && (kind.StartsWith("role_") || kind.StartsWith("term_")) ? CardTone.Good : CardTone.Neutral;
+            KindTable.TryGetValue(kind ?? "", out var k) ? k.tone : kind != null && (kind.StartsWith("role_") || kind.StartsWith("term_") || kind.StartsWith("ritual_") || kind.StartsWith("story_")) ? CardTone.Good : CardTone.Neutral;
 
         /// <summary>The kind group: cards of the same group already chosen cost −0.15 each. "hidden" is never a card.</summary>
         public static string GroupOf(string kind) =>
-            KindTable.TryGetValue(kind ?? "", out var k) ? k.group : kind == null ? "other" : kind.StartsWith("role_") ? "role" : kind.StartsWith("term_") ? "office" : "other";
+            KindTable.TryGetValue(kind ?? "", out var k) ? k.group : kind == null ? "other" : kind.StartsWith("role_") ? "role" : kind.StartsWith("term_") ? "office"
+            : kind.StartsWith("ritual_") ? (Array.IndexOf(RitualKind.All, kind.Substring(7)) >= 0 ? "custom" : "hidden") // #721: a ritual is a card the first time only
+            : StoryEvent.OfKind(kind) != null ? "story" // #722: a story event not watched is a card
+            : "other";
 
         /// <summary>§2.2 step 1: never a card: came of age, job changes under 0.5.</summary>
         public static bool ShownAsCard(ChronicleEntry e) =>
@@ -196,10 +200,8 @@ namespace AquariumCiv.Sim
             var era = cards.Where(c => c.kind == CardKind.EraReady).OrderByDescending(c => c.month).FirstOrDefault();
             if (era != null) chosen.Add(era);
             var dilemma = cards.Where(c => c.kind == CardKind.Dilemma).OrderByDescending(c => c.score).FirstOrDefault();
-            if (dilemma != null && chosen.Count < stack.cap) chosen.Add(dilemma); // shares the wish slot: never both
-            var wish = cards.Where(c => c.kind == CardKind.Wish).OrderByDescending(c => c.score).FirstOrDefault();
-            if (wish != null && chosen.Count < stack.cap) chosen.Add(wish);
-            var pool = cards.Where(c => !chosen.Contains(c) && c.kind != CardKind.Wish && c.kind != CardKind.Dilemma && c.kind != CardKind.EraReady).ToList();
+            if (dilemma != null && chosen.Count < stack.cap) chosen.Add(dilemma);
+            var pool = cards.Where(c => !chosen.Contains(c) && c.kind != CardKind.Dilemma && c.kind != CardKind.EraReady).ToList();
             while (chosen.Count < stack.cap && pool.Count > 0)
             {
                 ChronicleCard best = null;
@@ -216,12 +218,12 @@ namespace AquariumCiv.Sim
             // Good news first (decided): if any good-news card exists, one always makes the stack. It takes the place of the
             // lowest-scoring sad card, else the lowest neutral one, never era ready or the wish; if those two fill the cap,
             // it comes on top of it.
-            if (!chosen.Any(c => c.tone == CardTone.Good && c.kind != CardKind.EraReady && c.kind != CardKind.Wish && c.kind != CardKind.Dilemma))
+            if (!chosen.Any(c => c.tone == CardTone.Good && c.kind != CardKind.EraReady && c.kind != CardKind.Dilemma))
             {
                 var good = pool.Where(c => c.tone == CardTone.Good).OrderByDescending(c => c.score).ThenByDescending(c => c.month).FirstOrDefault();
                 if (good != null)
                 {
-                    var swappable = chosen.Where(c => c.kind != CardKind.EraReady && c.kind != CardKind.Wish && c.kind != CardKind.Dilemma).ToList();
+                    var swappable = chosen.Where(c => c.kind != CardKind.EraReady && c.kind != CardKind.Dilemma).ToList();
                     var drop = swappable.Where(c => c.tone == CardTone.Sad).OrderBy(c => c.score).FirstOrDefault()
                                ?? swappable.OrderBy(c => c.score).FirstOrDefault();
                     if (drop != null) chosen.Remove(drop);
@@ -238,21 +240,20 @@ namespace AquariumCiv.Sim
                 chosen.Add(end);
                 pool.Remove(end);
                 if (chosen.Count <= stack.cap) continue;
-                var drop = chosen.Where(c => c != end && c != cb && c.kind != CardKind.EraReady && c.kind != CardKind.Wish && c.kind != CardKind.Dilemma && c.lead.kind != CallbackKind)
+                var drop = chosen.Where(c => c != end && c != cb && c.kind != CardKind.EraReady && c.kind != CardKind.Dilemma && c.lead.kind != CallbackKind)
                     .OrderBy(c => c.score).FirstOrDefault();
                 chosen.Remove(drop ?? cb);
             }
 
             // Order (good news first, decided).
             static IEnumerable<ChronicleCard> ByScore(IEnumerable<ChronicleCard> xs) => xs.OrderByDescending(c => c.score).ThenBy(c => c.month);
-            var rest = chosen.Where(c => c.kind != CardKind.EraReady && c.kind != CardKind.Wish && c.kind != CardKind.Dilemma).ToList();
+            var rest = chosen.Where(c => c.kind != CardKind.EraReady && c.kind != CardKind.Dilemma).ToList();
             var headline = ByScore(rest.Where(c => c.tone == CardTone.Good)).FirstOrDefault();
             stack.cards.AddRange(chosen.Where(c => c.kind == CardKind.EraReady));
             stack.cards.AddRange(chosen.Where(c => c.kind == CardKind.Dilemma)); // after the era card, before the rest
             if (headline != null) stack.cards.Add(headline);
             stack.cards.AddRange(ByScore(rest.Where(c => c != headline && c.tone != CardTone.Sad)));
             stack.cards.AddRange(ByScore(rest.Where(c => c.tone == CardTone.Sad)));
-            stack.cards.AddRange(chosen.Where(c => c.kind == CardKind.Wish));
             // #312: a callback sits after its dilemma's result card, wherever the scores put it.
             foreach (var cb in stack.cards.Where(c => c.lead.kind == CallbackKind).ToList())
             {
@@ -335,7 +336,6 @@ namespace AquariumCiv.Sim
             switch (GroupOf(e.kind))
             {
                 case "legend": return CardKind.Legend;
-                case "wish": return CardKind.Wish;
                 case "dilemma": return CardKind.Dilemma;
                 case "relic": return CardKind.Relic;
             }
@@ -366,7 +366,6 @@ namespace AquariumCiv.Sim
                 "lost" when e.relicId == RelicId.LeftSandal => $"{A} lost a sandal",
                 "lost" => $"{A} got lost in the hills",
                 "relic" => RelicHeadline(e),
-                "wish" when e.notableId >= 0 => $"{A} has a wish",
                 CallbackKind => CallbackHeadline(e.text),
                 "dilemma_result" when e.text != null && e.text.Length <= 60 => e.text, // #240: the whole line, full stop and all
                 _ => null,
@@ -704,28 +703,14 @@ namespace AquariumCiv.Sim
                 break;
             }
 
-            // A gift not yet answered.
-            var gift = s.nudges.Where(n => !n.credited && s.month - n.month < NudgeMonths).OrderBy(n => n.id).FirstOrDefault();
-            if (gift != null)
-                yield return (ThreadSource.Gift, gift.kind switch
-                {
-                    NudgeKind.Grove => "People keep walking out to look at the new trees.",
-                    NudgeKind.Channel => "Everyone keeps going down to look at the new water.",
-                    // #61: every gift had the rain's line ("the gatherers", in a town, about an outcrop).
-                    NudgeKind.Herd => "People keep walking out to look at the new animals.",
-                    NudgeKind.Lamp => "Everyone keeps stopping to stand in the new light.",
-                    NudgeKind.Outcrop => "The craftsfolk keep going out to tap the new rock.",
-                    NudgeKind.Spring => "Everyone keeps going down to taste the new spring.",
-                    NudgeKind.DyeMeadow => "People keep walking through the new flowers, looking thoughtful.",
-                    _ => s.era == Era.Camp ? "The gatherers keep checking the wet ground." : "The farmers keep checking the wet ground.",
-                }, -1, -1, gift.id, "");
+            // #718: no gift teaser (shaping-only text, deleted)
 
             // A rivalry.
             foreach (var a in adults)
             {
                 var b = Alive(a.rivalId);
                 if (b == null || b.id < a.id || b.rivalId != a.id) continue;
-                yield return (ThreadSource.Rivalry, $"{a.FullName} and {b.FullName} aren't speaking again.", a.id, b.id, -1, "");
+                yield return (ThreadSource.Rivalry, $"{a.FullName} and {b.FullName} aren't speaking{(QuarrelledBefore(a.id, b.id) ? " again" : "")}.", a.id, b.id, -1, ""); // #715
                 break;
             }
 
@@ -733,51 +718,23 @@ namespace AquariumCiv.Sim
             string office = OfficeTeaser(out var holder);
             if (office != null) yield return (ThreadSource.Office, office, holder.id, -1, -1, "");
 
-            // Nothing pending: a slice of life in the people's own words for their glass stage (§5). Takes turns.
-            // Stage 3 says "glass" only once the Lens is set up (decisions 2026-10-29, #58; #61): its early lines are the wall.
-            var lines = GlassStage == 3 && !GlassNudged ? EarlyTownSliceLines : SliceLines[GlassStage - 1];
-            int told = s.threads.Count(t => t.source == ThreadSource.Slice);
-            var kid = adults.Count == 0 ? null : adults[told % adults.Count];
-            string line = lines[told % lines.Length].Replace("{0}", kid?.FullName ?? "Someone").Replace("{1}", seat);
-            yield return (ThreadSource.Slice, line, kid?.id ?? -1, -1, -1, "");
+            // #715 (research 21): nothing pending, no teaser. The 16 "slice of life" lines are gone: a teaser that nothing pays off
+            // is a broken promise, and the close uses its fixed line instead.
         }
 
-        /// <summary>Slices of life by glass stage (decisions 2026-10-29: camp, a bit scared of the glass; village, they play
-        /// with it and look for you; town, the scholars study it). Never "glass" before the town (Choice 10).</summary>
-        static readonly string[][] SliceLines =
+        /// <summary>#715: these two have quarrelled before (an earlier rivalry between them, or they made up once): the teaser may
+        /// say "again". No dice.</summary>
+        bool QuarrelledBefore(int a, int b)
         {
-            new[]
+            int rows = 0;
+            foreach (var e in State.chronicle)
             {
-                "The kids are building a raft.",
-                "The children dared each other to touch the edge of the sky. Nobody did.",
-                "{0} keeps looking up at the bright sky, then hurrying back to the {1}.",
-                "Someone heard a hum from the sky last night. Everyone slept close to the {1}.",
-            },
-            new[]
-            {
-                "The kids keep waving at the window, in case the Keeper waves back.",
-                "{0} swears the Keeper smiled at the new roof.",
-                "The children are playing Keeper-says at the {1}. The Keeper always wins.",
-                "The elders say the Keeper likes the new mill. Nobody knows how they know.",
-            },
-            new[]
-            {
-                "The astronomers have asked for a bigger lens.",
-                "{0} measured the glass again. It is still there, and still glass.",
-                "The scholars argue at the {1}: one Keeper, or many?",
-                "{0} has drawn a map with four edges. Each says: here be glass.",
-            },
-        };
-
-        /// <summary>Stage 3 before the Lens (relics-and-glass-voice.md line bank 29–31): the scholars study "the wall"; nobody
-        /// says glass, and there is no lens to ask a bigger one of.</summary>
-        static readonly string[] EarlyTownSliceLines =
-        {
-            "The scholars say the wall is not sky. It is a thing, and things can be measured.",
-            "{0} wants to measure the Keeper. The priest wants them to ask first.",
-            "The scholars argue at the {1}: one Keeper, or many?",
-            "{0} says if there's a room out there, there's a market out there.",
-        };
+                if (!(e.notableId == a && e.otherNotableId == b || e.notableId == b && e.otherNotableId == a)) continue;
+                if (e.kind == "reconcile") return true;
+                if (e.kind == "rivalry" && ++rows > 1) return true;
+            }
+            return false;
+        }
 
         // ---------- the glass stage ----------
         /// <summary>How the people understand the glass (§5.2, decisions 2026-10-29): 1 = the sky wall (camp: they gather

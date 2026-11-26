@@ -54,8 +54,66 @@ namespace AquariumCiv.Sim
         /// <summary>#385, #418: how much a site cell is in the placed berry thicket (0..1; 0 everywhere before it is placed). 0 off the ecology.</summary>
         public float BushThicketZone(int cell) => EcologyOn ? EcoM.ThicketZone(cell) : 0f;
 
-        /// <summary>#418: how many bushes the thicket holds (the cap the count settles at). 0 off the ecology.</summary>
+        /// <summary>#418, #728: how many bushes the thickets hold together when full (the cap the count settles at). 0 off the ecology.</summary>
         public int BushCap => EcologyOn ? EcoM.BushCap : 0;
+
+        /// <summary>#728: how many thickets stand (0 before the first is placed, or off the ecology).</summary>
+        public int BushThicketCount => EcologyOn ? EcoM.ThicketCount : 0;
+
+        /// <summary>#728: the thickets, in the order they were placed: where (a site cell), how wide (box units) and how many bushes each holds now.</summary>
+        public void BushThickets(List<(int cell, float radius, int bushes)> into)
+        {
+            into.Clear();
+            if (!EcologyOn) return;
+            foreach (var th in EcoM.ThicketList) into.Add((th.cell, th.radius, EcoM.BushesIn(th)));
+        }
+
+        /// <summary>#728: why a thicket can't be placed on this cell (the people's plain words, as the refused tap shows), or null when the ground is fine.</summary>
+        public string ThicketRefusal(int cell) => EcologyOn ? EcoM.ThicketRefusal(cell, SettledCell) : "Not here";
+
+        /// <summary>#664: which rule refuses a thicket on this cell (<see cref="EcoModel.WhyNotThicket"/>); OffLand off the ecology.</summary>
+        public ThicketRefusalReason WhyNotThicket(int cell) => EcologyOn ? EcoM.WhyNotThicket(cell, SettledCell) : ThicketRefusalReason.OffLand;
+
+        /// <summary>#728: an earned bush is in the pouch, the first thicket is down and nothing here refuses (the glow for the bush in hand).</summary>
+        public bool CanPlaceBush(int cell) => EcologyOn && BushesInPouch > 0 && LifeIsPlaced(LifeSpecies.Thicket) && EcoM.ThicketRefusal(cell, SettledCell) == null;
+
+        /// <summary>#728: the Keeper places an earned bush: it founds a small thicket at the cell. False, and nothing is spent, when the pouch
+        /// is empty, the first thicket is not down, or the ground refuses (<see cref="ThicketRefusal"/>).</summary>
+        public bool PlaceBush(int cell)
+        {
+            if (!EcologyOn || !EcoM.PlaceEarnedBush(cell, State.month, SettledCell)) return false;
+            CountKeeperAction(KeeperAction.Place, false);
+            if (Config.settle) Settlement.SyncEco(); // the new thicket's ground is reserved at once
+            EcoTell();
+            return true;
+        }
+
+        /// <summary>Debug ("place a thicket"): a bush from the pouch (given if the pouch is empty) founds a thicket at the valid cell nearest the
+        /// camp's fire, through the same path as the Keeper's tap. The first thicket is placed first when none stands. The cell, or -1 (no valid ground).</summary>
+        public int DebugPlaceThicketNearCamp()
+        {
+            if (!EcologyOn) return -1;
+            if (!LifeIsPlaced(LifeSpecies.Thicket)) return DebugPlaceNearCamp(LifeSpecies.Thicket);
+            var m = EcoM;
+            try
+            {
+                int c = m.NearestPlaceCell(LifeSpecies.Thicket, SettledCell);
+                if (c < 0) { m.cheatBareGround = true; c = m.NearestPlaceCell(LifeSpecies.Thicket, SettledCell); } // a barren box still gets its bushes (as the other placing cheats)
+                if (c < 0) return -1;
+                if (BushesInPouch == 0) DebugGiveBushes(1);
+                return PlaceBush(c) ? c : -1;
+            }
+            finally { m.cheatBareGround = false; }
+        }
+
+        /// <summary>Debug ("crowd"): <paramref name="n"/> more thickets by the camp, one earned bush each (#729: every thicket's target falls, the
+        /// big ones shed a bush a season). How many were placed.</summary>
+        public int DebugCrowdThickets(int n)
+        {
+            int made = 0;
+            for (int i = 0; i < n; i++) if (DebugPlaceThicketNearCamp() >= 0) made++; else break;
+            return made;
+        }
 
         /// <summary>The bush nearest the camp's green, or -1: the first bush chosen when the land has none yet marked.</summary>
         int NearestBushToCamp()

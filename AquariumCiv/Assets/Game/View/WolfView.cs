@@ -29,7 +29,7 @@ namespace AquariumCiv.View
         /// <summary>Speeds (box units a second): the trot (the catch-up), a little over the sim's leg trot.</summary>
         public const float TrotSpeed = 0.2f;
         /// <summary>The most wolves drawn (the sim's cap).</summary>
-        public const int Cap = 8;
+        public static int Cap => AquariumCiv.Sim.AnimalBudget.Wolves;
 
         public WolfPack.Field Field { get; } = new WolfPack.Field();
 
@@ -89,8 +89,12 @@ namespace AquariumCiv.View
             return v != null ? v : b.gameObject.AddComponent<WolfView>();
         }
 
+        /// <summary>#694: the wolf lent to CampLife for a camp scene (the guard, the drive-off, the kids held close): hidden here while it is
+        /// drawn there, so the pack is never drawn twice (−1: none lent).</summary>
+        public static int LentId = -1;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() => HandOff.Clear();
+        static void ResetStatics() { HandOff.Clear(); LentId = -1; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -173,6 +177,7 @@ namespace AquariumCiv.View
                     if (id < slots.Count) { slots[id].doll.Destroy(); slots[id] = s0; } else slots.Add(s0);
                 }
                 var s = slots[id];
+                if (id == LentId) { s.doll.SetActive(false); s.placed = false; acts.Append('L'); continue; } // #694: drawn by CampLife now
                 var pose = Field.Sample(id, t, day, hour, people);
                 if (Howling && !pup) { pose.act = WolfAct.Howl; pose.visible = true; }
                 else if (pose.act == WolfAct.Howl && pose.visible) duskHowl = true;

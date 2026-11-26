@@ -66,14 +66,21 @@ namespace AquariumCiv.View
         {
             var sim = Sim;
             var pv = People;
-            if (sim == null || !sim.EcologyOn || box == null || box.Root == null || pv == null || pv.Planner == null) { Hide(); return; }
+            if (sim == null || !sim.EcologyOn || box == null || box.Root == null || pv == null || pv.Planner == null) { Hide("no sim"); return; }
             if (rootSeen != box.Root) { holder = null; rack = null; key = 0; rootSeen = box.Root; }
             var planner = pv.Planner;
-            planner.ResolveFishChain(pv.Now);
-            planner.ResolveEggGathers(pv.Now); // #574: the egg gather's take is settled here, once per gather (same per-frame hook)
-            if (!planner.TryGetFishRack(pv.Now, out var look)) { Hide(); return; }
-            bool wanted = sim.FishingWater || look.Fish > 0 || sim.FishInBasket > 0 || sim.FishInPile > 0;
-            if (!wanted) { Hide(); return; }
+            if (!ReplayGate.Active) // #669: a replay moves nothing in the sim
+            {
+                planner.ResolveFishChain(pv.Now);
+                planner.ResolveEggGathers(pv.Now); // #574: the egg gather's take is settled here, once per gather (same per-frame hook)
+            }
+            if (planner.RackMoveCovers(RackKind.Fish, pv.Now)) { Hide("rack move"); return; } // #700 (B27): the take-down and set-up beat draws it (RackMoveView)
+            if (!planner.TryGetFishRack(pv.Now, out var look)) { Hide("no rack"); return; }
+            // #692 p5 retakes (the rack popped out of view while the last fish went to the pile, and back once they lay on it): a rack that has
+            // stood stays standing, empty, for as long as the camp keeps it
+            bool wanted = sim.FishingWater || look.Fish > 0 || sim.FishInBasket > 0 || sim.FishInPile > 0 || sim.ThingSince("rack") >= 0;
+            if (!wanted) { Hide("not wanted"); return; }
+            if (!ReplayGate.Shows(sim.ThingSince("rack"))) { Hide("replay"); return; } // #669: not built yet in the replayed month
             int k = 17;
             k = k * 31 + look.fresh; k = k * 31 + look.dry;
             k = k * 31 + Mathf.RoundToInt(look.x * 200f); k = k * 31 + Mathf.RoundToInt(look.z * 200f);
@@ -85,11 +92,17 @@ namespace AquariumCiv.View
                 key = k;
             }
             rack.SetActive(true);
+            HideWhy = null;
+            if (!ReplayGate.Active) sim.NoteThing("rack"); // #669: the month it was first seen standing
             FreshShown = look.fresh; DryShown = look.dry;
         }
 
-        void Hide()
+        /// <summary>#692 p5 retakes: why the rack is hidden now (null: shown), for probes.</summary>
+        public string HideWhy { get; private set; }
+
+        void Hide(string why)
         {
+            HideWhy = why;
             if (rack != null) rack.SetActive(false);
             FreshShown = DryShown = 0;
         }

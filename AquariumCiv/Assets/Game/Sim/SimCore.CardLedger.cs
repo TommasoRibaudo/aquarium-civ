@@ -35,7 +35,7 @@ namespace AquariumCiv.Sim
 
         /// <summary>Stays in the stack, read or not, until it's resolved.</summary>
         bool CardWaits(ChronicleEntry e) =>
-            (e.kind == "wish" && WishOfEntry(e.id)?.state == WishState.Open) || (e.kind == "dilemma" && DilemmaCardLive(e)) || (e.kind == "era-ready" && EraReadyLive(e));
+            (e.kind == "dilemma" && DilemmaCardLive(e)) || (e.kind == "era-ready" && EraReadyLive(e));
 
         bool CardUnread(ChronicleEntry e, HashSet<int> read) =>
             e.month > State.cards.since && !read.Contains(e.id) && ShownAsCard(e) && WishCardLive(e) && EraReadyLive(e) && !MomentHidesCard(e); // #369: a held ceremony is watched, not a card
@@ -103,7 +103,7 @@ namespace AquariumCiv.Sim
         public string CardFooter(ChronicleCard c)
         {
             if (c == null) return "";
-            string year = $"Year {c.month / SimConfig.MonthsPerYear}";
+            string year = $"Year {YearNo(c.month)}"; // counts from Year 1 like History and the book
             var b = c.buildingId < 0 ? null : State.buildings.FirstOrDefault(x => x.id == c.buildingId);
             return b == null ? year : $"{year} · by the {Label(b)}";
         }

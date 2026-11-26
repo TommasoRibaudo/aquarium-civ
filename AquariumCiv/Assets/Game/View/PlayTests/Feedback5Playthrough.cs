@@ -104,6 +104,9 @@ namespace AquariumCiv.View.PlayTests
         IEnumerator TapEl(VisualElement e)
         {
             Assert.IsNotNull(e, "element exists");
+            // #674: the rename row sits under the chips: scroll it into the card's view first, as a player would
+            var view = e.GetFirstAncestorOfType<ScrollView>();
+            if (view != null) { view.ScrollTo(e); yield return null; yield return null; }
             var c = e.worldBound.center;
             float k = Screen.width / GameUiPanel.ReferenceWidth;
             yield return TapAt(new Vector2(c.x * k, Screen.height - c.y * k));
@@ -187,15 +190,15 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean")); // Kit
             yield return Settle(0.6f);
             Check("b", hud.OpenSheet == GameHud.Kit, "Kit opens the kit");
-            Check("b", Shown(hud.Root.Q("kit-life")), "the Life slot is there with every jar shut");
+            Check("b", Shown(hud.Root.Q("kit-shut")), "the Still to come shelf is there with every jar shut");
             yield return Snap("b_1_kit");
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+            // #668: no jar to open first: the tiles are on the kit's shelves
             yield return Settle(0.5f);
             Check("b", hud.LifeRowOpen, "the chooser opens on the shut jars");
             foreach (var s in shut)
             {
                 var icon = hud.Root.Q("kit-life-locked-" + s.ToString().ToLowerInvariant());
-                Check("b", icon != null && icon.ClassListContains("kit-life-choice--locked"), $"a greyed icon for {s}");
+                Check("b", icon != null && icon.ClassListContains(KitTile.ShutClass), $"a greyed icon for {s}");
             }
             Log("b note: " + hud.LifeNoteText);
             yield return Snap("b_2_chooser");
@@ -221,7 +224,7 @@ namespace AquariumCiv.View.PlayTests
             yield return CalmHud();
             var year = hud.Root.panel.visualTree.Q<Label>(className: "hud-title-year");
             Check("c", year != null, "the title has a year line");
-            string want = GameHud.TitleLine(Mathf.FloorToInt(Sim.State.Year), GameHud.SeasonWord(Sim.State), Sim.State.population);
+            string want = GameHud.TitleLine(AquariumCiv.Sim.SimCore.YearNo(Sim.State.month), GameHud.SeasonWord(Sim.State), Sim.State.population);
             Log($"c title '{year?.text}' (expected '{want}')");
             Check("c", year != null && year.text == want, "the title reads Year N · Season · P people");
             Check("c", year != null && year.text.Contains("Year") && (year.text.Contains("people") || year.text.Contains("person")), "year, season and people are all there");
@@ -441,11 +444,11 @@ namespace AquariumCiv.View.PlayTests
             Check("f", text.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0, $"the question's words name the {word}");
             Check("f", d.land != "woods" && d.land != "", $"with no woods the land is not the woods ('{d.land}')");
             yield return Snap("f_1_question");
-            // "full packs" by touch
+            // "a camp of their own" by touch
             yield return TapAt(GameUiPanel.ScreenCenter(view.Root.Q("cards-dil-answer-1")));
             yield return Frames(10);
             var g1 = sim.ApartOf(d);
-            Check("f", g1 != null && g1.joins, "full packs keeps them apart, and they will join at the village");
+            Check("f", g1 != null && !g1.joins, "a camp of their own keeps them apart, for good (#714)");
             yield return Settle(0.8f);
             yield return Snap("f_2_answered");
             if (view.Model.Mode == CardStackMode.Open) view.Model.Close();

@@ -28,7 +28,8 @@ namespace AquariumCiv.Life
         Wave, LookUp, LookUpWary, Clap, Point, RunOver, JumpAndPoint, HandsOut, Splash, Study,
         // at the glass, by belief stage (#92, relics-and-glass-voice.md §3; appended so the older values keep their numbers)
         Gaze, GazeWary, PressHands, WaveWary, Flinch, Peek, CreepUp, HopBack, LaughPoint, Measure, TapBack, WriteDown,
-        // the relic moments (§1): staged by RelicMoments
+        // the relic moments (§1): staged by RelicMoments. #718: TapBack, TurnLens, LookThroughLens and Queue are no longer staged
+        // (the tap-back and the Lens are gone); kept so the later values keep their numbers.
         TurnLens, LookThroughLens, Queue, Freeze, StepBack, Watch, Poke, Taste, Deliver, SetUp, Bow, CopyPose, PickUp, HoldUp,
         Give, PutOn, LopsidedDance,
         /// <summary>#200: at home with the door shut, awake: nothing to draw. Appended so the older values keep their numbers.</summary>
@@ -41,6 +42,13 @@ namespace AquariumCiv.Life
         HangFish, TakeDownFish,
         /// <summary>fb4 #566: at the feather pole, hands together, a small bow. Appended so the older values keep their numbers.</summary>
         Pray,
+        /// <summary>Sign-off 2026-11-14 (#651/#677): at the grass fire, a crouch and an armful of dry grass dropped in (never a stir over
+        /// it, which read as stroking the fire); and at the hide rack, scraping a hide. Appended so the older values keep their numbers.</summary>
+        FeedFire, ScrapeHide,
+        /// <summary>#700 (B27): two grown-ups take a rack down, carry it and set it up again (the whole beat is one activity, <see cref="LifePlanner.TryGetRackRole"/> says the rest). Appended.</summary>
+        MoveRack,
+        /// <summary>#705 (B28): at the home's washing line, plucking the dry cloths into a basket. Appended so the older values keep their numbers.</summary>
+        TakeInWashing,
     }
 
     /// <summary>Broad groups, for the busy share (rule 4) and the job report.</summary>
@@ -53,7 +61,8 @@ namespace AquariumCiv.Life
         Hive, Pots, Barrel, Mug, Pick, Block, Hammer, Cloth, Loaves, Goods, Broom, Handcart, Shears, Sack, Lantern, Bell,
         Flower, Ball, Stick, Buckets, Table, MeasuringRod, CoinBag, Plans, Stool, Honey, Wool, Notebook,
         // the relics (#92): a chunk of the Sky Crumb, the Festival Mask, the Keeper Doll, the Left Sandal, the Lens's tripod
-        // (carried folded) and the Lens itself, the scholar's slate
+        // (carried folded) and the Lens itself, the scholar's slate. #718: Crumb, Tripod and Lens are no longer carried (kept
+        // so the later values keep their numbers).
         Crumb, Mask, Doll, Sandal, Tripod, Lens, Slate,
         /// <summary>#152: the bucket on the way to the water; <see cref="Buckets"/> is the full one, from the draw on.</summary>
         EmptyBucket,
@@ -119,6 +128,11 @@ namespace AquariumCiv.Life
         Arrival,
         /// <summary>#543: the camp's fish rack by the fire (land; index -1 = where people stand to hang and take down fish, 1 = the rack itself, see <see cref="FishRackSpot"/>). Appended last.</summary>
         FishRack,
+        /// <summary>#656/#677: a grown wild tree near the Keeper's tree (index = the site cell): its fallen branches are gathered there, never chopped (#573). Appended last.</summary>
+        Deadfall,
+        /// <summary>Sign-off 2026-11-14: the camp's hide rack (index -1 = where someone stands to scrape, 1 = the rack's middle;
+        /// LifePlanner.HideFrame). Appended last.</summary>
+        HideRack,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
@@ -198,7 +212,7 @@ namespace AquariumCiv.Life
     {
         None, Wedding, Birth, Festival, Mourning, RoleMoment, Reconcile, Lost, Friendship, Rivalry, Apprentice, EveningTalk,
         EraMoment, Argument, Chat,
-        // #92: a relic's moment (RelicMoments), a gathering at the glass, a scholar tapping back
+        // #92: a relic's moment (RelicMoments), a gathering at the glass, a scholar tapping back (#718: no longer staged)
         Relic, GlassGathering, TapBack,
         // #85: the people's answer to a Keeper's shaping (LifePlanner.StartShapingAnswer)
         ShapingAnswer,
@@ -309,11 +323,12 @@ namespace AquariumCiv.Life
                 case ActivityKind.Sleep: case ActivityKind.Nap: case ActivityKind.SitOut: case ActivityKind.Stretch:
                 case ActivityKind.Eat: case ActivityKind.Toddle: case ActivityKind.Indoors:
                     return ActivityGroup.Rest;
-                case ActivityKind.SweepStep: case ActivityKind.HangWashing: case ActivityKind.ChopKindling: case ActivityKind.MindBabies:
+                case ActivityKind.SweepStep: case ActivityKind.HangWashing: case ActivityKind.MoveRack: case ActivityKind.TakeInWashing: case ActivityKind.ChopKindling: case ActivityKind.MindBabies:
                     return ActivityGroup.Chore;
                 case ActivityKind.Carry: case ActivityKind.FetchWater: case ActivityKind.RollBarrel: case ActivityKind.TipLoad:
                     return ActivityGroup.Carry;
                 case ActivityKind.HangFish: case ActivityKind.TakeDownFish: // #543
+                case ActivityKind.FeedFire: case ActivityKind.ScrapeHide: // sign-off 2026-11-14
                     return ActivityGroup.Work;
                 case ActivityKind.Pray: // fb4 #566
                     return ActivityGroup.Social;

@@ -1,0 +1,31 @@
+{
+ "name": "721-feast",
+ "notes": "B74: the long table: everyone brings a bowl or a basket, a new board carried and tapped on, sit from the head down, the first bowl to the eldest, bowls down the sides, budge up, eat (two kids under the table), bowls up, the song, the oldest naps on the bench.",
+ "animlab": {
+  "issue": "S-ritual"
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.CampLife.FocusKey = 0; AquariumCiv.View.EveningTalkView.AutoStart = false; AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 4);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "var pv = AquariumCiv.View.PeopleView.Find(); if (pv != null && pv.Planner != null) pv.Planner.ForcedWeather = AquariumCiv.Life.Weather.Clear; return \"clear weather\";",
+   "return AquariumCiv.View.ConsequenceCheats.PlaceEvery();",
+   "return AquariumCiv.Game.GameClock.Instance.Sim.DebugAddKids(3, 22f) + \" grown-ups joined\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11f);",
+   "return AquariumCiv.View.CampCheats.Later(1.5f, () => AquariumCiv.View.StagedMoments.DebugFeastBoard());"
+  ],
+  "warm": 0.5,
+  "seconds": 58,
+  "fps": 30,
+  "follow": "camp",
+  "span": 2.4,
+  "closeSpan": 1.3,
+  "yaw": 28,
+  "pitch": 40
+ }
+}

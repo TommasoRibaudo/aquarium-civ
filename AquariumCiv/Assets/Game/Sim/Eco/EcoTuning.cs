@@ -54,6 +54,15 @@ namespace AquariumCiv.Sim.Eco
         public float tablePerSoak = 0.0003f, soakCapPerSeason = 12f; // rise per unit soaked down; the soil takes only so much a season
         public float tablePondDamp = 50f;                         // a bigger pond takes more water per unit of rise
         public float tableSummerLoss = 0.002f, tableSwing = 0.015f; // falls a little in summer, never below peak - swing
+        /// <summary>#687 (2026-11-15, "the pond answers the stroke"): the soak lands at the next game month instead of the next season.
+        /// Each month the soil above field capacity gives soakShareMonth of its excess (three months take about what the season's
+        /// soakShare took), the table takes at most a third of soakCapPerSeason, and summer's loss comes a third a month. Off = the old
+        /// seasonal soak (paired runs only).</summary>
+        public bool soakMonthly = true;
+        public float soakShareMonth = 0.206f;                     // 1 - (1 - soakShare)^(1/3), then checked against the yearly totals
+        /// <summary>#687: a stroke that fed the pond (fell on the water or the hollow round it) sends its share down at once, booked against the
+        /// coming month's soak (same water, sooner): the pond's edge rises a little right after the stroke.</summary>
+        public bool pondAnswers = true;
         public int pondGateCells = 20;                            // "water at the surface" for the village gate
 
         // Cover succession
@@ -90,7 +99,7 @@ namespace AquariumCiv.Sim.Eco
         public float wateredTake = 2f, wateredGreen = 1f, wateredGrow = 3f, wateredKeeper = 0f;
 
         // The one tree
-        public float treeRate = 0.35f;                            // progress per season at full care
+        public float treeRate = 0.22f;                            // progress per season at full care
         public float[] treeStages = { 0.5f, 1.5f, 3.0f, 4.5f };   // progress to sprout, sapling, young, grown
         public float treeWetAt = 0.15f, treeWetFull = 0.5f;
         public float weedGrow = 0.12f, weedSlows = 0.6f;
@@ -124,6 +133,8 @@ namespace AquariumCiv.Sim.Eco
         // wolfChase (x wolfWinter in winter), one in 1/wolfCatch ends in a kill; kills stay at least wolfKillFromFire from the fire.
         // The white wolf: once, in a winter after the first pups, with whiteWolfChance a winter.
         public int wolvesDeer = 5, wolvesDeerMonths = 12, wolvesTrees = 20, denTrees = 3, wolfCap = 6, wolfPupsMin = 2, wolfPupsMax = 4;
+        // #643 (playtest, the user 2026-11-13): the jar also waits for wolvesDenCells den spots, so placing the pack has room to find.
+        public int wolvesDenCells = 12;
         public float denFromFire = 1.5f, wolfChase = 0.35f, wolfWinter = 1.8f, wolfCatch = 0.25f, wolfKillFromFire = 1.2f, whiteWolfChance = 0.35f;
         // Boldness (0..1): its start, and what moves it. Scraps and a kill left raise it; a chase or a kill taken lower it; the first guard
         // bark lowers it; each month scraps wear it up and a grown dog on guard wears it down.
@@ -137,7 +148,9 @@ namespace AquariumCiv.Sim.Eco
 
         // #417 the life jar (placed-life spec §3, §4.3; all [est] until #434). Each jar opens on its land condition once the rung below is placed.
         public float jarThicketMeadow = 0.10f, jarRabbitsMeadow = 0.15f; // meadow share for the thicket's jar, the rabbits'
-        public int jarDeerTrees = 5, jarDucksPond = 12;                   // grown trees (the Keeper's counts) for the deer; pond cells for the ducks
+        public int jarDeerTrees = 5, jarDucksPond = 12;                   // jarDeerTrees: the old gate (#690: unused, jarDeerWood replaces it); pond cells for the ducks
+        // #690 [est] the deer want a wood: jarDeerWood grown trees that each have jarWoodCompany other grown trees within jarWoodReach cells.
+        public int jarDeerWood = 12, jarWoodReach = 3, jarWoodCompany = 4;
         /// <summary>#618 [est]: a frozen pond is big enough for people on the ice (fishing through holes, kids sliding) at this many open-water
         /// cells (the village gate's "water at the surface"); a smaller pond only ices over as a look, and nobody walks on it.</summary>
         public int iceActivityCells = 20;
@@ -149,12 +162,28 @@ namespace AquariumCiv.Sim.Eco
         public float thicketRadius = 0.45f;
         public float rabbitThicketMargin = 0.12f; // tester 2026-11-08: the rabbits' ground stays this far outside the thicket's widest edge
         public int thicketBushes = 22, thicketFounders = 3;
+        // #724 landscaping (landscaping.md section 8, decision 2026-11-14; every number here is [est], the user confirms):
+        // #726 the pouch (round 2, what actually grows in the camp years): one seed and one bush per civ step: the camp gate opening, each +landscapePeopleStep
+        // people at the peak over landscapeStartPeople, each kind of building past landscapeStartKinds, each landscapeTreesPerStep grown trees at the peak, and each new era,
+        // at most landscapePouchCap of each waiting. #728 up to thicketMax thickets. #729 with n thickets each holds thicketBushes / n^thicketCrowdExp
+        // bushes (a disc radius x n^-thicketRadiusExp, never under thicketFounders), and one above its target loses thicketShrinkPerSeason a season.
+        public int landscapePouchCap = 3, landscapeStartPeople = 5, landscapePeopleStep = 2, landscapeTreesPerStep = 8, landscapeStartKinds = 2;
+        public int thicketMax = 12, thicketShrinkPerSeason = 1;
+        public float thicketCrowdExp = 0.5f, thicketRadiusExp = 0.25f;
+        /// <summary>#730: the spade may also pluck a grown forest tree (never the Keeper's). ON: the user's call 2026-11-15 (K6, "grown trees too").</summary>
+        public bool landscapePluckGrown = true;
+        // #709 the nest (B71, decision 2026-11-15; every number [est]). nestChicks is Q5 (0 = the eggs are simply gone at the end of spring), nestWhichThicket Q6
+        // (0 = the oldest thicket with nestMinBushes or more, 1 = the biggest; the user picked the biggest 2026-11-15); Q4 (the bird outside the animal
+        // budget, the user's pick) is AnimalBudget.NestBirdSlots.
+        public int nestEggsMin = 2, nestEggsMax = 3, nestTakeMax = 2, nestMinBushes = 6, nestChicks = 2, nestWhichThicket = 1;
+        public float nestEggFood = 0.5f;      // food an egg is worth at the stash (a berry basket is about 3)
+        public bool nestWinterGone = false;   // true = the nest is blown down in the first winter month (B71.a's first wording); the brief keeps it as an empty nest
         public float thicketWatered = 0.6f; // #605: a watered thicket (mean water w at its bushes) adds a second bush in a season with chance thicketWatered * w, never past the cap
 
         // Gates
         public float campMeadow = 0.20f;
         public int campRabbits = 2;
-        public int villageTrees = 8;
+        public int villageTrees = 10;
 
         // #573 the woods spot (where woodcutters chop): only a GROWN wild tree makes one, and never within this of the Keeper's tree (its canopy + a margin).
         public float woodsClearRadius = 1.1f;

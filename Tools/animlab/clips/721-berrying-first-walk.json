@@ -1,0 +1,33 @@
+{
+ "name": "721-berrying-first-walk",
+ "notes": "B72 a kid's first walk: the youngest kid holds a parent's hand all the way, a small basket, eats every berry; the parent drops two berries in at the stash.",
+ "animlab": {
+  "issue": "S-ritual"
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.CampLife.FocusKey = 0; AquariumCiv.View.EveningTalkView.AutoStart = false; AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(9.5f, 4);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "var pv = AquariumCiv.View.PeopleView.Find(); if (pv != null && pv.Planner != null) pv.Planner.ForcedWeather = AquariumCiv.Life.Weather.Clear; return \"clear weather\";",
+   "return AquariumCiv.View.ConsequenceCheats.PlaceEvery();",
+   "return AquariumCiv.Game.GameClock.Instance.Sim.DebugAddKids(3, 22f) + \" grown-ups joined\";",
+   "return AquariumCiv.View.EcoDebug.AddBushes(6);",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(9.5f);",
+   "return AquariumCiv.View.CampCheats.Later(1.5f, () => AquariumCiv.View.StagedMoments.DebugBerryingFirstWalk());",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampLife.FocusRitual(\"firstwalk\"));"
+  ],
+  "warm": 0.5,
+  "seconds": 62,
+  "fps": 30,
+  "follow": "camp",
+  "span": 2.0,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 48
+ }
+}

@@ -15,8 +15,8 @@ namespace AquariumCiv.View
     /// TEMPORARY sim cheats panel (#40): every sim debug hook in collapsible sections, so a tester or the user can reach any
     /// state without waiting. A "sim" button (top right, inside the safe area) opens it; <see cref="SliceDebugPanel"/> keeps
     /// the camp/era/box/music tools. IMGUI, drawn on the safe area, scrollable by drag. Every action also goes through the
-    /// static <c>Do*</c> methods, so `script eval` can call them (SimDebugPanel.DoRelic("lens")).
-    /// Sections: Time, Dilemmas (P7, <see cref="DilemmaCheats"/>), Fire, Era and box, Notables (selected one), Roles, Buildings, Shaping, Wishes, Relics and belief, Care.
+    /// static <c>Do*</c> methods, so `script eval` can call them (SimDebugPanel.DoRelic("keeper_doll")).
+    /// Sections: Time, Dilemmas (P7, <see cref="DilemmaCheats"/>), Fire, Era and box, Notables (selected one), Roles, Buildings, Shaping, Relics and belief, Care.
     /// </summary>
     [AddComponentMenu("AquariumCiv/TEMPORARY Sim Debug Panel")]
     public class SimDebugPanel : MonoBehaviour
@@ -58,11 +58,37 @@ namespace AquariumCiv.View
             return sim == null ? "no sim" : null;
         }
 
+        /// <summary>#700: lays path tier under a rack (the fish rack, or the hide rack) so it stands on a path; the rack moves off it at the next quiet moment.</summary>
+        public static string DoPathOverRack(bool hide)
+        {
+            var e = Need(out var s); if (e != null) return e;
+            var map = s.Settlement?.Map; var planner = PeopleView.Find()?.Planner;
+            if (map == null || planner == null || !planner.FirePoint(out float fx, out float fz)) return "no settled camp";
+            float a = hide ? RackSites.Hide(s, fx, fz) : RackSites.Fish(s, fx, fz);
+            float dist = hide ? LifePlanner.HideFrameDistance : FishRackSpot.Distance, hl = hide ? 0.3f : 0.3f, hd = hide ? 0.22f : 0.14f;
+            float ux = Mathf.Cos(a), uz = Mathf.Sin(a), cx = fx + ux * dist, cz = fz + uz * dist, n = 0;
+            for (float along = -hl; along <= hl; along += 0.03f)
+                for (float across = -hd; across <= hd; across += 0.03f)
+                {
+                    int c = AquariumCiv.Sim.Settle.SiteMap.CellAt(cx + ux * across - uz * along, cz + uz * across + ux * along);
+                    if (c >= 0 && map.tier[c] < AquariumCiv.Sim.Settle.PathNet.PathTier) { map.tier[c] = AquariumCiv.Sim.Settle.PathNet.PathTier; n++; }
+                }
+            return Done((hide ? "hide rack" : "fish rack") + ": path laid over it (" + n + " cells); it moves at night or when empty");
+        }
+
+        /// <summary>#700 (B27): a rack a path covers is taken down by two people now, whatever the hour (the beat). Lay the path first.</summary>
+        public static string DoRackMoveNow()
+        {
+            var e = Need(out _); if (e != null) return e;
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no PeopleView";
+            return Done(pv.Planner.DebugRackMoveNow(pv.Now) ? "two people take the rack down now" : "no rack stands on a path (use 'Path over the fish rack' first), or no camp");
+        }
+
         public static string DoRelic(string id) { var e = Need(out var s); if (e != null) return e; var r = s.DebugGiveRelic(id); return Done(r == null ? "no " + id : "relic " + id); }
         public static string DoLoseSandal() { var e = Need(out var s); if (e != null) return e; return Done(s.DebugLoseSandal() != null ? "sandal lost" : "nobody to lose it"); }
         public static string DoSandalYears() { var e = Need(out var s); if (e != null) return e; return Done(s.DebugSkipSandalYears(20) ? "sandal lost 20 years longer" : "no lost sandal"); }
         public static string DoBelief(int stage, bool later) { var e = Need(out var s); if (e != null) return e; s.DebugSetBelief(stage, later); return Done($"belief stage {stage} {(later ? "later" : "early")}"); }
-        public static string DoTapBack() { var e = Need(out var s); if (e != null) return e; int id = s.DebugTapBack(3); return Done(id < 0 ? "nobody tapped back" : "tapped back: " + Name(s, id)); }
         public static string DoShape(string kind, float x, float z)
         {
             var e = Need(out var s); if (e != null) return e;
@@ -74,12 +100,6 @@ namespace AquariumCiv.View
             var e = Need(out var s); if (e != null) return e;
             var n = s.State.nudges.LastOrDefault(x => !x.credited);
             return Done(n != null && s.DebugSkipToAnswer(n.id) ? $"people answered {n.kind} #{n.id}" : "nothing waiting for an answer");
-        }
-        public static string DoWish(string kind, int notableId)
-        {
-            var e = Need(out var s); if (e != null) return e;
-            var w = s.DebugForceWish(kind, notableId);
-            return Done(w == null ? "nobody can wish" : $"{Name(s, w.notableId)} wishes for {w.kind}");
         }
 
         static BoxCamera Cam => Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : FindAnyObjectByType<BoxCamera>();
@@ -108,7 +128,7 @@ namespace AquariumCiv.View
                     return cam.FlyToBuilding(bid) ? "flying to building #" + bid : "no spot for building #" + bid;
                 }
                 case "point": cam.FlyTo(new Vector3(x, 0f, z), 0.6f); return $"flying to ({x:0.0}, {z:0.0})";
-                case "overview": cam.FlyTo(Vector3.zero, 1f); return "flying to the overview";
+                case "overview": cam.FlyTo(new Vector3(0f, 0f, Land.CZ), 1f); return "flying to the overview";
             }
             return "unknown " + what;
         }
@@ -139,9 +159,16 @@ namespace AquariumCiv.View
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(tl.Clock.Playing ? "pause" : "play")) tl.Clock.Toggle();
             for (int i = 0; i < ReplayClock.Speeds.Length; i++)
-                if (GUILayout.Toggle(tl.Clock.SpeedIndex == i, ReplayClock.Speeds[i] + "x", GUI.skin.button)) tl.SetSpeed(i);
+                if (GUILayout.Toggle(tl.Clock.SpeedIndex == i, ReplayClock.Speeds[i] + "x", GUI.skin.button)) tl.SetSpeed(i); // steps scale with a short history (#670)
             GUILayout.EndHorizontal();
             if (GUILayout.Button("Back to now")) last = TimeLapseView.DebugClose();
+            // #669: the replay draws only what stood then (rack, pile, hide frame, props, camps, relics by their month)
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Year 1")) last = TimeLapseView.DebugSeek(0f);
+            if (GUILayout.Button("Year 2")) last = TimeLapseView.DebugSeek(Mathf.Min(1f, end));
+            if (GUILayout.Button("Now")) last = TimeLapseView.DebugSeek(end);
+            GUILayout.EndHorizontal();
+            GUILayout.Label("replay gate: month " + ReplayGate.Month + (ReplayGate.AtPresent ? " (now)" : ""));
         }
 
         void FirstRunGui()
@@ -278,10 +305,103 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
             }
             // ---- end #371 ----
+            // ---- #721: the yearly rituals (a choice's tradition, replayed every year) ----
+            if (Section("Rituals (#721)"))
+            {
+                for (int i = 0; i < RitualKind.All.Length; i += 2) // two a row: four did not fit the panel's width
+                {
+                    GUILayout.BeginHorizontal();
+                    for (int j = i; j < i + 2 && j < RitualKind.All.Length; j++)
+                        if (GUILayout.Button("Play " + RitualKind.All[j] + " now")) last = StagedMoments.DebugPlayRitualNow(RitualKind.All[j]); // the held moment, staged now
+                    GUILayout.EndHorizontal();
+                }
+                // S-ritual (B72-B75): this year's variant, played now
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Berrying: end at the long table")) last = StagedMoments.DebugBerryingToTable();
+                if (GUILayout.Button("Berrying: a kid's first walk")) last = StagedMoments.DebugBerryingFirstWalk();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Log line: drop a log")) last = StagedMoments.DebugLogLineDrop();
+                if (GUILayout.Button("Feast: add a year's board")) last = StagedMoments.DebugFeastBoard();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Offering: before the tree (tallest tree)")) last = StagedMoments.DebugOfferingTallestTree();
+                if (GUILayout.Button("Offering: empty it now (spring)")) last = StagedMoments.DebugOfferingEmpty();
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #721 ----
+            // ---- #722: the story events (each happens now and plays while watched) ----
+            if (Section("Stories (#722)"))
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Tree: first fruit")) last = StoryMoment.DebugPlayNow(StoryEvent.FirstFruit);
+                if (GUILayout.Button("Tree: a couple's marks")) last = StoryMoment.DebugPlayNow(StoryEvent.TwoMarks);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Stone: fill it")) last = StoryMoment.DebugPlayNow(StoryEvent.SecondStone);
+                if (GUILayout.Button("Tree: a kid picks a fruit")) last = CampCheats.FruitPick(); // the life use the fruit leaves
+                GUILayout.EndHorizontal();
+                // batch 2: the singer's song, the four asks, the Keeper's child (each says why on failure)
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Trait: the singer's song")) last = StoryMoment.DebugPlayNow(StoryEvent.SingerSong);
+                if (GUILayout.Button("Ask: the song's name")) last = StoryMoment.DebugAskNow(StoryChoices.SongName);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Ask: who carries the offering")) last = StoryMoment.DebugAskNow(StoryChoices.Offering);
+                if (GUILayout.Button("Ask: who sets the first log")) last = StoryMoment.DebugAskNow(StoryChoices.FirstLog);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Ask: which child holds the pup")) last = StoryMoment.DebugAskNow(StoryChoices.PupHolder);
+                if (GUILayout.Button("People: the Keeper's child grows up")) last = StoryMoment.DebugPlayNow(StoryEvent.KeeperChildGrown);
+                GUILayout.EndHorizontal();
+                if (GUILayout.Button("People: the Keeper's child marries")) last = StoryMoment.DebugKeeperChildWed();
+                // batch 3 (B80.b-h): each event now (its gate eased; says why on failure), and the life uses they leave
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Chief: pass the antlers")) last = StoryMoment.DebugPlayNow(StoryEvent.AntlersPassed);
+                if (GUILayout.Button("Trait: the tinkerer's bucket")) last = StoryMoment.DebugPlayNow(StoryEvent.TinkererBucket);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Trait: the gardener's flowers")) last = StoryMoment.DebugPlayNow(StoryEvent.GardenerFlowers);
+                if (GUILayout.Button("Stone: water the flowers")) last = CampCheats.FlowerWater();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Trait: the joker's face")) last = StoryMoment.DebugPlayNow(StoryEvent.JokerFace);
+                if (GUILayout.Button("Woodpile: a kid pats the face")) last = CampCheats.FacePat();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Weather: the dry spell")) last = StoryMoment.DebugPlayNow(StoryEvent.DrySpell);
+                if (GUILayout.Button("Tree: the waterer's evening bucket")) last = CampCheats.TreeWater();
+                GUILayout.EndHorizontal();
+                if (GUILayout.Button("Weather: the first snow")) last = StoryMoment.DebugPlayNow(StoryEvent.FirstSnow);
+            }
+            // ---- end #722 ----
             // ---- fb4 #540: camp props ----
             if (Section("Camp props (fb4 #540)"))
                 if (GUILayout.Button("Camp props: show all (rack, every prop)")) last = ConsequenceCheats.ShowCampProps();
             // ---- end fb4 #540 ----
+            // ---- #700: a path grows over a rack ----
+            if (Section("Path over the rack (#700)"))
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Path over the fish rack")) last = DoPathOverRack(false);
+                if (GUILayout.Button("Path over the hide rack")) last = DoPathOverRack(true);
+                GUILayout.EndHorizontal();
+                // the beat (B27): two people take the rack down, carry it and set it up; it starts at dusk or in the night block, or now with this button
+                if (GUILayout.Button("Rack moves now (the take-down beat)")) last = DoRackMoveNow();
+                GUILayout.Label(RackMoveView.Instance != null && RackMoveView.Instance.Drawing ? "beat: " + RackMoveView.Instance.Phase : "no beat running");
+                GUILayout.Label("The rack moves at dusk (17:00) or in the night block, or by day when empty; press Bedtime (clock to 20:00) or the button to see it go.");
+            }
+            // ---- end #700 ----
+            // ---- #676: the camp pot's stew kind (from what the camp has) ----
+            if (Section("Stew pot (#676)"))
+            {
+                GUILayout.BeginHorizontal();
+                foreach (var sk in new[] { StewKind.Fish, StewKind.Rabbit, StewKind.Berries, StewKind.Thin })
+                    if (GUILayout.Button("Stew: " + sk))
+                        last = Done(sim.EcologyOn ? $"stew is now {sim.DebugStew(sk)} (the pot shows at a lit camp fire; use Dusk / Fire cheats to see it)" : "needs the ecology");
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #676 ----
             if (Section("Staged moments (#370)")) { var line = StagedMoments.Gui(); if (line != null) last = line; } // #370
             // ---- #373: the Keeper's choices page and the hand pins ----
             if (Section("Keeper's choices (#373)"))
@@ -293,6 +413,41 @@ namespace AquariumCiv.View
                 }
             }
             // ---- end #373 ----
+            // ---- #697/#696: force each replan trigger; sleepers must stay hidden in the tent, walkers must finish their walk ----
+            if (Section("Replans (#697/#696)"))
+            {
+                GUILayout.Label("Force a replan; nobody may turn round or come out of bed.");
+                var rp = PeopleView.Find();
+                if (rp != null && rp.Planner != null) GUILayout.Label($"kept at the last replan: {rp.Planner.PinnedSleepers} asleep, {rp.Planner.PinnedWalkers} walking, {rp.Planner.PinnedStanding} standing");
+                var trig = AquariumCiv.Life.LifePlanner.ReplanTriggers;
+                for (int i = 0; i < trig.Length; i += 3)
+                {
+                    GUILayout.BeginHorizontal();
+                    for (int k = i; k < i + 3 && k < trig.Length; k++)
+                        if (GUILayout.Button("force replan (" + trig[k] + ")")) last = PeopleView.DebugReplan(trig[k]);
+                    GUILayout.EndHorizontal();
+                }
+                if (rp != null && rp.Planner != null && GUILayout.Button(rp.Planner.ReplanLog == null ? "Log every replan to the console" : "Stop logging replans"))
+                    rp.Planner.ReplanLog = rp.Planner.ReplanLog == null ? (System.Action<string>)(m => Debug.Log("[replan] " + m)) : null;
+                if (GUILayout.Button("Bedtime: clock to 20:00")) last = PeopleView.DebugSetHour(20f);
+                if (GUILayout.Button("Mid-evening walk: clock to 17:30")) last = PeopleView.DebugSetHour(17.5f);
+            }
+            // ---- end #697/#696 ----
+            // ---- #668: the kit's states (kit-mockups.html s0 to s6, each tool in hand), staged by KitStates ----
+            if (sim.EcologyOn && Section("Kit states (#668)"))
+            {
+                var ks = KitStates.All;
+                for (int i = 0; i < ks.Length; i += 2)
+                {
+                    GUILayout.BeginHorizontal();
+                    for (int k = i; k < i + 2 && k < ks.Length; k++)
+                        if (GUILayout.Button(ks[k])) last = Done(KitStates.Stage(ks[k]));
+                    GUILayout.EndHorizontal();
+                }
+                if (GameHud.Instance != null && GUILayout.Button("New visit (the Kit wiggles again while a jar waits, #660)")) { GameHud.Instance.DebugNewVisit(); last = Done("a new visit"); }
+                if (GameHud.DebugToolsOnly && GUILayout.Button("Back to the real kit")) { GameHud.DebugToolsOnly = false; last = Done("the kit shows everything again"); }
+            }
+            // ---- end #668 ----
             // ---- #417: the life jar (placed-life spec §10); "place" opens a shut jar and places by the camp, no ghost ----
             if (sim.EcologyOn && Section("Life jar (#417)"))
             {
@@ -300,6 +455,9 @@ namespace AquariumCiv.View
                 GUILayout.Label(string.Join(" · ", all.Select(s => s + " " + sim.JarStateOf(s))));
                 if (GUILayout.Button("Ready every species")) last = Done($"{sim.DebugJarsReady()} jars opened");
                 if (GUILayout.Button("Lock all jars (#570: see the greyed list)")) last = Done($"{sim.DebugLockJars()} jars shut"); // #570
+                // ---- #690: a dense wood, so the deer jar opens by the real gate (scattered trees would not) ----
+                if (GUILayout.Button("Dense wood: 25 trees far from the fire (#690)")) last = Done(sim.DebugGrowFarWood() ? $"a wood: {sim.EcoWoodTrees} trees in company; deer jar {sim.JarStateOf(AquariumCiv.Sim.Eco.LifeSpecies.Deer)}" + (sim.JarNeed(AquariumCiv.Sim.Eco.LifeSpecies.Deer) is { Length: > 0 } need ? " (" + need + ")" : "") : "no room for a wood");
+                // ---- end #690 ----
                 GUILayout.Label("village line: " + (sim.VillageWaitsLine is { Length: > 0 } vl ? vl : "(none)")); // #570
                 for (int i = 0; i < all.Length; i += 3)
                 {
@@ -315,6 +473,17 @@ namespace AquariumCiv.View
                 // ---- #519: the ducks and the fish keep to the water you can see ----
                 if (GUILayout.Button("Pond dries now (ducks/fish leave, #519)")) last = Done(EcoDebug.PondDries()); // tester feedback 3: the water goes on screen at once
                 // ---- end #519 ----
+                // ---- #703: winter ducks (the duck jar is shut while the pond is ice) ----
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Winter ducks: freeze + open duck jar")) // opens every shut jar, then the ice: Ducks reads shut with its ice line
+                {
+                    sim.DebugJarsReady(); AquariumCiv.Sim.Eco.PondIce.Force = true;
+                    last = Done("ice on; ducks jar: " + sim.JarStateOf(AquariumCiv.Sim.Eco.LifeSpecies.Ducks) + " / " + (sim.JarNeed(AquariumCiv.Sim.Eco.LifeSpecies.Ducks) ?? "(no line)"));
+                }
+                if (GUILayout.Button("Thaw (jar opens)")) { AquariumCiv.Sim.Eco.PondIce.Force = false; last = Done("thaw; ducks jar: " + sim.JarStateOf(AquariumCiv.Sim.Eco.LifeSpecies.Ducks)); }
+                if (GUILayout.Button("Ice by season")) { AquariumCiv.Sim.Eco.PondIce.Force = null; last = Done("ice follows the calendar"); }
+                GUILayout.EndHorizontal();
+                // ---- end #703 ----
                 // #423: the life tool in hand (glow, ghost, tap to place), for a ready jar
                 var hudL = GameHud.Instance;
                 GUILayout.BeginHorizontal();
@@ -352,6 +521,9 @@ namespace AquariumCiv.View
                         if (dv.Scarers.Count > 0) { dv.Scarers.Clear(); last = Done("nobody by the deer"); }
                         else if (dv.TryGetDeer(0, out var d0, out _)) { dv.Scarers.Add(new Vector2(d0.x + 0.25f, d0.z)); last = Done("someone stands by the deer: heads up, then they walk off"); }
                     }
+                    // #699: a deer on a path straight through the fire (it should go round, and keep its shy distance)
+                    if (dv != null && GUILayout.Button("Deer at the camp (#699)"))
+                        last = Done(sim.Config.settle && dv.DebugAcrossTheFire(sim.EcoGround.campX, sim.EcoGround.campZ) ? "a deer sets off across the camp: it should go round the fire" : "no deer shown or no camp");
                     if (sim.WolvesPlaced && GUILayout.Button("Wolves: first howl again")) { sim.State.eco.firstHowlHeard = false; last = Done("the first howl plays at the next dusk"); }
                     GUILayout.EndHorizontal();
                     var sdv = StoryDirectorView.Instance;
@@ -365,6 +537,70 @@ namespace AquariumCiv.View
                 }
             }
             // ---- end #417 ----
+            // ---- #724 landscaping: the pouch, thickets, the plucking tool (docs/design/landscaping.md section 8); one block, extended by #727-#730 ----
+            if (sim.EcologyOn && Section("Landscaping (#724)"))
+            {
+                GUILayout.Label($"pouch: {sim.SeedsInPouch} seeds, {sim.BushesInPouch} bushes (cap {sim.PouchCap}) · peak people {sim.State.eco.peakPeople}");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Give 3 seeds")) { sim.DebugGiveSeeds(3); last = Done($"pouch: {sim.SeedsInPouch} seeds"); }
+                if (GUILayout.Button("Give 3 bushes")) { sim.DebugGiveBushes(3); last = Done($"pouch: {sim.BushesInPouch} bushes"); }
+                if (GUILayout.Button("Next civ step")) { int n = sim.DebugNextCivStep(); last = Done(n > 0 ? $"a civ step: pouch {sim.SeedsInPouch} seeds, {sim.BushesInPouch} bushes" : "both pouches are full: the step waits"); }
+                GUILayout.EndHorizontal();
+                // ---- #728: thickets as a list ----
+                var ths = new System.Collections.Generic.List<(int cell, float radius, int bushes)>(); sim.BushThickets(ths);
+                GUILayout.Label($"thickets: {ths.Count} " + string.Join(" · ", ths.Select(x => $"{x.bushes} bushes r {x.radius:0.00}")));
+                if (GUILayout.Button("Place a thicket by the camp (uses a pouch bush)")) { int c = sim.DebugPlaceThicketNearCamp(); last = Done(c < 0 ? "no valid ground (or the cap)" : $"thicket {sim.BushThicketCount} placed at cell {c}"); }
+                // ---- #729: crowding and shrinking: more thickets lower every target; a thicket over its target sheds a bush a season ----
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Crowd: +3 thickets")) { int made = sim.DebugCrowdThickets(3); last = Done($"{made} thickets placed: {sim.BushThicketCount} stand, each holds {sim.BushCap / System.Math.Max(1, sim.BushThicketCount)}"); }
+                if (GUILayout.Button("Shrink: one season now")) { sim.DebugSkipSeasons(1); last = Done($"a season on: {sim.BushThicketCount} thickets, {sim.State.eco.cBush} bushes of {sim.BushCap}"); }
+                GUILayout.EndHorizontal();
+                // ---- #732: many thickets, and letting them settle to their targets (grow or shed, a bush a season) ----
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Crowd: up to 10 thickets")) { int made = sim.DebugCrowdThickets(System.Math.Max(0, 10 - sim.BushThicketCount)); last = Done($"{made} placed: {sim.BushThicketCount} thickets stand"); }
+                if (GUILayout.Button("Settle: 2 years now")) { sim.DebugSkipSeasons(8); last = Done($"2 years on: {sim.BushThicketCount} thickets, {sim.State.eco.cBush} bushes of {sim.BushCap}"); }
+                GUILayout.EndHorizontal();
+                // ---- #730: the landscaping tool (name open, [est]); phase 1 is the sim: pluck what the tool could take in an area ----
+                GUILayout.Label($"{SimCore.LandscapeToolName}: takes seedlings, young trees, bushes" + (sim.EcoLandscapeTakesGrownTrees ? ", grown trees (flag ON)" : " (grown trees: flag off)"));
+                var lhud = AquariumCiv.GameUI.GameHud.Instance;
+                if (lhud != null && GUILayout.Button(lhud.Hand == AquariumCiv.GameUI.GameHud.KitTool.Landscape ? "The tool is in hand" : "Put the tool in hand"))
+                { lhud.SetHand(AquariumCiv.GameUI.GameHud.KitTool.Landscape); last = Done("the landscaping tool in hand: tap or drag over seedlings and bushes"); }
+                if (GUILayout.Button("Pluck all within 1.2 of the camp (the tool's cells)"))
+                {
+                    var g = sim.EcoGround; var r = sim.DebugLandscapeArea(g.campX, g.campZ, 1.2f);
+                    last = Done($"plucked {r.saplings} seedlings/young, {r.bushes} bushes, {r.trees} trees; {sim.BushThicketCount} thickets left");
+                }
+                if (GUILayout.Button(sim.EcoLandscapeTakesGrownTrees ? "Grown trees: stop plucking them (flag off)" : "Grown trees: pluck them too (flag on, the open question)"))
+                {
+                    if (sim.Config.eco == null) sim.Config.eco = new AquariumCiv.Sim.Eco.EcoTuning();
+                    sim.Config.eco.landscapePluckGrown = !sim.Config.eco.landscapePluckGrown;
+                    last = Done("grown-tree pluck " + (sim.Config.eco.landscapePluckGrown ? "ON" : "off"));
+                }
+            }
+            // ---- end #724 ----
+            // ---- #709: the nest in the thicket (B71): every stage reachable without waiting for spring ----
+            if (sim.EcologyOn && Section("Nest (#709)"))
+            {
+                GUILayout.Label($"nest {(sim.NestStands ? "at bush " + sim.NestCell + " in thicket " + sim.NestThicketCell : "none")} · {sim.NestPhaseNow} · eggs {sim.NestEggs} (spare {sim.NestEggsSpare}, taken {sim.NestEggsTakenThisSpring}) · chicks {sim.NestChicks} · parent {(sim.NestParentPresent ? "on" : "off")} · looks {sim.NestLooks}");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Place the nest now")) { int c = sim.DebugNestPlace(); last = Done(c >= 0 ? $"nest at bush {c}, the parent is building" : "no ground for a thicket"); }
+                if (GUILayout.Button("Skip to spring")) { int c = sim.DebugNestSpring(); last = Done(c >= 0 ? $"spring: the parent builds at bush {c}" : "no ground for a thicket"); }
+                if (GUILayout.Button("Lay eggs")) { int n = sim.DebugNestLay(); last = Done(n > 0 ? $"{n} eggs in the nest" : "no nest"); }
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Take an egg (sim)")) last = Done(sim.DebugNestTakeEgg() ? $"an egg taken, {sim.NestEggs} left" : "refused: never the last egg, or the spring's share is taken");
+                if (GUILayout.Button("Hatch")) { int n = sim.DebugNestHatch(); last = Done(n > 0 ? $"{n} chicks" : "the eggs are gone (chicks off) or no nest"); }
+                if (GUILayout.Button("Gatherer takes an egg")) { sim.DebugNestLay(); var pv = PeopleView.Find(); last = Done(pv != null && pv.Planner != null && pv.Planner.DebugStartNestVisit(pv.Now, true, out var np) ? "a gatherer walks to the nest, the egg is taken in " + (np.resolveHour - pv.Now.hour).ToString("0.0") + " h" : "nobody free, or no nest"); }
+                if (GUILayout.Button("Kids look at the nest")) { sim.DebugNestLay(); var pv = PeopleView.Find(); last = Done(pv != null && pv.Planner != null && pv.Planner.DebugStartNestVisit(pv.Now, false, out var np) ? $"{np.lookerKeys.Count} kids creep up to the nest" : "no kids, or no nest"); }
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal(); // the view's (B71): every drawn stage
+                if (GUILayout.Button("Chicks fly off")) last = Done(sim.DebugNestFlyOff() ? "the parent leaves, the chicks after it; the nest stays empty" : "no parent or chicks at the nest");
+                if (GUILayout.Button("Nest: next stage")) last = Done("nest: " + sim.DebugNestNextStage());
+                if (GUILayout.Button("Nest: show me")) last = Done(NestView.DebugLook());
+                if (GUILayout.Button("Nest: skip the building")) last = Done(NestView.DebugSkipBuild());
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #709 ----
             // ---- #420-#422: deer, ducks, fish; floors, shy, restraint (placed-life spec §10) ----
             if (sim.EcologyOn && Section("Placed life (#420-#422)"))
             {
@@ -613,19 +849,6 @@ namespace AquariumCiv.View
                 if (GUILayout.Button($"People answer the last one ({waiting} waiting)")) last = sv != null ? ShapingView.DebugSkip() : DoSkipToAnswer();
             }
 
-            if (Section("Wishes"))
-            {
-                var ow = sim.OpenWish;
-                GUILayout.Label(ow == null ? "no open wish" : $"{Name(sim, ow.notableId)} wishes for {ow.kind}");
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Wish (selected)")) last = DoWish(null, sel);
-                if (GUILayout.Button("Wish (anyone)")) last = DoWish(null, -1);
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal();
-                foreach (var k in SimCore.SliceTools) if (GUILayout.Button(k)) last = DoWish(k, sel);
-                GUILayout.EndHorizontal();
-            }
-
             if (Section("Relics and belief"))
             {
                 GUILayout.Label("relics: " + (sim.State.relics.Count == 0 ? "none" : string.Join(", ", sim.State.relics.Select(r => r.id + (r.Found ? "" : " (lost)")))));
@@ -648,7 +871,6 @@ namespace AquariumCiv.View
                     if (GUILayout.Button("later")) last = DoBelief(stage, true);
                     GUILayout.EndHorizontal();
                 }
-                if (GUILayout.Button("Glass: tap back x3 (sim only)")) last = DoTapBack();
                 // #92: the moments and the people at the glass, as the view plays them.
                 GUILayout.Label(GlassVoice.Status());
                 for (int i = 0; i < RelicId.All.Length; i += 2)
@@ -662,7 +884,6 @@ namespace AquariumCiv.View
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Gather at glass")) last = GlassVoice.DebugGather();
                 if (GUILayout.Button("Knock x3")) last = GlassVoice.DebugKnock(3);
-                if (GUILayout.Button("Tap back x3")) last = GlassVoice.DebugTapBack(3);
                 GUILayout.EndHorizontal();
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Front: camera")) last = GlassVoice.DebugGlassSide(-1);

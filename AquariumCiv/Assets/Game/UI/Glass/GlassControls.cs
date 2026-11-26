@@ -42,6 +42,7 @@ namespace AquariumCiv.GameUI
         {
             "alert", "back", "bell", "book", "channel", "check", "clock", "close", "drop", "eye", "feedback", "gift", "hand", "haptic", "herd", "hill", "lock", "next",
             "now", "pause", "pencil", "person", "photo", "pin", "play", "reset", "ribbon", "scroll", "settings", "share", "shelf", "sound", "star", "tree", "undo",
+            "cloth", "mister", "tweezers", "spade", // #668: the kit's tools
         };
 
         string shape;
@@ -482,9 +483,10 @@ namespace AquariumCiv.GameUI
             thumb = Part("kg-slider-thumb");
             if (changed != null) Changed += changed;
             Value = value;
-            RegisterCallback<PointerDownEvent>(e => Grab(e.pointerId, e.position));
-            RegisterCallback<PointerMoveEvent>(e => { if (pointer == e.pointerId) Drag(e.localPosition.x); });
-            RegisterCallback<PointerUpEvent>(e => { if (pointer == e.pointerId) Let(); });
+            RegisterCallback<PointerDownEvent>(e => { Grab(e.pointerId, e.position); e.StopPropagation(); });
+            // #654: a held slider keeps its moves to itself, so a scroll view round it never reads them as a drag of the sheet
+            RegisterCallback<PointerMoveEvent>(e => { if (pointer == e.pointerId) { Drag(e.localPosition.x); e.StopPropagation(); } });
+            RegisterCallback<PointerUpEvent>(e => { if (pointer == e.pointerId) { Let(); e.StopPropagation(); } });
         }
 
         /// <summary>A finger came down on the strip, at <paramref name="at"/> in panel space. <see cref="GlassScroll"/> calls this too, ahead of its view.</summary>
@@ -495,7 +497,8 @@ namespace AquariumCiv.GameUI
             Drag(this.WorldToLocal(at).x);
         }
 
-        void Let()
+        /// <summary>The finger lifted (the slider's own up, or <see cref="GlassScroll"/> handing it on).</summary>
+        public void Let()
         {
             this.ReleasePointer(pointer);
             pointer = -1;
@@ -510,6 +513,11 @@ namespace AquariumCiv.GameUI
             Add(e);
             return e;
         }
+
+        /// <summary>#654: the finger at <paramref name="at"/> (panel space) while this slider holds it; <see cref="GlassScroll"/> feeds it so its scroll view never sees the move.</summary>
+        public void DragAt(Vector2 at) => Drag(this.WorldToLocal(at).x);
+        /// <summary>The pointer this slider holds, or -1.</summary>
+        public int Holding => pointer;
 
         void Drag(float x)
         {

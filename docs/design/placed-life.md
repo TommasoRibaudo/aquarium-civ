@@ -79,10 +79,10 @@ B12 (#424).
 |---|---|---|---|
 | **Berry thicket** | — | meadow ≥ **10 %** | The first jar. Today's first-rabbit point (`rabbitsAtMeadow` 0.10) |
 | **Rabbits** | thicket placed | meadow ≥ **15 %** | Rabbit tracks show only after rabbits are placed (D3) |
-| **Deer** | rabbits placed (the camp) | ≥ **5 grown trees** (the Keeper's tree counts) | Earlier than the village's 8 (Q2) |
+| **Deer** | rabbits placed (the camp) | ≥ **12 grown trees in company** (each with 4 others within 0.3 u; #690, was 5 grown trees) | A wood, not a few trees; scattered trees never count |
 | **Ducks** | rabbits placed (the camp) | pond ≥ **12 cells** | Earlier than the village's 20 (Q2) |
 | **Fish** | ducks placed ≥ **6 months** ago | reeds ≥ **6 cells** (`cReeds`) | The reeds the ducks bring are the fish's shelter |
-| **Wolves** | deer placed | deer ≥ **5** for a full game year, wood ≥ **20 grown-tree cells**, and a den spot ≥ **1.5 u** from the fire (§5.6) | Predators come after their prey |
+| **Wolves** | deer placed | deer ≥ **5** for a full game year, wood ≥ **20 grown-tree cells**, and **12 den spots** ≥ **1.5 u** from the fire (§5.6; #643, 2026-11-13: one spot made a glow too small to find) | Predators come after their prey |
 
 ### 3.1 The gates that change
 
@@ -112,6 +112,41 @@ So the camp and the village now wait on the Keeper's jars. That is the intent: t
 
 The sim keeps counts for each species (as `EcoState.rabbits` does) and a few named individuals where the view or a
 choice needs them: the stag, the white stag, the grey wolf, the white wolf, every dog.
+
+### 4.1a What the box draws (#710, 2026-11-24)
+
+The caps above are the sim's. What the phone **draws** is capped once more by one table, `Sim/AnimalBudget.cs` (a new kind
+takes its share from the others). The user's call (decisions 2026-11-14 and 2026-11-15): every kind a little fewer. The table
+on the 6 x 6 land went from **33 to 25**:
+
+| Kind | Before | After | Why this floor |
+|---|---|---|---|
+| Rabbits | 8 | **6** | a hunt, a kit to hold and the dog's flush each still have rabbits in the meadow |
+| Deer | 6 | **5** | the stag, three does and a fawn; the deer watch casts at most 4 |
+| Ducks | 6 | **4** | two pairs on the pond |
+| Fish | 5 | **4** | a small school; the side-glass fish are at most 2 of them |
+| Frogs (view only) | 4 | **3** | still more at night (3) than by day (2) |
+| Wolves (pups included) | 4 | **3** | the pair and a pup |
+
+Unchanged, by the user's call or on purpose: the nest's bird and the pen's goat (outside the budget, Q4/Q7); the dogs (cap 3,
+`SimCore.DogCap`: they come only from the lost-pup choice, are not in the table, and the line needs room for a pup beside a
+grown and an old dog); the sim caps (`duckCap` 8, `deerMax` 8, `wolfCap` 6, the fish per pond cell), which feed the eggs,
+hunts and the wolf jar, so the pacing (village at year 25) does not move.
+
+**Measured** (`Tools/SimTests/AnimalCapsLabTests.cs`, `Census_Measure`): the pacing lab's Active Keeper on the real sim, every
+jar placed when it opens, the village taken when the land's gate opens (about year 23); seeds 7, 21, 42, 3, 5; mid-year counts,
+mean over the seeds. "Drawn" adds every kind the views show (frogs at night). Sim counts are the same before and after.
+
+| Box | Rabbits drawn (sim) | Deer | Ducks | Fish | Frogs | Wolves | **All drawn** |
+|---|---|---|---|---|---|---|---|
+| Camp, year 20 | 8 → **6** (84) | 0 | 6 → **4** (8) | 0 | 4 → **3** | 0 | **18 → 13** |
+| Village ~10 years in (year 35) | 8 → **6** (91) | 6 → **5** (8) | 6 → **4** (8) | 5 → **4** (47) | 4 → **3** | 0 | **29 → 22** |
+| Village ~20 years in (year 45) | 8 → **6** (90) | 6 → **5** (8) | 6 → **4** (8) | 5 → **4** (52) | 4 → **3** | 0 | **29 → 22** |
+| Village with the pack (year 50) | 8 → **6** (88) | 6 → **5** (8) | 6 → **4** (8) | 5 → **4** (55) | 4 → **3** | 4 → **3** (6) | **33 → 25** |
+
+The wolves' jar opens at about year 46-50 on these seeds; no dog came in any run (dogs need the pup choice). About a quarter
+fewer animals drawn at every stage (-28 % in the camp, -24 % in the village). `AnimalCapsLabTests.EveryKind_StaysAtOrUnderItsCap_Through30Years`
+checks every kind against its cap every month for 30 years of seeds 7, 21, 42, and that the rabbits and ducks still fill to it.
 
 ### 4.2 Who takes, and the floors
 Every taker respects the floor: the hunters (rabbits, deer), egg gathering (ducks: eggs only, never birds), fishers

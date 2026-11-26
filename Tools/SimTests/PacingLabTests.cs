@@ -28,8 +28,10 @@ namespace AquariumCiv.Tests
         public int seed; public Habit habit; public bool before;
         /// <summary>Game years of each gate (-1 = not reached in the run) and the real hour it fell on.</summary>
         public float seedUnlocked = -1, planted = -1, firstWood = -1, camp = -1, pond20 = -1, trees8 = -1, village = -1, villageHours = -1, treeGrown = -1, lastYear;
+        /// <summary>#656/#677: the land's first food (the basket's first refill), the first logs from a wild tree, the village era ready, and the months the basket stood empty.</summary>
+        public float landFood = -1, firstLogs = -1, eraReady = -1; public int hungryMonths;
         public int visits, trees, pond;
-        public override string ToString() => $"{habit,-10} seed {seed,3}: camp {F(camp)} pond20 {F(pond20)} trees8 {F(trees8)} village {F(village)} (real h {F(villageHours)})  [seed unlocked {F(seedUnlocked)} planted {F(planted)} keeper tree grown {F(treeGrown)} first wild tree {F(firstWood)}]";
+        public override string ToString() => $"{habit,-10} seed {seed,3}: camp {F(camp)} pond20 {F(pond20)} trees8 {F(trees8)} village {F(village)} (real h {F(villageHours)})  [seed unlocked {F(seedUnlocked)} planted {F(planted)} keeper tree grown {F(treeGrown)} first wild tree {F(firstWood)}]  [land food {F(landFood)} first logs {F(firstLogs)} era ready {F(eraReady)} hungry months {hungryMonths}]";
         public static string F(float y) => y < 0 ? "  -  " : y.ToString("0.0").PadLeft(5);
     }
 
@@ -61,7 +63,7 @@ namespace AquariumCiv.Tests
             return v;
         }
 
-        public static PacingResult Run(Habit habit, int seed, EcoTuning tuning = null, int maxYears = 60, bool before = false)
+        public static PacingResult Run(Habit habit, int seed, EcoTuning tuning = null, int maxYears = 60, bool before = false, Action<SimCore> perMonth = null)
         {
             var cfg = new SimConfig { ecology = true };
             cfg.eco = tuning ?? new EcoTuning();
@@ -91,12 +93,16 @@ namespace AquariumCiv.Tests
                     if (res.trees8 < 0 && e.cTrees >= cfg.eco.villageTrees) res.trees8 = y;
                     if (res.treeGrown < 0 && e.treeStage >= 4) res.treeGrown = y;
                     if (res.village < 0 && e.villageGateMonth >= 0) { res.village = e.villageGateMonth / 12f; res.villageHours = (float)rt; }
+                    if (res.eraReady < 0 && sim.State.eraReady) res.eraReady = y;
+                    if (sim.Hungry) res.hungryMonths++;
+                    perMonth?.Invoke(sim);
                 }
-                if (res.village >= 0) break;
+                if (res.village >= 0 && res.eraReady >= 0 && perMonth == null) break; // a probe (#643) runs on to maxYears; #656: on to the era too
             }
             long M(string k) { long m = sim.EcoMilestoneMonth(k); return m; }
             res.seedUnlocked = M(EcoMilestones.SeedUnlocked) / 12f; res.planted = M(EcoMilestones.TreePlanted) / 12f; res.firstWood = M(EcoMilestones.FirstWoodTree) / 12f;
             res.lastYear = sim.State.month / 12f; res.trees = sim.State.eco.cTrees; res.pond = sim.State.eco.cPond;
+            res.landFood = sim.LandFoodMonth / 12f; res.firstLogs = sim.FirstWildWoodMonth / 12f;
             return res;
         }
 
@@ -168,7 +174,7 @@ namespace AquariumCiv.Tests
                     for (int a = -1; a < 6; a++)
                     {
                         float x = SiteMap.CXc(t) + (a < 0 ? 0f : MathF.Cos(a * MathF.PI / 3f) * 0.5f), z = SiteMap.CZc(t) + (a < 0 ? 0f : MathF.Sin(a * MathF.PI / 3f) * 0.5f);
-                        if (MathF.Abs(x) > Terrain.HX - 0.2f || MathF.Abs(z) > Terrain.HZ - 0.2f) continue;
+                        if (MathF.Abs(x) > Terrain.HX - 0.2f || !Terrain.InZ(z, 0.2f)) continue;
                         int n = 0;
                         for (int c = 0; c < SiteMap.N; c++)
                         {
@@ -199,7 +205,7 @@ namespace AquariumCiv.Tests
                     float a = Terrain.Hash3(e.seed * 31 + 101, e.season * 16 + k, tries) * MathF.PI * 2f;
                     float rr = MathF.Sqrt(Terrain.Hash3(e.seed * 31 + 102, e.season * 16 + k, tries)) * reach;
                     float x = land.campX + MathF.Cos(a) * rr, z = land.campZ + MathF.Sin(a) * rr;
-                    if (MathF.Abs(x) > Terrain.HX - 0.2f || MathF.Abs(z) > Terrain.HZ - 0.2f) continue;
+                    if (MathF.Abs(x) > Terrain.HX - 0.2f || !Terrain.InZ(z, 0.2f)) continue;
                     int c = SiteMap.CellAt(x, z);
                     if (c < 0 || (EcoCover)e.cover[c] == EcoCover.Water) continue;
                     float score = e.moisture[c] + ((EcoCover)e.cover[c] == EcoCover.Bare ? 0f : 0.3f);
@@ -292,6 +298,64 @@ namespace AquariumCiv.Tests
             var ys = PacingLab.Seeds.Select(s => PacingLab.Run(Habit.Active, s, PacingLab.Before(), 60, true).village).ToList();
             TestContext.Out.WriteLine("before: " + string.Join(" ", ys.Select(PacingResult.F)));
             Assert.That(Mean(ys), Is.GreaterThan(32f));
+        }
+
+        [Test, Explicit("#643: the den ground the wolf jar opens on, with the old gate (any den) and wolvesDenCells")]
+        public void WolfDenRoom_Measure()
+        {
+            var ground = new List<int>();
+            foreach (int need in new[] { 1, new EcoTuning().wolvesDenCells })
+                foreach (var s in Eight)
+                {
+                    var t = new EcoTuning { wolvesDenCells = need };
+                    float ready = -1; int denAtReady = 0; var line = new StringBuilder();
+                    PacingLab.Run(Habit.Active, s, t, 50, false, sim =>
+                    {
+                        sim.LifeGround(LifeSpecies.Wolves, ground);
+                        if (sim.State.month % 60 == 0) line.Append($" y{sim.State.month / 12}:{ground.Count}");
+                        if (ready < 0 && sim.JarReadyMonth(LifeSpecies.Wolves) >= 0) { ready = sim.JarReadyMonth(LifeSpecies.Wolves) / 12f; denAtReady = ground.Count; }
+                    });
+                    TestContext.Out.WriteLine($"need {need,2} seed {s,2}: wolves ready {PacingResult.F(ready)} on {denAtReady,3} den cells |{line}");
+                }
+        }
+
+        [Test, Explicit("#690: how many grown trees stand in a wood (company within reach) as the real game grows them, per year, against the plain tree count; and when the deer and wolf jars open")]
+        public void DeerWood_Measure()
+        {
+            var variants = new[] { (3, 4), (3, 3), (2, 3), (4, 6), (5, 8) };
+            foreach (var s in Eight)
+            {
+                var line = new StringBuilder(); int five = -1;
+                var cur = new EcoTuning(); var wolfReady = -1f; var deerReady = -1f;
+                PacingLab.Run(Habit.Active, s, cur, 40, false, sim =>
+                {
+                    var e = sim.State.eco;
+                    if (five < 0 && e.cTrees >= 5) five = (int)sim.State.month;
+                    if (deerReady < 0 && sim.JarReadyMonth(LifeSpecies.Deer) >= 0) deerReady = sim.JarReadyMonth(LifeSpecies.Deer) / 12f;
+                    if (wolfReady < 0 && sim.JarReadyMonth(LifeSpecies.Wolves) >= 0) wolfReady = sim.JarReadyMonth(LifeSpecies.Wolves) / 12f;
+                    if (sim.State.month % 24 == 0)
+                    {
+                        line.Append($" y{sim.State.month / 12}:T{e.cTrees}");
+                        foreach (var (r, k) in variants)
+                        {
+                            var m = new EcoModel(e, sim.EcoGround, new EcoTuning { jarWoodReach = r, jarWoodCompany = k });
+                            line.Append($"/{m.WoodTrees()}");
+                        }
+                    }
+                });
+                TestContext.Out.WriteLine($"seed {s,2}: 5 trees at m{five}, deer jar ready y{PacingResult.F(deerReady)}, wolves y{PacingResult.F(wolfReady)} |{line}");
+            }
+        }
+
+        [Test, Explicit("#710: does lowering the sim caps (duckCap, deerMax) to the drawn budget move the village gate? 8 seeds, Active habit")]
+        public void SimCaps_AgainstTheBudget_Measure()
+        {
+            var variants = new (string, EcoTuning)[] { ("current duckCap 8 deerMax 8", new EcoTuning()), ("duckCap 4 deerMax 4 (budget)", new EcoTuning { duckCap = 4, deerMax = 4 }) };
+            foreach (var (name, t) in variants)
+            {
+                var ys = Eight.Select(s => PacingLab.Run(Habit.Active, s, t).village).ToList();
+                TestContext.Out.WriteLine($"{name}: " + string.Join(" ", ys.Select(PacingResult.F)) + $"  mean {Mean(ys):0.0}");
+            }
         }
 
         [Test, Explicit("prints the before/after table (docs/design/placed-life.md, Pacing (#569))")]

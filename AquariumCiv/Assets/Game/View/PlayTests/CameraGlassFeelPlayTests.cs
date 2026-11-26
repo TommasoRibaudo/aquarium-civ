@@ -17,7 +17,7 @@ namespace AquariumCiv.View.PlayTests
     [Category("CameraGlassFeel")]
     public class CameraGlassFeelPlayTests : PlayTestBase
     {
-        const string Dir = "F:/GameDev/AquariumCiv/Temp/agent/p273/";
+        static readonly string Dir = UnityEngine.Application.dataPath + "/../Temp/agent/p273/";
         static BoxCamera Rig => Camera.main.GetComponent<BoxCamera>();
 
         IEnumerator Open()
@@ -42,7 +42,7 @@ namespace AquariumCiv.View.PlayTests
         static bool CameraInBox(BoxCamera r)
         {
             var p = r.transform.position;
-            return CameraGlass.CameraInsideBox(p.x, p.y, p.z, Land.HX + BoxCameraMath.HullSide, Land.HZ + BoxCameraMath.HullSide, BoxCameraMath.ShelfY, Land.GlassTop, 0.3f);
+            return CameraGlass.CameraInsideBox(p.x, p.y, p.z - Land.CZ, Land.HX + BoxCameraMath.HullSide, Land.HZ + BoxCameraMath.HullSide, BoxCameraMath.ShelfY, Land.GlassTop, 0.3f);
         }
 
         /// <summary>#587: one finger drags (the ground under it follows) by <paramref name="dir"/> (screen pixels) in steps; records the pivot each frame, then optionally holds and releases.</summary>
@@ -85,7 +85,7 @@ namespace AquariumCiv.View.PlayTests
                     var trace = new List<Vector3>(); var inBox = new List<bool>();
                     yield return Pan(w.dir * (Screen.height * 1.2f), 45, trace, inBox, release: false);
                     for (int i = 0; i < 15; i++) { yield return null; trace.Add(Rig.target); inBox.Add(CameraInBox(Rig)); }
-                    float held = w.axis == 0 ? Rig.target.x * w.sign : Rig.target.z * w.sign;
+                    float held = w.axis == 0 ? Rig.target.x * w.sign : (Rig.target.z - Land.CZ) * w.sign;
                     var cam = Camera.main;
                     var vb = BoxCameraMath.PanBoundsFor(Rig.yaw, Rig.pitch, Rig.FitDistance() * Rig.zoom, Rig.target.y, Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad), cam.aspect);
                     float restLim = w.axis == 0 ? vb.x : vb.y, stopLim = restLim + CameraGlass.Gap;
@@ -93,7 +93,7 @@ namespace AquariumCiv.View.PlayTests
                     float worstOut = 0f;
                     for (int c = 0; c < 8; c++)
                     {
-                        var v = cam.WorldToViewportPoint(new Vector3((c & 1) == 0 ? -Land.HX : Land.HX, (c & 2) == 0 ? 0f : Land.GlassTop, (c & 4) == 0 ? -Land.HZ : Land.HZ));
+                        var v = cam.WorldToViewportPoint(new Vector3((c & 1) == 0 ? -Land.HX : Land.HX, (c & 2) == 0 ? 0f : Land.GlassTop, Land.CZ + ((c & 4) == 0 ? -Land.HZ : Land.HZ)));
                         worstOut = Mathf.Max(worstOut, -v.x, v.x - 1f, -v.y, v.y - 1f);
                     }
                     float wallX = -1f;
@@ -104,12 +104,12 @@ namespace AquariumCiv.View.PlayTests
                     // pivot reaches the glass's rest limit, never passes the soft band, and the camera never sits in the box.
                     if (w.axis == 0) Assert.AreEqual(0.5f, wallX, 0.35f, $"{zoomName} {w.name}: the pivot is at the glass wall, so the wall is near the screen's middle");
                     yield return Shot($"{zoomName}_{w.name}_held");
-                    var maxAbs = 0f; foreach (var p in trace) maxAbs = Mathf.Max(maxAbs, (w.axis == 0 ? p.x : p.z) * w.sign);
+                    var maxAbs = 0f; foreach (var p in trace) maxAbs = Mathf.Max(maxAbs, (w.axis == 0 ? p.x : p.z - Land.CZ) * w.sign);
                     log.AppendLine($"{zoomName} {w.name}: held {held:F3} max {maxAbs:F3} rest {restLim:F3} stop {stopLim:F3} glass {(w.axis == 0 ? Land.HX : Land.HZ):F3}");
                     // release: settles to the rest limit
                     EndTouch(fa, new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), delta: Vector2.zero, queueEventOnly: true);
                     for (int i = 0; i < 90; i++) yield return null;
-                    float settled = w.axis == 0 ? Rig.target.x * w.sign : Rig.target.z * w.sign;
+                    float settled = w.axis == 0 ? Rig.target.x * w.sign : (Rig.target.z - Land.CZ) * w.sign;
                     log.AppendLine($"   settled {settled:F3}");
                     File.WriteAllText(Dir + $"trace_{zoomName}_{w.name}.csv", "x,y,z\n" + string.Join("\n", trace.ConvertAll(p => $"{p.x:F4},{p.y:F4},{p.z:F4}")));
                     Assert.LessOrEqual(maxAbs, stopLim + 1e-3f, $"{zoomName} {w.name}: never past the soft band's end");
@@ -130,7 +130,7 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator FreePan_FromTheCamp_ReachesBothSideWalls_AtCloseMidAndFarZoom()
         {
             yield return Open();
-            string dir = "F:/GameDev/AquariumCiv/Temp/agent/p538/"; Directory.CreateDirectory(dir);
+            string dir = UnityEngine.Application.dataPath + "/../Temp/agent/p538/"; Directory.CreateDirectory(dir);
             var log = new StringBuilder();
             float reach = Land.HX - CameraGlass.Margin - CameraGlass.Gap - 0.3f; // a small margin short of the rest limit
             foreach (var (zoomName, zoom) in new[] { ("close", CameraReach.MinZoom), ("mid", 0.6f), ("far", 1f) })

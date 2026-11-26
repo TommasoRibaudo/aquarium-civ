@@ -74,6 +74,7 @@ namespace AquariumCiv.Life
         public void PlanAll(ViewTime t, List<PersonActivity> into)
         {
             into.Clear();
+            lastAsked = t; // #607/#697: the moment a replan is felt at
             Sync();
             EnsureDay(t.day);
             PruneLive(t);
@@ -91,6 +92,7 @@ namespace AquariumCiv.Life
         /// <summary>One person's activity at a view time. A person no longer in the box gets <see cref="ActivityKind.None"/>.</summary>
         public PersonActivity Plan(PersonRef who, ViewTime t)
         {
+            lastAsked = t;
             Sync();
             EnsureDay(t.day);
             PruneLive(t);
@@ -157,6 +159,7 @@ namespace AquariumCiv.Life
                 case PlaceKind.None: return false;
                 case PlaceKind.Nudge: return nudgeIds.Contains(p.index);
                 case PlaceKind.BushCell: return sim.EcologyOn && EcoBushes.IsBush(sim.State.eco, p.index); // P8 #288
+                case PlaceKind.Deadfall: return sim.EcologyOn && sim.EcoCoverAt(p.index) == AquariumCiv.Sim.Eco.EcoCover.Tree; // #656/#677
                 case PlaceKind.Relic: return p.index >= 0 && p.index < relicHere.Length && relicHere[p.index]; // #92
                 case PlaceKind.Prop: { var cp = sim.FindConsequenceProp(p.index); return cp != null && cp.placed; } // #371
                 case PlaceKind.Tower: return sim.TowerStands; // #404
@@ -190,8 +193,12 @@ namespace AquariumCiv.Life
             // #284: a tent being raised from the hides takes its builders (and a watching kid) until it stands.
             if (TentActivityAt(p, t, out var raising)) return raising;
             if (EggActivityAt(p, t, out var gathering)) return gathering; // #574: an egg gathered at the reeds, carried to the pile
+            if (NestActivityAt(p, t, out var nesting)) return nesting; // #709: a nest egg taken, or the kids looking in
             if (DebugPickerAt(p, t, out var picking)) return picking; // #361 debug: pickers to the nearest bush
             if (DebugFishAt(p, t, out var fishing)) return fishing; // #364 debug: "Fish bite now"
+            if (RackMoveActivityAt(p, t, out var movingRack)) return movingRack; // #700 (B27): a path came over the rack
+            if (DebugLaundryAt(p, t, out var laundering)) return laundering; // #705 debug: "Laundry now"
+            if (LaundryActivityAt(p, t, out var takingIn)) return takingIn; // #705: the washing taken in
             if (DebugRackAt(p, t, out var racking)) return racking; // #543 debug: "fill fish basket" / "fish on the rack"
             if (PrayerActivityAt(p, t, out var praying)) return praying; // fb4 #566: a visit to the feather pole
             // 3+4. The day: this month's story scenes > role beats > the schedule, already layered.
@@ -230,7 +237,7 @@ namespace AquariumCiv.Life
                 who = p.who, kind = kind, place = place, from = from, moving = s.Moving && from != place, partner = s.partner,
                 prop = s.prop, water = s.water, start = s.start, end = s.end, progress = Math.Min(1f, into / len),
                 step = steps <= 1 ? 0 : (int)(into / StepHours) % steps, source = s.src, trip = s.trip, pace = dayInfo.pace,
-                chronicleId = s.chronicleId, copiesPartner = s.copies, facesGlass = s.faces, count = s.count,
+                chronicleId = s.chronicleId, copiesPartner = s.copies, facesGlass = s.faces,
             };
         }
 
@@ -297,29 +304,64 @@ namespace AquariumCiv.Life
             if (pond != pondSeen) { pondSeen = pond; polyCache.Clear(); }
             long sig = Signature();
             if (sig == snapSig) return;
+            if (ReplanLog != null) LogReplan(snapSig == long.MinValue ? "invalidated" : null);
+            Array.Copy(sigParts, sigSeen, sigParts.Length);
             snapSig = sig;
             polyCache.Clear();
-            PinSleepers(); // #607: a replan at night leaves the ones already in bed in bed
             Snapshot();
             ClearDays();
             DropReactionsToGoneGifts();
+        }
+
+        /// <summary>#697/#696 diagnosis: when set, every replan says which part of the sim signature moved (or why it was forced)
+        /// and what each person was doing at the time. Off in the game; tests and the debug panel turn it on.</summary>
+        public Action<string> ReplanLog;
+        static readonly string[] sigNames = { "month", "buildings", "notables", "population", "chronicle", "nudges", "era", "supper", "belief", "roles" };
+        readonly long[] sigParts = new long[sigNames.Length], sigSeen = new long[sigNames.Length];
+
+        void LogReplan(string forced)
+        {
+            string why = forced;
+            if (why == null)
+            {
+                var moved = new List<string>();
+                for (int i = 0; i < sigParts.Length; i++) if (sigParts[i] != sigSeen[i]) moved.Add(sigNames[i]);
+                why = "sim moved: " + string.Join("+", moved);
+            }
+            var sb = new System.Text.StringBuilder();
+            sb.Append("replan (").Append(why).Append(") at day ").Append(lastAsked.day).Append(' ').Append(lastAsked.hour.ToString("0.00"));
+            if (dayInfo.day != long.MinValue && lastAsked.day == dayInfo.day)
+            {
+                float h = lastAsked.hour;
+                foreach (var kv in dayCache)
+                {
+                    var segs = kv.Value;
+                    var s = segs[Find(segs, h)];
+                    sb.Append(" | ").Append(kv.Key).Append(':').Append(s.kind).Append(s.Moving ? ">" : "=").Append(s.place.kind);
+                }
+            }
+            ReplanLog(sb.ToString());
         }
 
         /// <summary>Cheap check that the sim moved: month, counts, era, role holders.</summary>
         long Signature()
         {
             var s = sim.State;
-            long h = s.month;
-            h = h * 31 + s.buildings.Count;
-            h = h * 31 + s.notables.Count;
-            h = h * 31 + s.population;
-            h = h * 31 + s.chronicle.Count;
-            h = h * 31 + s.nudges.Count;
-            h = h * 31 + (int)s.era * 2 + (s.eraReady ? 1 : 0);
-            h = h * 31 + s.supperPick * 7 + s.supperMonth; // #589
-            h = h * 31 + sim.BeliefStage * 2 + (sim.BeliefHalfNow == BeliefHalf.Later ? 1 : 0); // #92: how they see the glass
+            sigParts[0] = s.month;
+            sigParts[1] = s.buildings.Count;
+            sigParts[2] = s.notables.Count;
+            sigParts[3] = s.population;
+            sigParts[4] = s.chronicle.Count;
+            sigParts[5] = s.nudges.Count;
+            sigParts[6] = (int)s.era * 2 + (s.eraReady ? 1 : 0);
+            sigParts[7] = s.supperPick * 7 + s.supperMonth; // #589
+            sigParts[8] = sim.BeliefStage * 2 + (sim.BeliefHalfNow == BeliefHalf.Later ? 1 : 0); // #92: how they see the glass
+            long roles = 0;
             if (s.roles != null)
-                for (int i = 0; i < s.roles.Count; i++) h = h * 31 + s.roles[i].holderId * (i + 7);
+                for (int i = 0; i < s.roles.Count; i++) roles = roles * 31 + s.roles[i].holderId * (i + 7);
+            sigParts[9] = roles;
+            long h = 0;
+            for (int i = 0; i < sigParts.Length; i++) h = h * 31 + sigParts[i];
             return h;
         }
 
@@ -574,15 +616,23 @@ namespace AquariumCiv.Life
         {
             if (a == b) return 0f;
             var route = RouteBetween(a, b);
-            if (route != null && route.len > 1e-4f) return Math.Max(MinWalk, Math.Min(MaxWalk, route.len / WalkSpeed));
-            if (positions.TryWalkLength(a, b, out float len)) return Math.Max(MinWalk, Math.Min(MaxWalk, len / WalkSpeed));
+            float slow = HungerPace; // #656/#677: hungry, a little slower (shown, never punished)
+            if (route != null && route.len > 1e-4f) return slow * Math.Max(MinWalk, Math.Min(MaxWalk, route.len / WalkSpeed));
+            if (positions.TryWalkLength(a, b, out float len)) return slow * Math.Max(MinWalk, Math.Min(MaxWalk, len / WalkSpeed));
             if (positions.TryGetPosition(a, out float ax, out float az) && positions.TryGetPosition(b, out float bx, out float bz))
             {
                 float dx = ax - bx, dz = az - bz;
-                return Math.Max(MinWalk, Math.Min(MaxWalk, (float)Math.Sqrt(dx * dx + dz * dz) / WalkSpeed));
+                return slow * Math.Max(MinWalk, Math.Min(MaxWalk, (float)Math.Sqrt(dx * dx + dz * dz) / WalkSpeed));
             }
             return 0.25f;
         }
+
+        /// <summary>#656/#677: on a new-start box with the food gone (<see cref="SimCore.Hungry"/>) the walks take this much longer: hunger
+        /// is shown (slower, looking at the sky in the view), never punished.</summary>
+        public const float HungryPace = 1.25f;
+        float HungerPace => sim != null && sim.NewStartOn && sim.Hungry ? HungryPace : 1f;
+        /// <summary>#656/#677: how much longer a walk takes now (1, or <see cref="HungryPace"/> while hungry on a new start).</summary>
+        public float WalkPace => HungerPace;
 
         /// <summary>World units of plain ground walked per view hour [est], and the shortest and longest walk in view hours.</summary>
         public const float WalkSpeed = 5f, MinWalk = 0.08f, MaxWalk = 0.6f;

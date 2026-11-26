@@ -21,24 +21,31 @@ namespace AquariumCiv.Sim.Eco
             _ => "Wolves",
         };
 
+        /// <summary>#703: the duck jar's line while the pond is ice, in the people's words.</summary>
+        public const string IceNeedLine = "The pond is ice. Ducks will come when it thaws.";
+
         /// <summary>The first thing a shut jar still waits for, as a short line ("Rabbits need a meadow"), or null when its land is
         /// ready (or the jar is not shut). The rung below comes first, then the land, in the order the Keeper can act on them.</summary>
         public string JarNeed(LifeSpecies s, long month)
         {
+            if (Jar(s).State == JarState.Ready && IceShut(s, month)) return IceNeedLine; // #703
             if (Jar(s).State != JarState.Locked) return null;
             var below = LifeJar.RungBelow(s);
             string n = PlainName(s);
             if (below.HasValue && !IsPlaced(below.Value))
-                return n + " need the " + (below.Value == LifeSpecies.Thicket ? "bushes" : PlainName(below.Value).ToLowerInvariant()) + " first";
+                // tester 11-24: with the rung below ready in the kit, "need the bushes first" read as done: it means set down in the box
+                return n + " need the " + (below.Value == LifeSpecies.Thicket ? "bushes" : PlainName(below.Value).ToLowerInvariant())
+                    + (Jar(below.Value).State == JarState.Ready ? " set down" : "") + " first";
             bool anyMeadow = st.cGrass + st.cTall > 0;
             switch (s)
             {
                 case LifeSpecies.Thicket:
+                    if (st.treeCell < 0) return n + " need the seed in the ground first"; // 2026-11-14: seed, then bushes, then rabbits
                     return MeadowFrac >= t.jarThicketMeadow ? null : n + (anyMeadow ? " need a bigger meadow" : " need a meadow");
                 case LifeSpecies.Rabbits:
                     return MeadowFrac >= t.jarRabbitsMeadow ? null : n + (anyMeadow ? " need a bigger meadow" : " need a meadow");
                 case LifeSpecies.Deer:
-                    return st.cTrees >= t.jarDeerTrees ? null : $"{n} need more trees ({st.cTrees}/{t.jarDeerTrees})";
+                    { int w = WoodTrees(); return w >= t.jarDeerWood ? null : $"{n} need a thicker wood ({w}/{t.jarDeerWood})"; } // #690
                 case LifeSpecies.Ducks:
                     return st.cPond >= t.jarDucksPond ? null : n + (st.cPond > 0 ? " need a bigger pond" : " need a pond");
                 case LifeSpecies.Fish:
@@ -52,6 +59,7 @@ namespace AquariumCiv.Sim.Eco
                     if (st.deerFiveSince < 0) return $"{n} need a herd of {t.wolvesDeer} deer";
                     if (st.cTrees < t.wolvesTrees) return $"{n} need a deeper wood ({st.cTrees}/{t.wolvesTrees} trees)";
                     if (!AnyDen()) return n + " need a hidden den spot in the wood";
+                    if (!DenRoom()) return n + " need a bigger wood to hide a den in"; // #643
                     if (month - st.deerFiveSince < t.wolvesDeerMonths) return n + " wait for the herd to hold its numbers";
                     return null;
             }

@@ -1,0 +1,28 @@
+{
+ "name": "693-b54o-flour-fight",
+ "notes": "B54.o: kids throw handfuls of flour at each other; white puffs; white blotches stay on them; then they chase.",
+ "animlab": {
+  "issue": 693
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 4);",
+   "return AquariumCiv.View.CampCheats.OnlyThing(\"flour_sacks\");",
+   "return \"waiting for the things\";",
+   "return \"waiting for the things\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11.0f);",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.FlourFight());"
+  ],
+  "warm": 0.5,
+  "seconds": 10,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.9,
+  "yaw": 28,
+  "pitch": 40,
+  "lead": 1.0
+ }
+}

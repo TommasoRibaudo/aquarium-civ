@@ -1,0 +1,30 @@
+{
+ "name": "695-b57a-field-tag",
+ "notes": "B57.a: 2-3 kids run tag along the furrows of a summer field, ducking; the farmer waves them out; out by the gate.",
+ "animlab": {
+  "issue": 695
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(10.5f, false, 6);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return AquariumCiv.View.CampCheats.ToSeason(AquariumCiv.Life.Season.Summer);",
+   "return \"waiting for the season\";",
+   "return \"waiting for the village\";",
+   "return \"waiting for the village\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(10.5f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.FieldTag());"
+  ],
+  "warm": 0.5,
+  "seconds": 10,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.7,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 42,
+  "lead": 6.0
+ }
+}

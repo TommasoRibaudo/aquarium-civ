@@ -6,17 +6,19 @@
 quiet=${1:-600}
 max=${2:-14400}
 cd "$(dirname "$0")/.." || exit 1
-log="$LOCALAPPDATA/Unity/Editor/Editor.log"
+log="${EDITOR_LOG:-$LOCALAPPDATA/Unity/Editor/Editor.log}"
+lock="${LOCK:-.agent-editor.lock}"
+proj="${PROJ:-F:/GameDev/AquariumCiv}"
 start=$(date +%s)
 last=$start
 prev=""
 while :; do
   now=$(date +%s)
-  if [ ! -f .agent-editor.lock ]; then
+  if [ ! -f "$lock" ]; then
     echo "DONE: lock released after $(( (now - start) / 60 )) min"
     exit 0
   fi
-  status=$(UNITY_NO_PAGER=1 UNITY_NO_BANNER=1 unity command test status --project-path 'F:\GameDev\AquariumCiv' --timeout 30 2>&1 | tail -1 | cut -c1-120)
+  status=$(UNITY_NO_PAGER=1 UNITY_NO_BANNER=1 unity command test status --project-path "$proj" --timeout 30 2>&1 | tail -1 | cut -c1-120)
   print="$status"
   # The log only proves progress while a run is going: an idle Editor still writes to it now and then.
   # A 504 means a blocking EditMode run has the Editor busy, so it counts as a run going, without its text.

@@ -145,6 +145,7 @@ namespace AquariumCiv.GameUI
 
             Tokens();
             Buttons();
+            KitTiles();
             Chips();
             Sheets();
             Cards();
@@ -293,6 +294,23 @@ namespace AquariumCiv.GameUI
             State(r, "button", "compact-marked", new GlassButton("Pinned") { Compact = true }).Marked("pin", true);
         }
 
+
+        /// <summary>#668: the kit's tile (KitTile) in every state: available, in hand, new, ready with a count, shut, shut and picked.</summary>
+        void KitTiles()
+        {
+            var s = Section("Kit tile");
+            var r = Row(s, "Available, in hand, new, ready with a count (#726)");
+            KitTile Tile(string state, KitTile t) { t.style.width = 236f; t.style.marginRight = 22f; return State(r, "kit-tile", state, t); }
+            Tile("available", new KitTile("Mister", "mister", "wets the land", null));
+            Tile("hand", new KitTile("Mister", "mister", "wets the land", null) { Hand = true });
+            Tile("new", new KitTile("Tweezers", "tweezers", "pull weeds", null) { New = true });
+            Tile("count", new KitTile("Seed", "life-seed", "a young tree", null) { Count = 2 });
+            r = Row(s, "#662 shut: a timber edge, a paler fill, a lock, full-strength words (never faded); picked (its need is the note)");
+            Tile("shut", new KitTile("Deer", "life-stag", "thicker wood", null) { Shut = true });
+            Tile("shut-picked", new KitTile("Wolves", "life-wolf", "needs deer", null) { Shut = true, Picked = true });
+            Tile("spade", new KitTile("Spade", "spade", "lifts plants", null));
+            Tile("cloth", new KitTile("Cloth", "cloth", "wipes the glass", null));
+        }
         void Chips()
         {
             var s = Section("Chip");

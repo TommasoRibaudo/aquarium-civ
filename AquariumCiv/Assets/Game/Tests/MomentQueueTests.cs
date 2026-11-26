@@ -575,7 +575,8 @@ namespace AquariumCiv.Tests
                 {
                     sim.CatchUp(8);
                     sim.BeginVisit();
-                    foreach (var e in sim.State.chronicle.Where(x => x.id > firstId && MomentRules.KindOfLine(x.kind, out _) && x.month > sim.State.cards.since))
+                    foreach (var e in sim.State.chronicle.Where(x => x.id > firstId && MomentRules.KindOfLine(x.kind, out _) && x.month > sim.State.cards.since
+                                 && sim.State.month - x.month <= MomentRules.KeepFinishedMonths)) // #718: a carded moment is forgotten after 30 years by design (40 unread years here once the wishes went)
                     {
                         var m = sim.MomentOfEntry(e.id);
                         if (InAnyCardPath(sim, e))

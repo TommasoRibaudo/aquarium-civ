@@ -56,6 +56,7 @@ namespace AquariumCiv.Life
             h = h * 31 + S.buildings.Count;
             h = h * 31 + (int)S.era;
             h = h * 31 + sim.EcoGrownTrees; // #573: a grown tree between months (the woods spot is asked again)
+            h = h * 31 + RackSites.Moves(sim); // #700: a rack moved off a path: the rack places are asked again
             h = h * 31 + sim.EcoPondCells; // #495: the pond grows between months' lots: its shore is asked again
             if (h == sig && s == st) return true;
             bool newSettlement = s != st;
@@ -197,7 +198,7 @@ namespace AquariumCiv.Life
         int Walkable(float x, float z)
         {
             x = Math.Max(-Terrain.HX + 0.05f, Math.Min(Terrain.HX - 0.05f, x));
-            z = Math.Max(-Terrain.HZ + 0.05f, Math.Min(Terrain.HZ - 0.05f, z));
+            z = Terrain.ClampZ(z, 0.05f);
             int c = SiteMap.CellAt(x, z);
             if (c < 0) return -1;
             if (st.WalkCost(c) > 0) return c;
@@ -252,6 +253,7 @@ namespace AquariumCiv.Life
                     st.MarketCentre(out x, out z);
                     return true;
                 case PlaceKind.BushCell: // P8 #288
+                case PlaceKind.Deadfall: // #656/#677: the tree's foot
                     if (p.index < 0 || p.index >= SiteMap.N) return false;
                     x = SiteMap.CXc(p.index); z = SiteMap.CZc(p.index);
                     return true;
@@ -286,12 +288,14 @@ namespace AquariumCiv.Life
             }
             if (p.kind == PlaceKind.Green) { x = st.GreenX; z = st.GreenZ; return true; }
             if (!landReady) BuildLand();
-            int key = (int)p.kind * 4 + (p.kind is PlaceKind.Remembering or PlaceKind.Stash or PlaceKind.FishRack && p.index == 1 ? 1 : 0);
+            int key = (int)p.kind * 4 + (p.kind is PlaceKind.Remembering or PlaceKind.Stash or PlaceKind.FishRack or PlaceKind.HideRack && p.index == 1 ? 1 : 0);
             if (!land.TryGetValue(key, out var s)) return false;
             x = s.x; z = s.z;
             if (p.kind == PlaceKind.Woods && p.index > 0 && sim != null && sim.EcologyOn) // #573: the next grown wild tree (two choppers to a tree)
             {
-                if (!woodsRank.TryGetValue(p.index, out int wcell)) woodsRank[p.index] = wcell = sim.WoodsTreeCell(st.GreenX, st.GreenZ, p.index);
+                // #730: a cached tree the landscaping tool lifted (or that fell) is looked up again, so no chopper works at bare ground
+                if (!woodsRank.TryGetValue(p.index, out int wcell) || (wcell >= 0 && (AquariumCiv.Sim.Eco.EcoCover)sim.State.eco.cover[wcell] != AquariumCiv.Sim.Eco.EcoCover.Tree))
+                    woodsRank[p.index] = wcell = sim.WoodsTreeCell(st.GreenX, st.GreenZ, p.index);
                 if (wcell < 0) return false;
                 x = SiteMap.CXc(wcell); z = SiteMap.CZc(wcell);
             }
@@ -315,7 +319,7 @@ namespace AquariumCiv.Life
             for (int c = 0; c < SiteMap.N; c++)
             {
                 float x = SiteMap.CXc(c), z = SiteMap.CZc(c);
-                if (Math.Abs(x) > mx || Math.Abs(z) > mz) continue;
+                if (Math.Abs(x) > mx || Math.Abs(z - Terrain.CZ) > mz) continue;
                 float d = (x - gx) * (x - gx) + (z - gz) * (z - gz);
                 bool water = map.Water(c);
                 if (map.Forest(c))
@@ -360,7 +364,7 @@ namespace AquariumCiv.Life
             {
                 float dx = gx - px, dz = gz - pz, len = (float)Math.Sqrt(dx * dx + dz * dz);
                 if (len < 1e-4f) { dx = 1f; dz = 0f; len = 1f; }
-                midden = new Spot(Math.Max(-mx, Math.Min(mx, gx + dx / len * 1.4f)), Math.Max(-mz, Math.Min(mz, gz + dz / len * 1.4f)));
+                midden = new Spot(Math.Max(-mx, Math.Min(mx, gx + dx / len * 1.4f)), Terrain.CZ + Math.Max(-mz, Math.Min(mz, gz + dz / len * 1.4f - Terrain.CZ)));
             }
 
             Spot? commons = null;
@@ -418,10 +422,18 @@ namespace AquariumCiv.Life
             CampStash.At(fx, fz, CampStash.PileRadius, out wx, out wz);
             land[(int)PlaceKind.Stash * 4 + 1] = new Spot(wx, wz);
             // #543: the fish rack by the fire (0 = where people stand, 1 = the rack's middle)
-            FishRackSpot.At(fx, fz, sim.State.seed, FishRackSpot.StandRadius, out wx, out wz);
+            float fishA = RackSites.Fish(sim, fx, fz); // #700: off the paths
+            FishRackSpot.At(fx, fz, fishA, FishRackSpot.StandRadius, out wx, out wz);
             land[(int)PlaceKind.FishRack * 4] = new Spot(wx, wz);
-            FishRackSpot.At(fx, fz, sim.State.seed, FishRackSpot.Distance, out wx, out wz);
+            FishRackSpot.At(fx, fz, fishA, FishRackSpot.Distance, out wx, out wz);
             land[(int)PlaceKind.FishRack * 4 + 1] = new Spot(wx, wz);
+            // sign-off 2026-11-14: the hide rack (LifePlanner.HideFrame's own sums): 1 = its middle, 0 = a step toward the fire, to scrape at
+            {
+                float a = RackSites.Hide(sim, fx, fz);
+                float ux = (float)System.Math.Cos(a), uz = (float)System.Math.Sin(a);
+                land[(int)PlaceKind.HideRack * 4 + 1] = new Spot(fx + ux * LifePlanner.HideFrameDistance, fz + uz * LifePlanner.HideFrameDistance);
+                land[(int)PlaceKind.HideRack * 4] = new Spot(fx + ux * (LifePlanner.HideFrameDistance - 0.12f), fz + uz * (LifePlanner.HideFrameDistance - 0.12f));
+            }
         }
 
         /// <summary>P9 #424: a spot to stand and look at placed life (<see cref="PlaceKind.Arrival"/>: index = cell × 8 + slot). Slot 0 is
@@ -475,10 +487,10 @@ namespace AquariumCiv.Life
             float tx, tz;
             switch (side & 3)
             {
-                case 0: tx = Clamp(gx, Terrain.HX - ends); tz = -Terrain.HZ + inset; break;
-                case 2: tx = Clamp(gx, Terrain.HX - ends); tz = Terrain.HZ - inset; break;
-                case 1: tx = Terrain.HX - inset; tz = Clamp(gz, Terrain.HZ - ends); break;
-                default: tx = -Terrain.HX + inset; tz = Clamp(gz, Terrain.HZ - ends); break;
+                case 0: tx = Clamp(gx, Terrain.HX - ends); tz = Terrain.ZMin + inset; break;
+                case 2: tx = Clamp(gx, Terrain.HX - ends); tz = Terrain.ZMax - inset; break;
+                case 1: tx = Terrain.HX - inset; tz = Terrain.ClampZ(gz, ends); break;
+                default: tx = -Terrain.HX + inset; tz = Terrain.ClampZ(gz, ends); break;
             }
             int c = Walkable(tx, tz);
             if (c < 0) return false;

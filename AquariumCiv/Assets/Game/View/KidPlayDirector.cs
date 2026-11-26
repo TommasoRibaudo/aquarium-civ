@@ -26,6 +26,8 @@ namespace AquariumCiv.View
             public bool forced;
             public float until = float.MaxValue;
             public GameObject ball;
+            public bool wasFree; public float waitedHands = -1f; // #744 (tester): a picked-up ball waits where it lies until the hands reach it
+            public bool splashed; // #744: the ball came down on the pond (its splash played)
             public int ballShot = -1;
             public ArcShot flight;
             public Vector3 lastBall;
@@ -69,8 +71,38 @@ namespace AquariumCiv.View
         /// Once a frame, before the dolls are driven: who plays where, and the groups (re-split when a place's kids have changed and
         /// stayed changed for <see cref="Settle"/> s, or a 2-hour block turned).
         /// </summary>
+        /// <summary>#744: from a ball's resting point, downhill in short steps to the bottom of a dip (at most 0.6 u); the point itself on
+        /// flat ground (a drop under 3 cm is no hollow).</summary>
+        System.Func<Vector2, bool> pondAt;
+        System.Func<Vector2, Vector2> rollsTo;
+
+        Vector2 Downhill(Vector2 p)
+        {
+            var b = BoxNow;
+            if (b == null) return p;
+            var q = p; float h = b.land.Height(q.x, q.y), h0 = h;
+            for (int n = 0; n < 15 && (q - p).magnitude < 0.6f; n++)
+            {
+                Vector2 best = q; float bh = h - 0.002f;
+                for (int k = 0; k < 8; k++)
+                {
+                    var c = q + new Vector2(Mathf.Cos(k * Mathf.PI / 4f), Mathf.Sin(k * Mathf.PI / 4f)) * 0.04f;
+                    if (Mathf.Abs(c.x) > Land.HX - 0.08f || !Land.InZ(c.y, 0.08f)) continue;
+                    float ch = b.land.Height(c.x, c.y);
+                    if (ch < bh) { bh = ch; best = c; }
+                }
+                if (best == q) break;
+                q = best; h = bh;
+            }
+            return h0 - h > 0.03f ? q : p;
+        }
+
         public void Step(LifePlanner planner, IReadOnlyList<PersonActivity> acts, ViewTime viewNow, float time, Transform root)
         {
+            // #744: the ball game reads the real land: the drawn pond, and where a ball rolls on to in a dry hollow
+            // (the newest director sets them each step; a hook left by a destroyed one answers "flat dry land")
+            BallGame.PondAt = pondAt ??= p => { if (pv == null) return false; var b = BoxNow; return b != null && b.layout.eco.on && b.layout.eco.pondCells > 0 && b.WaterDrawnAt(p.x, p.y); };
+            BallGame.RollsTo = rollsTo ??= p => pv == null ? p : Downhill(p);
             now = time;
             candidates.Clear();
             foreach (var l in atPlace.Values) l.Clear();
@@ -214,7 +246,7 @@ namespace AquariumCiv.View
                 var game = p.game;
                 if (game is PlayGame.Tag or PlayGame.Ball) { GamesElsewhere(place, inViewBuf); game = PlayGroups.Differ(game, p.members.Length, inViewBuf, roomy); } // #541
                 var site = SiteFor(planner, game, real, ref centre, viewNow); // #359
-                if (site == null && game is PlayGame.Splash or PlayGame.Woods or PlayGame.HideSeek or PlayGame.IceSlide) game = PlayGroups.Fits(PlayGame.Tag, p.members.Length) ? PlayGame.Tag : PlayGame.Ball;
+                if (site == null && game is PlayGame.Splash or PlayGame.Woods or PlayGame.HideSeek or PlayGame.IceSlide or PlayGame.FishGrab) game = PlayGroups.Fits(PlayGame.Tag, p.members.Length) ? PlayGame.Tag : PlayGame.Ball;
                 var g = MakeGroup(planner, viewNow, place, game, p.seed, p.members, centre, time, site);
                 Add(g);
             }
@@ -253,7 +285,7 @@ namespace AquariumCiv.View
             for (int k = 0; k < 6; k++)
             {
                 p.x = Mathf.Clamp(p.x, -Land.HX + 0.45f, Land.HX - 0.45f);
-                p.y = Mathf.Clamp(p.y, -Land.HZ + 0.45f, Land.HZ - 0.45f);
+                p.y = Land.ClampZ(p.y, 0.45f);
                 if (land == null || !land.IsWater(p.x, p.y)) break;
                 p = Vector2.Lerp(p, home, 0.4f);
             }
@@ -265,7 +297,7 @@ namespace AquariumCiv.View
                 {
                     float a = k * Mathf.PI / 6f;
                     var q = p + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (0.2f * ring);
-                    if (Mathf.Abs(q.x) > Land.HX - 0.45f || Mathf.Abs(q.y) > Land.HZ - 0.45f || (land != null && land.IsWater(q.x, q.y))) continue;
+                    if (Mathf.Abs(q.x) > Land.HX - 0.45f || !Land.InZ(q.y, 0.45f) || (land != null && land.IsWater(q.x, q.y))) continue;
                     int h = pv.LotHitsNear(q, PlayRingR);
                     if (h < bestHits) { bestHits = h; best = q; }
                 }
@@ -312,6 +344,8 @@ namespace AquariumCiv.View
         public static float BallMinPixels = 9f;
 
         /// <summary>The ball's radius (root-local units) that makes it <see cref="BallMinPixels"/> across on the main camera at <paramref name="local"/>.</summary>
+        public const float HandsReach = 0.07f, HandsWait = 1.5f;
+
         static float MinBallRadius(Transform root, Vector3 local)
         {
             var cam = Camera.main;
@@ -344,8 +378,17 @@ namespace AquariumCiv.View
                 {
                     var v = pv.ViewOf(g.game.KeyOf(b.holder));
                     if (v == null || !v.gameObject.activeInHierarchy) { g.ball.SetActive(false); continue; }
+                    if (pv.Camp.Busy(g.game.KeyOf(b.holder))) { g.ball.SetActive(false); continue; } // #692 review: a kid borrowed by a camp use put the ball down (it hung, huge, in the feather clip)
                     var hands = (v.armL.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f)) + v.armR.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f))) * 0.5f;
                     pos = root.InverseTransformPoint(hands);
+                    // #744 (tester): never jumps into hands that are still away from it (a doll running late); waits at most HandsWait
+                    if (g.wasFree) { g.waitedHands = 0f; g.wasFree = false; }
+                    if (g.waitedHands >= 0f)
+                    {
+                        float off = new Vector2(pos.x - g.lastBall.x, pos.z - g.lastBall.z).magnitude;
+                        if (off > HandsReach && g.waitedHands < HandsWait) { g.waitedHands += Time.deltaTime; pos = g.lastBall; }
+                        else g.waitedHands = -1f;
+                    }
                 }
                 else
                 {
@@ -359,6 +402,14 @@ namespace AquariumCiv.View
                     var s = Arc.Sample(g.flight, now - g.game.t0);
                     float ground = pv.GroundAt(s.position.x, s.position.z);
                     pos = new Vector3(s.position.x, ground + Mathf.Max(s.position.y, BallGame.BallR * 0.8f), s.position.z);
+                    if (b.placed)
+                    {   // #744: rolling into a hollow, lying at its bottom, or floating on the pond (a third under the surface)
+                        float gy = pv.GroundAt(b.position.x, b.position.z);
+                        float lv = 0f; bool afloat = b.floating && PondLevel(out lv);
+                        pos = new Vector3(b.position.x, afloat ? lv + BallGame.BallR * 0.35f : gy + BallGame.BallR * 0.8f, b.position.z);
+                        if (afloat && !g.splashed) { g.splashed = true; HitFx.Puff(PuffKind.Droplets, root.TransformPoint(pos), Vector3.up, 0.8f); HitFx.Puff(PuffKind.Ring, root.TransformPoint(new Vector3(pos.x, lv, pos.z)), Vector3.up, 0.8f); }
+                    }
+                    else g.splashed = false;
                     if (g.flight.landing == Landing.BounceRoll && Arc.LandedBetween(g.flight, g.lastT - g.game.t0, now - g.game.t0))
                         HitFx.Puff(PuffKind.Dust, root.TransformPoint(new Vector3(pos.x, ground, pos.z)), Vector3.up, 0.7f); // B2.b: a small dust where it lands
                 }
@@ -366,6 +417,7 @@ namespace AquariumCiv.View
                 g.ball.transform.localPosition = pos;
                 g.ball.transform.localRotation = b.Free ? b.rotation : Quaternion.identity;
                 g.ball.transform.localScale = Vector3.one * (Mathf.Max(zoom * BallGame.BallR, MinBallRadius(root, pos)) / PegDoll.BallMeshR);
+                if (b.Free) g.wasFree = true;
                 g.lastBall = pos;
                 g.lastT = now;
             }
@@ -379,7 +431,7 @@ namespace AquariumCiv.View
         {
             var planner = pv.Planner;
             if (planner == null) return "no planner";
-            if (game is PlayGame.Splash or PlayGame.Woods or PlayGame.HideSeek or PlayGame.IceSlide) return ForceB3(game); // #359, #618
+            if (game is PlayGame.Splash or PlayGame.Woods or PlayGame.HideSeek or PlayGame.IceSlide or PlayGame.FishGrab) return ForceB3(game); // #359, #618, #708
             var gather = planner.GatherPlace;
             if (!planner.Positions.TryGetPosition(gather, out float gx, out float gz)) return "no gathering place";
             var spot = new Vector2(gx, gz);

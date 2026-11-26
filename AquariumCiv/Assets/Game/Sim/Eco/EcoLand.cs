@@ -13,6 +13,11 @@ namespace AquariumCiv.Sim.Eco
     public sealed class EcoLand
     {
         public const int NX = SiteMap.NX, NZ = SiteMap.NZ, N = SiteMap.N;
+        /// <summary>#658: the cell count (60 x 44) every share in <see cref="EcoTuning"/> was tuned on: the meadow the camp gate asks for, the
+        /// pond the humidity counts, the green the air reads. The deeper box has 3600 cells, but its extra land must not make the same
+        /// gates harder (a box is not slower for being bigger): those shares are read against these 2640 cells, so the gates open at the
+        /// same amount of green as before. The back land is room, not a bigger bill.</summary>
+        public const int TunedCells = 2640;
 
         public readonly float[] height, slope, baseSoil;
         /// <summary>Priority-flood fill level: the height water would stand at before spilling out of the hollow.</summary>

@@ -13,7 +13,7 @@ namespace AquariumCiv.EditorTools
     {
         public const string TestName = "AquariumCiv.View.PlayTests.OpenQuestionsSignOff.OpenQuestions_SignOff";
 
-        [MenuItem("Aquarium Civ/Open questions sign-off")]
+        [MenuItem("Aquarium Civ/Open questions sign-off", priority = 0)]
         public static void Run()
         {
             if (EditorApplication.isPlaying || EditorApplication.isCompiling)

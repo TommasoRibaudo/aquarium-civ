@@ -10,7 +10,7 @@ namespace AquariumCiv.View.Cards
     public enum CardStackMode { Hidden, Peek, Open }
 
     /// <summary>The one extra button a card can have (§2.1).</summary>
-    public enum CardAction { None, Give, Remember, Watch }
+    public enum CardAction { None, Remember, Watch }
 
     /// <summary>The peek: one line at the bottom (§2.4). Its look is the view's.</summary>
     public struct CardPeek
@@ -53,15 +53,6 @@ namespace AquariumCiv.View.Cards
         public bool dilemmaLetThem;     // #368: the Keeper handed it back ("Let them decide"): credited as the Keeper's, says so
     }
 
-    /// <summary>What Give did: the wish to arm the tool for, or why not (<see cref="line"/> is ready to show).</summary>
-    public struct GiveOutcome
-    {
-        public bool ok;
-        public SimCore.ShapeFail fail;
-        public string line;
-        public Wish wish;
-    }
-
     /// <summary>
     /// The chronicle card stack on return, peek included, with no Unity and no look (#75; chronicle-and-history.md §2, §7,
     /// first-session §3). What's read is kept in the save (<see cref="SimCore.UnreadCards"/>), so a kill loses nothing.
@@ -74,7 +65,7 @@ namespace AquariumCiv.View.Cards
     /// //   Next/swipe → Next(), back → Back(), Skip all → SkipAll(), back gesture → Close().
     /// //   Show me: var card = ShowMe(); ShowMeDirector.Instance.Show(card); when the flight lands, ShowMeLanded().
     /// //   Portrait: OpenPerson(id), then PersonClosed(). Also…: OpenAlso(i), Back().
-    /// //   Give() (then ShapingView.ArmWish), Remember() (then PersonClosed()), Watch().
+    /// //   Remember() (then PersonClosed()), Watch().
     /// // on Changed redraw; on ShowMeEnd call ShowMeDirector.Instance.End(true).
     /// // the history button's dot: HistoryDot. Pause: OnPause().
     /// </code>
@@ -350,12 +341,13 @@ namespace AquariumCiv.View.Cards
             return true;
         }
 
-        /// <summary>Skip all: what's unread waits for the next open (the dot says so).</summary>
+        /// <summary>The stack closes: what's unread (a swipe-away, the back gesture, never Skip all, #561) waits for the next open, and the dot says so.</summary>
         public void SkipAll()
         {
             if (Mode != CardStackMode.Open) return;
             LeaveEarly();
             log.SkipAll(stack.cards.Concat(stack.also).Count(c => !sim.IsCardRead(c)));
+            foreach (var c in stack.cards.Concat(stack.also)) sim.MarkCardRead(c); // #561: Skip all is a call on all of them: the dot goes
             End();
         }
 
@@ -427,24 +419,6 @@ namespace AquariumCiv.View.Cards
         }
 
         public void PersonClosed() { if (Mode == CardStackMode.Open) dwell.Uncover(now()); }
-
-        /// <summary>The wish card's Give: the stack closes and the view arms the tool at the wish's spot (ShapingTray.ArmForWish);
-        /// the wish stays open until the player places it. If it can't be given the stack stays and <see cref="GiveOutcome.line"/>
-        /// says why.</summary>
-        public GiveOutcome Give()
-        {
-            var card = Shown;
-            var wish = card?.kind == CardKind.Wish ? sim.WishOfEntry(card.lead.id) : null;
-            if (wish == null) return new GiveOutcome { fail = SimCore.ShapeFail.Unknown, line = "" };
-            var fail = sim.CanGiveWish(wish.id);
-            var o = new GiveOutcome { ok = fail == SimCore.ShapeFail.None, fail = fail, wish = wish, line = FailLine(wish, fail) };
-            if (o.ok) { sim.MarkCardRead(card); End(); }
-            else Changed?.Invoke();
-            return o;
-        }
-
-        string FailLine(Wish w, SimCore.ShapeFail f) =>
-            f == SimCore.ShapeFail.None ? "" : w.state != WishState.Open ? "That wish has passed." : sim.ShapeFailLine(w.kind, f);
 
         /// <summary>Remember on a legend's card: returns the person (their book page, or their card until the book exists; -1 =
         /// not a legend's card). Call <see cref="PersonClosed"/> afterwards.</summary>
@@ -559,7 +533,6 @@ namespace AquariumCiv.View.Cards
                 {
                     case CardKind.Legend: f.action = CardAction.Remember; f.actionLabel = "Remember"; break;
                     case CardKind.EraReady: f.action = CardAction.Watch; f.actionLabel = "Watch"; break;
-                    case CardKind.Wish: FillGive(f, sim.WishOfEntry(c.lead.id)); break;
                     case CardKind.Dilemma: FillDilemma(f, sim.DilemmaOfEntry(c.lead.id)); break;
                 }
                 return f;
@@ -589,16 +562,6 @@ namespace AquariumCiv.View.Cards
             f.dilemmaChosen = d.option;
             f.dilemmaLapsed = d.state == DilemmaState.Lapsed;
             f.dilemmaLetThem = d.end == DilemmaEnd.LetThemDecide;
-        }
-
-        void FillGive(CardFace f, Wish w)
-        {
-            if (w == null || w.state == WishState.Given) return; // given: the button is gone
-            f.action = CardAction.Give;
-            f.actionLabel = "Give";
-            var fail = sim.CanGiveWish(w.id);
-            f.actionEnabled = fail == SimCore.ShapeFail.None;
-            f.actionNote = FailLine(w, fail);
         }
     }
 }

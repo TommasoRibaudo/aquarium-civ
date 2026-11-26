@@ -1,0 +1,25 @@
+{
+ "name": "692-b33c-flowers",
+ "notes": "B33.c: someone walks slowly through the tall grass, picks 2-3 flowers (holds each up), gives the little bunch away; the one who gets it sniffs it and tucks it behind the ear.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.LandReady();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.PickFlowers());"
+  ],
+  "warm": 0.5,
+  "seconds": 13,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.6,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

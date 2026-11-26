@@ -13,12 +13,13 @@ namespace AquariumCiv.View.PlayTests
     [Explicit("Screenshots for the eye: run by hand"), Category("Fb5Glass")]
     public class Fb5GlassShots : PlayTestBase
     {
-        const string Dir = "F:/GameDev/AquariumCiv/Temp/agent/fb5/577/";
+        static readonly string Dir = UnityEngine.Application.dataPath + "/../Temp/agent/fb5/577/";
         static BoxCamera Rig => Camera.main.GetComponent<BoxCamera>();
 
         IEnumerator Shot(string name)
         {
-            string tag = File.ReadAllText(Dir + "tag.txt").Trim();
+            Directory.CreateDirectory(Dir);
+            string tag = File.Exists(Dir + "tag.txt") ? File.ReadAllText(Dir + "tag.txt").Trim() : "x"; // no tag file: run "x", not a crash
             yield return new WaitForEndOfFrame();
             var t = ScreenCapture.CaptureScreenshotAsTexture();
             File.WriteAllBytes(Dir + tag + "_" + name + ".png", t.EncodeToPNG());

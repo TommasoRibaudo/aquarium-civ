@@ -95,6 +95,15 @@ namespace AquariumCiv.View.PlayTests
             }
         }
 
+        IEnumerator TapElement(GameHud hud, string name)
+        {
+            var at = GameUiPanel.ScreenCenter(hud.Root, name);
+            int id = touchId++;
+            BeginTouch(id, at, queueEventOnly: true); yield return null; yield return null;
+            EndTouch(id, at, delta: Vector2.zero, queueEventOnly: true); yield return null; yield return null;
+            for (int i = 0; i < 6; i++) yield return null;
+        }
+
         IEnumerator Drag(Vector2 a, Vector2 b, float step)
         {
             int id = touchId++;
@@ -144,15 +153,23 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual("open", start.Str("reason"));
                 Assert.IsNotNull(start.Str("install_utc"));
 
-                // a wipe by finger in clean mode
+                // a wipe by finger in clean mode (the strokes start on the glass: one that starts off it is the camera's, not the cloth's)
                 var sim = GameClock.Instance.Sim;
                 sim.AddMess(1f, 1f);
                 var hud = GameHud.Instance;
-                hud.SetCleanMode(true);
+                // #638: the way the real HUD does it: the bottom row's Clean button (it opens the Kit once the box has one, and the Cloth
+                // there puts the cloth in hand; before that it is the cloth itself), then wipe
+                yield return TapElement(hud, "hud-clean");
+                if (!hud.CleanMode)
+                {
+                    Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Clean opens the Keeper's kit");
+                    yield return TapElement(hud, "kit-cloth");
+                }
+                Assert.IsTrue(hud.CleanMode, "the Cloth is in hand");
                 for (int i = 0; i < 20; i++) yield return null;
                 float cx = Screen.width * 0.5f, cy = Screen.height * 0.5f;
                 for (int k = -2; k <= 2; k++)
-                    yield return Drag(new Vector2(cx - 0.3f * Screen.width, cy + k * 0.05f * Screen.height), new Vector2(cx + 0.3f * Screen.width, cy + k * 0.05f * Screen.height), 0.02f * Screen.height);
+                    yield return Drag(new Vector2(cx - 0.1f * Screen.width, cy + k * 0.05f * Screen.height), new Vector2(cx + 0.3f * Screen.width, cy + k * 0.05f * Screen.height), 0.02f * Screen.height);
                 hud.SetCleanMode(false);
                 Assert.Greater(CareView.Instance.StrokeCount, 0, "the finger wiped");
                 CollectionAssert.Contains(Names(), Ev.Clean);

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Editor health gate (docs/workflow.md §4). Run before taking .agent-editor.lock.
 # Exit 0 = healthy, 1 = restart the Editor (Tools/restart-editor.sh), 2 = C: too full: tell the user.
-LOG="${LOCALAPPDATA:-$HOME/AppData/Local}/Unity/Editor/Editor.log"
+LOG="${EDITOR_LOG:-${LOCALAPPDATA:-$HOME/AppData/Local}/Unity/Editor/Editor.log}"
 LIMIT_MS=${EDITOR_RELOAD_LIMIT_MS:-20000}
 MIN_C_GB=${MIN_C_GB:-5}
 status=0

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using AquariumCiv.Sim;
 using AquariumCiv.Sim.Eco;
+using AquariumCiv.Sim.Settle;
 using NUnit.Framework;
 
 namespace AquariumCiv.Tests
@@ -28,7 +29,11 @@ namespace AquariumCiv.Tests
         public void EveryJarSaysWhatItWaitsFor_OnABareBox()
         {
             var sim = World(); var m = Model(sim);
+            // 2026-11-14: seed, then bushes, then rabbits: the bushes wait for the planted seed first, then for a meadow
+            Assert.AreEqual("Bushes need the seed in the ground first", m.JarNeed(LifeSpecies.Thicket, 0));
+            sim.State.eco.treeCell = SiteMap.Index(30, 22); // the Keeper's tree is in
             Assert.AreEqual("Bushes need a meadow", m.JarNeed(LifeSpecies.Thicket, 0));
+            sim.State.eco.treeCell = -1;
             Assert.AreEqual("Rabbits need the bushes first", m.JarNeed(LifeSpecies.Rabbits, 0));
             Assert.AreEqual("Deer need the rabbits first", m.JarNeed(LifeSpecies.Deer, 0));
             Assert.AreEqual("Ducks need the rabbits first", m.JarNeed(LifeSpecies.Ducks, 0));
@@ -66,10 +71,10 @@ namespace AquariumCiv.Tests
             Assert.AreEqual("Ducks need a bigger pond", m.JarNeed(LifeSpecies.Ducks, 0));
             st.cPond = sim.Config.eco.jarDucksPond;
             Assert.IsNull(m.JarNeed(LifeSpecies.Ducks, 0));
-            Assert.AreEqual("Deer need more trees (0/5)", m.JarNeed(LifeSpecies.Deer, 0));
-            st.cTrees = 4;
-            Assert.AreEqual("Deer need more trees (4/5)", m.JarNeed(LifeSpecies.Deer, 0));
-            st.cTrees = 5;
+            Assert.AreEqual("Deer need a thicker wood (0/12)", m.JarNeed(LifeSpecies.Deer, 0)); // #690
+            PlacedLifeTests.Wood(sim, 4);
+            Assert.AreEqual("Deer need a thicker wood (0/12)", m.JarNeed(LifeSpecies.Deer, 0), "4 trees in a block are not in company enough");
+            PlacedLifeTests.Wood(sim, 16);
             Assert.IsNull(m.JarNeed(LifeSpecies.Deer, 0));
             st.cGrass = 1;
             Assert.AreEqual("Rabbits need a bigger meadow", RabbitsShutNeed(m), "a patch of grass is a meadow, only too small");
@@ -129,26 +134,27 @@ namespace AquariumCiv.Tests
         public void TheVillageLine_ListsTheMissingPieces_CountsDown_AndGoesWhenTheVillageStands()
         {
             var sim = World(); var m = Model(sim); var st = sim.State.eco;
-            // before the camp: the camp's pieces
-            Assert.AreEqual("The camp waits for: a meadow · rabbits in the meadow", sim.VillageWaitsLine);
+            int V = sim.Config.eco.villageTrees; // the gate's tree count (10 since 2026-11-14)
+            // before the camp: no list (2026-11-14: the first upgrade gets none, only later ones)
+            Assert.AreEqual("", sim.VillageWaitsLine);
             st.cGrass = 1;
-            Assert.AreEqual("The camp waits for: more meadow · rabbits in the meadow", sim.VillageWaitsLine);
+            Assert.AreEqual("", sim.VillageWaitsLine);
             st.cGrass = (int)(sim.Config.eco.campMeadow * EcoLand.N) + 1;
             SetPlaced(m, LifeSpecies.Rabbits); st.rabbits = 2f;
             Assert.AreEqual("", sim.VillageWaitsLine, "every piece of the camp is there: the gate opens at the next step");
             // the camp stands: the village's pieces, in the gate's order
             st.campGateMonth = 0;
-            Assert.AreEqual("The village waits for: more trees (0/8) · a pond · ducks on the pond · fish in the pond", sim.VillageWaitsLine);
+            Assert.AreEqual($"The village waits for: more trees (0/{V}) · a pond · ducks on the pond · fish in the pond", sim.VillageWaitsLine);
             st.cTrees = 3; st.cPond = 4;
-            Assert.AreEqual("The village waits for: more trees (3/8) · a bigger pond · ducks on the pond · fish in the pond", sim.VillageWaitsLine);
-            st.cTrees = 8; st.cPond = sim.Config.eco.pondGateCells;
+            Assert.AreEqual($"The village waits for: more trees (3/{V}) · a bigger pond · ducks on the pond · fish in the pond", sim.VillageWaitsLine);
+            st.cTrees = V; st.cPond = sim.Config.eco.pondGateCells;
             Assert.AreEqual("The village waits for: ducks on the pond · fish in the pond", sim.VillageWaitsLine);
             SetPlaced(m, LifeSpecies.Ducks);
             Assert.AreEqual("The village waits for: fish in the pond", sim.VillageWaitsLine);
             SetPlaced(m, LifeSpecies.Fish);
             Assert.AreEqual("", sim.VillageWaitsLine, "every piece is there");
-            st.cTrees = 7;
-            Assert.AreEqual("The village waits for: more trees (7/8)", sim.VillageWaitsLine);
+            st.cTrees = V - 1;
+            Assert.AreEqual($"The village waits for: more trees ({V - 1}/{V})", sim.VillageWaitsLine);
             st.villageGateMonth = 12;
             Assert.AreEqual("", sim.VillageWaitsLine, "the village stands: the line is gone");
         }

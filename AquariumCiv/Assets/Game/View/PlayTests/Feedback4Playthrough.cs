@@ -86,7 +86,7 @@ namespace AquariumCiv.View.PlayTests
         static bool CameraInBox(BoxCamera r)
         {
             var p = r.transform.position;
-            return CameraGlass.CameraInsideBox(p.x, p.y, p.z, Land.HX + BoxCameraMath.HullSide, Land.HZ + BoxCameraMath.HullSide, BoxCameraMath.ShelfY, Land.GlassTop, 0.3f);
+            return CameraGlass.CameraInsideBox(p.x, p.y, p.z - Land.CZ, Land.HX + BoxCameraMath.HullSide, Land.HZ + BoxCameraMath.HullSide, BoxCameraMath.ShelfY, Land.GlassTop, 0.3f);
         }
 
         // ---------------------------------------------------------------- a) the free pan (#538)
@@ -256,7 +256,7 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(0.5f);
             Check("d", hud.OpenSheet == GameHud.Kit && hud.LifeSlotShown, $"{s}: Kit opens with the life slot");
             yield return Shot($"f4/d_{tag}_0_kit");
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life")); taps++;
+            // #668: no jar to open first: the groups are tiles on the kit's shelves
             yield return new WaitForSecondsRealtime(0.4f);
             if (hud.LifeRowOpen)
             {

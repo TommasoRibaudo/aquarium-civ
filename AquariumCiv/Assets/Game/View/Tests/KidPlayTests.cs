@@ -97,6 +97,67 @@ namespace AquariumCiv.View.Tests
             Assert.Greater(misses, 0, "now and then it bounces away");
         }
 
+        /// <summary>#744 (the user, 2026-11-24: options 3 and 4): a missed ball that comes to rest on the pond floats there; the fetcher wades
+        /// in (ankle-deep only while on the water), shakes it, then runs back; and no ball ever jumps from the water into the hands.</summary>
+        [Test]
+        public void Ball_MissIntoThePond_TheFetcherWadesIn_AndShakesIt()
+        {
+            try
+            {
+                BallGame.PondAt = p => p.x > 0.05f; // the pond: everything east of x = 0.05
+                BallGame.RollsTo = null;
+                var ball = new BallGame(4, 0f, Three, Vector2.zero);
+                int wet = 0;
+                for (int k = 0; k < 40; k++)
+                {
+                    var th = ball.ThrowAt(k);
+                    if (!th.miss || !th.wet) continue;
+                    wet++;
+                    Assert.IsTrue(BallGame.PondAt(th.restPos), $"throw {k}: it rests on the water");
+                    var floating = ball.Ball(ball.t0 + th.land + 0.3f);
+                    Assert.IsTrue(floating.Free && floating.placed && floating.floating, $"throw {k}: it floats where it came down");
+                    Assert.Less(Vector2.Distance(th.fetchTo, th.restPos), 0.06f, $"throw {k}: the fetcher wades right up to it");
+                    var at = ball.Cue(th.fetcher, ball.t0 + th.pickStart + 0.05f);
+                    if (BallGame.PondAt(at.pos)) Assert.AreEqual(BallGame.WadeSink, at.sink, 1e-4f, $"throw {k}: ankle-deep in the water");
+                    var shake = ball.Cue(th.fetcher, ball.t0 + th.pickEnd - BallGame.Shake * 0.5f);
+                    Assert.AreEqual(DollStyle.PlayShake, shake.style, $"throw {k}: it shakes the wet ball");
+                    Assert.AreEqual(th.fetcher, ball.Ball(ball.t0 + th.pickEnd).holder, $"throw {k}: then holds it");
+                }
+                Assert.Greater(wet, 0, "some misses landed in the pond");
+            }
+            finally { BallGame.PondAt = null; BallGame.RollsTo = null; }
+        }
+
+        /// <summary>#744: on dry ground, a missed ball that stops on the side of a hollow rolls on down to its bottom; the fetcher goes there.</summary>
+        [Test]
+        public void Ball_MissIntoADryHollow_RollsToTheBottom()
+        {
+            try
+            {
+                var bottom = new Vector2(0.6f, 0f);
+                BallGame.PondAt = null;
+                BallGame.RollsTo = p => (p - bottom).magnitude < 0.9f ? bottom : p;
+                var ball = new BallGame(4, 0f, Three, Vector2.zero);
+                int rolled = 0;
+                for (int k = 0; k < 40; k++)
+                {
+                    var th = ball.ThrowAt(k);
+                    if (!th.miss || !th.rolls) continue;
+                    rolled++;
+                    Assert.AreEqual(bottom, th.restPos, $"throw {k}: it ends at the bottom");
+                    var mid = ball.Ball(ball.t0 + (th.rollStart + th.rollEnd) * 0.5f);
+                    var midP = new Vector2(mid.position.x, mid.position.z);
+                    Assert.IsTrue(mid.placed, $"throw {k}: drawn where the roll says");
+                    Assert.Greater(Vector2.Distance(midP, th.rollFrom), 0.01f, $"throw {k}: under way");
+                    Assert.Less(Vector2.Distance(midP, bottom), Vector2.Distance(th.rollFrom, bottom), $"throw {k}: toward the bottom");
+                    Assert.Less(Vector2.Distance(th.fetchTo, bottom), 0.08f, $"throw {k}: the fetcher picks it up there");
+                    Assert.GreaterOrEqual(th.pickStart, th.rollEnd - 0.1f, $"throw {k}: once it has stopped");
+                }
+                Assert.Greater(rolled, 0, "some misses rolled into the hollow");
+            }
+            finally { BallGame.PondAt = null; BallGame.RollsTo = null; }
+        }
+
         [Test]
         public void Ball_Alone_TossesAheadAndFetches()
         {

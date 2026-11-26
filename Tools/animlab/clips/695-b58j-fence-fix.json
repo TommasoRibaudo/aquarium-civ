@@ -1,0 +1,28 @@
+{
+ "name": "695-b58j-fence-fix",
+ "notes": "B58.j: a grown-up kneels at a leaning fence post, pushes it straight and taps it in with the hammer.",
+ "animlab": {
+  "issue": 695
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageVillage(9.5f, false, 6);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return \"waiting for the village\";",
+   "return \"waiting for the village\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(9.5f) + \" | \" + AquariumCiv.View.CampCheats.VillageStatus();",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.FenceFix());"
+  ],
+  "warm": 0.5,
+  "seconds": 7,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.0,
+  "closeSpan": 0.45,
+  "yaw": 28,
+  "pitch": 42,
+  "lead": 2.0
+ }
+}

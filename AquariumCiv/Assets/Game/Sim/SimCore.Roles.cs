@@ -105,7 +105,7 @@ namespace AquariumCiv.Sim
         static readonly Dictionary<string, string> FirstActs = new()
         {
             [RoleType.Chief] = "First act: moving the fire closer to their tent.",
-            [RoleType.Headman] = "First act: a new bench on the green.",
+            [RoleType.Headman] = "First act: a bigger fire on the green.",
             [RoleType.Lord] = "First act: a chair for the market steps.",
             [RoleType.Miller] = "The sails turned a little faster that week.",
             [RoleType.Priest] = "The bell was rung three times, just to be sure.",
@@ -307,7 +307,7 @@ namespace AquariumCiv.Sim
             Assign(seat, ranked[0]);
             var runnerUp = ranked.Count > 1 ? ranked[1] : null;
             if (rule == RoleRule.WorkContest && runnerUp != null)
-                RoleLine("role_masterwork", $"{ranked[0].FullName} and {runnerUp.FullName} each built a chimney to prove who should be master builder. {ranked[0].FullName}'s is still standing.", 0.65f + RivalBonus(ranked[0], runnerUp), ranked[0], runnerUp, seat);
+                RoleLine("role_masterwork", $"{ranked[0].FullName} and {runnerUp.FullName} each built a house to prove who should be master builder. {ranked[0].FullName}'s roof still keeps the rain out.", 0.65f + RivalBonus(ranked[0], runnerUp), ranked[0], runnerUp, seat); // #716 [est]
             else if (rule == RoleRule.Inheritance && prev != null)
                 RoleLine("role_won", $"With no one of {prev.FullName}'s blood left to take the title, the notables chose {ranked[0].FullName} as {RoleIn(RoleType.Lord)}.", 0.75f, ranked[0], prev, seat);
             else
@@ -343,7 +343,7 @@ namespace AquariumCiv.Sim
             string[] ways =
             {
                 "went home and shut the door very loudly",
-                "spent the evening telling the goats it was rigged",
+                "spent the evening telling the fire it was rigged", // #716 [est]
                 "took a very long walk round the pond",
             };
             return ways[(int)(RoleRoll(29, loser.id, 0) * ways.Length) % ways.Length];
@@ -423,7 +423,7 @@ namespace AquariumCiv.Sim
                 .ThenBy(c => c.id).FirstOrDefault();
             if (next == null) return false;
             Assign(seat, next);
-            RoleLine("role_named", $"{(prev.alive ? "" : "Before the end, ")}{prev.FullName} named {next.FullName} the new priest. {next.FullName} has been practising the blessing on the goats.", 0.72f, next, prev, seat);
+            RoleLine("role_named", $"{(prev.alive ? "" : "Before the end, ")}{prev.FullName} named {next.FullName} the new priest. {next.FullName} has been practising the blessing on the fields.", 0.72f, next, prev, seat); // #716 [est]
             return true;
         }
 
@@ -438,7 +438,10 @@ namespace AquariumCiv.Sim
                 .ThenBy(c => c.id).First();
             if (pick == keep) return; // kept on, no line
             Assign(seat, pick);
-            string flavour = seat.role == RoleType.Captain ? $"The watch is {pick.FullName} and a very large dog." : $"{pick.FullName} promised everyone a fair price, and mostly kept it.";
+            var watchDog = Dogs.FirstOrDefault(d => DogStageOf(d) != DogStage.Pup); // #716 [est]: a real dog, or none
+            string flavour = seat.role == RoleType.Captain
+                ? (watchDog != null ? $"The watch is {pick.FullName} and {watchDog.name}." : $"The watch is {pick.FullName} and one lantern.")
+                : $"{pick.FullName} promised everyone a fair price, and mostly kept it.";
             RoleLine("role_appointed", $"Lord {lord.FullName} made {pick.FullName} {seat.role}. {flavour}", 0.55f, pick, lord, seat);
         }
 
@@ -563,7 +566,7 @@ namespace AquariumCiv.Sim
                 Vacate(seat);
                 Assign(seat, rival);
                 seat.lastChallengeMonth = State.month;
-                RoleLine("role_challenge", $"{rival.FullName} challenged old rival {chief.FullName} at the fire, and won. {rival.FullName} is chief now; {chief.FullName} sulks by the woodpile.", 0.85f, rival, chief, seat);
+                RoleLine("role_challenge", $"{rival.FullName} challenged old rival {chief.FullName} at the fire, and won. {rival.FullName} is chief now; {chief.FullName} sulks by {(LandHasWood ? "the woodpile" : State.era == Era.Camp ? "the tents" : "the huts")}.", 0.85f, rival, chief, seat);
             }
             else
                 RoleLine("role_challenge", $"{rival.FullName} challenged {chief.FullName} for the chief's seat at the fire, and lost. {chief.FullName} is still chief.", 0.7f, chief, rival, seat);
@@ -676,6 +679,8 @@ namespace AquariumCiv.Sim
                 var e = Chronicle(kind, text, salience, who?.id ?? -1, other?.id ?? -1);
                 e.buildingId = SeatBuilding(seat.role)?.id ?? -1;
             }
+            // #722 (1.4): a new leader in the seat: the antlers go to their door (after the line, so its moment queues after the new leader's)
+            if (who != null && seat.holderId == who.id && seat.role == LeaderOf(State.era) && LeaderSeatLine(kind)) AntlersAfterSeat(who, seat);
             ReviewIfNewLord();
         }
 

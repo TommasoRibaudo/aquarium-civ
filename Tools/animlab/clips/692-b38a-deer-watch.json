@@ -1,0 +1,26 @@
+{
+ "name": "692-b38a-deer-watch",
+ "notes": "B38.a: a grown-up and two kids stop at the camp's edge about 1 u from the grazing deer, side by side; the grown-up crouches beside a kid and points; they watch, heads following; a doe looks up and everyone freezes until she grazes again; two slow steps back, then they go.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 2);",
+   "return AquariumCiv.View.CampCheats.AnimalsReady();",
+   "return AquariumCiv.View.CampCheats.AnimalsReady();",
+   "AquariumCiv.View.PeopleView.DebugSetHour(11.0f); return AquariumCiv.View.CampCheats.AnimalsReady();",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.DeerWatch());"
+  ],
+  "warm": 0.5,
+  "seconds": 24,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 1.3,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

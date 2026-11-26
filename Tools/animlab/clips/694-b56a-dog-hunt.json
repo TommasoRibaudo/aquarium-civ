@@ -1,0 +1,31 @@
+{
+ "name": "694-b56a-dog-hunt",
+ "notes": "B25.a + B56.a: the hunter whistles, the dog runs to heel; out by the rabbits the dog runs round and flushes them; the throw; the catch held up; the hunter crouches and pats the dog, its tail wagging.",
+ "animlab": {
+  "issue": 694
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 4);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return AquariumCiv.View.CampCheats.BigDogNow();",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(11.1f) + \" | \" + AquariumCiv.View.CampCheats.DogStatus();",
+   "return AquariumCiv.View.CampCheats.Later(3.0f, () => AquariumCiv.View.CampCheats.DogHunt());"
+  ],
+  "warm": 0.5,
+  "seconds": 14,
+  "fps": 30,
+  "follow": "camp",
+  "span": 2.2,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 35,
+  "lead": 8.0
+ }
+}

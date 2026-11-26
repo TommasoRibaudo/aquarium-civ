@@ -9,7 +9,7 @@ using NUnit.Framework;
 namespace AquariumCiv.View.Cards.Tests
 {
     /// <summary>#75 phase 1: when a stack is due, its pages, what's read and what waits (across a kill), the "Also…" card,
-    /// the peek, Give and why it can fail, Show me, the telemetry, and the first run (no stack during it).</summary>
+    /// the peek, Show me, the telemetry, and the first run (no stack during it).</summary>
     public class CardStackTests
     {
         const double Day = 24, FewHours = 8;
@@ -26,6 +26,15 @@ namespace AquariumCiv.View.Cards.Tests
             sim.TermFlavourOn = false;
             sim.CardsSeenToNow(); // the founding lines are not the story of these tests
             return sim;
+        }
+
+        /// <summary>Two grown-ups (not the chief) fall out: a rivalry the box can tease, whatever the seed left.</summary>
+        static void Quarrel(SimCore sim)
+        {
+            int chief = (sim.State.roles ?? new List<RoleSeat>()).Where(r => r.role == RoleType.Chief).Select(r => r.holderId).DefaultIfEmpty(-1).First();
+            var adults = sim.State.notables.Where(n => n.alive && n.age >= SimCore.AdultAge && n.id != chief).OrderBy(n => n.id).ToList();
+            var a = adults[0]; var b = adults[1];
+            a.rivalId = b.id; b.rivalId = a.id;
         }
 
         static int nextId = 500_000;
@@ -90,21 +99,19 @@ namespace AquariumCiv.View.Cards.Tests
         }
 
         [Test]
-        public void AReturnAfterEightHoursLeadsWithGoodNewsAndEndsOnTheWish()
+        public void AReturnAfterEightHoursLeadsWithGoodNewsAndEndsOnTheDeath()
         {
             var sim = Quiet();
             var dead = sim.State.notables[0];
             Add(sim, "death", 0.95f, dead.id);
             Add(sim, "wedding", 0.6f);
             Add(sim, "storm", 0.7f);
-            sim.DebugForceWish(SimCore.NudgeKind.Rain);
-            var m = OpenedCap(Model(sim), 5);
+            var m = OpenedCap(Model(sim), 5); // #718: no wish card ends it any more
             var kinds = new List<CardKind>();
             var tones = new List<CardTone>();
             for (bool more = true; more; more = m.Next()) { kinds.Add(m.Face.kind); tones.Add(m.Face.tone); }
             Assert.AreEqual(CardTone.Good, tones[0]);
-            Assert.AreEqual(CardKind.Legend, kinds[kinds.Count - 2], "the death comes after the good news");
-            Assert.AreEqual(CardKind.Wish, kinds[kinds.Count - 1]);
+            Assert.AreEqual(CardKind.Legend, kinds[kinds.Count - 1], "the death comes after the good news");
         }
 
         // ---------- reading ----------
@@ -131,14 +138,14 @@ namespace AquariumCiv.View.Cards.Tests
         }
 
         [Test]
-        public void SkipAllLeavesTheUnreadForTheNextOpenAndReadCardsDontComeBack()
+        public void TheBackGestureLeavesTheUnreadForTheNextOpenAndReadCardsDontComeBack()
         {
             var sim = Quiet();
             AddMany(sim, 4);
             var m = Opened(Model(sim));
             string first = m.Face.id;
             m.Next();
-            m.SkipAll();
+            m.Close();
             Assert.AreEqual(CardStackMode.Hidden, m.Mode);
             Assert.IsTrue(m.HistoryDot, "a dot, the cards wait");
 
@@ -149,6 +156,21 @@ namespace AquariumCiv.View.Cards.Tests
             Assert.IsFalse(ids.Contains(first));
         }
 
+        /// <summary>#561 (the user's call, 2026-11-10): Skip all is the Keeper's answer to the whole stack, so the dot goes and nothing comes back.</summary>
+        [Test]
+        public void SkipAllClearsTheDotAndNothingComesBack()
+        {
+            var sim = Quiet();
+            AddMany(sim, 4);
+            var m = Opened(Model(sim));
+            m.Next();
+            m.SkipAll();
+            Assert.AreEqual(CardStackMode.Hidden, m.Mode);
+            Assert.IsFalse(m.HistoryDot, "no dot: the stack is answered");
+            Assert.IsFalse(sim.HasUnreadCards);
+            Assert.IsFalse(m.Prepare(Day), "nothing is due again");
+        }
+
         [Test]
         public void ACardLookedAtForAMomentCountsOnlyAfterALook()
         {
@@ -156,7 +178,7 @@ namespace AquariumCiv.View.Cards.Tests
             AddMany(sim, 2);
             var m = Opened(Model(sim));
             clock += CardStackModel.MinReadSeconds / 2;
-            m.SkipAll();
+            m.Close();
             Assert.AreEqual(2, sim.UnreadCards(Day).cards.Count, "a flick past reads nothing");
             Opened(m);
             clock += CardStackModel.MinReadSeconds;
@@ -265,7 +287,7 @@ namespace AquariumCiv.View.Cards.Tests
             sim.State.month += 3;
             var s = Opened(Model(sim));
             s.Next();
-            s.SkipAll();
+            s.Close();
             Assert.Less(sim.State.cards.since, last.month);
             Assert.IsTrue(sim.HasUnreadCards);
         }
@@ -308,8 +330,9 @@ namespace AquariumCiv.View.Cards.Tests
         public void WithNothingNewThePeekIsTheTeaserAndOpensNothing()
         {
             var sim = Quiet();
+            Quarrel(sim);
             string line = sim.DebugOpenTeaser();
-            Assume.That(line, Is.Not.Null.And.Not.Empty, "this box has something to tease");
+            Assert.That(line, Is.Not.Null.And.Not.Empty, "the quarrel is something to tease");
             var m = Model(sim);
             Assert.IsFalse(m.Prepare(Day));
             Assert.AreEqual(CardStackMode.Peek, m.Mode);
@@ -360,15 +383,6 @@ namespace AquariumCiv.View.Cards.Tests
         }
 
         [Test]
-        public void AWishHasAShortHeadlineAndItsWholeLineAsTheBody()
-        {
-            var sim = WithWish(out var w);
-            var m = Opened(Model(sim));
-            Assert.AreEqual(sim.FindNotable(w.notableId).name + " has a wish", m.Face.headline);
-            Assert.That(m.Face.body, Does.Contain("rain"));
-        }
-
-        [Test]
         public void WatchClosesTheStackAndReopenBringsTheRestBack()
         {
             var sim = Quiet();
@@ -399,93 +413,13 @@ namespace AquariumCiv.View.Cards.Tests
             Assert.IsFalse(sim.UnreadCards(Day).cards.Any(c => c.lead.kind == "era-ready"), "a past era's waiting line is stale");
         }
 
-        // ---------- the wish ----------
-        static SimCore WithWish(out Wish w, string kind = SimCore.NudgeKind.Rain)
-        {
-            var sim = Quiet();
-            sim.State.shapingCharges = sim.ShapingMaxCharges;
-            w = sim.DebugForceWish(kind);
-            Assert.IsNotNull(w);
-            return sim;
-        }
-
         [Test]
-        public void GiveClosesTheStackForTheToolAndTheWishStaysOpenUntilPlaced()
-        {
-            var sim = WithWish(out var w);
-            var m = Opened(Model(sim));
-            Assert.AreEqual(CardAction.Give, m.Face.action);
-            Assert.IsTrue(m.Face.actionEnabled);
-            var o = m.Give();
-            Assert.IsTrue(o.ok);
-            Assert.AreEqual("", o.line);
-            Assert.AreSame(w, o.wish);
-            Assert.AreEqual(CardStackMode.Hidden, m.Mode, "Give leads into the shaping");
-            Assert.AreEqual(WishState.Open, w.state, "cancelling the tool costs nothing");
-            Assert.IsTrue(m.Prepare(Day), "still open: it comes back");
-            m.HidePeek();
-            Assert.IsTrue(sim.GiveWish(w.id).Ok);
-            Assert.IsFalse(m.Prepare(Day), "given: the card stops");
-        }
-
-        [Test]
-        public void GiveWithNoChargeSaysWhyOnTheCardAndTheWishStaysOpen()
-        {
-            var sim = WithWish(out var w);
-            sim.State.shapingCharges = 0;
-            var m = Opened(Model(sim));
-            Assert.IsFalse(m.Face.actionEnabled);
-            Assert.That(m.Face.actionNote, Does.Contain("cleaning the glass"));
-            var o = m.Give();
-            Assert.IsFalse(o.ok);
-            Assert.AreEqual(SimCore.ShapeFail.NoCharge, o.fail);
-            Assert.That(o.line, Does.Contain("cleaning the glass"));
-            Assert.AreEqual(WishState.Open, w.state);
-        }
-
-        [Test]
-        public void GiveAtTheCapOrWithALockedToolSaysSo()
-        {
-            var sim = WithWish(out var w, SimCore.NudgeKind.Channel);
-            var m = Opened(Model(sim));
-            var why = sim.CanGiveWish(w.id);
-            Assert.AreEqual(SimCore.ShapeFail.Locked, why, "the channel comes with the village");
-            Assert.That(m.Face.actionNote, Does.Contain("comes with the village"));
-            Assert.AreEqual(sim.ShapeFailLine(w.kind, SimCore.ShapeFail.AtCap), $"That's as many as the box holds ({SimCore.ShapingCap(w.kind)} at once).");
-        }
-
-        [Test]
-        public void AWishThatLapsedWhileTheStackWasUpSaysItHasPassed()
-        {
-            var sim = WithWish(out var w);
-            var m = Opened(Model(sim));
-            w.state = WishState.Lapsed;
-            Assert.IsFalse(m.Face.actionEnabled);
-            var o = m.Give();
-            Assert.IsFalse(o.ok);
-            Assert.AreEqual("That wish has passed.", o.line);
-        }
-
-        [Test]
-        public void AnUngivenWishComesBackOnTheNextReturnUntilItLapses()
-        {
-            var sim = WithWish(out var w);
-            var m = Opened(Model(sim));
-            Assert.IsFalse(m.Next());
-            Assert.IsFalse(m.HistoryDot, "read: no dot for it");
-            Assert.IsTrue(m.Prepare(Day), "no timer: it just stops once given");
-            m.HidePeek();
-            w.state = WishState.Lapsed;
-            Assert.IsFalse(m.Prepare(Day));
-        }
-
-        [Test]
-        public void GiveOnAnotherKindOfCardDoesNothing()
+        public void RememberAndWatchOnAPlainStoryDoNothing()
         {
             var sim = Quiet();
             AddMany(sim, 1);
             var m = Opened(Model(sim));
-            Assert.IsFalse(m.Give().ok);
+            Assert.AreEqual(CardAction.None, m.Face.action, "#718: no Give button anywhere");
             Assert.AreEqual(-1, m.Remember());
             Assert.IsFalse(m.Watch());
         }

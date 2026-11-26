@@ -18,8 +18,8 @@ namespace AquariumCiv.View
     /// channel and the herd drawn in the style kit from <see cref="ShapingShow"/>'s looks every frame, the people's answer
     /// shown (the planner stages it, a glow ring on the new building, a world label and the chronicle line as a bubble),
     /// and a take-back that plays each in reverse.
-    /// <para>Pick a tool (the tray, a wish, the debug panel) and shape mode is on. A tap on the ground places it; a one-finger drag moves
-    /// the camera and places nothing (#145), except the two that are the tool's own: a wish's spot and the channel's drag
+    /// <para>Pick a tool (the tray, the debug panel) and shape mode is on. A tap on the ground places it; a one-finger drag moves
+    /// the camera and places nothing (#145), except the one that is the tool's own: the channel's drag
     /// (<see cref="ICameraGate"/>). A herd goes in with a real flick. After a placing the gift has a "Take back" chip for a while (#149).</para>
     /// Added to the box at start-up like <see cref="CareView"/>.
     /// </summary>
@@ -55,13 +55,11 @@ namespace AquariumCiv.View
         public ShapingShow Show => show;
         /// <summary>#147: how long the newest shaping's arrival plays, real seconds (0 = none).</summary>
         public float LastArrivalSeconds => show.Entries.Count > 0 ? ShapingShow.ArrivalSeconds(show.Entries[show.Entries.Count - 1].footprint) : 0f;
-        /// <summary>The tray's model. Until #84 gives it a screen only a wish arms it (<see cref="ArmWish"/>).</summary>
+        /// <summary>The tray's model.</summary>
         public ShapingTray Tray { get; } = new();
-        /// <summary>A wish card's Give put the tool in hand at the wish's spot.</summary>
-        public bool WishArmed => Tray.HasPending;
         /// <summary>The tool in the Keeper's hand (a <see cref="SimCore.NudgeKind"/>), or null: shape mode off.</summary>
         public string Tool { get; private set; }
-        /// <summary>The tool in hand came from the tray (or a wish): it spends a charge and shows the banner and Cancel. Off for
+        /// <summary>The tool in hand came from the tray: it spends a charge and shows the banner and Cancel. Off for
         /// the debug panel's free shape mode and the first run's rain button.</summary>
         public bool RealTool { get; private set; }
         public bool ShapeMode => Tool != null;
@@ -150,27 +148,6 @@ namespace AquariumCiv.View
 
         string toolHint;
 
-        /// <summary>A wish card's Give (#75): shape mode with the wish's tool, pre-armed at the wished spot, with a banner and a
-        /// Cancel. A tap on the ground gives it, a drag moves the spot first. False, with the reason as a toast, if it can't be.</summary>
-        public bool ArmWish(int wishId)
-        {
-            var sim = Sim;
-            if (sim == null) return false;
-            SetTool(null);
-            if (hud != null && hud.CleanMode) hud.SetCleanMode(false);
-            if (!Tray.ArmForWish(sim, wishId))
-            {
-                var f = Tray.Feedback;
-                LastResult = f.text ?? "";
-                if (!string.IsNullOrEmpty(f.cue)) Sfx.Play(f.cue);
-                hud?.Toast(LastResult, 3f);
-                return false;
-            }
-            Tool = Tray.Armed;
-            RealTool = true;
-            return true;
-        }
-
         /// <summary>The tray's pick (#84): the tool in hand with shaping mode on, spending a charge when it lands. A tool that
         /// can't be used says why (<see cref="ShapingTray.ReasonText"/>) and isn't picked.</summary>
         public bool ArmTool(string kind)
@@ -196,25 +173,8 @@ namespace AquariumCiv.View
             hud?.Toast(LastResult, 3f);
         }
 
-        /// <summary>Put the tool in hand down (the banner's Cancel). Nothing is spent; a wish stays open.</summary>
+        /// <summary>Put the tool in hand down (the banner's Cancel). Nothing is spent.</summary>
         public void CancelTool() => SetTool(null);
-
-        /// <summary>Put the wish's tool down. Nothing is spent; the wish stays open.</summary>
-        public void CancelWish() => CancelTool();
-
-        void ConfirmWish()
-        {
-            var sim = Sim;
-            if (sim == null) return;
-            var r = Tray.Confirm(sim, show);
-            var f = Tray.Feedback;
-            LastResult = f.text ?? "";
-            if (!r.Ok && !string.IsNullOrEmpty(f.cue)) Sfx.Play(f.cue); // on success the placing's own cue plays from the show
-            hud?.Toast(LastResult, 3f);
-            if (Tray.Mode == TrayMode.Armed) return; // the ground refused it: still in hand
-            SetTool(null);
-            Changed();
-        }
 
         /// <summary>Place the tool in hand (or <paramref name="kind"/>) at a box point. Free in debug; else it spends a charge
         /// and says why when it can't.</summary>
@@ -365,14 +325,14 @@ namespace AquariumCiv.View
             return tl == null || !tl.Active;
         }
 
-        /// <summary>The tool keeps the drag from the camera only where the drag is what it does: a wish's spot and the channel. Every other
+        /// <summary>The tool keeps the drag from the camera only where the drag is what it does: the channel. Every other
         /// tool leaves it to the camera, so moving around never places anything (#145).</summary>
-        public bool ClaimsPress(Vector2 screenPos) => Usable() && RealTool && (WishArmed || StrokeTool) && !UiInput.Over(screenPos) && GroundPoint(screenPos, out _, out _);
+        public bool ClaimsPress(Vector2 screenPos) => Usable() && RealTool && StrokeTool && !UiInput.Over(screenPos) && GroundPoint(screenPos, out _, out _);
 
         /// <summary>A herd's flick comes in from the box's edge, so it may start off the land; everything else starts on the ground.</summary>
         bool ToolPress(Vector2 screenPos) => Usable() && !UiInput.Over(screenPos) && (Flicked || GroundPoint(screenPos, out _, out _));
 
-        bool pressDown, pressOk, pressDrag, pressStroke;
+        bool pressDown, pressOk, pressStroke;
         Vector2 pressPos, lastPos;
         float pressTime;
 
@@ -398,10 +358,10 @@ namespace AquariumCiv.View
         }
 
         /// <summary>The tray's channel: a drag ends in one point, where the finger lifts.</summary>
-        bool StrokeTool => RealTool && !WishArmed && Tool != null && ShapingTray.GestureOf(Tool) == ToolGesture.Drag;
+        bool StrokeTool => RealTool && Tool != null && ShapingTray.GestureOf(Tool) == ToolGesture.Drag;
 
         /// <summary>The tray's herd: only a real flick places it (<see cref="IsFlick"/>).</summary>
-        bool Flicked => RealTool && !WishArmed && Tool != null && ShapingTray.GestureOf(Tool) == ToolGesture.FlickFromEdge;
+        bool Flicked => RealTool && Tool != null && ShapingTray.GestureOf(Tool) == ToolGesture.FlickFromEdge;
 
         /// <summary>Two seconds of dragging is still one gesture.</summary>
         const float StrokeMaxSeconds = 6f;
@@ -419,7 +379,7 @@ namespace AquariumCiv.View
             {
                 bool tool = !RealTool || Tray.EndGesture();
                 if (pressDown && pressOk && tool) Release(now - pressTime);
-                pressDown = pressDrag = pressStroke = false;
+                pressDown = pressStroke = false;
                 return;
             }
             if (!pressDown)
@@ -432,22 +392,19 @@ namespace AquariumCiv.View
             }
             if (n == 1) lastPos = a;
             bool moved = (a - pressPos).magnitude > TapSlop * Mathf.Max(1f, Screen.height);
-            if (n >= 2) pressOk = pressDrag = false;
+            if (n >= 2) pressOk = false;
             else if (cam != null && cam.GestureMoved) pressOk = false; // the camera has it: this press is a look around
             else if (moved && pressOk)
             {
-                if (WishArmed) pressDrag = true; // a wish's spot follows the finger
-                else if (StrokeTool) pressStroke = true;
+                if (StrokeTool) pressStroke = true;
                 else if (!Flicked) pressOk = false;
             }
-            if (pressDrag && GroundPoint(a, out float dx, out float dz)) Tray.MovePending(dx, dz);
         }
 
         /// <summary>The finger lifted on a press that's still the tool's: what it was decides what happens.</summary>
         void Release(float held)
         {
             float travel = (lastPos - pressPos).magnitude / Mathf.Max(1f, Screen.height);
-            if (WishArmed) { if (held <= TapMaxSeconds && !pressDrag) ConfirmWish(); return; }
             bool place = pressStroke ? held <= StrokeMaxSeconds : Flicked ? IsFlick(held, travel) : held <= TapMaxSeconds;
             if (place && GroundPoint(pressStroke || Flicked ? lastPos : pressPos, out float x, out float z)) PlaceAt(x, z);
         }
@@ -468,7 +425,7 @@ namespace AquariumCiv.View
             {
                 float t = i * step;
                 var p = o + d * t;
-                bool inside = Mathf.Abs(p.x) <= Land.HX && Mathf.Abs(p.z) <= Land.HZ;
+                bool inside = Mathf.Abs(p.x) <= Land.HX && Land.InZ(p.z);
                 if (inside && p.y <= box.GroundHeight(p.x, p.z))
                 {
                     if (!wasAbove) return false;
@@ -477,7 +434,7 @@ namespace AquariumCiv.View
                     {
                         float m = (lo + hi) * 0.5f;
                         var q = o + d * m;
-                        if (q.y <= box.GroundHeight(Mathf.Clamp(q.x, -Land.HX, Land.HX), Mathf.Clamp(q.z, -Land.HZ, Land.HZ))) hi = m; else lo = m;
+                        if (q.y <= box.GroundHeight(Mathf.Clamp(q.x, -Land.HX, Land.HX), Land.ClampZ(q.z))) hi = m; else lo = m;
                     }
                     var h = o + d * hi;
                     x = h.x; z = h.z;
@@ -608,7 +565,7 @@ namespace AquariumCiv.View
             if (footGo != null) { Destroy(footGo); footGo = null; }
         }
 
-        Vector3 Ground(float x, float z) => new(x, box.GroundHeight(Mathf.Clamp(x, -Land.HX, Land.HX), Mathf.Clamp(z, -Land.HZ, Land.HZ)), z);
+        Vector3 Ground(float x, float z) => new(x, box.GroundHeight(Mathf.Clamp(x, -Land.HX, Land.HX), Land.ClampZ(z)), z);
 
         // ================================================================== the answer: ring, beam
 
@@ -660,13 +617,12 @@ namespace AquariumCiv.View
         /// <summary>The ground under the mark takes the tool (tests).</summary>
         public bool FootprintValid => footValid;
 
-        /// <summary>Where the mark sits: a wish's spot, under the finger, or where it last was; a tool just picked starts in the middle of
+        /// <summary>Where the mark sits: under the finger, or where it last was; a tool just picked starts in the middle of
         /// the view. The first run's rain has its own hint, so its mark only follows the finger.</summary>
         bool FootprintSpot(out float x, out float z)
         {
             x = z = 0f;
             if (!Usable()) return false;
-            if (WishArmed) { x = Tray.PendingX; z = Tray.PendingZ; return true; }
             if (pressDown && pressOk && GroundPoint(lastPos, out x, out z)) { restX = x; restZ = z; restKnown = true; return true; }
             if (!RealTool) return false;
             restKnown = restKnown || GroundPoint(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), out restX, out restZ);
@@ -741,7 +697,7 @@ namespace AquariumCiv.View
             uiRoot.pickingMode = PickingMode.Ignore;
             uiRoot.style.position = Position.Absolute;
             uiRoot.style.left = uiRoot.style.right = uiRoot.style.top = uiRoot.style.bottom = 0;
-            BuildWishBar();
+            BuildToolBar();
             labelEl = Pill("shaping-label", "type-small-head");
             bubbleEl = Pill("shaping-bubble", "type-sub");
             for (int i = 0; i < MaxChips; i++)
@@ -756,32 +712,28 @@ namespace AquariumCiv.View
             }
         }
 
-        VisualElement wishBar;
+        VisualElement toolBar;
         GlassBanner toolBanner;
         GlassPips toolPips;
-        GlassTag wishSpot;
 
         /// <summary>The tool in hand: the strip (name, what the finger does, charges) and Cancel in the tools' lane, spec §7 option A. The strip
-        /// takes no taps, so the ground under it stays the tool's; only Cancel is a target. A wish adds a tag on the spot.</summary>
-        void BuildWishBar()
+        /// takes no taps, so the ground under it stays the tool's; only Cancel is a target.</summary>
+        void BuildToolBar()
         {
-            wishBar = new VisualElement { name = "shaping-wish-bar", pickingMode = PickingMode.Ignore };
-            wishBar.AddToClassList("tray-bar");
-            wishBar.style.display = DisplayStyle.None;
+            toolBar = new VisualElement { name = "shaping-wish-bar", pickingMode = PickingMode.Ignore };
+            toolBar.AddToClassList("tray-bar");
+            toolBar.style.display = DisplayStyle.None;
             toolBanner = new GlassBanner("Tool", "Hint") { Inline = true, pickingMode = PickingMode.Ignore };
             toolBanner.AddToClassList("tray-bar-strip");
             toolBanner.TitleLabel.name = "shaping-banner";
             toolBanner.End.pickingMode = PickingMode.Ignore;
             toolPips = new GlassPips(0, 0) { name = "shaping-banner-pips" };
             toolBanner.End.Add(toolPips);
-            wishBar.Add(toolBanner);
-            var cancel = new GlassButton("Cancel", CancelWish, ButtonKind.Secondary, UiRole.Close) { name = "shaping-cancel" };
+            toolBar.Add(toolBanner);
+            var cancel = new GlassButton("Cancel", CancelTool, ButtonKind.Secondary, UiRole.Close) { name = "shaping-cancel" };
             cancel.AddToClassList("tray-cancel");
-            wishBar.Add(cancel);
-            uiRoot.Add(wishBar);
-            wishSpot = new GlassTag("Here") { name = "shaping-wish-spot", InWorld = true };
-            wishSpot.style.display = DisplayStyle.None;
-            uiRoot.Add(wishSpot);
+            toolBar.Add(cancel);
+            uiRoot.Add(toolBar);
         }
 
         Label Pill(string name, string type)
@@ -811,8 +763,7 @@ namespace AquariumCiv.View
             labelEl.style.display = DisplayStyle.None;
             bubbleEl.style.display = DisplayStyle.None;
             if (voice != null) GameUiPanel.Bubbles.Done(voice);
-            wishBar.style.display = DisplayStyle.None;
-            wishSpot.style.display = DisplayStyle.None;
+            toolBar.style.display = DisplayStyle.None;
             foreach (var c in chipEls) c.style.display = DisplayStyle.None;
             hud?.SetToolInHand(false);
         }
@@ -872,17 +823,15 @@ namespace AquariumCiv.View
             if (uiRoot == null) return;
             bool noUi = BoxCompleteController.ShelfIsOpen || (hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible));
             bool armed = !noUi && RealTool && Tool != null;
-            wishBar.style.display = armed ? DisplayStyle.Flex : DisplayStyle.None;
+            toolBar.style.display = armed ? DisplayStyle.Flex : DisplayStyle.None;
             hud?.SetToolInHand(armed);
-            bool spot = armed && WishArmed && Anchor(wishSpot, Tray.PendingX, Tray.PendingZ, ShapingFootprint.PreviewRadius(Tool) * 0.8f); // over the mark
-            wishSpot.style.display = spot ? DisplayStyle.Flex : DisplayStyle.None;
             if (armed)
             {
                 string title = Tray.BannerTitle(sim), hint = Tray.BannerHint(sim);
                 if (toolBanner.TitleLabel.text != title || bannerHint != hint) toolBanner.Set(title, bannerHint = hint);
                 var c = Tray.Charges(sim);
                 if (c.whole != pipsOn || c.max != pipsAll) toolPips.Set(pipsAll = c.max, pipsOn = c.whole);
-                wishBar.style.bottom = Mathf.Max(GameUiPanel.ToolsBottom, GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height).w);
+                toolBar.style.bottom = Mathf.Max(GameUiPanel.ToolsBottom, GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height).w);
             }
             RefreshTray(sim, false);
             var a = show.Answer;
@@ -1149,7 +1098,7 @@ namespace AquariumCiv.View
                         float a = Land.Hash3(entry.footprint.seed, i, 1) * Mathf.PI * 2f;
                         float rad = Mathf.Sqrt(Land.Hash3(entry.footprint.seed, i, 2)) * 0.32f * cs;
                         float x = r.x + Mathf.Cos(a) * rad, z = r.z + Mathf.Sin(a) * rad;
-                        float gy = owner.box.GroundHeight(Mathf.Clamp(x, -Land.HX, Land.HX), Mathf.Clamp(z, -Land.HZ, Land.HZ));
+                        float gy = owner.box.GroundHeight(Mathf.Clamp(x, -Land.HX, Land.HX), Land.ClampZ(z));
                         float u = Mathf.Repeat(t * (r.storm ? 2.2f : 1.6f) + Land.Hash3(entry.footprint.seed, i, 3), 1f);
                         float y = Mathf.Lerp(top, gy, u);
                         float len = r.storm ? 0.09f : 0.065f;

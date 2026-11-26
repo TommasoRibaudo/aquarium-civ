@@ -1,0 +1,24 @@
+{
+ "name": "692-b53a-pull-weed",
+ "notes": "B53.a: a grown-up bends at a seedling by a tent's door, tugs twice, pulls it out with its dangling root and tosses it to the edge.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(10.0f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.PullWeed());"
+  ],
+  "warm": 0.5,
+  "seconds": 6,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.4,
+  "yaw": 28,
+  "pitch": 38,
+  "lead": 2.5
+ }
+}

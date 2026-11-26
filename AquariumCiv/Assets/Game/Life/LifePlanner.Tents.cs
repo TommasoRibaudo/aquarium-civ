@@ -72,6 +72,9 @@ namespace AquariumCiv.Life
 
         // ---------------------------------------------------------------- the frame
 
+        /// <summary>S-ritual: where the camp's stash pile stands (the fire from the village on), world x/z.</summary>
+        public bool StashPoint(out float x, out float z) { Sync(); x = z = 0f; return !stash.IsNone && positions.TryGetPosition(stash, out x, out z); }
+
         /// <summary>Where the fire is now (follows it when the fire moves), world x/z.</summary>
         public bool FirePoint(out float x, out float z)
         {
@@ -86,8 +89,7 @@ namespace AquariumCiv.Life
         {
             x = z = dirX = dirZ = 0f;
             if (!sim.EcologyOn || !FirePoint(out float fx, out float fz)) return false;
-            float a = (H(0, 0, 410) >> 8) * (1f / 16777216f) * 6.2831853f;
-            a = CampSpots.RackAngle(fx, fz, a, HideFrameDistance); // fb4 #540: off the stash, the crumb's stone and the pot
+            float a = RackSites.Hide(sim, fx, fz); // fb4 #540: off the stash, the crumb's stone and the pot; #700: and off the paths
             float ux = (float)Math.Cos(a), uz = (float)Math.Sin(a);
             x = fx + ux * HideFrameDistance; z = fz + uz * HideFrameDistance;
             dirX = -uz; dirZ = ux; // the bar runs across the line from the fire
@@ -99,6 +101,7 @@ namespace AquariumCiv.Life
         public int HideFramePoints(ViewTime now, List<(float x, float z)> into)
         {
             into?.Clear();
+            RackSites.Observe(sim, now); // #700: a rack moves off a path at night or when empty
             if (!HideFrame(out float cx, out float cz, out float dx, out float dz)) return 0;
             int n = HidesOnFrame(now), shown = Math.Min(n, HideFrameMax);
             if (into != null)
@@ -160,10 +163,10 @@ namespace AquariumCiv.Life
         {
             var list = new List<Person>();
             if (b.builderId > 0)
-                foreach (var p in people) if (p.n != null && p.n.id == b.builderId && p.Adult && !InHunt(p, now)) { list.Add(p); break; }
+                foreach (var p in people) if (p.n != null && p.n.id == b.builderId && p.Adult && !InHunt(p, now) && !InBed(p, now)) { list.Add(p); break; }
             var rest = new List<Person>();
             foreach (var p in people)
-                if (p.Adult && !list.Contains(p) && p.job != JobType.Toolmaker && !carerBabies.ContainsKey(p.key) && !InHunt(p, now)) rest.Add(p);
+                if (p.Adult && !list.Contains(p) && p.job != JobType.Toolmaker && !carerBabies.ContainsKey(p.key) && !InHunt(p, now) && !InBed(p, now)) rest.Add(p);
             rest.Sort((a, c) =>
             {
                 int k = H(a.key, b.id, 420).CompareTo(H(c.key, b.id, 420));
@@ -172,6 +175,10 @@ namespace AquariumCiv.Life
             foreach (var p in rest) { if (list.Count >= TentBuilders) break; list.Add(p); }
             return list;
         }
+
+        /// <summary>#696: asleep at the time, by the planned day. A tent the sim builds at night is not raised by people out of their beds
+        /// (they came out of the tents, raised it, and walked back in: the last one in saw the others come out first).</summary>
+        bool InBed(Person p, ViewTime now) { var segs = DayOf(p); return segs[Find(segs, now.hour)].kind == ActivityKind.Sleep; }
 
         bool InHunt(Person p, ViewTime now) => HuntStepAt(p.who, now, out _, out _);
 
@@ -287,6 +294,9 @@ namespace AquariumCiv.Life
         }
 
         /// <summary>Forget finished raisings (the view calls this now and then; plans a day old are dropped).</summary>
+        /// <summary>#656: forget a tent's raising (an arrival replayed: the founders raise it again after the set-down). True when there was one.</summary>
+        public bool ForgetTent(int buildingId) => tentPlans.Remove(buildingId);
+
         public void PruneTents(ViewTime now)
         {
             List<int> drop = null;

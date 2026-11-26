@@ -69,6 +69,8 @@ namespace AquariumCiv.Sim
 
         // ---------- the first dog (the book) ----------
         public int FirstDogId => EcologyOn ? State.eco.firstDogId : -1;
+        /// <summary>#719: a grown dog's name (the people's lines name it), or "" when the box has none.</summary>
+        public string GrownDogName => Dogs.FirstOrDefault(d => DogStageOf(d) != DogStage.Pup)?.name ?? "";
         public string FirstDogName => EcologyOn ? State.eco.firstDogName : "";
         public int FirstDogKeeperId => EcologyOn ? State.eco.firstDogKeeperId : -1;
         /// <summary>The first dog's keeper's full name as it was when the pup came home (kept even after they die).</summary>
@@ -290,6 +292,7 @@ namespace AquariumCiv.Sim
             {
                 int keeper = kids.Count > k ? kids[k].id : mother.keeperId;
                 var pup = NewDog(mother.gen + 1, keeper, mother.id);
+                if (k == 0) PupAskAfterLitter(pup, kids); // #722 (4.4): two kids without a dog: the Keeper may pick who holds it first
                 DogBorn?.Invoke(pup);
             }
             e.nextLitterMonth = month + LitterGap(mother.id);
@@ -325,6 +328,28 @@ namespace AquariumCiv.Sim
         {
             if (!EcologyOn || State.eco.firstDogId >= 0) return null;
             return Adopt(PupFinder(State.month));
+        }
+
+        /// <summary>#694 debug ("Pup now", "Grown dog now", "Big dog now", "Old dog now"): a dog of generation <paramref name="gen"/> at
+        /// <paramref name="stage"/> now, for the dog scenes. The first ever comes home as the lost pup's "bring it home" (the book's first dog);
+        /// then, under the cap, a new one joins (bonded to a child without a dog); at the cap the youngest is made so. Null: no living land.</summary>
+        public Dog DebugDogNow(int gen, DogStage stage)
+        {
+            if (!EcologyOn) return null;
+            Dog d;
+            if (State.eco.firstDogId < 0) { d = Adopt(PupFinder(State.month)); if (d == null) return null; }
+            else if (DogCount < DogCap)
+            {
+                var kid = State.notables.Where(p => p.alive && p.age >= 3f && p.age < AdultAge && DogsOfKeeper(p.id).Count == 0).OrderBy(p => p.id).FirstOrDefault() ?? PupFinder(State.month);
+                d = NewDog(gen, kid?.id ?? -1, -1);
+                DogBorn?.Invoke(d);
+            }
+            else d = DogList.Where(x => x.Alive).OrderByDescending(x => x.bornMonth).ThenByDescending(x => x.id).First();
+            d.gen = Math.Max(0, gen);
+            DogLook(d);
+            int age = stage == DogStage.Pup ? 1 : stage == DogStage.Grown ? DogGrownMonths + 12 : Math.Max(DogGrownMonths + 1, d.lifeMonths - DogOldMonths + 1);
+            d.bornMonth = State.month - age;
+            return d;
         }
 
         /// <summary>Debug ("next dog generation"): adopts the first pup if there is no dog, grows the youngest, makes room (the oldest dog is

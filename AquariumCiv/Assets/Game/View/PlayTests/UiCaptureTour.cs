@@ -248,14 +248,6 @@ namespace AquariumCiv.View.PlayTests
             Sv.CancelTool();
             yield return Frames(4);
 
-            var w = Sim.DebugForceWish(K.Grove);
-            Assert.IsNotNull(w);
-            Assert.IsTrue(Sv.ArmWish(w.id));
-            yield return Frames(6);
-            yield return Cap("3.4-shapingmode-wish-armed", Sv.WishArmed && Shown(ui.Q("shaping-wish-spot")), ui.Q<Label>("shaping-banner").text);
-            Sv.CancelWish();
-            yield return Frames(4);
-
             Assert.IsTrue(Sv.ArmTool(K.Rain));
             yield return Frames(3);
             yield return TapAt(Sv.ScreenOf(x, z));
@@ -349,7 +341,6 @@ namespace AquariumCiv.View.PlayTests
             bool noShowMe = false;
             string log = "";
             Sim.State.shapingCharges = Sim.ShapingMaxCharges;
-            var wish = Sim.DebugForceWish(K.Rain);
             Sim.DebugGiveRelic(RelicId.All[0]);
             Sim.ForceEraReady();
             for (int round = 0; round < 6; round++)
@@ -367,7 +358,7 @@ namespace AquariumCiv.View.PlayTests
                     log += f.kind + (f.card != null && f.card.paysOffTeaser ? "+payoff" : "") + (f.teaserLine.Length > 0 ? "+teaser" : "") + (f.endLine.Length > 0 ? "+end" : "") + (f.canShowMe ? "" : "+noshow") + " ";
                     string name = f.kind switch
                     {
-                        CardKind.Wish => "3.3-stack-wish", CardKind.EraReady => "3.3-stack-era", CardKind.Keeper => "3.3-stack-keeper",
+                        CardKind.EraReady => "3.3-stack-era", CardKind.Keeper => "3.3-stack-keeper",
                         CardKind.Relic => "3.3-stack-relic", CardKind.Legend => "3.3-stack-legend", _ => null,
                     };
                     if (name != null && seen.Add(name)) { yield return Frames(3); yield return Cap(name, true, f.headline); }
@@ -380,7 +371,6 @@ namespace AquariumCiv.View.PlayTests
                 }
                 Model.SkipAll();
                 yield return Frames(6);
-                if (round == 1 && wish != null && wish.state == WishState.Open) { Sim.State.shapingCharges = 0; }
                 string t = Sim.DebugOpenTeaser();
                 log += $"· teaser {t} · ";
                 SimLayoutSource.DebugSkipYears(6f);
@@ -434,6 +424,8 @@ namespace AquariumCiv.View.PlayTests
             var root = Cards.CardRoot;
             yield return Cap("3.4-person-notable", Cards.IsOpen, Cards.Card.name);
             yield return Cap("3.2-marker-name-tag", Cards.IsOpen);
+            Cards.SetExpanded(true); // #674: the tabs show on the tall card only
+            yield return new WaitForSecondsRealtime(1.0f);
             yield return Tap(root, "person-card-recent");
             var scroll = root.Q<ScrollView>("person-card-body");
             scroll.scrollOffset = new Vector2(0f, 99999f);
@@ -445,6 +437,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Cap("3.4-person-best", Cards.ShowingBest);
             root.Q<ScrollView>("person-card-body").scrollOffset = Vector2.zero;
             yield return Tap(root, "person-card-recent");
+            Cards.SetExpanded(false);
 
             yield return Tap(root, "person-card-pin");
             yield return Frames(4);
@@ -773,7 +766,7 @@ namespace AquariumCiv.View.PlayTests
             var sender = FeedbackSender.Ensure();
             typeof(FeedbackSender).GetField("token", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(sender, ""); // never reaches GitHub
             var fb = FeedbackUI.Instance;
-            yield return Tap(Hud.Root, "hud-feedback");
+            yield return Tap(FeedbackUI.Instance.PillRoot, "hud-feedback");
             yield return Until(() => fb.IsOpen, 3f);
             yield return Frames(6);
             yield return Cap("3.8-feedback-empty", fb.IsOpen);

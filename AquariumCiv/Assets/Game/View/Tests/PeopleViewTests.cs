@@ -240,7 +240,7 @@ namespace AquariumCiv.View.Tests
                         }
                         last[d] = p;
                         Assert.LessOrEqual(Mathf.Abs(p.x), Land.HX - 0.1f, d.name);
-                        Assert.LessOrEqual(Mathf.Abs(p.z), Land.HZ - 0.1f, d.name);
+                        Assert.IsTrue(Land.InZ(p.z, 0.1f), d.name);
                     }
                     foreach (var a in people.Activities)
                     {
@@ -249,10 +249,11 @@ namespace AquariumCiv.View.Tests
                         if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && land.IsWater(pos.x, pos.y)) wet++;
                         int cell = Sim.Settle.SiteMap.CellAt(pos.x, pos.y);
                         if (!a.moving && !people.IsWalking(a.who) && a.place.kind != PlaceKind.Field && a.place.kind != PlaceKind.Pasture && a.kind != ActivityKind.Sleep &&
-                            people.Planner.StageOf(a.who) != LifeStage.Baby && cell >= 0 && settle.WalkCost(cell) == 0)
+                            people.Planner.StageOf(a.who) != LifeStage.Baby && cell >= 0 && settle.WalkCost(cell) == 0
+                            && !(people.Camp != null && people.Camp.Cued(a.who.Key))) // 2026-11-24: a camp or village use's spot is its thing's own (the barn, the mill's log, a doorstep: signed-off clips)
                         {
                             onLot++;
-                            if (lotLog.Count < 10 && frames % 10 == 0) lotLog.Add($"{people.Now} {people.Describe(a)}");
+                            if (lotLog.Count < 10 && frames % 10 == 0) lotLog.Add($"{people.Now} {people.Describe(a)} [{people.DebugSpotOf(a.who)}]");
                         }
                     }
                     // Rule 6: one doll per spot. Settled, visible dolls never stand on top of each other.
@@ -266,7 +267,7 @@ namespace AquariumCiv.View.Tests
                                 if ((still[i] - still[j]).sqrMagnitude < 0.05f * 0.05f)
                                 {
                                     stacked++;
-                                    if (stackLog.Count < 12) stackLog.Add($"{people.Now} ({still[i].x:0.00},{still[i].y:0.00}) {people.Describe(stillActs[i])} | {people.Describe(stillActs[j])}");
+                                    if (stackLog.Count < 12) stackLog.Add($"{people.Now} ({still[i].x:0.00},{still[i].y:0.00}) {people.Describe(stillActs[i])} [{stillActs[i].source} slot {stillActs[i].slot} {people.DebugSpotOf(stillActs[i].who)}] | {people.Describe(stillActs[j])} [{stillActs[j].source} slot {stillActs[j].slot} {people.DebugSpotOf(stillActs[j].who)}]");
                                 }
                     }
                     if (frames % 20 == 0 && LifeClock.IsWorkHour(people.Now.hour) && !people.Planner.IsRestDay(people.Now.day))

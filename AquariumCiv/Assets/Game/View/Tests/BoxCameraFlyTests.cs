@@ -43,7 +43,7 @@ namespace AquariumCiv.View.Tests
             Run(cam, 0.5f);
             Assert.IsFalse(cam.IsFlying); Assert.IsTrue(arrived);
             Assert.AreEqual(0.5f, cam.zoom, 1e-4f);
-            var eb = B(0.5f); Assert.AreEqual(Mathf.Min(1.5f, eb.x), cam.target.x, 1e-4f); Assert.AreEqual(-Mathf.Min(1f, eb.y), cam.target.z, 1e-4f);
+            var eb = B(0.5f); Assert.AreEqual(Mathf.Min(1.5f, eb.x), cam.target.x, 1e-4f); Assert.AreEqual(Land.CZ + Mathf.Clamp(-1f - Land.CZ, -eb.y, eb.y), cam.target.z, 1e-4f, "#658: the bounds are offsets from the box centre (z = Land.CZ)");
             Assert.AreEqual(1f, cam.target.y, "stays on the ground plane");
         }
 
@@ -70,12 +70,12 @@ namespace AquariumCiv.View.Tests
             cam.FlyTo(new Vector3(50f, 0f, -50f), 0.3f, 0.2f);
             Run(cam, 0.3f);
             var b = B(0.3f);
-            Assert.AreEqual(b.x, cam.target.x, 1e-4f); Assert.AreEqual(-b.y, cam.target.z, 1e-4f);
+            Assert.AreEqual(b.x, cam.target.x, 1e-4f); Assert.AreEqual(Land.CZ - b.y, cam.target.z, 1e-4f);
             // Zooming out to the full box: the flight still ends at its bound.
             cam.FlyTo(new Vector3(50f, 0f, 50f), 1f, 0.2f);
             Run(cam, 0.3f);
             b = B(1f);
-            Assert.AreEqual(b.x, cam.target.x, 1e-4f); Assert.AreEqual(b.y, cam.target.z, 1e-4f);
+            Assert.AreEqual(b.x, cam.target.x, 1e-4f); Assert.AreEqual(Land.CZ + b.y, cam.target.z, 1e-4f);
             // Zoom is clamped to the camera's range.
             cam.FlyTo(Vector3.zero, 0.01f, 0.1f); Run(cam, 0.2f);
             Assert.AreEqual(cam.minZoom, cam.zoom, 1e-4f);

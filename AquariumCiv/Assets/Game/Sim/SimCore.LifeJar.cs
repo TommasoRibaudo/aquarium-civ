@@ -21,7 +21,12 @@ namespace AquariumCiv.Sim
         public event Action<LifeSpecies> LifeJarOpened;
 
         /// <summary>The jar's state (Locked when the ecology is off).</summary>
-        public JarState JarStateOf(LifeSpecies s) => EcologyOn ? EcoM.JarStateOf(s) : JarState.Locked;
+        public JarState JarStateOf(LifeSpecies s)
+        {
+            if (!EcologyOn) return JarState.Locked;
+            var st = EcoM.JarStateOf(s);
+            return st == JarState.Ready && EcoM.IceShut(s, State.month) ? JarState.Locked : st; // #703: shut while the pond is ice
+        }
         public bool JarReady(LifeSpecies s) => JarStateOf(s) == JarState.Ready;
         /// <summary>At least one founding group of the species is in the box (a restock's open jar still counts).</summary>
         public bool LifeIsPlaced(LifeSpecies s) => EcologyOn && EcoM.IsPlaced(s);
@@ -31,26 +36,27 @@ namespace AquariumCiv.Sim
         {
             into.Clear();
             if (!EcologyOn) return;
-            foreach (var s in LifeJar.All) if (EcoM.JarStateOf(s) == JarState.Ready) into.Add(s);
+            foreach (var s in LifeJar.All) if (JarStateOf(s) == JarState.Ready) into.Add(s);
         }
 
         /// <summary>The life slot shows (spec §6): at least one jar is Ready.</summary>
-        public bool AnyJarReady { get { if (!EcologyOn) return false; foreach (var s in LifeJar.All) if (EcoM.JarStateOf(s) == JarState.Ready) return true; return false; } }
+        public bool AnyJarReady { get { if (!EcologyOn) return false; foreach (var s in LifeJar.All) if (JarStateOf(s) == JarState.Ready) return true; return false; } }
 
         /// <summary>#570 the shut jars, in <see cref="LifeJar.All"/> order (the chooser lists them greyed, after the ready ones).</summary>
         public void LockedJars(List<LifeSpecies> into)
         {
             into.Clear();
             if (!EcologyOn) return;
-            foreach (var s in LifeJar.All) if (EcoM.JarStateOf(s) == JarState.Locked) into.Add(s);
+            foreach (var s in LifeJar.All) if (JarStateOf(s) == JarState.Locked) into.Add(s);
         }
 
         /// <summary>#570 what a shut jar waits for, in the people's words ("Rabbits need a meadow"); null when it is not shut or its land is
         /// ready (it opens at the season's end).</summary>
         public string JarNeed(LifeSpecies s) => EcologyOn ? EcoM.JarNeed(s, State.month) : null;
 
-        /// <summary>#570 the line the kit shows: what the camp, then the village, still waits for ("The village waits for: more trees (3/8)
-        /// · fish in the pond"). Empty when the village stands, or every piece is there.</summary>
+        /// <summary>#570 the line the kit shows: what the village still waits for ("The village waits for: more trees (3/8)
+        /// · fish in the pond"). Empty before the camp stands (2026-11-14: the first upgrade gets no list, only later ones), when the village
+        /// stands, or every piece is there.</summary>
         public string VillageWaitsLine
         {
             get
@@ -58,7 +64,7 @@ namespace AquariumCiv.Sim
                 if (!EcologyOn) return "";
                 var pieces = new List<string>();
                 EcoM.WaitsFor(pieces, out bool village);
-                return pieces.Count == 0 ? "" : (village ? "The village waits for: " : "The camp waits for: ") + string.Join(" · ", pieces);
+                return pieces.Count == 0 || !village ? "" : "The village waits for: " + string.Join(" · ", pieces);
             }
         }
 
@@ -91,7 +97,7 @@ namespace AquariumCiv.Sim
 
         /// <summary>The species can be placed on the site cell now: its jar is Ready and the ground is valid (spec §5), off the
         /// settlement's lots, paths, green and yards.</summary>
-        public bool CanPlaceLife(LifeSpecies s, int cell) => EcologyOn && EcoM.CanPlace(s, cell, SettledCell);
+        public bool CanPlaceLife(LifeSpecies s, int cell) => EcologyOn && !EcoM.IceShut(s, State.month) && EcoM.CanPlace(s, cell, SettledCell);
 
         /// <summary>The ground is valid for the species (spec §5), whatever its jar says: what glows while it is in hand.</summary>
         public bool LifeGroundOk(LifeSpecies s, int cell) => EcologyOn && EcoM.GroundOk(s, cell, SettledCell);
@@ -178,7 +184,7 @@ namespace AquariumCiv.Sim
             foreach (var s in gone)
                 Chronicle("life_left_" + s.ToString().ToLowerInvariant(), s == LifeSpecies.Ducks
                     ? "The ducks had no water left to swim on. One morning they were gone, and only a few feathers lay in the dry hollow."
-                    : "The water was gone from the hollow, and the fish with it. The children looked for them in the mud.", 0.6f);
+                    : "The water was gone from the hollow, and the fish with it. Everyone looked for them in the dry hollow.", 0.6f);
         }
 
         // ---------- debug (the panel's "Life jar" block; CLAUDE.md "debug panel stays current") ----------
@@ -190,6 +196,14 @@ namespace AquariumCiv.Sim
             int n = 0;
             foreach (var s in LifeJar.All) { var j = EcoM.Jar(s); if (j.State == JarState.Ready) { j.state = (int)JarState.Locked; n++; } }
             return n;
+        }
+
+        /// <summary>Debug (#668 kit states): one shut jar opens now (one group ready). False when it isn't shut.</summary>
+        public bool DebugJarReady(LifeSpecies s)
+        {
+            if (!EcologyOn || !EcoM.DebugReadyOne(s, State.month)) return false;
+            EcoTell();
+            return true;
         }
 
         /// <summary>Debug ("ready every species"): every shut jar opens now, whatever the land says. How many opened.</summary>
@@ -210,6 +224,7 @@ namespace AquariumCiv.Sim
             var m = EcoM;
             try
             {
+                m.cheatPlaceOnIce = true; // #703: the scripted placing ignores the ice (the Keeper's tap does not)
                 int c = LifePlaceCellNearCamp(s);
                 if (c < 0) { m.cheatBareGround = true; c = LifePlaceCellNearCamp(s); }
                 if (c < 0) return -1;
@@ -217,7 +232,7 @@ namespace AquariumCiv.Sim
                 if (j.State != JarState.Ready) { j.state = (int)JarState.Ready; j.readyMonth = State.month; j.readySeen = true; }
                 return PlaceLife(s, c) ? c : -1;
             }
-            finally { m.cheatBareGround = false; }
+            finally { m.cheatBareGround = false; m.cheatPlaceOnIce = false; }
         }
 
         /// <summary>#519 debug ("pond dries"): every pond cell is bare ground now, and the ducks and the fish keep to the water at once

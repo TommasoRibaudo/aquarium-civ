@@ -129,7 +129,7 @@ namespace AquariumCiv.Sim
         }
 
         static float ClampX(float x) => Math.Clamp(x, -Terrain.HX + 0.7f, Terrain.HX - 0.7f);
-        static float ClampZ(float z) => Math.Clamp(z, -Terrain.HZ + 0.7f, Terrain.HZ - 0.7f);
+        static float ClampZ(float z) => Terrain.ClampZ(z, 0.7f);
 
         // ---------- state ----------
         public bool Active => F.active;
@@ -286,7 +286,7 @@ namespace AquariumCiv.Sim
             if (f.shortRun && !sim.EcologyOn) while (Step is FirstRunStep.Name or FirstRunStep.Year or FirstRunStep.Card) f.step++; // §9: named on its plate, no year, no card for it
             f.stepSeconds = 0; f.untouchedSeconds = 0; f.hintPhase = 0; f.hintReturns = 0; f.hintIdle = 0; f.hintSubstep = false;
             liftedSinceStep = false;
-            if (Step == FirstRunStep.Rain && !sim.EcologyOn) RaiseRainWish(); // P8: the land asks, not a person
+            if (Step == FirstRunStep.Rain && !sim.EcologyOn) PickRainAsker(); // P8: the land asks, not a person
             if (Step == FirstRunStep.Year) BeginYear();
             if (Step == FirstRunStep.Done) { f.active = false; sim.CardsSeenToNow(); }
             StepChanged?.Invoke(Step);
@@ -333,21 +333,16 @@ namespace AquariumCiv.Sim
         }
 
         // ---------- the first rain ----------
-        void RaiseRainWish()
+        /// <summary>#718: no wish card any more (wishes are gone); the first rain's answer is still credited to a grown-up,
+        /// a gatherer or a farmer first.</summary>
+        void PickRainAsker()
         {
             var f = F;
-            if (f.rainWishId >= 0) return;
+            if (f.rainNotableId >= 0) return;
             var who = sim.State.notables.Where(n => n.alive && n.age >= 16f)
                 .OrderBy(n => n.job == JobType.Gatherer || n.job == JobType.Farmer ? 0 : 1).ThenBy(n => n.id).FirstOrDefault();
-            if (who == null) return;
-            var w = sim.DebugForceWish(SimCore.NudgeKind.Rain, who.id); // a real wish card: "Mira hopes for rain."
-            if (w == null) return;
-            w.x = f.rainX; w.z = f.rainZ;
-            f.rainWishId = w.id; f.rainNotableId = who.id;
+            if (who != null) f.rainNotableId = who.id;
         }
-
-        /// <summary>The wish to show as a bubble over the wisher (null before the Rain step; its state is Given once the rain fell).</summary>
-        public Wish RainWish => F.rainWishId >= 0 ? sim.FindWish(F.rainWishId) : null;
 
         /// <summary>Place the first rain at a point (box coordinates). Never refused for want of a charge; the answer lands in
         /// the first year. Moves the run on.</summary>
@@ -411,7 +406,7 @@ namespace AquariumCiv.Sim
             var rain = f.rainNudgeId >= 0 ? st.nudges.FirstOrDefault(n => n.id == f.rainNudgeId) : null;
             var answer = rain != null ? sim.AnswerOf(rain) : null;
             sum.rainAnswered = answer != null;
-            var all = stack.cards.Where(c => c.kind != CardKind.Wish && c.lead?.kind != "founding").ToList();
+            var all = stack.cards.Where(c => c.lead?.kind != "founding").ToList();
             sum.card = (answer != null ? all.FirstOrDefault(c => c.entries.Any(e => e.id == answer.id)) : null) ?? all.FirstOrDefault();
             sum.cardText = sum.card?.lead?.text ?? FallbackLine;
             sum.flyToBuildingId = sum.card?.buildingId ?? -1;

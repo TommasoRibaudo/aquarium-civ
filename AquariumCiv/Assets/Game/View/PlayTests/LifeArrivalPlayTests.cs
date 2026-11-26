@@ -80,6 +80,8 @@ namespace AquariumCiv.View.PlayTests
             foreach (var s in Ladder)
             {
                 Sim.DebugJarsReady();
+                // the wolves' arrival is watched from the village (the far wood used to reach the 8-tree gate by itself; it needs 10 since 2026-11-14)
+                if (s == LifeSpecies.Wolves && Sim.State.eco.villageGateMonth < 0) Debug.Log("[p9-arr] " + EcoDebug.VillageGate());
                 yield return Frames(5);
                 if (!Sim.JarReady(s)) { Assert.Inconclusive($"{s}: its jar would not open ({Sim.JarStateOf(s)})"); yield break; }
                 int played0 = la.PlayedOf(s);

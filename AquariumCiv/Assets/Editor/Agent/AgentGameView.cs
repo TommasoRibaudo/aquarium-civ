@@ -47,7 +47,7 @@ namespace AquariumCiv.EditorTools
         /// <summary>Play mode only: writes at the end of the frame (check the file with a second call).</summary>
         public static string Shot(string name)
         {
-            var path = $"F:/GameDev/AquariumCiv/Temp/agent/{name}.png";
+            var path = UnityEngine.Application.dataPath + $"/../Temp/agent/{name}.png";
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
             if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
             ScreenCapture.CaptureScreenshot(path);

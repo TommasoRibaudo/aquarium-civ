@@ -20,7 +20,7 @@ namespace AquariumCiv.Tests
             sim.CleanGrime(1f);
             run.Tick(0.1f, true);
             Assert.AreEqual(FirstRunStep.Rain, run.Step, "no patch on a barren box: straight to the first mist");
-            Assert.IsNull(run.RainWish, "no rain wish: the land asks");
+            Assert.AreEqual(-1, sim.State.firstRun.rainNotableId, "nobody is asked: the land asks");
             run.Tick(2f, false);
             Assert.AreEqual(FirstRun.MistHint.id, run.Hint.id, "the hint says to hold and mist");
             var (x, z) = run.SuggestedRainSpot;

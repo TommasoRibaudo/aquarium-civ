@@ -96,9 +96,9 @@ namespace AquariumCiv.Tests
             var log = Century(seed, out var sim);
             foreach (var (e, _) in log.Where(x => x.e.kind == "rivalry"))
             {
-                int coda = e.text.IndexOf("share a bench. ");
+                int coda = e.text.IndexOf("share a fire. ");
                 if (coda < 0) continue;
-                string tail = e.text.Substring(coda + "share a bench. ".Length);
+                string tail = e.text.Substring(coda + "share a fire. ".Length);
                 foreach (var id in new[] { e.notableId, e.otherNotableId })
                     Assert.IsFalse(tail.StartsWith(sim.FindNotable(id).FullName + " the "), e.text);
             }
@@ -163,24 +163,6 @@ namespace AquariumCiv.Tests
             }
         }
 
-        [Test]
-        public void TheTownTalksOfTheWallUntilTheLens()
-        {
-            var sim = NewSim(8);
-            sim.ForceNextEra(); sim.ForceNextEra();
-            sim.TermFlavourOn = false; // no office teasers: the slices of life come up
-            sim.State.roles.Clear();
-            foreach (var n in sim.State.notables) { n.friendId = n.rivalId = -1; }
-            var before = Enumerable.Range(0, 8).Select(_ => sim.OpenTeaser()).ToList();
-            foreach (var l in before)
-            {
-                StringAssert.DoesNotContain("glass", l.ToLowerInvariant());
-                StringAssert.DoesNotContain("lens", l.ToLowerInvariant());
-            }
-            sim.GlassRelicFound(SimCore.GlassRelic.Lens);
-            var after = Enumerable.Range(0, 8).Select(_ => sim.OpenTeaser()).ToList();
-            Assert.IsTrue(after.Any(l => l.Contains("glass")), "the scholars say glass once the Lens is set up");
-        }
 
         [Test]
         public void ANamedPriestIsSeasoned()
@@ -237,19 +219,6 @@ namespace AquariumCiv.Tests
             sim.ForceNextEra();
             sim.PlaceNudge(SimCore.NudgeKind.Lamp, 3);
             Assert.Contains(SimCore.FlagLampUsed, sim.State.storyFlags);
-        }
-
-        [Test]
-        public void EachGiftHasItsOwnTeaser()
-        {
-            var sim = NewSim(9);
-            sim.ForceNextEra(); sim.ForceNextEra();
-            sim.State.roles.Clear(); sim.TermFlavourOn = false;
-            foreach (var n in sim.State.notables) { n.friendId = n.rivalId = -1; }
-            sim.PlaceNudge(SimCore.NudgeKind.Outcrop, 4);
-            var t = sim.OpenTeaserThread();
-            Assert.AreEqual(ThreadSource.Gift, t.source);
-            StringAssert.Contains("rock", t.teaser);
         }
 
         [Test]

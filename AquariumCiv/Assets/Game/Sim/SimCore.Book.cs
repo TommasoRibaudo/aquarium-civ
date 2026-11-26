@@ -336,7 +336,7 @@ namespace AquariumCiv.Sim
         public void DebugEarnBook()
         {
             while (!IsFinalEra) ForceNextEra();
-            DebugGiveRelic(RelicId.SkyCrumb);
+            DebugGiveRelic(RelicId.FestivalMask); // #718: three relics now
             DebugGiveRelic(RelicId.KeeperDoll);
             DebugBookEnd = true;
         }
@@ -373,15 +373,7 @@ namespace AquariumCiv.Sim
                     s.teaserThreadId = t.id;
                     return t.teaser;
                 }
-                case ThreadSource.Gift:
-                {
-                    var n = PlaceNudge(NudgeKind.Rain, 0f, 0f); // a gift's thread ends with its gift: a real one, unanswered
-                    if (n == null) return null;
-                    var t = NewThread(ThreadSource.Gift, s.era == Era.Camp ? "The gatherers keep checking the wet ground." : "The farmers keep checking the wet ground.", -1, -1);
-                    t.subjectId = n.id;
-                    s.teaserThreadId = t.id;
-                    return t.teaser;
-                }
+                // #718: no gift teaser any more
                 case ThreadSource.Rivalry:
                 {
                     if (adults.Count < 2) return null;
@@ -397,12 +389,7 @@ namespace AquariumCiv.Sim
                     s.teaserThreadId = t.id;
                     return t.teaser;
                 }
-                case ThreadSource.Slice:
-                {
-                    var t = NewThread(ThreadSource.Slice, "The kids are building a raft.", -1, -1);
-                    s.teaserThreadId = t.id;
-                    return t.teaser;
-                }
+                // #715: no slice-of-life teaser any more (the raft is gone): nothing to force
             }
             return null;
         }

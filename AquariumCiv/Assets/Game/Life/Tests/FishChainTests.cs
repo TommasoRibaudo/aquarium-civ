@@ -253,6 +253,26 @@ namespace AquariumCiv.Life.Tests
             Assert.Greater(maxPile, 0);
         }
 
+        /// <summary>Tester run 1: "fish on the rack" planned someone's walk-in through BasePlace, whose plain day asked the cheat again,
+        /// round and round until the stack overflowed (a device build dies of that). Every plan across the duty, and the next day at the
+        /// same hour, must come back.</summary>
+        [Test]
+        public void TheRackCheatsWalkInNeverAsksItselfAgain()
+        {
+            var sim = FishingCamp(5);
+            var planner = LifePlanner.Wired(sim);
+            var now = new ViewTime(2, 10f);
+            planner.ResolveFishChain(now);
+            Assert.AreEqual(6, planner.DebugFillBasketNow(now));
+            for (float h = 10f; h < 11.5f; h += 0.05f) planner.ResolveFishChain(new ViewTime(2, h));
+            Assert.AreEqual(6, planner.DebugRackNow(new ViewTime(3, 9f)));
+            int planned = 0;
+            foreach (var day in new long[] { 3, 4 })
+                for (float h = 8.5f; h < 12f; h += 0.05f)
+                    foreach (var who in planner.People) { planner.Plan(who, new ViewTime(day, h)); planned++; }
+            Assert.Greater(planned, 0);
+        }
+
         [Test]
         public void TheRacksLookCountsHangsAndTakeDowns()
         {
@@ -265,6 +285,9 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual(1.0, look.dirX * look.dirX + look.dirZ * look.dirZ, 1e-3);
 
             // "fill fish basket": six fish, someone walks them over and hangs them one by one
+            // #656: the day's own duties up to now are settled first: with the new start's jobs (one toolmaker, the others waiting for
+            // the land) a fisher's planned hang ends at 10:00 and, settled after the fill, took the cheat's whole basket at once
+            planner.ResolveFishChain(now);
             Assert.AreEqual(6, planner.DebugFillBasketNow(now));
             int seen = 0, last = 0;
             for (float h = 10f; h < 11.5f; h += 0.01f)

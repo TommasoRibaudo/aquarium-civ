@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keeper's Kit Mock-ups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;700&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+/* Keeper's Glass tokens, copied from AquariumCiv/Assets/Game/UI/Resources/GameUI/Game.uss :root (#108). */
+:root {
+  --ink: #3D2A1E; --ink-soft: #4A3324; --timber: #6A4B36; --paper: #F3E9D6; --brass: #B88A3E; --edge: #D3B684;
+  --brass-light: #D9B873; --primary: #9E5033; --primary-pressed: #7F3F28; --on-primary: #EFE3CC; --moss: #526E3A;
+  --pressed-fill: #E2D3B3; --flat-tint: rgba(243,233,214,.92); --flat-sheet: rgba(243,233,214,.96);
+  --off-fill: rgba(243,233,214,.40); --dot-off: rgba(106,75,54,.52); --dark-plate: rgba(61,42,30,.94);
+  --page: #EFE6D4; --page-ink: #3D2A1E; --rule: #D3B684;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --page: #221a14; --page-ink: #EFE3CC; --rule: #6A4B36; }
+}
+:root[data-theme="dark"] { --page: #221a14; --page-ink: #EFE3CC; --rule: #6A4B36; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--page-ink); font-family: "PT Serif", Georgia, serif; line-height: 1.45; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px 16px 80px; }
+h1, h2, h3 { font-family: Lora, Georgia, serif; font-weight: 700; margin: 0 0 8px; }
+h1 { font-size: 30px; } h2 { font-size: 24px; margin-top: 40px; } h3 { font-size: 17px; margin-top: 22px; }
+p { margin: 6px 0; max-width: 820px; }
+.rec { color: var(--primary); }
+nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+nav a { color: inherit; border: 1px solid var(--rule); border-radius: 999px; padding: 4px 12px; text-decoration: none; font-size: 14px; }
+.tradeoff { font-style: italic; }
+.row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin: 8px 0 18px; }
+.cap { font-size: 13px; opacity: .8; margin-top: 4px; }
+.state-title { font-family: Lora, Georgia, serif; font-weight: 700; font-size: 15px; margin: 18px 0 2px; }
+.state-note { font-size: 13.5px; opacity: .85; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; padding: 16px; border-radius: 14px; background: #E3CFA6; font-size: 15.7px; color: var(--ink); overflow-x: auto; }
+.legend .lab { font-size: 12px; text-align: center; margin-top: 6px; font-family: "PT Serif", serif; }
+.decided { margin: 14px 0; padding: 12px 16px; border-radius: 12px; border-left: 4px solid var(--moss); background: rgba(82,110,58,.12); max-width: 900px; font-size: 15px; }
+.decided ul { margin: 6px 0 10px; padding-left: 20px; }
+.est { font-size: 12px; border: 1px solid var(--rule); border-radius: 6px; padding: 0 5px; }
+table { border-collapse: collapse; font-size: 14px; }
+td, th { border-bottom: 1px solid var(--rule); padding: 4px 8px; text-align: left; vertical-align: top; }
+
+/* ---------- a phone frame: 1em = 1 pt of the game (1080 px panel, 1 pt = 2.75 px), so --pt = width / 392.7 ---------- */
+.frame { position: relative; overflow: hidden; border-radius: 22px; flex: none; color: var(--ink);
+  background: linear-gradient(175deg, #EDE0C4 0%, #E6D5B0 55%, #CDB48C 56%, #C3A57B 100%);
+  box-shadow: 0 2px 0 rgba(0,0,0,.08), 0 10px 30px rgba(60,40,20,.18); font-family: "PT Serif", Georgia, serif; }
+.frame .scene { position: absolute; left: 4%; width: 92%; top: 26%; }
+.hud-top { position: absolute; top: 2.6em; left: 16em; right: 16em; display: flex; align-items: flex-start; }
+.hud-name { font-family: Lora, Georgia, serif; font-weight: 700; font-size: 19em; line-height: 1.1; }
+.hud-year { font-size: 14em; }
+.hud-top .sp { flex: 1; }
+.hud-ic { width: 26em; height: 26em; margin-left: 18em; margin-top: 4em; }
+svg.i { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* the bottom bar: 30 pt from the edge, tools 56 pt tall, radius 28 */
+.bar { position: absolute; left: 16em; right: 16em; bottom: 30em; display: flex; justify-content: space-between; align-items: flex-end; }
+.tool { position: relative; height: 56em; width: 31.85%; border-radius: 28em; display: flex; align-items: center; justify-content: center; gap: 6em;
+  background: var(--flat-tint); border: 1em solid var(--edge); font-family: Lora, Georgia, serif; font-weight: 700; }
+.tool span.w { font-size: 17em; }
+.tool .ic { width: 22em; height: 22em; }
+/* #668 comment (feedback#70): the bottom looked flat. Every design gives the tools depth. */
+.depth .tool { background: linear-gradient(180deg, #FBF5EA 0%, var(--paper) 45%, #E8D9BC 100%);
+  box-shadow: inset 0 1.5em 0 rgba(255,255,255,.75), inset 0 -2.5em 0 rgba(106,75,54,.16), 0 3em 0 rgba(106,75,54,.22), 0 8em 14em rgba(46,42,39,.28); }
+.ledge { position: absolute; left: 8em; right: 8em; bottom: 20em; height: 76em; border-radius: 36em;
+  background: rgba(243,233,214,.38); border-top: 1.5em solid rgba(217,184,115,.85); box-shadow: 0 6em 18em rgba(46,42,39,.18); }
+.dot { position: absolute; width: 10em; height: 10em; border-radius: 50%; background: var(--primary); border: 1em solid var(--on-primary); }
+.tool .dot { right: 14em; top: 8em; }
+.pulse { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(158,80,51,.55); } 50% { box-shadow: 0 0 0 6em rgba(158,80,51,0); } }
+.newtag { position: absolute; top: -11em; left: 50%; transform: translateX(-50%); background: var(--brass-light); border-radius: 10em;
+  padding: 1em 9em; font-family: "PT Serif", serif; font-weight: 700; font-size: 13em; }
+.tool.new { border: 2em solid var(--brass); }
+.tool.hand { width: 66%; justify-content: flex-start; padding: 0 6em 0 6em; border: 2em solid var(--primary); gap: 0; }
+.tool.hand .disc { width: 42em; height: 42em; border-radius: 50%; background: var(--paper); border: 1em solid var(--edge); display: flex; align-items: center; justify-content: center; flex: none; }
+.tool.hand .disc svg { width: 26em; height: 26em; }
+.tool.hand .nm { flex: 1; margin-left: 8em; white-space: nowrap; overflow: hidden; }
+.tool.hand .nm span { font-size: 16em; }
+.tool.hand .away { display: flex; align-items: center; gap: 3em; padding: 0 10em; height: 40em; border-radius: 20em; background: var(--primary); color: var(--on-primary); font-family: "PT Serif", serif; font-weight: 700; flex: none; }
+.tool.hand .away span { font-size: 13em; }
+.tool.hand .away svg { width: 14em; height: 14em; }
+
+.toast { position: absolute; left: 16em; right: 16em; background: var(--dark-plate); color: var(--on-primary); border-radius: 18em; padding: 9em 14em; text-align: center; }
+.toast span { font-size: 14em; }
+
+/* the sheet: radius 26, flat sheet paper 96 %, brass-light frost edge */
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--flat-sheet); border-top: 1em solid var(--brass-light);
+  border-radius: 26em 26em 0 0; padding: 14em 16em 28em; box-shadow: 0 -6em 24em rgba(46,42,39,.22); }
+.sh-head { display: flex; align-items: center; margin-bottom: 8em; }
+.sh-title { flex: 1; font-family: Lora, Georgia, serif; font-weight: 700; } .sh-title span { font-size: 21em; }
+.sh-x { width: 24em; height: 24em; }
+.sec { font-family: Lora, Georgia, serif; font-weight: 700; color: var(--timber); margin: 6em 0 5em; letter-spacing: .02em; }
+.sec span { font-size: 12em; }
+.note { margin-top: 6em; padding: 8em 12em; border-radius: 14em; background: rgba(217,184,115,.22); border-left: 3em solid var(--brass); }
+.note span { font-size: 13em; line-height: 1.35; display: block; }
+
+/* ---------- THE TILE FAMILY (one control: KitTile) ---------- */
+.tile { position: relative; background: var(--flat-tint); border: 1em solid var(--edge); color: var(--ink); }
+.tile svg.i { display: block; }
+.tile .nm { font-family: Lora, Georgia, serif; font-weight: 700; white-space: nowrap; }
+.tile .does { font-style: italic; color: var(--ink-soft); white-space: nowrap; }
+.tile.new { border: 2em solid var(--brass); box-shadow: 0 0 0 3em rgba(217,184,115,.35); }
+.tile.hand { border: 2em solid var(--primary); }
+.tile.hand .chk { display: flex; }
+.chk { display: none; position: absolute; top: 5em; right: 5em; width: 16em; height: 16em; border-radius: 50%; background: var(--primary); color: var(--on-primary); align-items: center; justify-content: center; }
+.chk svg { width: 11em; height: 11em; stroke-width: 3; }
+/* shut: never faded (spec: unavailable = thin solid timber edge, paler fill, a lock, full-strength text) */
+.tile.shut { background: var(--off-fill); border: 1em solid var(--timber); }
+.tile.shut .glyph { opacity: .55; }
+.lock { position: absolute; width: 17em; height: 17em; border-radius: 50%; background: var(--timber); color: var(--paper); display: flex; align-items: center; justify-content: center; }
+.lock svg { width: 10em; height: 10em; stroke-width: 2.6; }
+.tile.picked { box-shadow: inset 0 -3em 0 var(--timber); }
+.count { position: absolute; font-family: "PT Serif", serif; font-weight: 700; background: var(--moss); color: var(--paper); border-radius: 9em; padding: 0 5em; }
+.count span { font-size: 11.5em; }
+.tile .dot { top: -4em; right: -4em; }
+.tile .newtag { top: -9em; } .tile .newtag { font-size: 1em; } .tile .newtag span { font-size: 11em; }
+
+/* A: square tiles in a 4-wide grid, icon top-left, name, what it does (the Shape tray's tile, #167) */
+.A .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7em; }
+.A .tile { border-radius: 16em; height: 78em; padding: 8em 8em 6em; display: flex; flex-direction: column; justify-content: flex-end; }
+.A .tile .glyph { position: absolute; top: 8em; left: 8em; width: 26em; height: 26em; }
+.A .tile .nm span { font-size: 14em; }
+.A .tile .does span { font-size: 10.5em; }
+.A .tile .count { top: 9em; right: 7em; }
+.A .tile.shut { height: 70em; }
+.A .tile.shut .lock { top: 7em; right: 7em; }
+.A .tile.shut .does { font-style: normal; }
+
+/* B: round coins in one row; the jar coin swaps the row to its contents */
+.B .coins { display: flex; flex-wrap: wrap; gap: 7em 9em; align-items: flex-start; }
+.B .cell { display: flex; flex-direction: column; align-items: center; width: 64em; }
+.B .tile { width: 58em; height: 58em; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.B .tile .glyph { width: 28em; height: 28em; }
+.B .cell .nm { font-family: Lora, Georgia, serif; font-weight: 700; margin-top: 3em; white-space: nowrap; } .B .cell .nm span { font-size: 12.5em; }
+.B .cell .does { font-style: italic; white-space: nowrap; color: var(--ink-soft); } .B .cell .does span { font-size: 10em; }
+.B .tile .count { bottom: -3em; right: -6em; }
+.B .tile.shut .lock { bottom: -2em; right: -4em; }
+.B .divider { width: 1em; align-self: stretch; background: var(--edge); margin: 0 2em; }
+.B .back { display: inline-flex; align-items: center; gap: 4em; font-family: "PT Serif", serif; font-weight: 700; color: var(--primary); margin-bottom: 6em; }
+.B .back span { font-size: 13em; } .B .back svg { width: 14em; height: 14em; }
+.B .jarcoin .tile { background: #F7EBD3; border: 2em solid var(--brass-light); }
+
+/* C: no sheet, a glass rail rises from the bar; pills of the same family */
+.C .rail { position: absolute; left: 10em; right: 10em; padding: 8em; border-radius: 30em; background: rgba(243,233,214,.82);
+  border-top: 1.5em solid var(--brass-light); box-shadow: 0 6em 18em rgba(46,42,39,.25); display: flex; gap: 6em; overflow: hidden; }
+.C .tile { flex: none; height: 44em; border-radius: 22em; padding: 0 10em 0 5em; display: flex; align-items: center; gap: 5em; }
+.C .tile .glyph { width: 22em; height: 22em; }
+.C .tile .nm span { font-size: 13.5em; }
+.C .tile .count { top: -6em; right: -2em; }
+.C .tile.shut .lock { top: -5em; right: -4em; }
+.C .railLabel { position: absolute; left: 18em; font-family: Lora, serif; font-weight: 700; color: var(--timber); }
+.C .railLabel span { font-size: 11.5em; }
+.C .fade { position: absolute; right: 0; top: 0; bottom: 0; width: 26em; border-radius: 0 30em 30em 0; background: linear-gradient(90deg, rgba(243,233,214,0), rgba(243,233,214,.95)); }
+.C .caption { position: absolute; left: 16em; right: 16em; padding: 7em 12em; border-radius: 16em; background: var(--flat-tint); border: 1em solid var(--edge); }
+.C .caption span { font-size: 12.5em; }
+.C .shelf { position: absolute; left: 6em; right: 6em; bottom: 18em; height: 80em; border-radius: 38em; background: rgba(243,233,214,.45); border-top: 1.5em solid rgba(217,184,115,.9); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>The Keeper's kit: three mock-ups (#668)</h1>
+<p>One tile family for every thing in the kit: the tools, the seed, the bushes and the life jars. Each mock-up is drawn in every state at
+375×667 and 393×852 (CSS pixels, so 1 game pt is 0.95 and 1.0 px), from the Keeper's Glass tokens in <code>Game.uss</code>. The box
+behind is a sketch. Words are the proposals in <code>kit-words.md</code>, all <span class="est">est</span>. Icons for the cloth, mister,
+tweezers and spade are new drawings in the style of <code>Icons/life-*.svg</code>.</p>
+<div class="decided"><b>Your answers, 2026-11-15</b>
+<ul>
+<li><b>K1:</b> A, the tile shelf. That's the one I'll build. B and C stay below for the record.</li>
+<li><b>K2:</b> the plucking tool is the <b>Spade</b>. The mock-ups and the game now say Spade, with a spade icon.</li>
+<li><b>K3:</b> no rename. The tree's words stay as they are in the game today.</li>
+<li><b>K4:</b> no answer yet on the kit words (<code>kit-words.md</code>). I'll build with these proposals, and you'll see every string in the build's shots before it merges.</li>
+<li><b>K5:</b> the new icons are OK. The spade icon is new because of K2, so check it in the build's shots.</li>
+<li><b>K6:</b> the Spade pulls grown trees too, never your tree. It's on in the sim now.</li>
+</ul>
+<b>The feedback this answers:</b> feedback#29, the first outside playtest ("the kit's buttons look incoherent, not designed; texts need revision"):
+one tile family and one voice for the words. feedback#70, a second player ("the bottom part of the UI looks flat"): the bottom bar gets depth in every design.
+Also #660 (a new thing was missed: toast, dot and pulse), #661 (the tool in hand shows in the bar) and #662 (shut jars looked broken: a lock, never a fade).</div>
+<nav><a href="#family">The tile family</a><a href="#A">A: Tile shelf ★</a><a href="#B">B: Coin row</a><a href="#C">C: Rail</a><a href="#choose">Pick</a></nav>
+
+<h2 id="family">The tile family</h2>
+<p>One control (<code>KitTile</code>) with five states. The same states apply to the square tile (A), the coin (B) and the pill (C).
+Shut is never a fade: a thin timber edge, a paler fill, a lock, and full-strength words (the spec's rule for anything unavailable; today's
+shut jar is a 40 % fade, #662). In hand only shows in the bar, because picking a tool closes the sheet.</p>
+<div class="legend" id="legend"></div>
+<h3>The bottom bar, with depth (feedback#70)</h3>
+<div class="legend" id="barlegend"></div>
+
+<div id="designs"></div>
+
+<h2 id="choose">The comparison (you picked A)</h2>
+<table>
+<tr><th></th><th>Taps to place life</th><th>Sheet height (375×667, fullest state)</th><th>Room for words</th><th>Fits #726 counts and #730</th><th>Build size [est]</th></tr>
+<tr><td>A ★</td><td>2 (Kit, rabbits)</td><td>about 60 %</td><td>a line under every tile, one note</td><td>yes, a tile each</td><td>M, 6 to 8 h</td></tr>
+<tr><td>B</td><td>3 (Kit, jar, rabbits)</td><td>30 % with tools, about 45 % with the jar open</td><td>a short word under each coin, one note</td><td>yes, inside the jar</td><td>S to M, 4 to 6 h</td></tr>
+<tr><td>C</td><td>3 (Kit, jar, rabbits)</td><td>no sheet; two rails</td><td>names only, one caption</td><td>yes, but the rail scrolls past 5</td><td>M to L, 8 to 10 h</td></tr>
+</table>
+<p>★ A, because the two playtest complaints it answers are about not seeing things: a ready jar was missed (#660) and shut jars looked broken (#662).
+A shows every ready and shut thing the moment the kit opens, each with what it does or what it needs, so nothing hides behind the jar.</p>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+  <!-- from Icons/*.svg (drawn for the project) -->
+  <symbol id="i-seed" viewBox="0 0 24 24"><path d="M3 20.5h18M6 20.5c1.4-2.8 3.5-4 6-4s4.6 1.2 6 4M12 16.5V10M12 12.5c-.6-2.6-2.8-3.9-5.5-3.6.4 2.5 2.6 3.9 5.5 3.6zM12 10c.3-3 2.6-4.8 5.8-4.6-.1 3-2.5 4.9-5.8 4.6z"/></symbol>
+  <symbol id="i-jar" viewBox="0 0 24 24"><path d="M8 3h8M9 3v3L6 9v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9l-3-3V3M12 18v-4M12 15c-2 0-3-1-3-3 2 0 3 1 3 3zM12 14c0-2 1-3 3-3 0 2-1 3-3 3z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-duck" viewBox="0 0 24 24"><path d="M2 20h20"/><circle cx="8" cy="7.5" r="2.5"/><path d="M5.6 7.2H3l2.6 1.4M9.6 9.6c.8 2-.2 3.2-2 4.2-2 1.2-1.4 4.2 2 4.2h6c3 0 4.5-2.8 4.4-5.2-2 1-4.8 1.2-7 .2"/></symbol>
+  <symbol id="i-fish" viewBox="0 0 24 24"><path d="M3 12c3-5 10-5 14 0-4 5-11 5-14 0zM17 12l4-3.5v7z"/><circle cx="7.5" cy="11.2" r=".6"/></symbol>
+  <symbol id="i-rabbits" viewBox="0 0 24 24"><path d="M2 21h20"/><ellipse cx="7.5" cy="16.5" rx="4" ry="3.5"/><circle cx="10.5" cy="10.5" r="2.2"/><path d="M10 8.4L9 3.5M11.6 8.5l1-4.5"/><ellipse cx="17" cy="18" rx="3" ry="2.5"/><circle cx="19.3" cy="13.6" r="1.7"/><path d="M18.9 12l-.6-3.4M20.2 12.1l.9-3.1"/></symbol>
+  <symbol id="i-deer" viewBox="0 0 24 24"><path d="M9 12.5l3 8.5 3-8.5c-1.5-1.5-4.5-1.5-6 0zM9 12.5l-3-1M15 12.5l3-1M10 11C9 8 7.5 6.5 6.5 3.5M7.6 6.6L5 6.5M8.8 9L6.3 9.5M14 11c1-3 2.5-4.5 3.5-7.5M16.4 6.6L19 6.5M15.2 9l2.5.5"/></symbol>
+  <symbol id="i-bushes" viewBox="0 0 24 24"><path d="M3 20h18M4.5 20c-1.5-3 .5-6.5 3.5-6C8.5 10 13.5 9 15 12.5c3-1 5.5 2 4.5 4.8 1 .6 1 2 .5 2.7"/><circle cx="9" cy="16" r="1"/><circle cx="14" cy="15" r="1"/><circle cx="16.5" cy="17.5" r="1"/></symbol>
+  <symbol id="i-wolves" viewBox="0 0 24 24"><path d="M5 3.5l3 5h8l3-5 1 8.5-8 9-8-9z"/><circle cx="9.5" cy="12.5" r=".6"/><circle cx="14.5" cy="12.5" r=".6"/><path d="M11 16.5h2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 13l5 5L20 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></symbol>
+  <symbol id="i-photo" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5c3-1 6-1 8 1 2-2 5-2 8-1v14c-3-1-6-1-8 1-2-2-5-2-8-1zM12 6v14"/></symbol>
+  <!-- new drawings for #668 [est]: the user signs these off -->
+  <symbol id="i-cloth" viewBox="0 0 24 24"><path d="M5 7h10a4 4 0 0 1 4 4v7H9a4 4 0 0 1-4-4z"/><path d="M9 18v-3a2 2 0 0 0-2-2H5M3 4c2 .8 4 .8 6 0M14 3.5c1.5.6 3 .6 4.5 0"/></symbol>
+  <symbol id="i-mister" viewBox="0 0 24 24"><path d="M8 10h7v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1zM9.5 10V7h4v3M9.5 7V4.5h4.5L16 6.5"/><circle cx="19" cy="4" r=".5"/><circle cx="20.5" cy="7" r=".5"/><circle cx="18.5" cy="9.5" r=".5"/></symbol>
+  <symbol id="i-tweezers" viewBox="0 0 24 24"><path d="M7 2.5l4.3 17.2a.7.7 0 0 0 1.4 0L17 2.5M8.6 9.5h6.8"/><path d="M11.2 21.5c-.6.6-1.8.6-2.2-.2"/></symbol>
+  <symbol id="i-spade" viewBox="0 0 24 24"><path d="M9.5 2.5h5M12 2.5v9.5M8 12h8v4.5a4 4 0 0 1-8 0z"/><path d="M10.5 15.5h3"/></symbol>
+</defs>
+</svg>
+
+<script>
+const ICON = (id, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24"><use href="#i-${id}"/></svg>`;
+const DESIGNS = [
+  { id: 'A', name: 'Tile shelf', star: true,
+    off: 'Everything in the kit shows at once as square tiles, each saying what it does; ready and shut jars on their own shelves. Costs height: up to about 60 % of a short phone when much is open.' },
+  { id: 'B', name: 'Coin row', star: false,
+    off: "Today's layout made one family: a row of round coins and a jar coin that opens in place. The sheet stays near 30 % (about 45 % with the jar open) and the box stays in view, but life is one more tap away and hides the tools while open." },
+  { id: 'C', name: 'Rail', star: false,
+    off: 'No sheet: a glass rail rises off the bar and the jar unfolds a second rail. The most land stays in view, but only names fit (no line of what each does), and past five pills the rail scrolls at 375.' },
+];
+// the things in the kit: name, icon, the line under the name (what it does / where it goes)
+const T = {
+  cloth: ['Cloth', 'cloth', 'wipes the glass'], mister: ['Mister', 'mister', 'wets the land'],
+  tweezers: ['Tweezers', 'tweezers', 'pull weeds'], trowel: ['Spade', 'spade', 'lifts plants'],
+  seed1: ['Seed', 'seed', 'grows your tree'], seed: ['Seed', 'seed', 'a young tree'], bushes: ['Bushes', 'bushes', 'grow berries'],
+  rabbits: ['Rabbits', 'rabbits', 'for the meadow'], deer: ['Deer', 'deer', 'for the wood'], ducks: ['Ducks', 'duck', 'for the pond'],
+  fish: ['Fish', 'fish', 'for the pond'], wolves: ['Wolves', 'wolves', 'for the wood'],
+};
+const NEED = { bushes: 'needs your tree', deer: 'thicker wood', fish: 'needs reeds', wolves: 'needs deer', ducks: 'needs a pond', rabbits: 'needs a meadow' };
+// every state the issue names, plus the moment something new waits with the sheet shut (#660)
+const STATES = [
+  { key: 's1', title: '1. First tools only', note: 'A seed comes when the land can hold a tree.', open: true,
+    tools: ['cloth', 'mister'], ready: [], shut: [] , what: 'The kit after the first run in a box with no seed yet: two tools.' },
+  { key: 's2', title: '2. Mister and tweezers', note: 'A seed comes when the land can hold a tree.', open: true,
+    tools: ['cloth', 'mister', 'tweezers'], newOne: 'tweezers', ready: [], shut: [], what: 'A third tool arrives: the New state on its tile.' },
+  { key: 's3', title: '3. The seed', note: "Your tree's seed is ready. Tap it, then the land.", open: true,
+    tools: ['cloth', 'mister', 'tweezers'], ready: [['seed1', { new: 1 }]], shut: ['bushes'], what: 'The first seed (the jar holds it, #558), bushes still to come.' },
+  { key: 's0', title: '4a. Something new waits (sheet shut)', closed: true, kitDot: true,
+    toast: 'The rabbits are ready in your kit.', what: '#660: a toast once, a dot that reads ("Kit ·") with a soft pulse, a wiggle each visit.' },
+  { key: 's4', title: '4b. Life ready (kit open)', note: 'The rabbits are ready. Tap them, then the meadow.', open: true,
+    tools: ['cloth', 'mister', 'tweezers'], ready: [['rabbits', { new: 1 }]], shut: ['deer', 'ducks'], what: 'One group ready, two shut, each shut one says its need without a tap.' },
+  { key: 's5', title: '5. Chooser open: ready and shut jars, with #726 counts and the #730 tool', note: 'Deer need a thicker wood (12/25).', open: true, jarOpen: true,
+    tools: ['cloth', 'mister', 'tweezers', 'trowel'], ready: [['seed', { count: 2 }], ['bushes', { count: 1 }], ['rabbits', {}], ['ducks', { new: 1 }]], shut: ['deer', 'fish', 'wolves'], picked: 'deer',
+    what: 'The fullest kit: four tools, earned seeds and bushes with counts, two groups ready, three shut (deer picked, so its need is the note).' },
+  { key: 's6', title: '6. A tool in hand', closed: true, hand: ['rabbits', 'The rabbits'],
+    toast: 'The rabbits: tap the glowing ground to pick a spot. Two fingers move the view.', what: '#661: the bar shows the tool itself, icon and name, and Put away.' },
+];
+const SIZES = [[375, 667], [393, 852]];
+
+function scene() {
+  return `<svg class="scene" viewBox="0 0 400 260"><g fill="none" stroke="#2c2621" stroke-width="2.2">
+  <polygon points="40,215 200,250 370,205 370,195 200,240 40,205" fill="#5a3a2a" stroke="none"/>
+  <polygon points="45,120 200,150 365,112 365,200 200,240 45,205" fill="#d9bf92" stroke="none" opacity=".9"/>
+  <polygon points="45,120 200,150 365,112 210,90" fill="#e3cda2" stroke="none"/>
+  <polygon points="45,205 200,240 200,150 45,120" fill="#bcd3d0" opacity=".25" stroke="none"/>
+  <path d="M45 40 L210 12 L365 34 L200 62 Z M45 40 V205 M200 62 V240 M365 34 V200 M45 205 L200 240 L365 200"/>
+  <path d="M210 12 V90" opacity=".4"/></g>
+  <circle cx="190" cy="135" r="9" fill="#9cb06f" opacity=".7"/><path d="M168 150 l6 -16 l6 16z" fill="#f4ecdc" stroke="#6a4b36"/></svg>`;
+}
+
+function tileHTML(d, key, o = {}) {
+  const [name, ic, does] = T[key];
+  const cls = ['tile', o.shut ? 'shut' : '', o.new ? 'new' : '', o.hand ? 'hand' : '', o.picked ? 'picked' : ''].join(' ');
+  const under = o.shut ? NEED[key] || 'still to come' : does;
+  const extras = `${o.count ? `<div class="count"><span>×${o.count}</span></div>` : ''}${o.shut ? `<div class="lock">${ICON('lock')}</div>` : ''}${o.new ? `<div class="newtag"><span>New</span></div>` : ''}<div class="chk">${ICON('check')}</div>`;
+  if (d === 'A') return `<div class="${cls}">${ICON(ic, 'i glyph')}<div class="nm"><span>${name}</span></div><div class="does"><span>${under}</span></div>${extras}</div>`;
+  if (d === 'B') return `<div class="cell"><div class="${cls}">${ICON(ic, 'i glyph')}${extras}</div><div class="nm"><span>${name}</span></div><div class="does"><span>${under}</span></div></div>`;
+  return `<div class="${cls}">${ICON(ic, 'i glyph')}<div class="nm"><span>${name}</span></div>${extras}</div>`;
+}
+
+function bar(d, s) {
+  let kit;
+  if (s.hand) {
+    const [ic, nm] = s.hand;
+    kit = `<div class="tool hand"><div class="disc">${ICON(T[ic][1])}</div><div class="nm"><span>${nm}</span></div><div class="away">${ICON('close')}<span>Put away</span></div></div>`;
+  } else {
+    kit = `<div class="tool${s.kitNew ? ' new' : ''}"><span class="w">Kit${s.kitDot ? ' ·' : ''}</span>${s.kitDot ? '<div class="dot pulse"></div>' : ''}</div>`;
+  }
+  const hist = s.hand ? `<div class="tool" style="width:22%">${ICON('book', 'i ic')}</div>` : `<div class="tool"><span class="w">History</span></div>`;
+  const ledge = d === 'A' ? '<div class="ledge"></div>' : d === 'C' ? '<div class="shelf"></div>' : '';
+  return `${ledge}<div class="bar">${hist}${kit}</div>`;
+}
+
+function sheetA(s) {
+  let h = `<div class="sec"><span>TOOLS</span></div><div class="grid">${s.tools.map(k => tileHTML('A', k, { new: s.newOne === k })).join('')}</div>`;
+  if (s.ready.length) h += `<div class="sec"><span>READY</span></div><div class="grid">${s.ready.map(([k, o]) => tileHTML('A', k, o)).join('')}</div>`;
+  if (s.shut.length) h += `<div class="sec"><span>STILL TO COME</span></div><div class="grid">${s.shut.map(k => tileHTML('A', k, { shut: 1, picked: s.picked === k })).join('')}</div>`;
+  return h + `<div class="note"><span>${s.note}</span></div>`;
+}
+function sheetB(s) {
+  const hasJar = s.ready.length || s.shut.length;
+  if (s.jarOpen) {
+    return `<div class="note" style="margin:0 0 8em"><span>${s.note}</span></div><div class="back">${ICON('back')}<span>Tools</span></div>
+      <div class="coins">${s.ready.map(([k, o]) => tileHTML('B', k, o)).join('')}<div class="divider"></div>${s.shut.map(k => tileHTML('B', k, { shut: 1, picked: s.picked === k })).join('')}</div>`;
+  }
+  const jar = hasJar ? `<div class="cell jarcoin"><div class="tile${s.ready.some(r => r[1].new) ? ' new' : ''}">${ICON('jar', 'i glyph')}${s.ready.length ? '<div class="dot pulse"></div>' : ''}</div><div class="nm"><span>Life jar</span></div><div class="does"><span>${s.ready.length ? s.ready.length + ' ready' : 'still shut'}</span></div></div>` : '';
+  return `<div class="note" style="margin:0 0 10em"><span>${s.note}</span></div><div class="coins">${s.tools.map(k => tileHTML('B', k, { new: s.newOne === k })).join('')}${jar}</div>`;
+}
+function railC(s) {
+  // bottom rail sits 96 pt up (over the bar), the jar rail above it, the caption above the top rail
+  const hasJar = s.ready.length || s.shut.length;
+  const jarPill = hasJar ? `<div class="tile${s.jarOpen ? ' hand' : ''}${s.ready.some(r => r[1].new) && !s.jarOpen ? ' new' : ''}">${ICON('jar', 'i glyph')}<div class="nm"><span>Life jar</span></div>${s.ready.length && !s.jarOpen ? '<div class="dot pulse"></div>' : ''}${s.jarOpen ? `<div class="chk">${ICON('check')}</div>` : ''}</div>` : '';
+  let h = `<div class="railLabel" style="bottom:158em"><span>TOOLS</span></div><div class="rail" style="bottom:96em">${s.tools.map(k => tileHTML('C', k, { new: s.newOne === k })).join('')}${jarPill}<div class="fade"></div></div>`;
+  let top = 176;
+  if (s.jarOpen) {
+    h += `<div class="railLabel" style="bottom:${top + 62}em"><span>IN THE JAR</span></div><div class="rail" style="bottom:${top}em">${s.ready.map(([k, o]) => tileHTML('C', k, o)).join('')}${s.shut.map(k => tileHTML('C', k, { shut: 1, picked: s.picked === k })).join('')}<div class="fade"></div></div>`;
+    top += 80;
+  }
+  h += `<div class="caption" style="bottom:${top}em"><span>${s.note}</span></div>`;
+  return h;
+}
+
+function frame(d, s, w, hgt) {
+  const pt = w / 392.7;
+  let body = `<div class="hud-top"><div><div class="hud-name">Glasswick</div><div class="hud-year">Year 4</div></div>
+    <div class="hud-ic">${ICON('settings')}</div><div class="sp"></div><div class="hud-ic">${ICON('photo')}</div></div>${scene()}`;
+  if (s.closed) {
+    body += bar(d, { ...s, kitNew: s.kitDot && d !== 'A' ? false : false });
+    if (s.toast) body += `<div class="toast" style="bottom:${d === 'C' ? 112 : 100}em"><span>${s.toast}</span></div>`;
+  } else if (d === 'C') {
+    body += `<div class="depth">${bar(d, {})}</div>` + railC(s);
+  } else {
+    body += `<div class="sheet"><div class="sh-head"><div class="sh-title"><span>The Keeper's kit</span></div>${ICON('close', 'i sh-x')}</div>${d === 'A' ? sheetA(s) : sheetB(s)}</div>`;
+  }
+  // the bar always gets depth
+  body = body.replace('<div class="bar">', '<div class="bar">');
+  return `<div><div class="frame ${d} depth" style="width:${w}px;height:${hgt}px;font-size:${pt}px">${body}</div><div class="cap">${w}×${hgt}</div></div>`;
+}
+
+function legend() {
+  const one = (d, key, o, lab) => `<div style="display:flex;flex-direction:column;align-items:center"><div class="${d}" style="font-size:1.6px;${d === 'A' ? 'width:140px' : ''}">${d === 'A' ? `<div class="grid" style="grid-template-columns:1fr">${tileHTML(d, key, o)}</div>` : d === 'B' ? `<div class="coins">${tileHTML(d, key, o)}</div>` : tileHTML(d, key, o)}</div><div class="lab">${lab}</div></div>`;
+  const states = [['mister', {}, 'available'], ['mister', { hand: 1 }, 'in hand'], ['tweezers', { new: 1 }, 'new'], ['seed', { count: 2 }, 'ready, with a count (#726)'], ['deer', { shut: 1 }, 'shut (#662)']];
+  let h = '';
+  for (const d of ['A', 'B', 'C']) h += `<div style="flex-basis:100%;font-family:Lora,serif;font-weight:700">${d}</div>` + states.map(([k, o, l]) => one(d, k, o, l)).join('');
+  document.getElementById('legend').innerHTML = h;
+  const bars = [[{}, 'Kit'], [{ kitDot: 1 }, 'Kit · (something waits, pulsing)'], [{ hand: ['mister', 'Mister'] }, 'a tool in hand (#661)'], [{ hand: ['wolves', 'The wolves'] }, 'the longest group name']];
+  document.getElementById('barlegend').innerHTML = bars.map(([s, l]) => `<div><div class="frame depth" style="width:375px;height:110px;font-size:${375 / 392.7}px;background:#D9C39A">${bar('B', s).replace('bottom: 30em', '')}</div><div class="lab">${l}</div></div>`).join('');
+}
+
+function build() {
+  let h = '';
+  for (const D of DESIGNS) {
+    h += `<h2 id="${D.id}">${D.id}: ${D.name}${D.star ? ' <span class="rec">★ your pick</span>' : ''}</h2><p class="tradeoff">${D.off}</p>`;
+    const only = new URLSearchParams(location.search).get('state');
+    for (const s of STATES) {
+      if (only && s.key !== only) continue;
+      h += `<div class="state-title">${s.title}</div><div class="state-note">${s.what}</div><div class="row">${SIZES.map(([w, hh]) => frame(D.id, s, w, hh)).join('')}</div>`;
+    }
+  }
+  document.getElementById('designs').innerHTML = h;
+  legend();
+}
+build();
+</script>
+</body>
+</html>

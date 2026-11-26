@@ -106,7 +106,7 @@ namespace AquariumCiv.Tests
             sim.Advance(2);
             foreach (var p in sim.BookPages()) sim.BookMarkSeen(p);
             Assert.IsFalse(sim.BookHasNewPages);
-            sim.DebugGiveRelic(RelicId.SkyCrumb);
+            sim.DebugGiveRelic(RelicId.KeeperDoll); // #718: the Sky Crumb is gone
             Assert.IsTrue(sim.BookHasNewPages, "the first relic earns a page");
             var relics = sim.BookPages().Single(p => p.kind == BookPageKind.Relics);
             Assert.IsTrue(relics.isNew);
@@ -118,12 +118,13 @@ namespace AquariumCiv.Tests
         public void UnfoundRelicsAreSilhouettesWithTheirHints()
         {
             var sim = NewSim(5);
-            sim.DebugGiveRelic(RelicId.SkyCrumb);
+            sim.DebugGiveRelic(RelicId.FestivalMask); // #718: the Sky Crumb is gone
             var page = sim.BookPages().Single(p => p.kind == BookPageKind.Relics);
+            Assert.AreEqual(3, RelicId.All.Length, "#718: the Mask, the Doll and the Sandal");
             Assert.AreEqual(RelicId.All.Length, page.relics.Count);
             var found = page.relics[0];
             Assert.IsTrue(found.found);
-            Assert.AreEqual("Sky Crumb", found.name);
+            Assert.AreEqual("Festival Mask", found.name);
             Assert.That(found.label, Is.Not.Empty);
             foreach (var r in page.relics.Skip(1))
             {
@@ -131,7 +132,7 @@ namespace AquariumCiv.Tests
                 Assert.AreEqual("????", r.name, "the name stays hidden");
                 Assert.AreEqual(sim.RelicHint(r.id), r.hint);
             }
-            Assert.AreEqual("If only we could see further than the wall.", page.relics.Single(r => r.id == RelicId.Lens).hint);
+            Assert.IsFalse(page.relics.Any(r => r.id == RelicId.SkyCrumb || r.id == RelicId.Lens), "#718: no Sky Crumb or Lens page");
         }
 
         [Test]
@@ -172,16 +173,22 @@ namespace AquariumCiv.Tests
         [TestCase(ThreadSource.Era)]
         [TestCase(ThreadSource.Seat)]
         [TestCase(ThreadSource.Couple)]
-        [TestCase(ThreadSource.Gift)]
         [TestCase(ThreadSource.Rivalry)]
-        [TestCase(ThreadSource.Slice)]
-        public void EachTeaserKindCanBeForced(string kind)
+        public void EachTeaserKindCanBeForced(string kind) // #718/#715: no gift or slice teaser any more (see NoGiftOrSliceTeaserIsForced)
         {
             var sim = NewSim(5);
             string line = sim.DebugForceTeaser(kind);
             Assert.That(line, Is.Not.Empty);
             Assert.AreEqual(line, sim.CurrentTeaser, "the peek has it");
             Assert.AreEqual(kind, sim.State.threads.Single(t => t.id == sim.State.teaserThreadId).source);
+        }
+
+        [TestCase(ThreadSource.Gift)]
+        [TestCase(ThreadSource.Slice)]
+        public void NoGiftOrSliceTeaserIsForced(string kind)
+        {
+            var sim = NewSim(5);
+            Assert.That(sim.DebugForceTeaser(kind), Is.Null.Or.Empty, "#718: no gift teaser; #715: no slice teaser");
         }
     }
 }

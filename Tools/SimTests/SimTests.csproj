@@ -37,26 +37,42 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TroddenGroundTests.cs" /><!-- #523 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettingTerrainTests.cs" /><!-- #115 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ShapingTests.cs" />
-    <Compile Include="../../AquariumCiv/Assets/Game/Tests/WishTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaTests.cs" /><!-- P7 #220 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ChoiceFixTests.cs" /><!-- visit loop C1 #368 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ConsequencePropTests.cs" /><!-- visit loop C4 #371 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/ConsequencePropRoomTests.cs" /><!-- B3 tester fixes: things apart, no lot over one -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CharmTreeTests.cs" /><!-- #635 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/StoryEventTests.cs" /><!-- #722 the story events (sim) -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/StoryEventBatch2Tests.cs" /><!-- #722 batch 2: the song, the four asks, the Keeper's child -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/StoryEventBatch3Tests.cs" /><!-- #722 batch 3: the antlers, the trait things, the dry spell, the first snow -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/KeeperChoicesTests.cs" /><!-- visit loop C6 #373 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/MomentQueueTests.cs" /><!-- visit loop C2 #369 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaCallbackTests.cs" /><!-- P7 #221 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaContentTests.cs" /><!-- P7 #222 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoTests.cs" /><!-- P8 #243: the ecology layer -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoBushCountTests.cs" /><!-- #385 bush count -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoWaterTests.cs" /><!-- #687 the soak lands monthly, the pond answers the stroke -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/LifeJarTests.cs" /><!-- #417 the life jar -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/AnimalBudgetTests.cs" /><!-- #710 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/NestTests.cs" /><!-- #709 the nest in the thicket (sim) -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/BoxGrowTests.cs" /><!-- #658 the deeper box: a v3 save grows -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/PlacedLifeTests.cs" /><!-- #420-#422 deer, ducks, fish, floors, restraint -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/DeerCampTests.cs" /><!-- #699 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/WolfPackTests.cs" /><!-- #437 the wolf pack -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DogLineTests.cs" /><!-- #438 the dog line -->
     <Compile Include="../../AquariumCiv/Assets/Game/Life/Tests/WolfContactTests.cs" /><!-- #437 no wolf plan has contact, against the real planner -->
     <Compile Include="../../AquariumCiv/Assets/Game/Life/Tests/VillageDeerHuntTests.cs" /><!-- 2026-11-08 the village hunts deer, half as often -->
     <Compile Include="../../AquariumCiv/Assets/Game/Life/Tests/CampSpreadTests.cs" /><!-- #521 the first camp days spread out -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/NewStartTests.cs" /><!-- #656/#677 the carried stock, wild wood, the fire, hunger -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/LandscapePouchTests.cs" /><!-- #726 seeds and bushes earned -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/LandscapeSeedTests.cs" /><!-- #727 more trees from earned seeds -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/ThicketListTests.cs" /><!-- #728 thickets as a list -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/ThicketCrowdingTests.cs" /><!-- #729 crowding and shrinking -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/PluckToolTests.cs" /><!-- #730 the landscaping tool (sim) -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoPacingTests.cs" /><!-- #569 the mister waters the forest -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/DuckJarIceTests.cs" /><!-- #703 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/JarNeedTests.cs" /><!-- #570 what is missing, in words -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/DeerWoodTests.cs" /><!-- #690 the deer want a wood -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoWetTests.cs" /><!-- P8 polish 266 sim half, 271 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoSeenTests.cs" /><!-- P8 polish 281 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoRabbitTests.cs" /><!-- P8 polish 282 -->
@@ -71,6 +87,8 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/RunAheadTests.cs" /><!-- #97 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CrowdNameTests.cs" /><!-- #148 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/WorldLogicTests.cs" /><!-- #188, #147, #154, #160 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/BuildingYearTests.cs" /><!-- #689 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/ContentRulesTests.cs" /><!-- #723 every line true to the box and the era -->
     <!-- #87: the save and the clock's decisions are pure C# on a JsonUtility shim, so their tests run here too -->
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/SaveStore.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/ClockLogic.cs" />
@@ -88,6 +106,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaTelemetryTests.cs" /><!-- P7 #225 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/VisitTelemetryTests.cs" /><!-- visit loop C7 #374 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TownEconomyTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/WritingWeedingTests.cs" /><!-- research 21: #714-#721 the writing weeding -->
     <!-- #96: the pure sound model (cues, gate, mix/duck, ambience, moment timeline, haptics) and its tests -->
     <Compile Include="../../AquariumCiv/Assets/Game/Audio/Core/**/*.cs" />
     <!-- #76: Show me (target, echo plan), world bubbles in the people's voice, and their tests -->
@@ -105,7 +124,10 @@
     <Compile Include="../../AquariumCiv/Assets/Game/View/Tests/GrimePatchTests.cs" />
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
+    <Compile Include="LandscapeOptionsLab.cs" /><!-- #724 -->
     <Compile Include="PacingLabTests.cs" /><!-- #569: the pacing lab on the real sim -->
+    <Compile Include="AnimalCapsLabTests.cs" /><!-- #710: every kind under its cap; the census table -->
+    <Compile Include="StoryCountLab.cs" /><!-- #715: the stories per kind, before and after the weeding -->
     <Compile Include="CameraGlassTests.cs" /><!-- #273: the glass limits of the camera -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CampFrameTests.cs" /><!-- t1-camera: the camp frame -->
     <Compile Include="CrowdCardLifeTests.cs" /><!-- #148: the sim card from the real planner; here because Sim.Tests cannot see Life -->

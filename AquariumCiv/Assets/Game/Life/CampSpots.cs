@@ -67,19 +67,48 @@ namespace AquariumCiv.Life
 
         /// <summary>The rack's angle: the seed's (<paramref name="seedAngle"/>), or the nearest one to it that leaves the stash, the stone
         /// and the pot clear (scans both ways in 5 degree steps).</summary>
-        public static float RackAngle(float fx, float fz, float seedAngle, float dist)
+        public static float RackAngle(float fx, float fz, float seedAngle, float dist, Func<float, float, bool> onPath = null)
         {
+            float a = RackAngleScan(fx, fz, seedAngle, dist, onPath, out bool found);
+            if (!found && onPath != null) a = RackAngleScan(fx, fz, seedAngle, dist, null, out found); // #700: no angle clear of paths: the old answer
+            return a;
+        }
+
+        static float RackAngleScan(float fx, float fz, float seedAngle, float dist, Func<float, float, bool> onPath, out bool found)
+        {
+            found = true;
             var discs = new List<Disc>(); FireSide(fx, fz, discs);
             const float step = 5f * (float)(Math.PI / 180.0);
             for (int k = 0; k <= 36; k++)
                 foreach (int s in new[] { 1, -1 })
                 {
                     float a = seedAngle + s * k * step;
-                    if (RackClearOfDiscs(fx, fz, a, dist, discs)) return a;
+                    if (RackClearOfDiscs(fx, fz, a, dist, discs) && (onPath == null || !RackOnPath(fx, fz, a, dist, RackHalfDepth, RackHalfLength + 0.035f, onPath))) return a;
                     if (k == 0) break;
                 }
+            found = false;
             return seedAngle;
         }
+
+        /// <summary>#700: does any part of a rack's footprint (as <see cref="DistanceToRack"/> measures it) lie on a path cell? Samples the
+        /// footprint every 0.04 (a path cell is 0.1 wide), edges included.</summary>
+        public static bool RackOnPath(float fx, float fz, float angle, float dist, float halfDepth, float halfLength, Func<float, float, bool> onPath)
+        {
+            if (onPath == null) return false;
+            float ux = (float)Math.Cos(angle), uz = (float)Math.Sin(angle);
+            float cx = fx + ux * dist, cz = fz + uz * dist;
+            int na = Math.Max(1, (int)Math.Ceiling(halfDepth / 0.04f)), nb = Math.Max(1, (int)Math.Ceiling(halfLength / 0.04f));
+            for (int i = -na; i <= na; i++)
+                for (int j = -nb; j <= nb; j++)
+                {
+                    float across = halfDepth * i / na, along = halfLength * j / nb;
+                    if (onPath(cx + ux * across - uz * along, cz + uz * across + ux * along)) return true;
+                }
+            return false;
+        }
+
+        /// <summary>The angle between two directions round the fire, 0 to pi.</summary>
+        public static float AngleGap(float a, float b) => Gap(a, b);
 
         static float Gap(float a, float b)
         {
@@ -96,8 +125,16 @@ namespace AquariumCiv.Life
         /// <summary>#543: the fish rack's angle. It starts in the free gap (83 or 323 degrees) farther from the hide rack (<paramref name="hideAngle"/>,
         /// the angle <see cref="RackAngle"/> gave it) and moves the least that leaves it clear of the stash, the stone, the pot, the seats
         /// and the hide rack (<see cref="RackGap"/> round the fire).</summary>
-        public static float FishRackAngle(float fx, float fz, float hideAngle)
+        public static float FishRackAngle(float fx, float fz, float hideAngle, Func<float, float, bool> onPath = null)
         {
+            float a = FishRackAngleScan(fx, fz, hideAngle, onPath, out bool found);
+            if (!found && onPath != null) a = FishRackAngleScan(fx, fz, hideAngle, null, out found); // #700: nowhere clear of paths: the old answer
+            return a;
+        }
+
+        static float FishRackAngleScan(float fx, float fz, float hideAngle, Func<float, float, bool> onPath, out bool found)
+        {
+            found = true;
             var discs = new List<Disc>(); FireSide(fx, fz, discs); Seats(fx, fz, discs);
             float start = Gap(FishRackSpot.Gaps[0], hideAngle) >= Gap(FishRackSpot.Gaps[1], hideAngle) ? FishRackSpot.Gaps[0] : FishRackSpot.Gaps[1];
             const float step = 5f * (float)(Math.PI / 180.0);
@@ -108,16 +145,19 @@ namespace AquariumCiv.Life
                     bool ok = Gap(a, hideAngle) >= RackGap;
                     for (int i = 0; i < discs.Count && ok; i++)
                         ok = DistanceToRack(fx, fz, a, FishDistance, discs[i].x, discs[i].z, FishHalfDepth, FishHalfLength) >= discs[i].r;
+                    if (ok && onPath != null) ok = !RackOnPath(fx, fz, a, FishDistance, FishHalfDepth, FishHalfLength, onPath);
                     if (ok) return a;
                     if (k == 0) break;
                 }
+            found = false;
             return start;
         }
 
         /// <summary>Is a prop of the Keeper's at (x, z) clear of the fire, the seats, the fixed things, the rack and the extra discs
         /// (tents, other props)?</summary>
-        public static bool Clear(float fx, float fz, float rackAngle, float rackDist, float x, float z, List<Disc> fixedDiscs, List<Disc> extra, float fishAngle = float.NaN)
+        public static bool Clear(float fx, float fz, float rackAngle, float rackDist, float x, float z, List<Disc> fixedDiscs, List<Disc> extra, float fishAngle = float.NaN, Func<float, float, bool> onPath = null)
         {
+            if (onPath != null && onPath(x, z)) return false; // #700: a prop of the Keeper's never stands on a path
             float dx = x - fx, dz = z - fz;
             if (dx * dx + dz * dz < MinFireDistance * MinFireDistance) return false;
             if (DistanceToRack(fx, fz, rackAngle, rackDist, x, z) < PropRadius) return false;
@@ -131,21 +171,28 @@ namespace AquariumCiv.Life
 
         /// <summary>The spot for a Keeper's prop the sim left at (<paramref name="wantX"/>, <paramref name="wantZ"/>): there if that is
         /// clear, else the nearest clear one on rings round the fire (24 angles). Same answer for the same inputs.</summary>
-        public static void Spot(float fx, float fz, float rackAngle, float rackDist, float wantX, float wantZ, List<Disc> extra, out float x, out float z, float fishAngle = float.NaN)
+        public static void Spot(float fx, float fz, float rackAngle, float rackDist, float wantX, float wantZ, List<Disc> extra, out float x, out float z, float fishAngle = float.NaN, Func<float, float, bool> onPath = null)
         {
             var fixedDiscs = new List<Disc>(); FireSide(fx, fz, fixedDiscs);
             x = wantX; z = wantZ;
-            if (Clear(fx, fz, rackAngle, rackDist, wantX, wantZ, fixedDiscs, extra, fishAngle)) return;
+            if (Clear(fx, fz, rackAngle, rackDist, wantX, wantZ, fixedDiscs, extra, fishAngle, onPath)) return;
             float best = float.MaxValue;
-            foreach (float r in new[] { 0.6f, 0.72f, 0.84f, 0.96f })
-                for (int i = 0; i < 24; i++)
-                {
-                    float a = i / 24f * 6.2831853f;
-                    float cx = fx + (float)Math.Cos(a) * r, cz = fz + (float)Math.Sin(a) * r;
-                    if (!Clear(fx, fz, rackAngle, rackDist, cx, cz, fixedDiscs, extra, fishAngle)) continue;
-                    float d = Dist(cx, cz, wantX, wantZ);
-                    if (d < best) { best = d; x = cx; z = cz; }
-                }
+            // B3 tester fixes (4): the inner rings first; a village's crowded fire side looks farther out before it gives up on a clear spot
+            foreach (var rings in Rings)
+            {
+                foreach (float r in rings)
+                    for (int i = 0; i < 24; i++)
+                    {
+                        float a = i / 24f * 6.2831853f;
+                        float cx = fx + (float)Math.Cos(a) * r, cz = fz + (float)Math.Sin(a) * r;
+                        if (!Clear(fx, fz, rackAngle, rackDist, cx, cz, fixedDiscs, extra, fishAngle, onPath)) continue;
+                        float d = Dist(cx, cz, wantX, wantZ);
+                        if (d < best) { best = d; x = cx; z = cz; }
+                    }
+                if (best < float.MaxValue) return;
+            }
         }
+
+        static readonly float[][] Rings = { new[] { 0.6f, 0.72f, 0.84f, 0.96f }, new[] { 1.08f, 1.2f, 1.32f } };
     }
 }

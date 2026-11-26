@@ -29,7 +29,7 @@ namespace AquariumCiv.Sim.Settle
             {
                 SiteMap.Corners(s.x, s.z, s.yaw, s.w, s.d, cx, cz);
                 for (int k = 0; k < 4; k++)
-                    if (MathF.Abs(cx[k]) > mx || MathF.Abs(cz[k]) > mz) { r.inMargin++; break; }
+                    if (MathF.Abs(cx[k]) > mx || MathF.Abs(cz[k] - Terrain.CZ) > mz) { r.inMargin++; break; }
             }
             var reach = ReachFromGreen(w.Map);
             foreach (var s in lots)

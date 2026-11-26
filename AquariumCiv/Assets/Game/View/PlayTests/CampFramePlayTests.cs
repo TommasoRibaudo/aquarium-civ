@@ -19,7 +19,7 @@ namespace AquariumCiv.View.PlayTests
     [Category("CampFrame")]
     public class CampFramePlayTests : PlayTestBase
     {
-        const string Dir = Shots + "t1camera/";
+        static string Dir => Shots + "t1camera/";
         static BoxCamera Rig => Camera.main.GetComponent<BoxCamera>();
 
         [UnityTest, Timeout(180000)]
@@ -45,8 +45,10 @@ namespace AquariumCiv.View.PlayTests
 
             Assert.AreEqual(view.LastZoom, rig.zoom, 0.01f, "it arrived");
             Assert.Less(rig.zoom, 0.9f, "closer than the whole box");
-            Assert.AreEqual(CampFrame.Pitch, rig.pitch, 0.5f);
-            var centre = pv.transform.TransformPoint(new Vector3(view.Last.x, 0f, view.Last.z));
+            Assert.AreEqual(Mathf.Max(CampFrame.ClosePitch, BoxCameraMath.PitchFloor(rig.zoom)), rig.pitch, 0.5f, "#658 framing B: a little lower than the fitted frame");
+            float cx = view.Last.x, cz = view.Last.z;
+            if (pv.Planner.FirePoint(out float fx, out float fz)) { cx = fx; cz = fz; } // #658 framing B: centred on the fire
+            var centre = pv.transform.TransformPoint(new Vector3(cx, 0f, cz));
             Assert.Less(new Vector2(rig.target.x - centre.x, rig.target.z - centre.z).magnitude, 0.35f, "the camp is in the middle");
 
             // Dolls in the frame: their height on screen.
@@ -66,7 +68,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.Greater(px.Count, 0, "people are in the frame");
             px.Sort();
             float median = px[px.Count / 2];
-            Assert.That(median, Is.InRange(CampFrame.MinDollPx - 3f, CampFrame.MaxDollPx + 3f), "a doll reads at ~55 px on the phone");
+            Assert.That(median, Is.InRange((CampFrame.MinDollPx - 3f) / CampFrame.CloseShare, (CampFrame.MaxDollPx + 3f) / CampFrame.CloseShare), "#658 framing B: a doll reads about 1.8x the fitted ~55 px");
 
             // The near glass is gone: no rim across the camp.
             Assert.LessOrEqual(box.PaneOpacity(0), 0.05f, "front pane");
@@ -77,9 +79,11 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(1f, box.PaneOpacity(1), 1e-3f, "the back of the box stays");
             yield return Shot("t1camera/after_away_1179x2556");
 
-            // A pinch out still shows the whole box.
+            // A pinch out still shows the whole box (#658 framing B starts closer: two pinches).
             var mid = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
             float s0 = Screen.width * 0.3f;
+            for (int pinch = 0; pinch < 2; pinch++)
+            {
             int ia = touchId++, ib = touchId++;
             BeginTouch(ia, mid - new Vector2(s0, 0), queueEventOnly: true); BeginTouch(ib, mid + new Vector2(s0, 0), queueEventOnly: true);
             yield return null; yield return null; yield return null;
@@ -91,7 +95,8 @@ namespace AquariumCiv.View.PlayTests
                 yield return null;
             }
             EndTouch(ia, mid, delta: Vector2.zero, queueEventOnly: true); EndTouch(ib, mid, delta: Vector2.zero, queueEventOnly: true);
-            yield return new WaitForSecondsRealtime(1.5f);
+            yield return new WaitForSecondsRealtime(pinch == 0 ? 0.5f : 1.5f);
+            }
             Debug.Log($"[t1camera] after the pinch out: zoom {rig.zoom:0.00}, front pane {box.PaneOpacity(0):0.00}");
             Assert.GreaterOrEqual(rig.zoom, 0.99f, "the pinch reaches the whole box");
             Assert.AreEqual(1f, box.PaneOpacity(0), 0.02f, "and the glass is back");

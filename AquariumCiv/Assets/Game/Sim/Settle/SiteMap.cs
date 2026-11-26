@@ -4,15 +4,15 @@ using System.Collections.Generic;
 namespace AquariumCiv.Sim.Settle
 {
     /// <summary>
-    /// The 0.1-unit site grid (60 × 44 cells) of research 08 §3.2. Static land layers (height, slope, pond, base
+    /// The 0.1-unit site grid (60 × 60 cells since the deeper box, #658; it was 60 × 44, and the 16 new rows are at the back) of research 08 §3.2. Static land layers (height, slope, pond, base
     /// fertility, water distance) are derived from the terrain; the live layers are the saved arrays of
     /// <see cref="SettleState"/>, shared by reference, so placement writes straight into the save.
     /// Ported from Growth Lab's SiteMap; the spike's bool layers are packed into <see cref="SettleState.flags"/>.
     /// </summary>
     public sealed class SiteMap
     {
-        public const int NX = 60, NZ = 44, N = NX * NZ;
-        public const float Cell = 0.1f, X0 = -Terrain.HX, Z0 = -Terrain.HZ;
+        public const int NX = 60, NZ = 60, N = NX * NZ;
+        public const float Cell = 0.1f, X0 = -Terrain.HX, Z0 = Terrain.ZMin;
         public const float GreenR = 0.42f;
 
         // SettleState.flags bits
@@ -36,7 +36,12 @@ namespace AquariumCiv.Sim.Settle
         /// <summary>#418: the placed thicket's area (placed-life spec §5.1), set by <see cref="Settlement.SyncEco"/>: treated like water by
         /// every planner (no tent, hut, field, pen, yard, commons or path; the people may still walk in to pick). Null when there is none.</summary>
         public bool[] reserved;
-        public bool Reserved(int c) => reserved != null && reserved[c];
+        /// <summary>B3 tester fixes: the ground under a choice's thing and its margin (<see cref="ConsequenceFootprint"/>), set by
+        /// <see cref="Settlement.MarkProps"/> before any lot is laid: reserved like the thicket, so no lot, field, yard or path covers a thing.</summary>
+        public bool[] propBlock;
+        public bool Reserved(int c) => reserved != null && reserved[c] || propBlock != null && propBlock[c];
+        /// <summary>The thicket alone (the things' own placing keeps them apart by their footprints, not by this).</summary>
+        public bool ThicketReserved(int c) => reserved != null && reserved[c];
 
         public byte[] flags => st.flags;
         public byte[] tier => st.tier;

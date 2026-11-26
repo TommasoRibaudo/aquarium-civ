@@ -116,8 +116,8 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual(6, rv.Shown, "the pair plus four");
                 EcoDebug.AddRabbits(30);
                 yield return Frames(30);
-                Assert.AreEqual(12, Sim.EcoRabbitsShown(), "capped");
-                Assert.AreEqual(12, rv.Shown, "dolls capped");
+                Assert.AreEqual(AquariumCiv.Sim.Eco.RabbitHerd.DefaultCap, Sim.EcoRabbitsShown(), "capped (the visible-animal budget, #710: 8 on the 6 x 6 land)");
+                Assert.AreEqual(AquariumCiv.Sim.Eco.RabbitHerd.DefaultCap, rv.Shown, "dolls capped");
                 Assert.AreEqual(1, rv.SignsPlayed, "the sign still once");
                 pv.timeScale = 6f;
                 int off = 0, checks = 0;
@@ -128,7 +128,8 @@ namespace AquariumCiv.View.PlayTests
                     yield return null;
                 }
                 pv.timeScale = 1f;
-                Assert.Greater(checks, 1000, "sampled");
+                // sized for 12 dolls (1000 of 400 frames x 12); the animal budget now shows fewer (#710), so the floor scales with it
+                Assert.Greater(checks, 1000 * AquariumCiv.Sim.Eco.RabbitHerd.DefaultCap / 12, "sampled");
                 Assert.AreEqual(0, off, "rabbits only stand on green (one hopping over to a new spot may cross a strip of bare earth)");
                 int wc = rv.Field.WarrenCell;
                 yield return Fly(box, SiteMap.CXc(wc), SiteMap.CZc(wc), 2f);
@@ -168,6 +169,38 @@ namespace AquariumCiv.View.PlayTests
 
         /// <summary>The user (2026-11-05): a tap ON a rabbit does nothing to it; a knock on the GLASS close to a rabbit (on screen) makes
         /// it run off, to another part of the meadow, and it stays away; none is lost.</summary>
+        /// <summary>#669 (playtest): History replays the land by year; today's rabbits and berries step out of the replay and come back after.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator History_TodaysRabbitsAndBerriesStepOutOfTheReplay()
+        {
+            bool prefWas = GameClock.EcologyPref;
+            GameClock.EcologyPref = true;
+            try
+            {
+                yield return OpenSlice(seed: 4242);
+                Meadow();
+                PlacePairInMeadow();
+                yield return Frames(30);
+                Assert.IsNotNull(RabbitView.Instance, "rabbits live in the box");
+                TimeLapseView.DebugOpen();
+                yield return Frames(10);
+                TimeLapseView.DebugSeek(0f); // back in time: they step out (tester run 1: at the timeline's end the box is today's, they stay)
+                yield return Frames(10);
+                Assert.IsNull(RabbitView.Instance, "no rabbit view in the replay");
+                Assert.IsNull(BushView.Instance, "no berries in the replay");
+                TimeLapseView.DebugSeek(TimeLapseView.Find().Lapse.EndPosition);
+                yield return Frames(10);
+                Assert.IsNotNull(RabbitView.Instance, "at the timeline's end: today's rabbits");
+                Assert.IsNotNull(BushView.Instance, "at the timeline's end: today's berries");
+                TimeLapseView.DebugClose();
+                yield return Frames(10);
+                Assert.IsNotNull(RabbitView.Instance, "back in the live box");
+                Assert.IsNotNull(BushView.Instance);
+                CloseSlice();
+            }
+            finally { GameClock.EcologyPref = prefWas; }
+        }
+
         [UnityTest, Timeout(600000)]
         public IEnumerator Touch_TapOnARabbitDoesNothing_AKnockOnTheGlassNearItSendsItOff()
         {
@@ -271,6 +304,71 @@ namespace AquariumCiv.View.PlayTests
                 rv.TryGetPosition(r0, out var later);
                 Assert.Greater(new Vector2(later.x - at0.x, later.z - at0.z).magnitude, 0.4f, "and it does not drift back");
                 AssertNoErrors("rabbit knock");
+            }
+            finally { GameClock.EcologyPref = prefWas; }
+        }
+
+        /// <summary>#665: the tracks don't stop after the first prints: a year after the pair, with the first tracks long gone, fresh
+        /// trails show where the rabbits hop, never more than the cap, in summer and in winter (more on the snow).</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator LiveTracks_KeepComingWhileRabbitsLive_NeverAboveTheCap()
+        {
+            bool prefWas = GameClock.EcologyPref;
+            GameClock.EcologyPref = true;
+            try
+            {
+                yield return OpenSlice(1179, 2556, seed: 4242);
+                var rv = RabbitView.Instance;
+                var pv = PeopleView.Find();
+                var box = Object.FindAnyObjectByType<BoxView>();
+                PeopleView.DebugSetHour(11f);
+                Meadow();
+                PlacePairInMeadow();
+                EcoDebug.AddRabbits(4);
+                yield return Frames(30);
+                yield return Until(() => rv.SignsPlayed > 0, 10f);
+                yield return Until(() => !rv.SignPlaying, 20f);
+                EcoDebug.SkipSeasons(4);   // a year on
+                yield return Frames(30);
+                Assert.Greater(Sim.EcoRabbitCount, 0, "rabbits still live");
+                Assert.AreEqual(0, Sim.EcoRabbitTrackCells.Count, "the first tracks are long gone");
+                foreach (var want in new[] { AquariumCiv.Life.Season.Summer, AquariumCiv.Life.Season.Winter })
+                {
+                    for (int i = 0; i < 6 && AquariumCiv.Life.LifeClock.SeasonOf(pv.Now.day) != want; i++) { EcoDebug.SkipToNextSeason(); yield return Frames(20); }
+                    Assert.AreEqual(want, AquariumCiv.Life.LifeClock.SeasonOf(pv.Now.day), "reached " + want);
+                    int most = 0;
+                    for (float h = 7f; h <= 19f; h += 1.5f)
+                    {
+                        PeopleView.DebugSetHour(h);
+                        yield return Frames(4);
+                        Assert.LessOrEqual(rv.LiveTrails, RabbitView.LiveTrailsMax, $"never above the cap ({want}, {h:0.0} h)");
+                        most = Mathf.Max(most, rv.LiveTrails);
+                    }
+                    Debug.Log($"[tracks] {want}: up to {most} living trails, rabbits {Sim.EcoRabbitCount}");
+                    Assert.Greater(most, 0, $"fresh tracks a year after the pair ({want})");
+                    // the shot: at an hour with trails, the default view and close on one
+                    for (float h = 9f; h <= 19f && rv.LiveTrails == 0; h += 1f) { PeopleView.DebugSetHour(h); yield return Frames(4); }
+                    Camera.main.GetComponent<BoxCamera>().zoom = 1f;
+                    yield return Frames(20);
+                    string tag = want == AquariumCiv.Life.Season.Winter ? "winter" : "summer";
+                    yield return Shot($"night/665_{tag}_default");
+                    if (rv.LiveTrailSpots.Count > 0)
+                    {
+                        var at = rv.LiveTrailSpots[rv.LiveTrailSpots.Count - 1];
+                        yield return Fly(box, at.x, at.y, 1.15f);
+                        yield return Shot($"night/665_{tag}_close");
+                        Camera.main.GetComponent<BoxCamera>().zoom = 1f;
+                        yield return Frames(10);
+                    }
+                }
+                // the slots alone: at most the cap at any hour, over a long run, and stateless
+                var slots = new System.Collections.Generic.List<long>();
+                for (double t = 0; t < 24 * 400; t += 5.5)
+                {
+                    RabbitView.LiveTrailSlots(t, 4242u, slots);
+                    Assert.LessOrEqual(slots.Count, RabbitView.LiveTrailsMax);
+                }
+                AssertNoErrors("living tracks");
             }
             finally { GameClock.EcologyPref = prefWas; }
         }

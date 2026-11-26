@@ -41,7 +41,7 @@ namespace AquariumCiv.View.PlayTests
             if (FirstCrowd == null)
             {
                 FirstCrowd = $"[{d.LastWho ?? "-"}] {d.LastLine}";
-                ScreenCapture.CaptureScreenshot("F:/GameDev/AquariumCiv/Temp/agent/f3_d_crowd_caption.png");
+                ScreenCapture.CaptureScreenshot(UnityEngine.Application.dataPath + "/../Temp/agent/f3_d_crowd_caption.png");
             }
         }
     }
@@ -153,7 +153,7 @@ namespace AquariumCiv.View.PlayTests
             if (button == "kit-seed")
             {
                 // #558: the seed is a choice in the life jar, not a tool of its own
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+                // #668: no jar to open first: the tiles are on the kit's shelves
                 yield return new WaitForSecondsRealtime(0.4f);
                 if (hud.LifeRowOpen) yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-seed"));
             }
@@ -226,7 +226,7 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return new WaitForSecondsRealtime(0.5f);
             Check(hud.OpenSheet == GameHud.Kit && hud.LifeSlotShown, $"{s}: Kit opens with the life slot");
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+            // #668: no jar to open first: the tiles are on the kit's shelves
             yield return new WaitForSecondsRealtime(0.4f);
             if (hud.LifeRowOpen)
             {

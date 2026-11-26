@@ -231,6 +231,12 @@ namespace AquariumCiv.View
         /// for an answer, animated; while it does, the live layout leaves them out (the time-lapse keeps them).</summary>
         public static bool KeeperOverlays;
 
+        /// <summary>#656/#677: the camp fire's stage the box draws (NewStartView holds the grass fire while the first logs are carried
+        /// home, then lets the log fire in); null = the sim's <see cref="SimCore.FireStage"/>.</summary>
+        public static Func<SimCore, CampFireStage> FireStageShown;
+        /// <summary>#656/#677: <see cref="PieceData.variant"/> of a camp fire of dry grass and twigs (0 = the log fire).</summary>
+        public const int GrassFireVariant = 1;
+
         /// <summary>#284: how much of a building stands, 0..1, while its tent is being raised (the camp view sets it; null = all of them stand).</summary>
         public static Func<int, float> BuildingGrow;
 
@@ -245,6 +251,8 @@ namespace AquariumCiv.View
             Era now = replay != null ? replay.era : S.era;
             Era EraOf(Lot l) => eraOf != null ? eraOf(l) : now;
             int year = replay != null ? replay.year : (int)(S.month / SimConfig.MonthsPerYear);
+            // #644 (playtest): a sown field follows the land's season (a replay keeps its year's rotation)
+            AquariumCiv.Life.Season? season = replay != null ? null : AquariumCiv.Life.LifeClock.SeasonOf(S.month);
             var map = st.Map;
             // P8: the living land. A replay of a box with land records draws each year's land (#287); one without keeps the old look.
             bool eco = sim.EcologyOn && (replay == null || replay.land != null);
@@ -261,7 +269,11 @@ namespace AquariumCiv.View
             if (campFire)
             {
                 L.Clearing(new Vector2(camp.x, camp.z), SiteMap.GreenR + 0.12f, ClearingKind.Dirt);
-                L.Add(PieceKind.Fire, camp.x, camp.z, 0f, 0.4f, 0.4f, Era.Camp, SeedOf(camp));
+                // #656/#677: the fire as the land lets it burn: none before the first bush (the wanderers huddle there), a small fire of dry
+                // grass and twigs (variant 1), the log fire from the first wild wood. A replay draws the log fire, as before.
+                var stage = replay != null ? CampFireStage.Logs : FireStageShown != null ? FireStageShown(sim) : sim.FireStage;
+                if (stage != CampFireStage.None)
+                    L.Add(PieceKind.Fire, camp.x, camp.z, 0f, 0.4f, 0.4f, Era.Camp, SeedOf(camp)).variant = stage == CampFireStage.GrassAndTwig ? GrassFireVariant : 0;
             }
             else
             {
@@ -349,7 +361,9 @@ namespace AquariumCiv.View
                         {
                             // Crops rotate every few years: ripe wheat, green shoots or fallow (Growth Lab).
                             float c = STerrain.Hash3(l.id, year / 3, 4);
-                            var f = L.Field(Corners(l, 0.03f), c < 0.5f ? CropKind.Wheat : c < 0.85f ? CropKind.Sprout : CropKind.Fallow, l.yaw, true, 0);
+                            var crop = c < 0.5f ? CropKind.Wheat : c < 0.85f ? CropKind.Sprout : CropKind.Fallow;
+                            if (season.HasValue) crop = FieldCrop.InSeason(crop, season.Value);
+                            var f = L.Field(Corners(l, 0.03f), crop, l.yaw, true, 0);
                             f.seed = s;
                         }
                         break;
@@ -614,7 +628,7 @@ namespace AquariumCiv.View
 
         static bool TreeSpot(SiteMap map, Vector2 p)
         {
-            if (Mathf.Abs(p.x) > Land.HX - 0.14f || Mathf.Abs(p.y) > Land.HZ - 0.14f) return false;
+            if (Mathf.Abs(p.x) > Land.HX - 0.14f || !Land.InZ(p.y, 0.14f)) return false;
             int c = SiteMap.CellAt(p.x, p.y);
             if (c < 0 || map.Water(c) || map.Green(c)) return false;
             // A crown is ~0.2 u across: no lot within two cells (tester #33: a hut squeezed into the woods), no path or
@@ -653,7 +667,7 @@ namespace AquariumCiv.View
             void V(Vector2 p, float yaw, Era e, int seed, bool kid = false, PropKind prop = PropKind.None, PropSlot slot = PropSlot.Hand)
             {
                 if (L.villagers.Count >= budget) return;
-                if (Mathf.Abs(p.x) > Land.HX - 0.12f || Mathf.Abs(p.y) > Land.HZ - 0.12f || st.WaterAt(p.x, p.y)) return;
+                if (Mathf.Abs(p.x) > Land.HX - 0.12f || !Land.InZ(p.y, 0.12f) || st.WaterAt(p.x, p.y)) return;
                 L.Villager(p, yaw, e, seed, kid, -1, prop, slot);
             }
             Era greenEra = eraOf(null);
@@ -743,6 +757,22 @@ namespace AquariumCiv.View
                 if (byWell) continue;
                 V(p, STerrain.Hash3(sim.State.seed, i, 83) * 360f, greenEra, 9000 + i, kid: i % 3 == 1, prop: i % 5 == 2 ? PropKind.Bundle : PropKind.None, slot: PropSlot.Back);
             }
+        }
+    }
+
+    /// <summary>#644 (playtest, the user 2026-11-13): what a sown field shows in each season. Spring: green shoots; summer and autumn:
+    /// the wheat; winter: bare brown furrows. A field resting this rotation stays fallow all year.</summary>
+    public static class FieldCrop
+    {
+        public static CropKind InSeason(CropKind rotation, AquariumCiv.Life.Season s)
+        {
+            if (rotation != CropKind.Wheat && rotation != CropKind.Sprout) return rotation;
+            return s switch
+            {
+                AquariumCiv.Life.Season.Winter => CropKind.Fallow,
+                AquariumCiv.Life.Season.Spring => CropKind.Sprout,
+                _ => CropKind.Wheat,
+            };
         }
     }
 }

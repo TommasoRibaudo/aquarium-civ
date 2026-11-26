@@ -30,6 +30,9 @@ namespace AquariumCiv.EditorTools
         public string clip, outDir;
         /// <summary>Seconds stepped before recording (unrecorded), then recorded, at fps.</summary>
         public float warm = 1f, seconds = 6f, fps = 30f;
+        /// <summary>#692 p5 retakes: ≥ 0 keeps warming (unrecorded, at most 30 s more) until the camp use playing now is this many seconds before
+        /// its hit (<c>CampScene.a</c>), so a long walk to the spot is not the clip. −1: off.</summary>
+        public float lead = -1f;
         /// <summary>"hunt" (whoever is on a hunt step), "play" (the kids at play), a doll name substring, or "" (the fixed focus).</summary>
         public string follow = "";
         public float fx, fz, span = 1.5f, closeSpan = 0.6f, yaw = 28f, pitch = 34f;
@@ -38,6 +41,8 @@ namespace AquariumCiv.EditorTools
 
     public static class AnimLabLive
     {
+        /// <summary>#695: a setup step can turn the camera to a thing's front (CampCheats.FrontYaw); null: the request's yaw.</summary>
+        public static float? YawOverride;
         const string SlicePath = "Assets/Game/Scenes/Slice.unity";
         static string SaveDir => Path.Combine(LabBatch.Root, "save");
         static string PrevScenePath => Path.Combine(LabBatch.Root, "prev-scene.txt");
@@ -45,8 +50,10 @@ namespace AquariumCiv.EditorTools
         static string state = "idle";
         static LiveSpec spec;
         static int loadFrame = -1, frame, warmFrames, recFrames;
+        static bool leadMet;
         static Camera cam;
         static Texture2D readback;
+        static readonly Dictionary<(int, int), Texture2D> readbacks = new Dictionary<(int, int), Texture2D>();
         static Vector2 followAt;
         static bool followSet;
         static int ecologyWas = -1;
@@ -69,6 +76,7 @@ namespace AquariumCiv.EditorTools
         /// put back as soon as the box has read it.</summary>
         public static string Load(int seed, int ecology = 1)
         {
+            YawOverride = null; AquariumCiv.View.CampLife.LabCamYaw = null;
             if (!EditorApplication.isPlaying) return "ERROR: not in play mode";
             ecologyWas = -1;
             if (ecology >= 0)
@@ -128,8 +136,9 @@ namespace AquariumCiv.EditorTools
             spec = s;
             frame = 0;
             warmFrames = Mathf.RoundToInt(s.warm * s.fps);
+            leadMet = s.lead < 0f;
             recFrames = Mathf.RoundToInt(s.seconds * s.fps) + 1;
-            followSet = false;
+            followSet = false; followY = float.NaN;
             pv.HandDriven = true;
             Time.captureDeltaTime = 1f / s.fps;
             if (cam == null)
@@ -158,13 +167,73 @@ namespace AquariumCiv.EditorTools
             var pv = PeopleView.Find();
             if (pv != null) pv.HandDriven = false;
             Time.captureDeltaTime = 0f;
+            HitFx.DrawCamera = null;
+        }
+
+        /// <summary>#708/#709: the height the cameras aim at for the "glass" and "nest" follows (NaN = the ground there).</summary>
+        static float followY = float.NaN;
+
+        /// <summary>#708/#709 follows: "fish" (the school's centre on the water), "glass" (the fish on the pond's wall, aimed at their height),
+        /// "nest" (the nest in its bush). False for any other follow.</summary>
+        static bool ThingFocus(out Vector3 world)
+        {
+            world = default;
+            var box = Object.FindAnyObjectByType<BoxView>();
+            if (box == null || box.Root == null) return false;
+            if (spec.follow == "nest")
+            {
+                var nv = NestView.Instance;
+                if (nv == null || !nv.NestShown && !nv.BirdShown) return false;
+                world = box.Root.TransformPoint(nv.NestLocal);
+                return true;
+            }
+            if (spec.follow == "camp") // #692: the camp use playing now (its focus: the fire, the pot, the pole)
+            {
+                var pvc = PeopleView.Find();
+                var fc = pvc != null ? pvc.Camp.FocusNow() : null;
+                if (!(fc is Vector2 f)) return false;
+                world = box.Root.TransformPoint(new Vector3(f.x, box.SurfaceHeight(f.x, f.y), f.y));
+                return true;
+            }
+            if (spec.follow == "fishgrab")
+            {
+                var pv = PeopleView.Find();
+                if (pv == null || !pv.KidPlay.FishGrabSpot(out var e)) return false;
+                world = box.Root.TransformPoint(new Vector3(e.x, box.SurfaceHeight(e.x, e.y), e.y));
+                return true;
+            }
+            var fv = FishView.Instance;
+            if (fv == null || fv.School == null || fv.School.fish.Count == 0) return false;
+            if (spec.follow == "fish")
+            {
+                var c = fv.School.Centre;
+                world = box.Root.TransformPoint(new Vector3(c.x, box.layout.eco.waterY, c.y));
+                return true;
+            }
+            if (spec.follow == "glass")
+            {
+                var sum = Vector3.zero; int n = 0;
+                foreach (var f in fv.School.fish) if (f.SideDrawn) { sum += fv.School.SidePosition(f); n++; }
+                if (n == 0) return false;
+                world = box.Root.TransformPoint(sum / n);
+                return true;
+            }
+            return false;
         }
 
         /// <summary>Where the cameras look this frame: the followed doll (eased), else the spec's focus.</summary>
         static Vector2 Focus(PeopleView pv)
         {
             var want = new Vector2(spec.fx, spec.fz);
-            if (!string.IsNullOrEmpty(spec.follow))
+            if (spec.follow is "fish" or "glass" or "nest" or "fishgrab" or "camp")
+            {
+                if (ThingFocus(out var w))
+                {
+                    want = new Vector2(w.x, w.z);
+                    followY = spec.follow is "fish" or "fishgrab" or "camp" ? float.NaN : (float.IsNaN(followY) ? w.y : Mathf.Lerp(followY, w.y, 0.08f));
+                }
+            }
+            else if (!string.IsNullOrEmpty(spec.follow))
             {
                 var pts = new List<Vector3>();
                 foreach (var a in pv.Activities)
@@ -193,10 +262,10 @@ namespace AquariumCiv.EditorTools
             float y = 0f;
             var box = Object.FindAnyObjectByType<BoxView>();
             if (box != null) y = box.SurfaceHeight(focus.x, focus.y);
-            var target = new Vector3(focus.x, y + 0.07f, focus.y);
+            var target = float.IsNaN(followY) ? new Vector3(focus.x, y + 0.07f, focus.y) : new Vector3(focus.x, followY, focus.y); // #708/#709: the glass fish, the nest
             float hfov = 2f * Mathf.Atan(Mathf.Tan(cam.fieldOfView * Mathf.Deg2Rad * 0.5f) * aspect);
             float dist = span * 0.5f / Mathf.Tan(hfov * 0.5f);
-            cam.transform.position = target + Quaternion.Euler(spec.pitch, spec.yaw, 0) * Vector3.back * dist;
+            cam.transform.position = target + Quaternion.Euler(spec.pitch, YawOverride ?? AquariumCiv.View.CampLife.LabCamYaw ?? spec.yaw, 0) * Vector3.back * dist;
             cam.transform.LookAt(target);
             cam.aspect = aspect;
         }
@@ -205,12 +274,17 @@ namespace AquariumCiv.EditorTools
         {
             var rt = RenderTexture.GetTemporary(w, h, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB, 1);
             cam.targetTexture = rt;
+            HitFx.DrawCamera = cam; // #692 p3: the puffs' outlines and floors sized for this shot, not the far game camera
+            if (HitFx.Instance != null) HitFx.Instance.Redraw();
             cam.Render();
             cam.targetTexture = null;
             var keep = RenderTexture.active;
             RenderTexture.active = rt;
-            if (readback == null || readback.width != w || readback.height != h)
-                readback = new Texture2D(w, h, TextureFormat.RGB24, false) { hideFlags = HideFlags.DontSave };
+            // #692: one readback per size (the two cameras alternate 480x360 and 360x360): a new one each frame without destroying the
+            // last leaked ~2 MB a frame, 23 GB over a few clips, and the Editor died out of memory (tooling.md 2026-11-15)
+            var key = (w, h);
+            if (!readbacks.TryGetValue(key, out readback) || readback == null)
+                readbacks[key] = readback = new Texture2D(w, h, TextureFormat.RGB24, false) { hideFlags = HideFlags.DontSave };
             readback.ReadPixels(new Rect(0, 0, w, h), 0, 0);
             readback.Apply(false);
             RenderTexture.active = keep;
@@ -235,6 +309,12 @@ namespace AquariumCiv.EditorTools
             var pv = PeopleView.Find();
             if (pv == null) { state = "ERROR: PeopleView gone"; Stop(); return; }
             pv.Tick(1f / spec.fps);
+            if (frame == warmFrames && !leadMet)
+            {
+                var until = pv.Camp.UntilA;
+                if ((until == null || until.Value > spec.lead) && warmFrames < Mathf.RoundToInt((spec.warm + 30f) * spec.fps)) warmFrames++;
+                else { leadMet = true; followSet = false; /* the camera snaps onto the use, not easing in from the last focus */ Debug.Log($"[AnimLab] lead met: recording from {warmFrames / spec.fps:0.0} s ({(until.HasValue ? until.Value.ToString("0.0") : "no scene")} s before the hit)"); }
+            }
             if (frame >= warmFrames)
             {
                 int f = frame - warmFrames;

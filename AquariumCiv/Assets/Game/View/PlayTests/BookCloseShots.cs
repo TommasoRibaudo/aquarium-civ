@@ -67,7 +67,6 @@ namespace AquariumCiv.View.PlayTests
                 yield return Frames(20);
                 EraStills.Take(cam, rig, sim);
             }
-            sim.DebugGiveRelic(RelicId.SkyCrumb);
             sim.DebugGiveRelic(RelicId.KeeperDoll);
             sim.DebugGiveRelic(RelicId.FestivalMask);
             yield return Quiet();

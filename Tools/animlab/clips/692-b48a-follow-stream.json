@@ -1,0 +1,23 @@
+{
+ "name": "692-b48a-follow-stream",
+ "notes": "B48.a: kids follow the stream bed in a line, the leader balancing with the arms out, hopping across it twice.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(11.0f, 3);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.FollowStream());"
+  ],
+  "warm": 0.5,
+  "seconds": 16,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.9,
+  "yaw": 28,
+  "pitch": 38
+ }
+}

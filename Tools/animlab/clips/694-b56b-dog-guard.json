@@ -1,0 +1,34 @@
+{
+ "name": "694-b56b-dog-guard",
+ "notes": "B25.b + B56.b: at night a wolf comes out of the dark; the dog stands, trots out and barks three times (a hop each); the wolf turns back; a grown-up looks into the dark, scratches the dog's head and sits again.",
+ "animlab": {
+  "issue": 694
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(18.8f, 4);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return AquariumCiv.View.CampCheats.BigDogNow();",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(18.9f) + \" | \" + AquariumCiv.View.CampCheats.DogStatus();",
+   "return \"waiting for the dark\";",
+   "return \"waiting for the dark\";",
+   "return AquariumCiv.View.DayLightDriver.DebugPauseClock(true);",
+   "return AquariumCiv.View.CampCheats.Later(3.0f, () => AquariumCiv.View.CampCheats.DogGuard());"
+  ],
+  "warm": 0.5,
+  "seconds": 12,
+  "fps": 30,
+  "follow": "camp",
+  "span": 2.4,
+  "closeSpan": 1.4,
+  "yaw": 28,
+  "pitch": 35,
+  "lead": 4.0
+ }
+}

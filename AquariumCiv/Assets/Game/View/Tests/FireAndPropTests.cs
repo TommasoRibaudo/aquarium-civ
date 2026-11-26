@@ -194,7 +194,8 @@ namespace AquariumCiv.View.Tests
             Bounds B(PropKind k) { var m = PegDoll.PropMesh(k); return m.bounds; }
             Assert.AreEqual(0.15f, B(PropKind.Sheaf).size.x, 0.03f, "the sheaf is 0.15 long");
             var bundle = B(PropKind.Bundle).size;
-            Assert.AreEqual(0.079f, bundle.x, 0.006f); Assert.AreEqual(0.085f, bundle.y, 0.006f); Assert.AreEqual(0.049f, bundle.z, 0.006f);
+            // 2026-11-14: the rolled bedroll lies along the shoulders: 0.1 long (and its end rings), about 0.05 round with its straps
+            Assert.AreEqual(0.106f, bundle.x, 0.008f); Assert.AreEqual(0.06f, bundle.y, 0.008f); Assert.AreEqual(0.056f, bundle.z, 0.006f);
             Assert.AreEqual(0.075f, B(PropKind.Pot).size.y, 0.015f, "the pot is 0.075 tall (plus its straw ring)");
             Assert.AreEqual(0.08f, B(PropKind.Pot).size.x, 0.006f, "belly radius 0.04");
             Assert.GreaterOrEqual(B(PropKind.Axe).size.y, 0.2f);

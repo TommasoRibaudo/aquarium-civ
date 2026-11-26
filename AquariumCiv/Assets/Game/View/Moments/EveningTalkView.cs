@@ -133,7 +133,8 @@ namespace AquariumCiv.View
             speakerId = lead != null ? lead.id : -1;
             Speaker = lead != null ? lead.name : "";
             FindFire(sim);
-            if (cam != null) { cam.CancelFlight(); cam.EaseTo(fire, cam.yaw, GatherPitch, GatherZoom, CloseRules.LeavingSeconds + CloseRules.GatherSeconds); }
+            if (cam != null) { before = (cam.target, cam.yaw, cam.pitch, cam.zoom); cam.CancelFlight(); cam.EaseTo(fire, cam.yaw, GatherPitch, GatherZoom, CloseRules.LeavingSeconds + CloseRules.GatherSeconds); }
+            else before = null;
 
             var pv = PeopleView.Find();
             if (pv != null && pv.Planner != null)
@@ -152,7 +153,7 @@ namespace AquariumCiv.View
 
         void FindFire(SimCore sim)
         {
-            fire = new Vector3(0f, 1f, 0f);
+            fire = new Vector3(0f, 1f, Land.CZ);
             var st = sim.Settlement;
             var box = FindAnyObjectByType<BoxView>();
             if (st != null && box != null) fire = box.transform.TransformPoint(new Vector3(st.Map.greenX, 0f, st.Map.greenZ));
@@ -228,7 +229,7 @@ namespace AquariumCiv.View
             if (step == CloseStep.Shelf)
             {
                 GlassMotion.Hide(speakerTag, GlassMotion.FadeOff, GlassMotion.FadeMs);
-                if (cam != null) cam.EaseTo(new Vector3(0f, 1f, 0f), ShelfYaw, ShelfPitch, cam.maxZoom, CloseRules.ShelfSeconds);
+                if (cam != null) cam.EaseTo(new Vector3(0f, 1f, Land.CZ), ShelfYaw, ShelfPitch, cam.maxZoom, CloseRules.ShelfSeconds);
                 AskIfFirst();
             }
         }
@@ -291,8 +292,12 @@ namespace AquariumCiv.View
             if (cam == null || !cam.isActiveAndEnabled) { homeOnLift = false; return; }
             if (cam.IsFlying) return; // someone else's flight: home waits for it to stop or land (tester run 6)
             homeOnLift = false;
-            cam.GoHome(firm: true);
+            // #672 (playtest): back to where the player had the camera, not to the default frame
+            if (before.HasValue) { var v = before.Value; cam.EaseTo(v.target, v.yaw, v.pitch, v.zoom, BoxCameraMath.FlyDefaultSeconds); }
+            else cam.GoHome(firm: true);
         }
+
+        (Vector3 target, float yaw, float pitch, float zoom)? before;
 
         void Finish()
         {

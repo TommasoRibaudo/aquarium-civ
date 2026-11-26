@@ -124,6 +124,8 @@ namespace AquariumCiv.View
             sheet.EnableInClassList(GlassSheet.HeightClass(SheetHeight.Standard), !Expanded);
             sheet.EnableInClassList(GlassSheet.HeightClass(SheetHeight.Tall), Expanded);
             sheet.EnableInClassList(TallClass, Expanded);
+            // #674 (2026-11-14): the tabs show on the tall card only, where they always stood; the short card is About
+            if (!Expanded && tabs != null && Tab != CardTab.About) tabs.Select((int)CardTab.About);
             sheet.Surface.Follow(GlassMotion.SlideMs);
         }
 

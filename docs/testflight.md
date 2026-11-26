@@ -83,12 +83,15 @@ new prototype ships, the patch for fixes to the same one, and add a row here plu
 | (not built yet) | **0.4.0** | **Perf check of the style kit** (branch `vs/35-perf-build`, issue #35) | Frame time / GPU ms of the new art style on the user's iPhone: Growth Lab town y110, style-kit camp and village. Not a prototype: Build Settings switched, see [below](#perf-build-04x-issue-35) | "Perf check of the new art style. Tap to switch scenes; send a screenshot of the numbers." |
 | 14 | 0.4.0 | (failed: Apple certificate limit, see Notes) | - | - |
 | 15 | 0.4.0 | **Slice + P7 dilemmas + P8 living land** (both on by default in phone builds, `GameClock.OnInBuilds`) | A barren box that greens under the Keeper's mist (hold a finger still on the land), with the dilemmas (variant B, normal schedule). An existing box keeps its old land: Settings → Reset box for a barren one. Debug panel → Dilemmas (P7) / Living land (P8) turns either off (kept) | "Your box starts as dry earth. Hold a finger still on the land to mist it and watch it green; the people will ask you to choose now and then." |
+| 29 | 0.4.0 | (failed: Apple agreement expired, see Notes) | - | - |
+| (next run) | **0.4.1** | **Playtest 1 fixes + the living camp** (dev → main, 2026-11-25) | Everything merged since build 30: the new start (the people arrive with what they carry, wood from wild trees), the deeper 6 x 6 box with fewer animals and the deeper pond seen through the glass, the water rework, people using every new thing (rituals, the boat, the dog's hunt, house lanterns), the 16 story events (#722), 30 fps at rest and 60 while touching, and the playtest 1 quick wins | "A big update since the last build. The people now arrive carrying what they own, and the box is deeper. Watch for the little stories: a tree's first fruit, a second name stone, the first snow. Use the Feedback button for anything odd, and say if the phone runs hot." |
+| 30 | 0.4.0 | **First outside playtest** (#637; main 78063961) | A stranger's first week: the first run with no Skip, one quick question per session (#636: knows what to do, remembers people, feels they grow the box), charms on the Keeper's tree (#635). Notes and answers go to the private `aquarium-civ-feedback` | "Play a few minutes a day for a week. Now and then the box asks one quick question; answer if you like. Use the Feedback button for anything else." |
 
 ### Slice build 0.4.0 (issue #98)
 The first build of the vertical slice, for the user alone on their iPhone.
 
 - **Scenes:** Build Settings enable only `Assets/Game/Scenes/Slice.unity`. The prototype, perf and sample scenes stay in the
-  list but disabled. Set with the menu *AquariumCiv/Agent/Slice/Build Settings: slice build* (`SliceBuild.UseSliceBuildSettings`,
+  list but disabled. Set with the menu *Aquarium Civ/Agent tools/Slice/Build Settings: slice build* (`SliceBuild.UseSliceBuildSettings`,
   `Assets/Editor/Agent/SliceBuild.cs`). The iOS workflow uses GameCI's builder with no scene argument, so it builds exactly the
   enabled scenes: nothing in `ios-testflight.yml` needs to change. CI's EditMode/PlayMode tests open scenes by path and don't
   depend on the list.
@@ -123,7 +126,7 @@ The first build of the vertical slice, for the user alone on their iPhone.
 
 ### Perf build 0.4.x (issue #35)
 A one-off build to measure the style kit on a phone (60 fps / GPU ≤ 10 ms). It ships **only**
-`Assets/Spikes/Perf/PerfCheck.unity`; the prototypes are left out. Set with the menu *AquariumCiv/Agent/Perf Check/Build
+`Assets/Spikes/Perf/PerfCheck.unity`; the prototypes are left out. Set with the menu *Aquarium Civ/Agent tools/Perf Check/Build
 Settings: perf build* (`PerfSceneBuilder.UsePerfBuildSettings`); the scene comes from *Perf Check/Build Scene*.
 
 **What changed** (committed on `vs/35-perf-build` only; `vs/slice` and `main` keep the prototype settings):
@@ -133,7 +136,7 @@ Settings: perf build* (`PerfSceneBuilder.UsePerfBuildSettings`); the scene comes
 - `PlayerSettings.enableFrameTimingStats` 0 → **1** (Player → Other Settings → Frame Timing Stats). Without it,
   FrameTimingManager reports no CPU/GPU times in a release build. Harmless to leave on.
 
-**Restore the 0.3.x prototype build:** menu *AquariumCiv/Agent/Perf Check/Build Settings: prototype build*
+**Restore the 0.3.x prototype build:** menu *Aquarium Civ/Agent tools/Perf Check/Build Settings: prototype build*
 (`PerfSceneBuilder.UsePrototypeBuildSettings`: Hub first, all prototypes enabled, perf scene dropped), then set
 `bundleVersion` back to `0.3.x` by hand. Or don't merge this branch's `ProjectSettings/` changes.
 
@@ -179,6 +182,10 @@ Lab session (sitting with a tester): hold the top-left info box for 2 s until "L
 - Debug panels: hidden behind a 2 s top-left long-press in every non-Editor build (see Slice build 0.4.0). Lab tests that need the away buttons still run in the Editor.
 - If the macOS job fails on signing, check that the API key has **Admin** access and that the bundle ID is
   registered under the same team.
+- **`FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED`** (build 29, 2026-11-13): the export and archive pass, the upload gets a 403
+  because Apple published a new agreement. The account holder accepts it in App Store Connect (home banner or Business) /
+  developer.apple.com → Account. Then start a **new** run: `gh run rerun --failed` can't work, because the workflow deletes the
+  `ios-xcode` artifact when it ends ("Artifact not found for name: ios-xcode").
 - **"Your account has reached the maximum number of certificates"** (build 14, 2026-11-03): the archive used to sign with automatic
   development signing, which made a new "Apple Development" certificate on every fresh runner. The archive is now unsigned
   (`CODE_SIGNING_ALLOWED=NO`) and only the export signs, with the cloud-managed distribution certificate. If it still hits the

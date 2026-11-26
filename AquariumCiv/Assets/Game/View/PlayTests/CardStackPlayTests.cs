@@ -14,7 +14,7 @@ using UnityEngine.UIElements;
 namespace AquariumCiv.View.PlayTests
 {
     /// <summary>#75: the card stack by touch on the real Slice scene at a portrait phone size. A return shows the peek, paging
-    /// marks read and survives a kill, Show me keeps the stack, Give arms the tool at the wish's spot, the history dot opens
+    /// marks read and survives a kill, Show me keeps the stack, the history dot opens
     /// what's waiting, and nothing overlaps.</summary>
     public class CardStackPlayTests : PlayTestBase
     {
@@ -37,14 +37,12 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(4);
         }
 
-        /// <summary>A return with this wish in it: the stack open on its card (last, and an era may wait before it).</summary>
-        IEnumerator ToTheWish()
+        /// <summary>The stack open on a card of this kind (made now: #718 took the wish card these tests used).</summary>
+        IEnumerator ToCard(CardKind kind)
         {
-            Assert.IsTrue(CardStackView.DebugReturn(2).StartsWith("cards"));
-            yield return Frames(3);
-            yield return Tap("cards-peek");
-            for (int guard = 0; guard < 3 && Model.Face.kind != CardKind.Wish; guard++) yield return Tap("cards-next");
-            Assert.AreEqual(CardKind.Wish, Model.Face.kind);
+            Assert.That(CardStackView.DebugCard(kind), Does.StartWith("cards"));
+            yield return Frames(4);
+            Assert.AreEqual(kind, Model.Face.kind);
         }
 
         /// <summary>A grown box with stories, nothing read, away for a day: the peek is up.</summary>
@@ -125,21 +123,34 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("after the kill");
         }
 
+        /// <summary>#561 (the user's call, 2026-11-10): Skip all answers the whole stack, so the dot goes and History is the time-lapse,
+        /// all by real touches: the peek swiped away leaves a dot, the Stories chip reopens the stack, Skip all clears the dot, History replays.</summary>
         [UnityTest, Timeout(120000)]
-        public IEnumerator SkipAllLeavesADotThatOpensTheStack()
+        public IEnumerator SkipAllClearsTheDot_AndHistoryOpensTheTimeLapse()
         {
             yield return Returned();
-            yield return Tap("cards-peek");
+            yield return TapAt(new Vector2(Screen.width * 0.5f, Screen.height * 0.6f)); // the peek goes: the cards wait
+            yield return Frames(4);
+            Assert.AreEqual(CardStackMode.Hidden, Model.Mode);
+            Assert.IsTrue(Model.HistoryDot, "cards wait: a dot");
+            var dot = GameHud.Instance.Root.Q("hud-history-dot");
+            Assert.IsTrue(Shown(dot), "a dot, never a number");
+            yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root, "hud-history-dot")); // hierarchy D1: the Stories chip, not History
+            yield return Frames(6);
+            Assert.AreEqual(CardStackMode.Open, Model.Mode, "the Stories chip opens what's waiting");
             yield return Tap("cards-skip");
             Assert.AreEqual(CardStackMode.Hidden, Model.Mode);
             Assert.IsFalse(GameHud.Instance.ToolsHidden);
             yield return Frames(3);
-            Assert.IsTrue(Shown(GameHud.Instance.Root.Q("hud-history-dot")), "a dot, never a number");
-            yield return Shot("cards_dot");
-            yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root, "hud-history-dot")); // hierarchy D1: the Stories chip, not History
-            yield return Frames(6);
-            Assert.AreEqual(CardStackMode.Open, Model.Mode, "the Stories chip opens what's waiting");
-            Assert.IsNull(GameHud.Instance.OpenSheet);
+            Assert.IsFalse(Model.HistoryDot, "Skip all answers the stack");
+            Assert.IsFalse(Shown(dot), "the dot is gone from the screen");
+            yield return Shot("cards_skip_no_dot");
+            yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root, "hud-history"));
+            var tl = TimeLapseView.Find();
+            yield return Until(() => tl != null && tl.Active, 3f);
+            Assert.IsTrue(tl != null && tl.Active, "History opens the time-lapse, not the stack");
+            Assert.AreEqual(CardStackMode.Hidden, Model.Mode);
+            AssertNoErrors("skip all");
         }
 
         [UnityTest, Timeout(120000)]
@@ -250,9 +261,7 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator APortraitOpensThePersonCardAndClosingItBringsTheStackBack()
         {
             yield return Returned();
-            var w = Sim.DebugForceWish(SimCore.NudgeKind.Rain);
-            Assert.IsNotNull(w);
-            yield return ToTheWish();
+            yield return ToCard(CardKind.Legend);
             yield return Tap("cards-portrait-0");
             var cards = PersonCardView.Instance;
             Assert.IsTrue(cards.IsOpen);
@@ -261,65 +270,6 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(GameUiPanel.ScreenCenter(cards.CardRoot.Q("person-card-close")));
             yield return Frames(6);
             Assert.IsTrue(Shown(View.Root.Q("cards-sheet")));
-        }
-
-        [UnityTest, Timeout(120000)]
-        public IEnumerator GiveArmsTheToolAtTheWishesSpotAndCancelKeepsTheWish()
-        {
-            yield return Returned();
-            Sim.DebugRefillShaping();
-            var w = Sim.DebugForceWish(SimCore.NudgeKind.Rain);
-            Assert.IsNotNull(w);
-            yield return ToTheWish();
-            Assert.AreEqual(CardAction.Give, Model.Face.action);
-            yield return Shot("cards_wish");
-            yield return Tap("cards-action");
-            var sv = ShapingView.Instance;
-            Assert.AreEqual(CardStackMode.Hidden, Model.Mode, "Give leads into the shaping");
-            Assert.IsTrue(sv.WishArmed, "the tool is in hand");
-            Assert.AreEqual(w.kind, sv.Tool);
-            Assert.AreEqual(w.x, sv.Tray.PendingX, 0.001f);
-            Assert.AreEqual(WishState.Open, w.state, "nothing is spent yet");
-            yield return Frames(3);
-            yield return Shot("cards_armed");
-            var ui = sv.GetComponentInChildren<UIDocument>().rootVisualElement;
-            Assert.IsTrue(Shown(ui.Q("shaping-wish-bar")));
-            Assert.IsTrue(Shown(ui.Q("shaping-wish-spot")));
-            Assert.IsTrue(MomentPlayer.PromptsBlocked(), "the banner holds the prompts' lane");
-
-            yield return TapAt(GameUiPanel.ScreenCenter(ui.Q("shaping-cancel")));
-            yield return Frames(4);
-            Assert.IsFalse(sv.ShapeMode, "Cancel puts the tool down");
-            Assert.AreEqual(WishState.Open, w.state, "the wish stays");
-
-            // Again, and a tap on the ground gives it where the wish points.
-            yield return ToTheWish();
-            yield return Tap("cards-action");
-            yield return Frames(3);
-            float charges = Sim.State.shapingCharges;
-            int nudges = Sim.State.nudges.Count;
-            yield return TapAt(sv.ScreenOf(w.x, w.z));
-            yield return Frames(6);
-            Assert.AreEqual(WishState.Given, w.state, sv.LastResult);
-            Assert.AreEqual(nudges + 1, Sim.State.nudges.Count);
-            Assert.Less(Sim.State.shapingCharges, charges, "a real gift: it spends a charge");
-            Assert.IsFalse(sv.ShapeMode);
-            AssertNoErrors("give");
-        }
-
-        [UnityTest, Timeout(120000)]
-        public IEnumerator GiveWithNoChargeSaysWhyOnTheCard()
-        {
-            yield return Returned();
-            var w = Sim.DebugForceWish(SimCore.NudgeKind.Rain);
-            Assert.IsNotNull(w);
-            Sim.State.shapingCharges = 0;
-            yield return ToTheWish();
-            var n = View.Root.Q<Label>("cards-note");
-            Assert.IsTrue(Shown(n));
-            Assert.That(n.text, Does.Contain("cleaning the glass"));
-            Assert.IsFalse(View.Root.Q<GlassButton>("cards-action").Available, "unavailable, never faded");
-            yield return Shot("cards_nocharge");
         }
 
         [UnityTest, Timeout(120000)]
@@ -419,8 +369,6 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator EachCardHasOnePrimaryAtMostAndABackOnlyPastTheFirst()
         {
             yield return Returned();
-            Sim.DebugRefillShaping();
-            Sim.DebugForceWish(SimCore.NudgeKind.Rain);
             Sim.ForceEraReady();
             Assert.IsTrue(CardStackView.DebugReturn(7).StartsWith("cards"));
             yield return Frames(3);
@@ -444,13 +392,13 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual(ButtonKind.Secondary, next.Kind, "Next is never primary");
                 Assert.That(next.text, Is.EqualTo("Next").Or.EqualTo("Done"), "question 19: plain words, the dots say where");
                 Assert.AreEqual(page > 0, Shown(View.Root.Q("cards-back")), "Back from the second card on");
-                if (filled.Count == 1) Assert.That(filled[0].text, Is.EqualTo("Give").Or.EqualTo("Watch").Or.EqualTo("Remember"));
+                if (filled.Count == 1) Assert.That(filled[0].text, Is.EqualTo("Watch").Or.EqualTo("Remember"));
                 var row = View.Root.Q("cards-buttons").worldBound;
                 foreach (var b in View.Root.Q("cards-buttons").Query<GlassButton>().ToList().Where(Shown))
                     Assert.LessOrEqual(b.worldBound.xMax, row.xMax + 0.5f, b.name + " stays in the row");
                 if (page < Model.PageCount - 1) yield return Tap("cards-next");
             }
-            Assert.Contains(CardKind.Wish, kinds.ToList());
+            Assert.Contains(CardKind.EraReady, kinds.ToList());
             AssertNoErrors("primaries");
         }
 
@@ -498,9 +446,7 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator TheShortPhoneKeepsTheCardAtThirtyPercent()
         {
             yield return Returned(24, 750, 1334);
-            var w = Sim.DebugForceWish(SimCore.NudgeKind.Rain);
-            Assert.IsNotNull(w);
-            yield return ToTheWish();
+            yield return ToCard(CardKind.Legend);
             yield return Frames(4);
             var sheet = View.Root.Q("cards-sheet").worldBound;
             float panelH = View.Root.worldBound.height;
@@ -513,15 +459,6 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(GlassSheet.ShortBottomPad, sheet.yMax - row.yMax, 1.5f, "14 pt under the buttons");
             Assert.LessOrEqual(View.Root.Q("cards-head").worldBound.yMax, View.Root.Q("cards-body").worldBound.yMin + 0.5f);
             Assert.LessOrEqual(View.Root.Q("cards-body").worldBound.yMax, row.yMin + 0.5f, "the body clears the row");
-
-            Model.Close();
-            yield return Frames(4);
-            Sim.State.shapingCharges = 0;
-            yield return ToTheWish();
-            yield return Frames(6);
-            var note = View.Root.Q("cards-note");
-            Assert.IsTrue(Shown(note));
-            Assert.LessOrEqual(note.worldBound.yMax, View.Root.Q<GlassScroll>("cards-scroll").View.worldBound.yMax + 0.5f, "why it's locked is in view");
             AssertNoErrors("short");
         }
 
@@ -596,7 +533,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Tap("cards-peek");
             yield return Frames(8);
             yield return Shot(dir + "story-first");
-            yield return Tap("cards-skip");
+            Model.Close(); // the back gesture leaves the stories waiting (Skip all answers them, #561): the chip shows
             yield return Frames(8);
             yield return Shot(dir + "stories-chip");
 
@@ -619,13 +556,6 @@ namespace AquariumCiv.View.PlayTests
                 Model.Close();
                 yield return Frames(4);
             }
-
-            Sim.State.shapingCharges = 0;
-            CardStackView.DebugCard(CardKind.Wish);
-            yield return Frames(8);
-            yield return Shot(dir + "wish-nocharge");
-            Model.Close();
-            yield return Frames(4);
 
             Assert.That(CardStackView.DebugReturn(1), Does.StartWith("cards"));
             yield return Frames(4);

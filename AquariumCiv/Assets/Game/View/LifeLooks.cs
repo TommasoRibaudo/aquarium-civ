@@ -75,22 +75,91 @@ namespace AquariumCiv.View
         static readonly Color FishGhost = new(0.42f, 0.52f, 0.58f);
 
         /// <summary>A small fish seen from above: a flat body and a tail fork, lying on the water (y 0), facing +z.</summary>
-        public static void FishShape(MeshBuilder mb, float scale, Color? col = null)
+        public static void FishShape(MeshBuilder mb, float scale, Color? col = null) => FishShape(mb, scale, col, FishPart.All);
+
+        /// <summary>#708: which piece of a fish to build, so the tail can wag about its root (<see cref="FishTailRoot"/>, <see cref="FishSideTailRoot"/>).</summary>
+        public enum FishPart { All, Body, Tail, Fin }
+
+        /// <summary>#708 (B70.b): where the shadow's tail turns (its root on the body, local z), at scale 1.</summary>
+        public const float FishTailRoot = -0.045f * 0.45f;
+
+        /// <summary>The fish from above, whole or one piece: <see cref="FishPart.Tail"/> is built about its own root (origin = the root),
+        /// so a transform at (0, 0, <see cref="FishTailRoot"/>) wags it.</summary>
+        public static void FishShape(MeshBuilder mb, float scale, Color? col, FishPart part)
         {
             var c = col ?? Color.white;
             float L = 0.045f * scale, W = 0.014f * scale;
-            const int n = 10;
-            var ring = new Vector3[n];
-            for (int i = 0; i < n; i++)
+            if (part is FishPart.All or FishPart.Body)
             {
-                float a = i / (float)n * Mathf.PI * 2f;
-                float z = Mathf.Cos(a) * L * 0.5f, x = Mathf.Sin(a) * W * (Mathf.Cos(a) > 0f ? 1f : 0.8f);
-                ring[i] = new Vector3(x, 0.001f, z);
+                const int n = 10;
+                var ring = new Vector3[n];
+                for (int i = 0; i < n; i++)
+                {
+                    float a = i / (float)n * Mathf.PI * 2f;
+                    float z = Mathf.Cos(a) * L * 0.5f, x = Mathf.Sin(a) * W * (Mathf.Cos(a) > 0f ? 1f : 0.8f);
+                    ring[i] = new Vector3(x, 0.001f, z);
+                }
+                var mid = new Vector3(0f, 0.001f, 0f);
+                for (int i = 0; i < n; i++) mb.Tri(mid, ring[(i + 1) % n], ring[i], c);
+                if (part == FishPart.Body) for (int i = 0; i < n; i++) mb.Tri(mid, ring[i], ring[(i + 1) % n], c); // #708: the box's opaque material culls back faces: the body seen from above too
             }
-            var mid = new Vector3(0f, 0.001f, 0f);
-            for (int i = 0; i < n; i++) mb.Tri(mid, ring[(i + 1) % n], ring[i], c);
-            var t0 = new Vector3(0f, 0.001f, -L * 0.45f);
-            mb.Tri(t0, new Vector3(W * 1.1f, 0.001f, -L * 0.85f), new Vector3(-W * 1.1f, 0.001f, -L * 0.85f), c);
+            if (part is FishPart.All or FishPart.Tail)
+            {
+                float root = part == FishPart.Tail ? -L * 0.45f : 0f; // the tail's own piece sits on its root
+                var t0 = new Vector3(0f, 0.001f, -L * 0.45f - root);
+                mb.Tri(t0, new Vector3(W * 1.1f, 0.001f, -L * 0.85f - root), new Vector3(-W * 1.1f, 0.001f, -L * 0.85f - root), c);
+                if (part == FishPart.Tail) mb.Tri(t0, new Vector3(-W * 1.1f, 0.001f, -L * 0.85f - root), new Vector3(W * 1.1f, 0.001f, -L * 0.85f - root), c);
+            }
+        }
+
+        /// <summary>#708 (B70.c): the side fish's sizes at scale 1: the lens body's length and height, the tail's length.</summary>
+        public const float FishSideLength = 0.05f, FishSideHeight = 0.018f, FishSideTail = 0.014f;
+        /// <summary>Where the side fish's tail and dorsal tick turn (local x, y), at scale 1.</summary>
+        public static readonly Vector3 FishSideTailRoot = new(-FishSideLength * 0.5f, 0f, 0f), FishSideFinRoot = new(-0.002f, FishSideHeight * 0.48f, 0f);
+
+        /// <summary>
+        /// #708 (B70.c): a fish seen from the side, flat in its local x-y plane (x forward, y up), facing +z (toward the glass) and drawn from
+        /// both faces: a lens-shaped body, a paler belly line, a light eye dot; the forked tail and the dorsal tick are pieces of their own
+        /// (<see cref="FishPart.Tail"/> about <see cref="FishSideTailRoot"/>, <see cref="FishPart.Fin"/> about <see cref="FishSideFinRoot"/>).
+        /// </summary>
+        public static void FishSide(MeshBuilder mb, float scale, Color body, Color belly, Color eye, FishPart part = FishPart.All)
+        {
+            float L = FishSideLength * scale, H = FishSideHeight * scale, T = FishSideTail * scale;
+            void Both(Vector3 a, Vector3 b, Vector3 c, Color ca, Color cb, Color cc) { mb.TriC(a, b, c, ca, cb, cc); mb.TriC(a, c, b, ca, cc, cb); }
+            if (part is FishPart.All or FishPart.Body)
+            {
+                const int n = 14;
+                var ring = new Vector3[n]; var cols = new Color[n];
+                for (int i = 0; i < n; i++)
+                {
+                    float a = i / (float)n * Mathf.PI * 2f;
+                    float x = Mathf.Cos(a) * L * 0.5f, y = Mathf.Sin(a) * H * 0.5f * (Mathf.Cos(a) > 0f ? 1f : 0.85f); // a fuller head, a slimmer tail end
+                    ring[i] = new Vector3(x, y, 0f);
+                    cols[i] = Mathf.Sin(a) < -0.55f ? belly : body; // the belly line along the bottom
+                }
+                var mid = new Vector3(L * 0.05f, 0f, 0f);
+                for (int i = 0; i < n; i++) Both(mid, ring[i], ring[(i + 1) % n], body, cols[i], cols[(i + 1) % n]);
+                // the eye: a small light diamond near the head, a hair proud of the body
+                var e = new Vector3(L * 0.3f, H * 0.12f, 0.0004f);
+                float r = 0.0032f * scale;
+                Both(e + new Vector3(r, 0f, 0f), e + new Vector3(0f, r, 0f), e + new Vector3(-r, 0f, 0f), eye, eye, eye);
+                Both(e + new Vector3(r, 0f, 0f), e + new Vector3(-r, 0f, 0f), e + new Vector3(0f, -r, 0f), eye, eye, eye);
+                e.z = -0.0004f;
+                Both(e + new Vector3(r, 0f, 0f), e + new Vector3(0f, r, 0f), e + new Vector3(-r, 0f, 0f), eye, eye, eye);
+                Both(e + new Vector3(r, 0f, 0f), e + new Vector3(-r, 0f, 0f), e + new Vector3(0f, -r, 0f), eye, eye, eye);
+            }
+            if (part is FishPart.All or FishPart.Tail)
+            {
+                var o = part == FishPart.Tail ? Vector3.zero : FishSideTailRoot * scale;
+                // a forked tail: two blades out of the root, a notch between them
+                Both(o + new Vector3(0.002f * scale, 0f, 0f), o + new Vector3(-T, H * 0.5f, 0f), o + new Vector3(-T * 0.55f, 0f, 0f), body, body, body);
+                Both(o + new Vector3(0.002f * scale, 0f, 0f), o + new Vector3(-T * 0.55f, 0f, 0f), o + new Vector3(-T, -H * 0.5f, 0f), body, body, body);
+            }
+            if (part is FishPart.All or FishPart.Fin)
+            {
+                var o = part == FishPart.Fin ? Vector3.zero : FishSideFinRoot * scale;
+                Both(o + new Vector3(0.006f * scale, 0f, 0f), o + new Vector3(-0.004f * scale, 0.0065f * scale, 0f), o + new Vector3(-0.006f * scale, 0f, 0f), body, body, body);
+            }
         }
 
         static Mesh rabbitShape;

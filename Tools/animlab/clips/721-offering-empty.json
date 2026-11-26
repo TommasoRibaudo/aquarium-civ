@@ -1,0 +1,33 @@
+{
+ "name": "721-offering-empty",
+ "notes": "B75.b: spring: a kid lifts the cloth, freezes, holds the empty basket high and runs to the fire; the grown-ups look up at the glass, one nods; the lead carries it back to the tree's foot.",
+ "animlab": {
+  "issue": "S-ritual"
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.CampLife.FocusKey = 0; AquariumCiv.View.EveningTalkView.AutoStart = false; AquariumCiv.View.CampLife.LabYaw = 28f; AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(8.0f, 4);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "var pv = AquariumCiv.View.PeopleView.Find(); if (pv != null && pv.Planner != null) pv.Planner.ForcedWeather = AquariumCiv.Life.Weather.Clear; return \"clear weather\";",
+   "return AquariumCiv.View.ConsequenceCheats.PlaceEvery();",
+   "return AquariumCiv.View.CampCheats.GrowTree();",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return \"waiting for the camp\";",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(8f);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.StagedMoments.DebugOfferingEmpty());"
+  ],
+  "warm": 0.5,
+  "seconds": 26,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.7,
+  "yaw": 28,
+  "pitch": 45,
+  "lead": 2.0
+ }
+}

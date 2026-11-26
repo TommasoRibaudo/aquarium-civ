@@ -20,11 +20,11 @@ namespace AquariumCiv.Life
         /// Stage <paramref name="v"/>'s choice scene now for <paramref name="seconds"/> real seconds: the people walk over at the walking
         /// pace and wait looking up at the glass. (<paramref name="rx"/>, <paramref name="rz"/>) is the screen's right on the ground and
         /// (<paramref name="tx"/>, <paramref name="tz"/>) the way to the viewer, so option 0 stands on the Keeper's left where it can;
-        /// <paramref name="hx"/>, <paramref name="hz"/> are the box's half extents. Null when it can't be staged (no positions, a
+        /// <paramref name="hx"/>, <paramref name="hz"/> are the box's half extents and <paramref name="cz"/> its centre in z (#658). Null when it can't be staged (no positions, a
         /// candidate gone, nowhere to stand): the card's buttons still answer.
         /// </summary>
         public ChoiceStage StageChoice(DilemmaView v, ViewTime at, float rx, float rz, float tx, float tz, float seconds = ChoiceScenes.WaitSeconds,
-            float hx = 3f, float hz = 2.2f)
+            float hx = AquariumCiv.Sim.Settle.Terrain.HX, float hz = AquariumCiv.Sim.Settle.Terrain.HZ, float cz = AquariumCiv.Sim.Settle.Terrain.CZ)
         {
             if (v?.dilemma == null || v.options == null || v.options.Length < 2) return null;
             Sync();
@@ -115,7 +115,7 @@ namespace AquariumCiv.Life
                 {
                     var anchor = IsValidPlace(fire) ? fire : gather;
                     if (!Pos(anchor, out var c)) return null;
-                    var edge = ChoiceScenes.EdgePoint(c, r, hx, hz, out _);
+                    var edge = ChoiceScenes.EdgePoint(c, r, hx, hz, out _, cz);
                     // #231: when one option keeps them apart in the box, they wait towards the home they would make (far woods, far shore).
                     if (v.def?.options != null)
                         for (int i = 0; i < v.def.options.Length; i++)
@@ -125,7 +125,7 @@ namespace AquariumCiv.Life
                             string akind = SimCore.ApartKindFor(v.dilemma, o.apart); // #578: the camp sits where the words said
                             var spot = sim.ApartSpotPreview(akind);
                             var home = sim.ApartCampSpot(spot.x, spot.z, akind, out _); // where ApartGroupsView will draw their camp
-                            var toward = ChoiceScenes.HomeWard(c, home, hx, hz, out bool homeOk);
+                            var toward = ChoiceScenes.HomeWard(c, home, hx, hz, out bool homeOk, cz);
                             if (!homeOk) break;
                             edge = toward;
                             st.hasHome = true; st.homeX = home.x; st.homeZ = home.z; st.homeOption = i;

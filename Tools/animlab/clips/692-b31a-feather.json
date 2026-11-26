@@ -1,0 +1,23 @@
+{
+ "name": "692-b31a-feather",
+ "notes": "B31.a: a newborn's white feather: the chief holds it up, ties it on (the feathers flutter), all pray, the parent touches it, they look up; a kid points.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(16.8f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.TieFeather(AquariumCiv.Sim.PoleFeatherKind.Newborn));"
+  ],
+  "warm": 0.5,
+  "seconds": 15,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.85,
+  "yaw": 28,
+  "pitch": 36
+ }
+}

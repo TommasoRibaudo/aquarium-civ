@@ -17,7 +17,7 @@ namespace AquariumCiv.View.PlayTests
 {
     /// <summary>
     /// The people bundle's phase 2, on the real Slice: crowd avoidance and the fire (#189), the loose group at the glass (#190), carried
-    /// babies (#192), the wish payoff (#191), a want line through the bubble host (#181), the bubble rules (#143), the notification
+    /// babies (#192), a want line through the bubble host (#181), the bubble rules (#143), the notification
     /// question (#122), and tester run 5's polish (a stale tool hint, long tile names).
     /// </summary>
     [Category("PeopleWiring")]
@@ -180,120 +180,6 @@ namespace AquariumCiv.View.PlayTests
             StringAssert.Contains(carried.carryOnBack ? "on their back" : "in their arms", pv.Planner.Describe(carried), "and what they're doing says so");
             yield return Shot("people-baby");
             AssertNoErrors("baby");
-        }
-
-        [UnityTest, Timeout(120000)]
-        [Category("Tester6")]
-        public IEnumerator AGrantedWishPlaysItsPayoffByDay()
-        {
-            yield return Grown(hour: 10.5f);
-            var sim = Sim;
-            Sfx.ResetLog();
-            var w = sim.DebugForceWish(SimCore.NudgeKind.Rain);
-            Assert.IsNotNull(w);
-            StringAssert.Contains("got their", WishPayoffView.DebugGrant());
-            var view = WishPayoffView.Instance;
-            yield return Until(() => view.Played > 0, 2f);
-            Assert.Greater(view.Played, 0);
-            Assert.AreEqual(WishBeat.Given, view.LastPlan.beat);
-            Assert.AreEqual(w.notableId, view.LastPlan.wisherId);
-            CollectionAssert.Contains(Sfx.LastAsked, CueLibrary.WishGiven);
-            Assert.IsTrue(view.LastPlan.effectNow);
-            var pv = People;
-            var me = PersonRef.Notable(w.notableId);
-            if (pv.TryGetDollTop(me, out _))
-            {
-                yield return new WaitForSecondsRealtime(0.4f); // the view replans every 0.2 s
-                var a = pv.Activities.First(x => x.who == me);
-                Assert.AreEqual(ActivityKind.Cheer, a.kind, "the wisher reacts");
-            }
-            AssertNoErrors("wish by day");
-        }
-
-        /// <summary>Tester run 6: the nudge is dropped, not queued, while a card is up.</summary>
-        [UnityTest, Timeout(120000)]
-        [Category("Tester6")]
-        public IEnumerator AWishLeavesTheCameraOnAnOpenCard()
-        {
-            yield return Grown(hour: 10.5f);
-            var view = WishPayoffView.Instance;
-            var cam = Camera.main.GetComponent<BoxCamera>();
-            var w = Sim.DebugForceWish(SimCore.NudgeKind.Rain);
-            Assert.IsNotNull(w);
-            var other = Sim.State.notables.First(n => n.alive && n.age >= 16f && n.id != w.notableId);
-            Assert.IsTrue(PersonCardView.Instance.Open(other.id, fly: false), "a card");
-            yield return Until(() => !cam.IsFlying, 3f);
-            float zoom = cam.zoom, pitch = cam.pitch;
-            StringAssert.Contains("got their", WishPayoffView.DebugGrant());
-            yield return Until(() => view.Played > 0, 2f);
-            Assert.IsTrue(view.LastPlan.flyToWisher, "the camera would have gone");
-            yield return new WaitForSecondsRealtime(1f);
-            Assert.AreEqual(zoom, cam.zoom, 0.005f, "the camera stayed");
-            Assert.AreEqual(pitch, cam.pitch, 0.5f);
-            PersonCardView.Instance.Close();
-            yield return new WaitForSecondsRealtime(1f);
-            Assert.IsFalse(cam.IsFlying, "and nothing was queued");
-            Assert.AreEqual(zoom, cam.zoom, 0.005f, "nothing was queued");
-            AssertNoErrors("wish with a card up");
-        }
-
-        /// <summary>Tester run 6: the payoff line waits for the first run's word to pass, and is then said, not lost.</summary>
-        [UnityTest, Timeout(120000)]
-        [Category("Tester6")]
-        [Category("Bundle3")]
-        public IEnumerator AWishLineWaitsForTheFirstRunsWord()
-        {
-            yield return OpenSlice(seed: Seed, skipFirstRun: false);
-            var first = FirstRunView.Instance;
-            first.Run.DebugSkipTo(FirstRunStep.Year);
-            yield return Frames(4);
-            Assert.AreEqual(FirstRunStep.Year, first.Step);
-            PeopleView.DebugSetHour(10.5f);
-            yield return Frames(4);
-            var view = WishPayoffView.Instance;
-            var sm = ShowMeDirector.Instance;
-            int before = view.Played;
-            var w = Sim.DebugForceWish(SimCore.NudgeKind.Rain);
-            Assert.IsNotNull(w);
-            w.state = WishState.Given; // the first rain is spent, so no second gift can be placed: what the view sees is all that counts
-            w.endMonth = Sim.State.month;
-            yield return Until(() => view.Played > before, 2f);
-            Assert.Greater(view.Played, before, "this wish played, not the last test's");
-            string line = view.LastPlan.wisherLine.text;
-            Assert.IsTrue(view.LastPlan.wisherSaysNow);
-            Assert.AreNotEqual(line, sm.LastLine, "not under the caption");
-            Assert.IsTrue(first.HasTheWord, "the year has the word");
-            first.Run.DebugSkipTo(FirstRunStep.Done);
-            yield return Until(() => sm.LastLine == line, 14f); // held lines go one at a time: the first run's own wish may speak first
-            Assert.AreEqual(line, sm.LastLine, $"said once the word has passed (held {view.HeldLines}, word {first.HasTheWord}, free {GameUiPanel.Bubbles.Free(BubbleHost.Rank.World)}, holder {GameUiPanel.Bubbles.Holder}, played {view.Played}, before {before}, moment {MomentPlayer.Instance?.Playing})");
-            AssertNoErrors("wish in the first run");
-        }
-
-        [UnityTest, Timeout(120000)]
-        [Category("Tester6")]
-        public IEnumerator AWishGrantedAtNightWaitsForTheWisherToWake()
-        {
-            yield return Grown(hour: 23f);
-            var view = WishPayoffView.Instance;
-            var pv = People;
-            var sleeping = pv.Activities.Where(a => a.who.IsNotable && a.kind == ActivityKind.Sleep).Select(a => a.who.notableId).ToList();
-            Assert.IsNotEmpty(sleeping, "someone's asleep at 23:00");
-            Wish w = null;
-            foreach (int id in sleeping) { w = Sim.DebugForceWish(SimCore.NudgeKind.Rain, id); if (w != null && w.notableId == id) break; }
-            Assert.IsNotNull(w);
-            Assert.IsTrue(sleeping.Contains(w.notableId), "the wisher sleeps");
-            StringAssert.Contains("got their", WishPayoffView.DebugGrant());
-            yield return Until(() => view.Played > 0, 2f);
-            Assert.Greater(view.Played, 0);
-            Assert.IsTrue(view.LastPlan.quiet, "softer at night");
-            Assert.IsFalse(view.LastPlan.wisherSaysNow, "they're asleep");
-            yield return new WaitForSecondsRealtime(1f);
-            PeopleView.DebugSetHour(9f);
-            var sm = ShowMeDirector.Instance;
-            string line = view.LastPlan.wisherLine.text;
-            yield return Until(() => sm.LastLine == line, 6f);
-            Assert.AreEqual(line, sm.LastLine, "they say it when they wake");
-            AssertNoErrors("wish by night");
         }
 
         [UnityTest, Timeout(120000)]

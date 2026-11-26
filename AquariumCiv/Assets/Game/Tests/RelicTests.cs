@@ -44,49 +44,6 @@ namespace AquariumCiv.Tests
             return n;
         }
 
-        // ---------- the Sky Crumb ----------
-        [Test]
-        public void TheSkyCrumbFallsWithTheSecondShaping()
-        {
-            var sim = NewSim(3);
-            var found = new List<Relic>();
-            sim.RelicFound += r => found.Add(r);
-            sim.PlaceNudge(SimCore.NudgeKind.Rain, 0.2f, 0.1f);
-            Assert.IsFalse(sim.HasRelic(RelicId.SkyCrumb), "not with the first");
-            Assert.AreEqual(BeliefHalf.Early, sim.BeliefHalfNow);
-            sim.PlaceNudge(SimCore.NudgeKind.Grove, -0.3f, 0.4f);
-            Assert.IsTrue(sim.HasRelic(RelicId.SkyCrumb));
-            var r = sim.FindRelic(RelicId.SkyCrumb);
-            Assert.AreEqual(SimCore.NudgeKind.Grove, r.cause);
-            Assert.AreEqual(-0.3f, r.x); Assert.AreEqual(0.4f, r.z);
-            Assert.GreaterOrEqual(r.ownerId, 0, "someone tastes it");
-            var e = RelicCard(sim, RelicId.SkyCrumb);
-            Assert.AreEqual("relic", e.kind);
-            Assert.GreaterOrEqual(e.id, SimCore.RelicLineIdBase, "its own id: the shared ids never shift");
-            StringAssert.Contains("planted the grove", e.text);
-            Assert.AreEqual("If the sky drops bread, what else is up there?", e.quote);
-            Assert.AreEqual(BeliefHalf.Later, sim.BeliefHalfNow, "the crumb opens stage 1's later half");
-            Assert.AreEqual(1, sim.BeliefStage);
-            CollectionAssert.AreEqual(new[] { r }, found);
-            sim.PlaceNudge(SimCore.NudgeKind.Herd, 0f, 0f);
-            Assert.AreEqual(1, sim.State.chronicle.Count(x => x.relicId == RelicId.SkyCrumb), "one per box");
-            var card = sim.ReturnCards(-1, 24).cards.Concat(sim.ReturnCards(-1, 24).also).First(c => c.lead == e);
-            Assert.AreEqual(CardKind.Relic, card.kind);
-            Assert.AreEqual("Bread fell from the sky", card.headline);
-        }
-
-        [Test]
-        public void TheSkyCrumbFallbackIsTheFirstShapingAfterTheCamp()
-        {
-            var sim = NewSim(3);
-            sim.PlaceNudge(SimCore.NudgeKind.Rain, 0f, 0f);
-            sim.ForceNextEra();
-            Assert.IsFalse(sim.HasRelic(RelicId.SkyCrumb));
-            sim.PlaceNudge(SimCore.NudgeKind.Channel, 0f, 0f);
-            Assert.IsTrue(sim.HasRelic(RelicId.SkyCrumb));
-            Assert.AreEqual(2, sim.BeliefStage, "a stage-1 relic never moves the stage");
-        }
-
         // ---------- the Festival Mask ----------
         [Test]
         public void TheFirstEraFestivalLeavesTheMask()
@@ -132,7 +89,7 @@ namespace AquariumCiv.Tests
             sim.Step();
             Assert.IsTrue(sim.HasRelic(RelicId.KeeperDoll), "the 10th");
             var doll = sim.FindRelic(RelicId.KeeperDoll);
-            Assert.AreEqual("watering can", doll.prop, "it holds what the Keeper did most");
+            Assert.AreEqual("cloth", doll.prop, "#718: it always holds the cloth");
             Assert.GreaterOrEqual(doll.ownerId, 0);
             Assert.AreEqual(BeliefHalf.Later, sim.BeliefHalfNow, "the doll opens stage 2's later half");
             Assert.AreEqual("The doll's eye is open. That means the Keeper's is too.", RelicCard(sim, RelicId.KeeperDoll).quote);
@@ -169,18 +126,6 @@ namespace AquariumCiv.Tests
             sim.Step(); // the first live month: the same trigger fires
             Assert.IsTrue(sim.HasRelic(RelicId.KeeperDoll));
             Assert.IsFalse(sim.State.dollDue);
-        }
-
-        [Test]
-        public void TheDollsPropFollowsTheKeepersMostDoneAction()
-        {
-            var sim = NewSim(8);
-            sim.State.grime = 1f;
-            for (int m = 0; m < 4; m++) { sim.CleanGrime(0.01f); sim.CleanGrime(0.01f); sim.State.month++; }
-            Assert.AreEqual(4, sim.KeeperActionsDone(KeeperAction.Wipe), "a wipe counts once a month, however many strokes");
-            Assert.AreEqual("cloth", sim.DollProp);
-            for (int i = 0; i < 5; i++) sim.PlaceNudge(SimCore.NudgeKind.Channel, 0f, 0f);
-            Assert.AreEqual("spade", sim.DollProp);
         }
 
         // ---------- the Left Sandal ----------
@@ -239,16 +184,14 @@ namespace AquariumCiv.Tests
             var cards = sim.ReturnCardsCapped(-1, 50);
             Assert.IsTrue(cards.cards.Any(c => c.entries.Contains(lost) && c.entries.Contains(find)), "the loss and the find are one card");
 
-            // Later lost stories are the usual ones.
+            // #715: the sandal is the box's only "lost" story (no more lost in the hills)
             int before = sim.State.chronicle.Count(e => e.kind == "lost");
-            for (int i = 0; i < 400 && sim.State.chronicle.Count(e => e.kind == "lost") == before; i++)
+            for (int i = 0; i < 100; i++)
             {
                 sim.ForceStory();
                 sim.State.month += 7 * SimConfig.MonthsPerYear;
             }
-            var next = sim.State.chronicle.Last(e => e.kind == "lost");
-            StringAssert.Contains("got lost in the hills", next.text);
-            Assert.AreEqual("", next.relicId);
+            Assert.AreEqual(before, sim.State.chronicle.Count(e => e.kind == "lost"), "never lost in the hills");
         }
 
         [Test]
@@ -274,47 +217,6 @@ namespace AquariumCiv.Tests
 
         // ---------- the Lens ----------
         [Test]
-        public void TheLensNeedsTheTownTheLampAndAScholar()
-        {
-            var sim = NewSim(6);
-            foreach (var n in sim.State.notables) if (n.trait == "the clever" || n.trait == "the tinkerer" || n.trait == "the dreamer") n.trait = "the kind";
-            sim.PlaceNudge(SimCore.NudgeKind.Lamp, 0f, 0f); // a camp lamp doesn't count
-            sim.ForceNextEra(); sim.ForceNextEra();
-            foreach (var n in sim.State.notables) if (n.trait == "the clever" || n.trait == "the tinkerer" || n.trait == "the dreamer") n.trait = "the kind";
-            Assert.AreEqual(0, sim.Scholars.Count);
-            sim.Step();
-            Assert.IsFalse(sim.HasRelic(RelicId.Lens));
-            sim.PlaceNudge(SimCore.NudgeKind.Lamp, 0.5f, -0.2f);
-            Assert.IsFalse(sim.HasRelic(RelicId.Lens), "no scholar yet");
-            var scholar = MakeScholar(sim);
-            Assert.AreEqual(scholar, sim.Scholars.First());
-            sim.Step();
-            Assert.IsTrue(sim.HasRelic(RelicId.Lens), "the scholar comes, the lamp was used in the town");
-            var lens = sim.FindRelic(RelicId.Lens);
-            Assert.AreEqual(scholar.id, lens.ownerId);
-            Assert.AreEqual(0.5f, lens.x);
-            var e = RelicCard(sim, RelicId.Lens);
-            StringAssert.Contains("the Keeper's light", e.text);
-            StringAssert.StartsWith("It's glass.", e.quote, "the first time the people say glass, from the scholar who made it");
-            Assert.AreEqual(scholar.id, e.speakerId);
-            Assert.AreEqual(BeliefHalf.Later, sim.BeliefHalfNow);
-        }
-
-        [Test]
-        public void TheLensFallbackIsAnyTownShapingAfterTenYears()
-        {
-            var sim = NewSim(6);
-            sim.ForceNextEra(); sim.ForceNextEra();
-            MakeScholar(sim);
-            sim.PlaceNudge(SimCore.NudgeKind.Outcrop, 0f, 0f);
-            Assert.IsFalse(sim.HasRelic(RelicId.Lens));
-            sim.State.eraStartMonth -= 10 * SimConfig.MonthsPerYear;
-            sim.PlaceNudge(SimCore.NudgeKind.Spring, 0f, 0f);
-            Assert.IsTrue(sim.HasRelic(RelicId.Lens));
-            StringAssert.Contains("pointed it at the wall", RelicCard(sim, RelicId.Lens).text);
-        }
-
-        [Test]
         public void ScholarsAreTownNotablesWhoAreCleverTinkerersOrDreamers()
         {
             var sim = NewSim(6);
@@ -326,24 +228,6 @@ namespace AquariumCiv.Tests
         }
 
         // ---------- belief and the line bank ----------
-        [Test]
-        public void EachStageHasAnEarlyAndALaterHalf()
-        {
-            var sim = NewSim(9);
-            foreach (var (stage, relic) in new[] { (1, RelicId.SkyCrumb), (2, RelicId.KeeperDoll), (3, RelicId.Lens) })
-            {
-                if (stage > 1) sim.ForceNextEra();
-                Assert.AreEqual(stage, sim.BeliefStage);
-                Assert.AreEqual(BeliefHalf.Early, sim.BeliefHalfNow, $"stage {stage} opens early");
-                sim.DebugGiveRelic(relic);
-                Assert.AreEqual(BeliefHalf.Later, sim.BeliefHalfNow, $"stage {stage}'s relic opens the later half");
-            }
-            sim.DebugSetBelief(3, false);
-            Assert.AreEqual(BeliefHalf.Early, sim.BeliefHalfNow);
-            sim.DebugSetBelief(3, true);
-            Assert.AreEqual(BeliefHalf.Later, sim.BeliefHalfNow);
-        }
-
         [Test]
         public void NoLineFromALaterStageOrHalfComesEarly()
         {
@@ -387,49 +271,14 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(-1, sim.Quote(PeopleMoment.Tap).speakerId, "the crowd");
             var chief = sim.HolderOf(RoleType.Chief);
             var glass = sim.Quote(PeopleMoment.Glass);
-            Assert.AreEqual(3, glass.lineNo);
-            Assert.AreEqual(chief.id, glass.speakerId);
+            bool kid = sim.State.notables.Any(n => n.alive && n.age >= 4f && n.age < SimCore.AdultAge);
+            if (!kid) Assert.IsNull(glass, "#719: line 3 names a child: no child, no line");
+            else { Assert.AreEqual(3, glass.lineNo); Assert.AreEqual(chief.id, glass.speakerId); StringAssert.DoesNotContain("{kid}", glass.text); }
             Assert.IsNull(sim.Quote(PeopleMoment.Doll), "no doll lines in the camp");
             sim.ForceNextEra();
             StringAssert.Contains("window", sim.Quote(PeopleMoment.Return).text);
             sim.RelicsOn = false;
             Assert.IsNull(sim.Quote(PeopleMoment.Return));
-        }
-
-        [TestCase(1)]
-        [TestCase(77)]
-        public void InACenturyQuotesNeverSayGlassBeforeTheLens(int seed)
-        {
-            var sim = NewSim(seed);
-            Watched(sim, 100, (s, y) =>
-            {
-                if (y % 4 == 0) s.PlaceNudge(y % 8 == 0 ? SimCore.NudgeKind.Rain : SimCore.NudgeKind.Lamp, 0.1f * (y % 5), -0.1f);
-            });
-            var quoted = sim.State.chronicle.Where(e => !string.IsNullOrEmpty(e.quote)).ToList();
-            long lens = sim.FindRelic(RelicId.Lens)?.foundMonth ?? long.MaxValue;
-            foreach (var e in quoted)
-                if (e.month < lens || (e.month == lens && e.relicId != RelicId.Lens && e.kind != "keeper")) StringAssert.DoesNotContain("glass", e.quote, e.text);
-            TestContext.WriteLine(string.Join(" | ", quoted.Select(e => $"y{e.month / 12} {e.kind}: {e.quote}")));
-            Assert.Greater(quoted.Count, 3);
-        }
-
-        // ---------- the tap-back ----------
-        [Test]
-        public void AScholarTapsBackOnlyOnceTheLensIsUp()
-        {
-            var sim = NewSim(6);
-            Assert.AreEqual(-1, sim.KeeperTapped(3));
-            sim.ForceNextEra(); sim.ForceNextEra();
-            var scholar = MakeScholar(sim);
-            Assert.AreEqual(-1, sim.KeeperTapped(3), "stage 3, early: they argue about the wall");
-            sim.DebugGiveRelic(RelicId.Lens);
-            Assert.AreEqual(scholar.id, sim.KeeperTapped(3));
-            var card = sim.State.chronicle.Single(e => e.kind == "tapback");
-            Assert.AreEqual($"The Keeper knocked three times. {scholar.FullName} knocked three times back and wrote it down.", card.text);
-            Assert.AreEqual(scholar.id, sim.KeeperTapped(2));
-            Assert.AreEqual(1, sim.State.chronicle.Count(e => e.kind == "tapback"), "the card once");
-            var camp = NewSim(6);
-            Assert.GreaterOrEqual(camp.DebugTapBack(2), 0, "the debug panel forces it anywhere");
         }
 
         // ---------- debug, saves, era tags ----------
@@ -445,14 +294,14 @@ namespace AquariumCiv.Tests
                 Assert.IsNotNull(RelicCard(sim, id), id);
                 Assert.IsNotEmpty(sim.RelicLabel(id));
             }
-            Assert.AreEqual(5, sim.FoundRelics.Count());
+            Assert.AreEqual(3, sim.FoundRelics.Count()); // #718: three relics
             CollectionAssert.AreEqual(RelicId.DefaultCarried, sim.DefaultRelicPicks());
-            Assert.IsTrue(sim.TakeRelic(RelicId.Lens));
-            Assert.AreEqual(sim.State.month, sim.FindRelic(RelicId.Lens).takenMonth);
+            Assert.IsTrue(sim.TakeRelic(RelicId.KeeperDoll));
+            Assert.AreEqual(sim.State.month, sim.FindRelic(RelicId.KeeperDoll).takenMonth);
 
             var loaded = new SimCore(sim.Config, JsonUtility.FromJson<SimState>(JsonUtility.ToJson(sim.State)));
             Assert.AreEqual(JsonUtility.ToJson(sim.State), JsonUtility.ToJson(loaded.State));
-            Assert.AreEqual(5, loaded.FoundRelics.Count());
+            Assert.AreEqual(3, loaded.FoundRelics.Count());
             Assert.AreEqual(RelicId.LeftSandal, loaded.State.chronicle.First(e => e.kind == "lost").relicId);
         }
 
@@ -461,7 +310,7 @@ namespace AquariumCiv.Tests
         {
             var sim = NewSim(4);
             foreach (var id in RelicId.All) sim.DebugGiveRelic(id);
-            CollectionAssert.AreEqual(RelicId.DefaultCarried, sim.RelicsForCrossing(), "the pre-ticked three");
+            CollectionAssert.AreEqual(RelicId.DefaultCarried, sim.RelicsForCrossing(), "the pre-ticked one (#718)");
             Assert.AreEqual("Sky Crumb", SimCore.RelicName(RelicId.SkyCrumb));
 
             var picked = NewSim(4);
@@ -474,9 +323,9 @@ namespace AquariumCiv.Tests
             sim.ForceNextEra(); sim.ForceNextEra();
             Assert.IsTrue(sim.ForcePeakReady());
             var done = sim.CompleteBox();
-            CollectionAssert.AreEqual(new[] { "Sky Crumb", "Keeper Doll", "Lens" }, done.relics);
+            CollectionAssert.AreEqual(new[] { "Keeper Doll" }, done.relics); // #718
             Assert.IsTrue(RelicId.DefaultCarried.All(id => sim.FindRelic(id).takenMonth >= 0), "marked taken");
-            if (done.leader != null) StringAssert.Contains("carrying the Sky Crumb wrapped in cloth", done.foundersLine);
+            if (done.leader != null) StringAssert.Contains("carrying the Keeper Doll wrapped in cloth", done.foundersLine);
         }
 
         [Test]
@@ -493,16 +342,6 @@ namespace AquariumCiv.Tests
             Assert.IsTrue(s.Found);
         }
 
-        [Test]
-        public void TraitLinesCarryAnEraTag()
-        {
-            var lines = SimCore.TraitLines().ToList();
-            Assert.AreEqual(4, lines.Count(l => l.era == Era.Town), "the four that know too much");
-            Assert.IsTrue(lines.Where(l => l.era == Era.Town).All(l => l.standIn != null));
-            Assert.IsTrue(lines.Where(l => l.era == Era.Camp).All(l => l.standIn == null));
-            Assert.AreEqual(Era.Town, SimCore.TraitLineEra("{0} invented a mirror for signalling the Keeper."));
-            Assert.AreEqual(Era.Camp, SimCore.TraitLineEra("{0} invented a bucket that pours itself."));
-        }
 
         // ---------- the economy ----------
         [TestCase(1)]

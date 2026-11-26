@@ -85,17 +85,23 @@ namespace AquariumCiv.Life.Tests
             var sim = Camp(7, 29);
             sim.DebugAddRabbits(8);
             Assert.Greater(sim.HuntSurplus, 0);
-            string[] jobs = { JobType.Gatherer, JobType.Fisher, JobType.Woodcutter, JobType.Toolmaker };
-            Assert.IsTrue(jobs.All(sim.JobOpen), "the camp has fish, trees and a fire");
+            string[] core = { JobType.Gatherer, JobType.Fisher, JobType.Woodcutter, JobType.Toolmaker };
+            Assert.IsTrue(core.All(sim.JobOpen), "the camp has fish, trees and a fire");
+            // every open job but the hunter's (the new start, #682, brings more workers than the four core jobs): the core first
+            var jobs = core.Concat(sim.OpenJobs().Where(j => j != JobType.Hunter && j != JobType.Elder && !core.Contains(j)).Distinct()).ToArray();
             var workers = Workers(sim);
             Assert.GreaterOrEqual(workers.Count, 3, "needs a few workers");
             // everyone on a different job, none crowded: the old rule freed nobody
-            Assume.That(workers.Count <= jobs.Length, "more workers than jobs: someone would share one (seed pinned: " + workers.Count + ")");
+            // the new start (#682) brings five workers to the camp's four jobs: the extras retire (elders), so nobody shares a job
+            foreach (var extra in workers.Skip(jobs.Length)) { extra.age = sim.Config.retireAge + 1f; sim.DebugSetJob(extra, JobType.Elder); }
+            workers = Workers(sim);
+            Assert.LessOrEqual(workers.Count, jobs.Length, "one job each (" + workers.Count + " workers, jobs " + string.Join(",", jobs) + ")");
+            Assert.GreaterOrEqual(workers.Count, 3);
             for (int i = 0; i < workers.Count; i++) { sim.DebugSetJob(workers[i], jobs[i]); workers[i].jobChangedMonth = 0; }
             Assert.AreEqual(0, Workers(sim).Count(n => n.job == JobType.Hunter));
             sim.Advance(sim.Config.StepHours);
             Assert.AreEqual(1, Workers(sim).Count(n => n.job == JobType.Hunter), "the hunter job took someone: " + string.Join(",", Workers(sim).Select(n => n.job)));
-            if (workers.Count == jobs.Length) Assert.IsTrue(Workers(sim).Any(n => n.job == JobType.Toolmaker), "never the toolmaker");
+            Assert.IsTrue(Workers(sim).Any(n => n.job == JobType.Toolmaker), "never the toolmaker");
         }
 
         [Test]

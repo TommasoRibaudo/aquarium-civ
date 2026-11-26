@@ -337,7 +337,7 @@ namespace AquariumCiv.View.PlayTests
             var title = root.Q<GlassButton>("hud-title");
             Assert.AreEqual(ColorOf("#00000000"), title.resolvedStyle.backgroundColor, "no pill");
             Assert.IsNotNull(root.Q("hud-settings").Q<GlassIcon>(), "a settings mark, beside the name");
-            Assert.Less(root.Q("hud-feedback").resolvedStyle.opacity, 1f, "Feedback is quieter");
+            Assert.IsNotNull(FeedbackUI.Instance?.Pill, "the Feedback pill is drawn by FeedbackUI, over every panel (#702)");
 
             // Rule 7: Clean's state shows, and clean mode ends with the word back
             hud.SetCleanMode(true);
@@ -366,6 +366,41 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("hud");
         }
 
+        /// <summary>Tester 2026-11-25 (750×1334): with the kit up, the toast's lane is at the top of the screen, where a person's caption plate
+        /// sits; the two printed over each other. The toast waits while the caption is up, and comes back after it.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator ToastWaits_UnderACaptionItWouldCover()
+        {
+            GameUiPanel.AcceptInputUnfocused(true);
+            yield return OpenSlice(750, 1334);
+            var hud = GameHud.Instance; var root = hud.Root;
+            GameUiPanel.Toasts.Clear();
+            hud.Open(GameHud.Kit);
+            yield return Frames(4);
+            hud.Toast("A seed is in your kit.", 6f);
+            yield return Frames(4);
+            var toast = root.Q("hud-toast");
+            Assert.AreEqual("A seed is in your kit.", GameUiPanel.Toasts.Current, "up, with nothing in its way");
+            // a person's line plate lands on the toast's lane (on the small phone the kit lifts the lane to the plate's place, under the title)
+            var caption = new GlassCaption("This is the spot. Put our things down.", "Harl") { name = "test-caption" };
+            root.Add(caption);
+            yield return Frames(4);
+            hud.SetBarProbe("test-tall-sheet", () => caption.worldBound.yMax); // the tall kit's top: the toast lane rises onto the plate
+            yield return Frames(4);
+            Debug.Log($"[toast] caption {caption.worldBound}, toast {toast.worldBound} in {toast.parent.worldBound}, bottom {toast.resolvedStyle.bottom}, held {hud.ToastUnderCaption} ({GameUiPanel.Toasts.Holders})");
+            Assert.IsTrue(hud.ToastUnderCaption, "the caption is in the toast's lane: it holds the toast");
+            Assert.IsNull(GameUiPanel.Toasts.Current, "the toast waits, not printed over the caption");
+            caption.RemoveFromHierarchy();
+            yield return Frames(4);
+            hud.SetBarProbe("test-tall-sheet", null);
+            Assert.IsFalse(hud.ToastUnderCaption, "the caption is gone");
+            Assert.AreEqual("A seed is in your kit.", GameUiPanel.Toasts.Current, "the toast comes back");
+            hud.CloseSheet();
+            GameUiPanel.Toasts.Clear();
+            yield return Frames(2);
+            AssertNoErrors("toast under caption");
+        }
+
         [UnityTest, Timeout(120000)]
         public IEnumerator HistoryOpensTheTimeLapseEvenWithStoriesWaiting()
         {
@@ -378,7 +413,7 @@ namespace AquariumCiv.View.PlayTests
             Assume.That(stack.Model.Mode, Is.EqualTo(CardStackMode.Peek), "needs a return with stories");
             yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-peek"));
             yield return Frames(4);
-            yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-skip"));
+            stack.Model.Close(); // the back gesture leaves the stories waiting; Skip all answers the stack and clears the dot (#561)
             yield return Frames(6);
             var hud = GameHud.Instance;
             Assert.IsTrue(stack.Model.HistoryDot, "stories wait");
@@ -490,9 +525,9 @@ namespace AquariumCiv.View.PlayTests
             cam.FlyTo(new Vector3(0f, 2.2f, 0f), 0.55f, 0.2f);
             yield return new WaitForSecondsRealtime(0.6f);
             Assert.IsTrue(hud.OffHome);
-            // #604: the title has no pill any more (its ink follows the light); the round buttons keep their backing off home
+            // #604: the title has no pill any more (its ink follows the light); #707: nor behind the round buttons
             Assert.AreEqual(0f, hud.Root.Q("hud-title-text").resolvedStyle.backgroundColor.a, "no pill behind the name");
-            Assert.IsTrue(hud.Root.Query(className: "hud-disc").ToList().Any(d => d.resolvedStyle.backgroundColor.a > 0f), "the round buttons keep a backing");
+            Assert.IsFalse(hud.Root.Query(className: "hud-disc").ToList().Any(d => d.resolvedStyle.backgroundColor.a > 0f), "no backing behind the round buttons");
             AssertNoErrors("backing");
         }
 

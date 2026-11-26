@@ -129,7 +129,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(5);
             var wv = WolfView.Instance;
             Assert.IsNotNull(wv, "the wolf view");
-            Assert.AreEqual(Sim.EcoWolfCount, wv.Shown + 0, $"the pack shown ({wv.Status()})");
+            Assert.AreEqual(System.Math.Min(WolfView.Cap, Sim.EcoWolfCount), wv.Shown, $"the pack shown ({wv.Status()})");
             var people = new List<float>();
             var pv = PeopleView.Find();
             var who = new List<AquariumCiv.Life.PersonRef>(); var px = new List<float>(); var pz = new List<float>();
@@ -152,7 +152,7 @@ namespace AquariumCiv.View.PlayTests
                 }
             }
             yield return Watch(15f);
-            Assert.AreEqual(Sim.EcoWolfCount, wv.Shown, "still at the den after 15 s: they don't vanish into the trees");
+            Assert.AreEqual(System.Math.Min(WolfView.Cap, Sim.EcoWolfCount), wv.Shown, "still at the den after 15 s: they don't vanish into the trees");
             Assert.AreEqual(0, wv.RuleBreaks, wv.Status());
             Assert.AreEqual(0, wv.UnderCrownFrames, "out from under the crowns: " + wv.Status());
             yield return Shot("p9-quad-wolves-default");

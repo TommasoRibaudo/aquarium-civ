@@ -33,7 +33,7 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(0.5f);
             var hud = GameHud.Instance;
             var fb = FeedbackUI.Instance;
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-feedback"));
+            yield return TapAt(GameUiPanel.ScreenCenter(FeedbackUI.Instance.PillRoot, "hud-feedback"));
             yield return Until(() => fb.IsOpen, 3f);
             Assert.IsTrue(fb.IsOpen);
             Assert.IsTrue(hud.IsVisible, "the HUD never left");
@@ -70,7 +70,7 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(0.6f);
             var hud = GameHud.Instance;
             var fb = FeedbackUI.Instance;
-            var icon = GameUiPanel.ScreenCenter(hud.Root, "hud-feedback");
+            var icon = GameUiPanel.ScreenCenter(FeedbackUI.Instance.PillRoot, "hud-feedback");
             yield return new WaitForEndOfFrame();
             var screen = ScreenCapture.CaptureScreenshotAsTexture();
             float k = 1f / screen.height;

@@ -260,10 +260,10 @@ namespace AquariumCiv.Tests
         {
             var sim = NewSim(2);
             sim.Advance(6);
-            sim.State.chronicle.Add(new ChronicleEntry { id = 9000, month = sim.State.month - 3, kind = "keeper", text = "x", salience = 0.99f, relicId = RelicId.SkyCrumb });
+            sim.State.chronicle.Add(new ChronicleEntry { id = 9000, month = sim.State.month - 3, kind = "keeper", text = "x", salience = 0.99f, relicId = RelicId.FestivalMask }); // #718: the Sky Crumb no longer titles an era
             Assert.IsTrue(sim.ForceNextEra());
             sim.Step();
-            Assert.AreEqual("The Years of the Sky Bread", sim.EraTitle(Era.Camp));
+            Assert.AreEqual("The Years of the Festival Mask", sim.EraTitle(Era.Camp));
             Assert.AreEqual("", sim.EraTitle(Era.Town));
             sim.ForceCompleteBox();
             StringAssert.StartsWith("The ", sim.EraTitle(Era.Town), "the final era is titled when the box completes");
@@ -335,6 +335,7 @@ namespace AquariumCiv.Tests
         {
             var sim = NewSim(2);
             sim.Advance(5);
+            sim.State.relics.RemoveAll(r => r.id == RelicId.LeftSandal); // #715: the sandal story comes sooner now; this test sets its own
             sim.State.relics.Add(new Relic { id = RelicId.LeftSandal, foundMonth = sim.State.month, x = 0.7f, z = -0.4f, ownerId = sim.State.notables[0].id });
             sim.Advance(1);
             var stone = sim.State.history.shapes.Single(r => r.kind == "stone");

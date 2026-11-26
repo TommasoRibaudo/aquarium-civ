@@ -10,18 +10,63 @@ namespace AquariumCiv.View.ShowMe
     /// </summary>
     public static partial class PeopleVoice
     {
+        /// <summary>#717: what the Keeper's pick says while telling tonight's story, by manner (<see cref="SmallChoices.MannerSlow"/>,
+        /// <see cref="SmallChoices.MannerShort"/>). The woodpile line only where the woodpile stands. [est] until the user signs them off.</summary>
+        public static List<string> TellerLines(int manner, bool woodpile)
+        {
+            var l = new List<string>();
+            if (manner == SmallChoices.MannerShort)
+            {
+                if (woodpile) l.Add("So nobody sat on the woodpile again. The end.");
+                l.Add("That's the whole story. It's true, too.");
+            }
+            else
+            {
+                l.Add("And then the wind said... no, wait. Let me do the wind.");
+                l.Add("This next part is the scary part. Come closer.");
+            }
+            return l;
+        }
+
         /// <summary>The lines for a moment of <paramref name="kind"/>: (text, who) where who is -1 for the crowd, else a notable id.
         /// <paramref name="a"/> and <paramref name="b"/> are the moment's principals (the couple; the child and the parent; the new
-        /// chief). Deterministic order; the caller says each at most once a moment.</summary>
-        public static List<(string text, int speaker)> MomentLines(MomentKind kind, int a, int b)
+        /// chief; a ritual's leader). Deterministic order; the caller says each at most once a moment. #721: a ritual's lines are its
+        /// own (<paramref name="ritual"/>, <see cref="RitualKind"/>); <paramref name="keeper"/> is how the stage names the Keeper.
+        /// All ritual lines are [est] until the user signs them off.</summary>
+        public static List<(string text, int speaker)> MomentLines(MomentKind kind, int a, int b, string ritual = null, string keeper = "the Keeper", Era era = Era.Camp)
         {
             var l = new List<(string, int)>();
             switch (kind)
             {
+                case MomentKind.Ritual:
+                    // The stand-in staging is the gathering at the fire: lines that need the walk or the bushes wait for the
+                    // rituals' own beats ("Not that bush, that bush.", "Don't look back, it's rude.").
+                    switch (ritual)
+                    {
+                        case RitualKind.Berrying:
+                            l.Add(("One for the basket, one for me.", -1));
+                            l.Add(("Look at my hands!", -1));
+                            break;
+                        case RitualKind.Woodpile:
+                            l.Add(("Pass it along!", -1));
+                            l.Add(("Mind your toes.", -1));
+                            l.Add(("That one's mine. I'm keeping it.", -1));
+                            break;
+                        case RitualKind.Feast:
+                            l.Add(("Budge up, there's room.", -1));
+                            l.Add(("One more seat this year.", -1));
+                            l.Add(("Who made this? It's good.", -1));
+                            break;
+                        case RitualKind.Offering:
+                            if (a >= 0) l.Add(($"Gently. It's for {keeper}.", a));
+                            l.Add(("Is it empty yet?", -1));
+                            break;
+                    }
+                    break;
                 case MomentKind.Festival:
                     l.Add(("Save me a dance!", -1));
                     l.Add(("There's plenty. Eat up!", -1));
-                    l.Add(("Pass the bread, please.", -1));
+                    l.Add((era == Era.Camp ? "Pass the berries, please." : "Pass the bread, please.", -1)); // #719 [est]: the camp has no bread
                     l.Add(("Thank you for the fire.", -1));
                     l.Add(("This stew is the best yet.", -1));
                     l.Add(("Round again! Round again!", -1));
@@ -43,11 +88,14 @@ namespace AquariumCiv.View.ShowMe
                     break;
                 case MomentKind.NewLeader:
                     if (a >= 0) l.Add(("I'll do my best for all of us.", a));
-                    l.Add(("Long live the new chief!", -1));
+                    l.Add(($"Long live the new {LeaderWord(era)}!", -1)); // #719 [est]: the era's own leader
                     l.Add(("A good seat. Wear it well.", -1));
                     break;
             }
             return l;
         }
+
+        /// <summary>#719: the leader the era has (camp: chief, village: headman, town: lord).</summary>
+        public static string LeaderWord(Era era) => era switch { Era.Village => "headman", Era.Town => "lord", _ => "chief" };
     }
 }

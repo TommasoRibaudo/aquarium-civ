@@ -198,7 +198,7 @@ namespace AquariumCiv.View.Tests
                 Bits(PuffKind.Chips, seed, PuffOptions.Default, out int chips); Assert.That(chips, Is.InRange(5, 7));
                 Bits(PuffKind.Dust, seed, PuffOptions.Default, out int dust); Assert.That(dust, Is.InRange(3, 4));
                 Bits(PuffKind.Sparks, seed, PuffOptions.Default, out int sparks); Assert.AreEqual(5, sparks, "the flash star and 4 diamonds");
-                Bits(PuffKind.Droplets, seed, PuffOptions.Default, out int drops); Assert.That(drops, Is.InRange(4, 10));
+                Bits(PuffKind.Droplets, seed, PuffOptions.Default, out int drops); Assert.That(drops, Is.InRange(2, 4), "the user 2026-11-15: fewer drops");
                 Bits(PuffKind.Ring, seed, PuffOptions.Default, out int rings); Assert.AreEqual(2, rings);
                 Bits(PuffKind.Grass, seed, PuffOptions.Default, out int grass); Assert.AreEqual(4, grass);
             }
@@ -256,11 +256,28 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(2, n);
             Assert.AreEqual(0f, bits[0].delay); Assert.AreEqual(0.15f, bits[1].delay, 1e-5f);
             Assert.AreEqual(0.03f, HitFxMath.Size(bits[0], 0f), 1e-5f);
-            Assert.AreEqual(0.20f, HitFxMath.Size(bits[0], 0.7999f), 1e-3f);
-            Assert.AreEqual(0.7f * 0.20f, HitFxMath.Size(bits[1], 0.7999f), 1e-3f, "the second ring is 0.7x");
+            Assert.AreEqual(HitFxMath.RingEnd, HitFxMath.Size(bits[0], 0.7999f), 1e-3f);
+            Assert.AreEqual(0.7f * HitFxMath.RingEnd, HitFxMath.Size(bits[1], 0.7999f), 1e-3f, "the second ring is 0.7x");
             Assert.AreEqual(0f, HitFxMath.Size(bits[1], -0.01f), "not yet");
             Assert.Greater(HitFxMath.Line(bits[0], 0.05f), HitFxMath.Line(bits[0], 0.6f));
             Assert.AreEqual(0f, HitFxMath.Line(bits[0], 0.8f));
+        }
+
+        [Test]
+        public void Ring_IsThinPaleAndModest_NeverADisc_NeverDark()
+        {
+            Assert.LessOrEqual(HitFxMath.RingEnd, 0.12f, "a modest ring (#692 p3)");
+            // even where a far camera's pixel is huge, the line stays a quarter of the radius: the middle stays open
+            for (float r = 0.01f; r < 0.3f; r += 0.02f)
+                Assert.LessOrEqual(HitFxMath.RingDrawLine(0.006f, r, 0.05f, 1f), r * 0.25f + 1e-6f);
+            foreach (var g in new[] { PuffGround.Grass, PuffGround.Sand })
+                foreach (var c in new[] { PuffColour.RingWater, PuffColour.RingMud })
+                {
+                    Assert.IsTrue(PuffContrast.Pick(c, g, out var fill, out var rim));
+                    var band = HitFxMath.RingBand(fill);
+                    Assert.Greater(fill.grayscale, 0.85f, "a pale ring");
+                    Assert.Greater(band.grayscale, 0.6f, "its band is never dark");
+                }
         }
 
         [Test]
@@ -349,7 +366,8 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void DropletsAndSparks_OnSand_KeepABiggerFloor_AndABolderDarkRim()
         {
-            foreach (var s in new[] { PuffShape.Drop, PuffShape.Diamond, PuffShape.Star })
+            Assert.Less(PuffContrast.MinPixelsScale(PuffShape.Drop, PuffGround.Sand), 1f, "the user 2026-11-15: droplets stay small");
+            foreach (var s in new[] { PuffShape.Diamond, PuffShape.Star })
             {
                 Assert.GreaterOrEqual(PuffContrast.MinPixelsScale(s, PuffGround.Sand), 2f, s.ToString());
                 Assert.Greater(PuffContrast.MinPixelsScale(s, PuffGround.Grass), PuffContrast.MinPixelsScale(PuffShape.Slab, PuffGround.Grass), s.ToString());
@@ -372,6 +390,17 @@ namespace AquariumCiv.View.Tests
             Assert.Greater(PuffContrast.PopRadius01(PuffContrast.PopSeconds * 0.9f), PuffContrast.PopRadius01(0f));
             Assert.AreEqual(0f, PuffContrast.PopRadius01(PuffContrast.PopSeconds));
             Assert.LessOrEqual(PuffContrast.PopSeconds, 0.2f);
+            // batch 3 leftovers: the band under the flash is never a dark ring (it drew black in the grass at the camp frame)
+            foreach (PuffGround g in System.Enum.GetValues(typeof(PuffGround)))
+            {
+                var c = PuffContrast.PopBand(g);
+                Assert.Greater(0.299f * c.r + 0.587f * c.g + 0.114f * c.b, 0.33f, $"the pop's band on {g} is a mid tone, not near black");
+            }
+            Assert.LessOrEqual(PuffContrast.PopBandLine, 1.2f, "and only just wider than the flash");
+            // and the pale dust on soil keeps a mid-brown edge, not a near-black ring (the pole-dare shot's hoe dust)
+            Assert.IsTrue(PuffContrast.Pick(PuffColour.DrySoil, PuffGround.Soil, out var dustFill, out var dustRim));
+            Assert.Greater(Lum(dustRim), 0.3f, "the dust's edge on soil is not near black");
+            Assert.Greater(Lum(dustFill) - Lum(dustRim), 0.3f, "and still edges the cream fill");
         }
     }
 }

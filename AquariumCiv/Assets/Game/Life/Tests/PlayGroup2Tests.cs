@@ -17,6 +17,26 @@ namespace AquariumCiv.Life.Tests
             Assert.AreNotEqual(PlayGame.Splash, PlayGroups.Pick(3, 1, PlaySites.Water, null), "one kid alone doesn't splash");
         }
 
+        /// <summary>#708 (B39.c): at a pond with fish in summer, one or two kids sometimes (about half the groups) try to catch one by hand;
+        /// never without the fish, never three or more.</summary>
+        [Test]
+        public void Pick_AtAFishPond_OneOrTwoSometimesTryForAFish()
+        {
+            int grabs = 0, n = 0;
+            for (int seed = 0; seed < 400; seed++)
+                for (int size = 1; size <= 2; size++)
+                {
+                    n++;
+                    var g = PlayGroups.Pick(seed, size, PlaySites.Water | PlaySites.Fish, null);
+                    if (g == PlayGame.FishGrab) grabs++;
+                    else if (size == 2) Assert.AreEqual(PlayGame.Splash, g, "the other pairs splash");
+                    Assert.AreNotEqual(PlayGame.FishGrab, PlayGroups.Pick(seed, size, PlaySites.Water, null), "no fish: no try");
+                }
+            Assert.That(grabs, Is.InRange(n * 3 / 10, n * 7 / 10), "sometimes: about half");
+            for (int size = 3; size <= PlayGroups.MaxGroup; size++)
+                for (int seed = 0; seed < 50; seed++) Assert.AreNotEqual(PlayGame.FishGrab, PlayGroups.Pick(seed, size, PlaySites.Water | PlaySites.Fish, null), "1–2 kids only");
+        }
+
         [Test]
         public void Pick_Snow_MakesASnowballFight_UnlessTheNeighbourHasOne()
         {

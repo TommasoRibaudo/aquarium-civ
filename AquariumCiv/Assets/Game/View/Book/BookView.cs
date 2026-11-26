@@ -436,7 +436,7 @@ namespace AquariumCiv.View
 
         static string RelicIcon(string id) => id switch
         {
-            RelicId.SkyCrumb => "gift", RelicId.FestivalMask => "person", RelicId.KeeperDoll => "hand", RelicId.LeftSandal => "pin", RelicId.Lens => "eye", _ => "star",
+            RelicId.FestivalMask => "person", RelicId.KeeperDoll => "hand", RelicId.LeftSandal => "pin", _ => "star", // #718: an old save's Sky Crumb or Lens: a star
         };
 
         void End(VisualElement to, BookPage p)

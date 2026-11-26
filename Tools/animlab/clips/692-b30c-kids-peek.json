@@ -1,0 +1,23 @@
+{
+ "name": "692-b30c-kids-peek",
+ "notes": "B30.c: a kid on tiptoe over the simmering pot, steam in the face, the flinch and the wipe, the sniff, the cook shoos, the run off, the hop.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(18.0f, 2);",
+   "return AquariumCiv.View.CampCheats.Later(2.0f, () => AquariumCiv.View.CampCheats.PotPeek());"
+  ],
+  "warm": 0.5,
+  "seconds": 9,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.4,
+  "closeSpan": 0.45,
+  "yaw": 28,
+  "pitch": 42
+ }
+}

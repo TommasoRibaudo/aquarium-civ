@@ -42,8 +42,15 @@ namespace AquariumCiv.View
         Transform holder, rootSeen;
         readonly Dictionary<DeerHuntPlan, Live> lives = new();
         readonly List<DeerHuntPlan> plans = new(), drop = new();
-        Mesh arrowMesh, poleMesh, antlerMesh, whiteAntlerMesh, spitMesh, flameMesh;
-        Transform antlers, feast, roast; readonly List<Transform> flames = new();
+        Mesh arrowMesh, poleMesh, antlerMesh, whiteAntlerMesh, spitMesh, flameMesh, postMesh;
+        Transform antlers, feast, roast, oldPost; readonly List<Transform> flames = new();
+
+        /// <summary>#722 (1.4, B80.b): where the antlers are drawn while their pass plays (CampLife.Stories3 sets it each frame): at the old door
+        /// (the moment waits, or the scene has not lifted them yet), in the carrier's hands (CampLife draws them), or as the sim says.</summary>
+        public enum AntlersHold { AsTheSimSays, AtOldDoor, InHands }
+        public static AntlersHold Hold;
+        /// <summary>Tests: the empty post at the old door is drawn (B80.b "the old post stays empty").</summary>
+        public bool OldPostShown => oldPost != null && oldPost.gameObject.activeSelf;
 
         // ---------------------------------------------------------------- tests and the panel
         public int ArrowsShot { get; private set; }
@@ -112,7 +119,7 @@ namespace AquariumCiv.View
 
         void OnDestroy()
         {
-            foreach (var m in new[] { arrowMesh, poleMesh, antlerMesh, whiteAntlerMesh, spitMesh, flameMesh }) if (m != null) Destroy(m);
+            foreach (var m in new[] { arrowMesh, poleMesh, antlerMesh, whiteAntlerMesh, spitMesh, flameMesh, postMesh }) if (m != null) Destroy(m);
         }
 
         Transform Holder()
@@ -430,6 +437,7 @@ namespace AquariumCiv.View
         {
             if (feast != null) feast.gameObject.SetActive(false);
             if (antlers != null) antlers.gameObject.SetActive(false);
+            if (oldPost != null) oldPost.gameObject.SetActive(false);
         }
 
         // ---------------------------------------------------------------- B13.d the antlers over the chief's door
@@ -451,7 +459,8 @@ namespace AquariumCiv.View
             bool up = sim.DeerAntlersUp || sim.WhiteStagAntlers;
             // they go up the morning after the hunt that brought them (from 7 h), and stay
             if (up && antlerDay >= 0 && (now.day < antlerDay + 1 || (now.day == antlerDay + 1 && now.hour < 7f))) up = false;
-            if (!up) { if (antlers != null) antlers.gameObject.SetActive(false); return; }
+            OldPost(sim, up);
+            if (!up || Hold == AntlersHold.InHands) { if (antlers != null) antlers.gameObject.SetActive(false); return; } // #722: carried, CampLife draws them
             bool white = sim.WhiteStagAntlers;
             if (antlers == null || antlersWhite != white)
             {
@@ -462,19 +471,53 @@ namespace AquariumCiv.View
                 go.AddComponent<MeshRenderer>().sharedMaterial = box.SolidMaterial;
                 antlers = go.transform; antlersWhite = white;
             }
-            if (!ChiefDoor(sim, out var at, out float yaw)) { antlers.gameObject.SetActive(false); return; }
+            // #722 (1.4): at the door they passed to (the leader's before the first pass); the old door while their pass is still to come
+            var door = Hold == AntlersHold.AtOldDoor ? sim.FindNotable(sim.StoryMarks.antlersFromId) ?? sim.AntlersDoor : sim.AntlersDoor;
+            if (!DoorOf(sim, door, true, out var at, out float yaw)) { antlers.gameObject.SetActive(false); return; }
             antlers.SetLocalPositionAndRotation(at, Quaternion.Euler(0f, yaw, 0f));
             antlers.gameObject.SetActive(true);
         }
 
-        /// <summary>Over the chief's door (the leader's home's front, 0.17 u up), facing out; the fire's edge when the chief has no home.</summary>
-        bool ChiefDoor(SimCore sim, out Vector3 at, out float yaw)
+        /// <summary>#722 (1.4, B80.b): the old post stays empty at the old door once the antlers have passed (and are not still held there).</summary>
+        void OldPost(SimCore sim, bool up)
+        {
+            int from = sim.StoryMarks.antlersFromId;
+            var old = from >= 0 ? sim.FindNotable(from) : null;
+            bool show = up && old != null && Hold != AntlersHold.AtOldDoor && DoorOf(sim, old, false, out var at, out float yaw)
+                        && !(DoorOf(sim, sim.AntlersDoor, true, out var nowAt, out _) && (nowAt - at).sqrMagnitude < 0.01f);
+            if (!show) { if (oldPost != null) oldPost.gameObject.SetActive(false); return; }
+            if (oldPost == null)
+            {
+                var go = new GameObject("Empty antler post") { hideFlags = HideFlags.DontSave };
+                go.transform.SetParent(Holder(), false);
+                go.AddComponent<MeshFilter>().sharedMesh = postMesh ??= BuildPost();
+                go.AddComponent<MeshRenderer>().sharedMaterial = box.SolidMaterial;
+                oldPost = go.transform;
+            }
+            DoorOf(sim, old, false, out at, out yaw);
+            oldPost.SetLocalPositionAndRotation(at, Quaternion.Euler(0f, yaw, 0f));
+            oldPost.gameObject.SetActive(true);
+        }
+
+        /// <summary>#722 (B80.b): the post by a person's door, box-local x and z (false: no door, or no Instance).</summary>
+        public static bool DoorSpot(SimCore sim, int notableId, out Vector2 at)
+        {
+            at = default;
+            var n = sim?.FindNotable(notableId);
+            if (Instance == null || Instance.box == null || n == null || !Instance.DoorOf(sim, n, false, out var p, out _)) return false;
+            at = new Vector2(p.x, p.z);
+            return true;
+        }
+
+        /// <summary>Beside <paramref name="who"/>'s door (their home's front), facing out; with <paramref name="fallback"/>, the fire's edge when
+        /// they have no home (the antlers before the camp has tents), else false.</summary>
+        bool DoorOf(SimCore sim, Notable who, bool fallback, out Vector3 at, out float yaw)
         {
             at = default; yaw = 0f;
-            var chief = sim.HolderOf(SimCore.LeaderOf(sim.State.era)) ?? sim.HolderOf(RoleType.Chief);
-            var lot = chief != null && sim.Settlement != null ? sim.Settlement.HomeOf(chief) : null;
+            var lot = who != null && sim.Settlement != null ? sim.Settlement.HomeOf(who) : null;
             if (lot == null)
             {
+                if (!fallback) return false;
                 float fx = sim.EcoGround.campX, fz = sim.EcoGround.campZ;
                 at = box.land.OnGround(fx + 0.3f, fz);
                 return true;
@@ -498,16 +541,27 @@ namespace AquariumCiv.View
         /// <summary>The post the antlers are lashed to, by the chief's door.</summary>
         const float Post = 0.2f;
 
+        /// <summary>#722 (B80.b): the post alone (the old post, empty).</summary>
+        static Mesh BuildPost()
+        {
+            var mb = new MeshBuilder(4265) { jitter = 0.01f };
+            mb.Prism(Vector3.zero, 0.011f, 0.009f, Post, 6, Palette.Bark, topCol: Palette.WoodLight);
+            return mb.ToMesh("AntlerPostEmpty");
+        }
+
+        /// <summary>#722 (B80.b): the antlers off their post (the carried ones), the mount at the origin.</summary>
+        public static Mesh CarriedAntlers(bool white) => BuildAntlers(white, false);
+
         /// <summary>A stag's antlers (0.12 u wide, the white stag's 0.16 with pale tips) on a little hide-bound mount, standing on its base.</summary>
-        static Mesh BuildAntlers(bool white)
+        static Mesh BuildAntlers(bool white, bool post = true)
         {
             var mb = new MeshBuilder(white ? 4266 : 4265) { jitter = 0.01f };
             float s = white ? 1.35f : 1f;
             var bone = white ? new Color(0.96f, 0.95f, 0.9f) : new Color(0.82f, 0.74f, 0.6f);
             var tip = white ? new Color(1f, 0.98f, 0.92f) : new Color(0.9f, 0.85f, 0.74f);
             // a post by the door (a canvas tent narrows to its poles: antlers on the canvas sank into it), the antlers lashed on top
-            mb.Prism(Vector3.zero, 0.011f, 0.009f, Post, 6, Palette.Bark, topCol: Palette.WoodLight);
-            mb.M = Matrix4x4.Translate(new Vector3(0f, Post, 0f));
+            if (post) mb.Prism(Vector3.zero, 0.011f, 0.009f, Post, 6, Palette.Bark, topCol: Palette.WoodLight);
+            mb.M = Matrix4x4.Translate(new Vector3(0f, post ? Post : 0f, 0f));
             mb.Box(new Vector3(0f, 0f, 0f), new Vector3(0.03f, 0.022f, 0.012f), Palette.Bark);
             foreach (int side in new[] { -1, 1 })
             {

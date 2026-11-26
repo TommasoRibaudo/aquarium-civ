@@ -1,0 +1,35 @@
+{
+ "name": "692-b40c-door-sit",
+ "notes": "B40.c: at dusk a grown-up sits in the tent's doorway, half in, leaning back and watching the fire; a kid comes and sits against them, an arm goes round the kid; then they go in.",
+ "animlab": {
+  "issue": 692
+ },
+ "live": {
+  "seed": 4242,
+  "ecology": 1,
+  "setup": [
+   "AquariumCiv.View.HitFx.MinPixels = 0f; AquariumCiv.View.HitFx.MinPuffPixels = 0f; AquariumCiv.View.KidPlayDirector.BallMinPixels = 0f; return AquariumCiv.View.CampCheats.StageCamp(18.0f, 2);",
+   "return AquariumCiv.View.FirstRunView.DebugSkipAll() + \" | \" + AquariumCiv.View.FirstRunView.DebugStatus();",
+   "return AquariumCiv.View.PeopleView.DebugSetHour(18.0f) + \" | \" + AquariumCiv.View.DayLightDriver.Status();",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return \"waiting for the tent to stand\";",
+   "return AquariumCiv.View.DayLightDriver.DebugPauseClock(true);",
+   "return AquariumCiv.View.CampCheats.Later(4.0f, () => AquariumCiv.View.CampCheats.TentDoorSit());"
+  ],
+  "warm": 0.5,
+  "seconds": 12,
+  "fps": 30,
+  "follow": "camp",
+  "span": 1.6,
+  "closeSpan": 0.5,
+  "yaw": 28,
+  "pitch": 38,
+  "lead": 3.5
+ }
+}

@@ -382,9 +382,6 @@ namespace AquariumCiv.Life
                 GatherAtGlass(at);
         }
 
-        /// <summary>#191: the wisher's own reaction to their wish coming true. View only, like any reaction: they pick up their day after.</summary>
-        public void WisherReacts(int notableId, ViewTime at) => React(KeeperGesture.WishAnswered, at, default, PersonRef.Notable(notableId));
-
         /// <summary>A gesture at a world point (needs <see cref="Positions"/>): those within <paramref name="radius"/> react.</summary>
         public void ReactAt(KeeperGesture gesture, ViewTime at, float x, float z, float radius = 1f, float share = 1f, float seconds = 0f)
         {
@@ -414,7 +411,7 @@ namespace AquariumCiv.Life
             float roll = Roll(p, r);
             float f = r.end > r.start ? Math.Max(0f, Math.Min(1f, (t.hour - r.start) / (r.end - r.start))) : 0f;
             if (!ReactsPlain(p, r, t, under, asleep, kid, roll, out kind, out prop, out to)) return false;
-            if (prop == Prop.Lantern || r.gesture == KeeperGesture.WishAnswered) return true; // stepping out of the door at night with a lantern; a wish's cheer is theirs at any stage
+            if (prop == Prop.Lantern) return true; // stepping out of the door at night with a lantern
             kind = StagedReaction(r.gesture, p, f, kind, out var staged);
             if (staged != Prop.None) prop = staged;
             return true;
@@ -423,12 +420,6 @@ namespace AquariumCiv.Life
         bool ReactsPlain(Person p, Reaction r, ViewTime t, Seg under, bool asleep, bool kid, float roll, out ActivityKind kind, out Prop prop, out Place to)
         {
             kind = ActivityKind.LookUp; prop = Prop.None; to = Place.None;
-            if (r.gesture == KeeperGesture.WishAnswered)
-            {
-                if (r.target != p.who || asleep) return false;
-                kind = ActivityKind.Cheer; // #191: they asked and it came: it's clear who it was for
-                return true;
-            }
             if (r.gesture == KeeperGesture.Sighting)
             {
                 if (r.target != p.who || asleep) return false;
@@ -573,8 +564,13 @@ namespace AquariumCiv.Life
                 ActivityKind.FetchWater => a.moving ? $"carrying water to {where}" : $"drawing water at {where}",
                 ActivityKind.RollBarrel => $"rolling a barrel to {where}",
                 ActivityKind.TipLoad => "tipping a basket onto the pile", // #361
+                ActivityKind.Gather when a.place.kind == PlaceKind.Deadfall => "gathering fallen branches under the wild tree", // #656/#677: never chopped
+                ActivityKind.Gather when a.prop == Prop.Stick => "gathering dry grass and twigs for the fire", // #677: the grass fire, never "wood"
                 ActivityKind.HangFish => "hanging fish up to dry", ActivityKind.TakeDownFish => "taking the dry fish down", // #543
                 ActivityKind.Pray => "praying at the feather pole", // fb4 #566
+                ActivityKind.FeedFire => "feeding dry grass to the fire", ActivityKind.ScrapeHide => "scraping a hide at the rack", // sign-off 2026-11-14
+                ActivityKind.Weave when a.prop == Prop.Hide => "mending a bedroll by the fire",
+                ActivityKind.Prepare when a.place.kind == PlaceKind.Stash => "sorting the basket at the pile",
                 ActivityKind.Walk => $"walking to {where}",
                 ActivityKind.Sleep => "asleep at home",
                 ActivityKind.Indoors => "indoors",
@@ -598,7 +594,7 @@ namespace AquariumCiv.Life
         static string Verb(ActivityKind k) => k switch
         {
             ActivityKind.Nap => "napping", ActivityKind.SitOut => "sitting out", ActivityKind.Stretch => "stretching", ActivityKind.Eat => "eating",
-            ActivityKind.SweepStep => "sweeping the step", ActivityKind.HangWashing => "hanging out the washing", ActivityKind.ChopKindling => "chopping kindling",
+            ActivityKind.SweepStep => "sweeping the step", ActivityKind.MoveRack => "moving the rack", ActivityKind.HangWashing => "hanging out the washing", ActivityKind.TakeInWashing => "taking the washing in", ActivityKind.ChopKindling => "chopping kindling",
             ActivityKind.MindBabies => "minding the babies", ActivityKind.Gather => "gathering", ActivityKind.Stalk => "waiting for game",
             ActivityKind.Fish => "fishing", ActivityKind.Chop => "chopping wood", ActivityKind.Saw => "sawing planks", ActivityKind.StackWood => "splitting and stacking wood",
             ActivityKind.Knap => "knapping tools", ActivityKind.Cook => "tending the pot", ActivityKind.Hoe => "hoeing", ActivityKind.Sow => "sowing seed",
@@ -639,7 +635,7 @@ namespace AquariumCiv.Life
             Prop.Log => "logs", Prop.Handcart => "a handcart", Prop.Sheaf => "sheaves", Prop.Basket => "a basket", Prop.Hide => "a hide",
             Prop.FishStick or Prop.FishBasket => "fish", Prop.Pots => "pots", Prop.Block => "a stone block", Prop.Cloth => "cloth", Prop.Loaves => "loaves",
             Prop.Goods => "goods", Prop.Sack => "flour sacks", Prop.Honey => "honey", Prop.Wool => "wool", Prop.Lamb => "a lamb",
-            Prop.Buckets => "water", Prop.Spear => "new tools", Prop.SeedBag => "seed baskets", Prop.Barrel => "a barrel", _ => "things",
+            Prop.Buckets => "water", Prop.Spear => "new tools", Prop.Stick => "dry grass and twigs", // #677 Prop.SeedBag => "seed baskets", Prop.Barrel => "a barrel", _ => "things",
         };
 
         static string RelicNoun(int index) => index switch
@@ -653,6 +649,8 @@ namespace AquariumCiv.Life
             PlaceKind.Fire => "the fire",
             PlaceKind.Green => "the green",
             PlaceKind.Market => "the market",
+            // #652 (playtest): the living land has no stream; the gatherers' ground is the low hollow (dry, or the pond's edge once water stands)
+            PlaceKind.Stream => OnLiving ? (sim.OpenWater ? "the water's edge" : "the dry hollow") : "the stream",
             PlaceKind.Field => era == Era.Camp ? "the gathering grounds" : "the field",
             PlaceKind.LumberMill => era == Era.Camp ? "the woodpile" : "the lumber mill",
             PlaceKind.Windmill => "the windmill",
@@ -672,6 +670,8 @@ namespace AquariumCiv.Life
             PlaceKind.Prop => "the Keeper's choice", // #371
             PlaceKind.Tower => "the lookout tower", // #404
             PlaceKind.FishRack => "the fish rack", // #543
+            PlaceKind.Deadfall => "the wild tree by the Keeper's", // #656/#677
+            PlaceKind.HideRack => "the hide rack",
             _ => "the " + p.kind.ToString().ToLowerInvariant(),
         };
     }
