@@ -126,6 +126,27 @@ namespace AquariumCiv.View.Tests
             }
         }
 
+        [Test]
+        public void B78b_TwoMarks_TheyStepBackApartWhicheverSideTheyCameFrom_AndMeetOnGroundTheCrowdLeavesThem()
+        {
+            // the Editor shot's arrangement (the couple fused at their step back when the tree side swapped them), and the mirror of it
+            var tree = new Vector2(-1.2f, -0.5f);
+            var first = new Vector2(-0.74f, -0.01f); var second = new Vector2(-0.27f, -0.15f);
+            foreach (var (a0, b0) in new[] { (first, second), (second, first) })
+            {
+                var starts = new[] { a0, b0, Fire, Fire };
+                var s = StoryScenes.TwoMarks(1, 2, a0, b0, new[] { 3, 4 }, new[] { Fire, Fire }, tree, 4, 0, 0f);
+                Assert.GreaterOrEqual(ClosestStanding(s, starts, out string where), W - 1e-3f, where);
+            }
+            // a solid (the stash, a prop) where they would meet: they meet beside it, not in it
+            var probe = StoryScenes.TwoMarks(1, 2, first, second, new[] { 3, 4 }, new[] { Fire, Fire }, tree, 4, 0, 0f);
+            var meetAt = probe.parts[1].First().pos;
+            var room = new StoryRoom { blocked = p => (p - meetAt).magnitude < 0.08f };
+            var s2 = StoryScenes.TwoMarks(1, 2, first, second, new[] { 3, 4 }, new[] { Fire, Fire }, tree, 4, 0, 0f, room);
+            Assert.GreaterOrEqual((s2.parts[1].First().pos - meetAt).magnitude, 0.08f - 1e-3f, "they meet off the blocked spot");
+            Assert.GreaterOrEqual((s2.parts[1].First().pos - first).magnitude, W - 1e-3f, "and a body width from the one waiting");
+        }
+
         // ---------------------------------------------------------------- 2.1 the tinkerer's bucket
 
         [Test]

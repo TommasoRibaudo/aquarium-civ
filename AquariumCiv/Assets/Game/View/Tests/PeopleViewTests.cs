@@ -259,8 +259,9 @@ namespace AquariumCiv.View.Tests
                     // Rule 6: one doll per spot. Settled, visible dolls never stand on top of each other.
                     if (frames % 10 == 0)
                     {
+                        var shown = new List<PersonRef>(); people.StandingNow(shown, new List<float>(), new List<float>()); // 2026-11-26: visible dolls only (an indoors doll is hidden at its home's spot; the laundry stand is the same one)
                         var stillActs = people.Activities.Where(a => !a.moving && !people.IsWalking(a.who) && a.kind != ActivityKind.Sleep &&
-                            people.Planner.StageOf(a.who) != LifeStage.Baby && people.TryGetDollPosition(a.who, out _)).ToList();
+                            people.Planner.StageOf(a.who) != LifeStage.Baby && shown.Contains(a.who) && people.TryGetDollPosition(a.who, out _)).ToList();
                         var still = stillActs.Select(a => { people.TryGetDollPosition(a.who, out var q); return q; }).ToList();
                         for (int i = 0; i < still.Count; i++)
                             for (int j = i + 1; j < still.Count; j++)

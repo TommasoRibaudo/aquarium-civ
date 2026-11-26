@@ -21,7 +21,9 @@ using UnityEngine.TestTools;
 
 namespace AquariumCiv.View.PlayTests
 {
-    [Explicit, Category("StoryEventShots")]
+    // #779/#784: the class is not Explicit as a whole: every film is (a per-test [Explicit]), but the three scenes the people-inside-each-other check
+    // watches (B78b_TwoMarks, B80c_TinkererBucket, KeeperChildWed) and the two #784 cheats run in CI with the rest.
+    [Category("StoryEventShots")]
     public class StoryEventShots : PlayTestBase
     {
         const int W = 750, H = 1334;
@@ -189,11 +191,18 @@ namespace AquariumCiv.View.PlayTests
         /// </summary>
         sealed class BodyWatch
         {
-            public const float Near = 1.2f, Least = BodySpots.BodyW - 0.02f;
+            public const float Near = 1.2f, Area = 0.4f, Fused = 0.05f, Least = BodySpots.BodyW - 0.02f;
             readonly Dictionary<int, List<(float t, Vector2 at)>> hist = new Dictionary<int, List<(float, Vector2)>>();
             /// <summary>People who may stand close on purpose (a couple at their vow's hug).</summary>
             public readonly HashSet<int> Together = new HashSet<int>();
-            public float Closest = float.MaxValue; public string Where = "nobody close";
+            public float Slack = float.MaxValue, Closest = float.MaxValue, Bystanders = float.MaxValue; public string ByWhere = "none"; public string Where = "nobody close";
+
+            /// <summary>#779: who, for the log: the key, whether the scene's cast, the camp use drawing them, whether a scene part holds them now.</summary>
+            /// <summary>The scene (a camp use's part, or a staged moment's plan) holds this person now.</summary>
+            /// <summary>The scene's own person: the cast (the couple, the teller, the two at the tree) or one a camp use's part holds now.</summary>
+            static bool Mine(int key, HashSet<int> cast) => cast.Contains(key) || Pv.Camp.Cued(key);
+            static bool Held(PersonRef r) => Pv.Camp.Cued(r.Key) || Pv.Planner != null && Pv.Planner.HeldMomentAt(r, Pv.Now, out _, out _, out _, out _);
+            static string Who(PersonRef r, HashSet<int> cast) { int k = r.Key; return $"{k}[{(cast.Contains(k) ? "cast" : "NOT cast")}, use {Pv.Camp.UseOf(k)}, {(Held(r) ? "held" : "free")}, {(Pv.TryGetActivityOf(r, out var act) ? act.kind + (act.moving ? " moving" : "") + (act.enRoute ? " enRoute" : "") + " tent " + act.tent + " at " + act.place.kind : "?")}, {Pv.DebugSpotOf(r)}, plan {(Pv.Planner.PositionAt(r, Pv.Now, out float qx, out float qz) ? $"({qx:0.00},{qz:0.00})" : "none")}]"; }
 
             public void Sample(float now, IEnumerable<int> cast)
             {
@@ -204,7 +213,7 @@ namespace AquariumCiv.View.PlayTests
                 for (int i = 0; i < who.Count; i++) if (keys.Contains(who[i].Key)) { mid += new Vector2(xs[i], zs[i]); n++; }
                 if (n == 0) return;
                 mid /= n;
-                var still = new List<(int key, Vector2 at)>();
+                var still = new List<(int key, Vector2 at)>(); var refOf = new Dictionary<int, PersonRef>(); foreach (var r in who) refOf[r.Key] = r;
                 for (int i = 0; i < who.Count; i++)
                 {
                     var at = new Vector2(xs[i], zs[i]); int k = who[i].Key;
@@ -213,12 +222,22 @@ namespace AquariumCiv.View.PlayTests
                     bool stood = h[0].t <= now - 0.35f && (h[0].at - at).magnitude < 0.03f;
                     if (stood && (at - mid).magnitude < Near) still.Add((k, at));
                 }
+                // the scene's area: its own people (the cast, a camp use's part, a staged moment's plan: the wedding's guests) and a margin round each
+                var sceneAt = new List<Vector2>();
+                for (int i = 0; i < who.Count; i++) if (Mine(who[i].Key, keys) || Held(who[i])) sceneAt.Add(new Vector2(xs[i], zs[i]));
+                bool InArea(Vector2 p) { foreach (var q in sceneAt) if ((q - p).magnitude < Area) return true; return false; }
                 for (int i = 0; i < still.Count; i++)
                     for (int j = i + 1; j < still.Count; j++)
                     {
                         float d = (still[i].at - still[j].at).magnitude;
-                        if (d >= Closest || Together.Contains(still[i].key) && Together.Contains(still[j].key)) continue;
-                        Closest = d; Where = $"{still[i].key} and {still[j].key} {d:0.000} u apart at ({still[i].at.x:0.00}, {still[i].at.y:0.00}) / ({still[j].at.x:0.00}, {still[j].at.y:0.00}), {now:0.0} s in";
+                        if (Together.Contains(still[i].key) && Together.Contains(still[j].key)) continue;
+                        // every pair standing in the scene's area counts (cast or not); pairs elsewhere in the box are camp life: logged only
+                        if (!(InArea(still[i].at) || InArea(still[j].at))) { if (d < Bystanders) { Bystanders = d; ByWhere = $"{Who(refOf[still[i].key], keys)} and {Who(refOf[still[j].key], keys)} {d:0.000} u apart, {now:0.0} s in"; } continue; }
+                        // two of the scene's own people keep a body's width (Least); anyone else in its area at least the box's one-doll-per-spot rule (Fused)
+                        bool own = (Mine(still[i].key, keys) || Held(refOf[still[i].key])) && (Mine(still[j].key, keys) || Held(refOf[still[j].key]));
+                        float over = d - (own ? Least : Fused);
+                        if (over >= Slack) continue;
+                        Slack = over; Closest = d; Where = $"{Who(refOf[still[i].key], keys)} and {Who(refOf[still[j].key], keys)} {d:0.000} u apart at ({still[i].at.x:0.00}, {still[i].at.y:0.00}) / ({still[j].at.x:0.00}, {still[j].at.y:0.00}), {now:0.0} s in";
                     }
             }
         }
@@ -247,7 +266,7 @@ namespace AquariumCiv.View.PlayTests
             }
             frames.Add(f); every = FrameEvery;
             Debug.Log($"[722 shots] {ev}: {f} frames over {t:0.0} s, a person {lo:0}-{hi:0} px tall, framing {last.Count}");
-            if (watch != null) { Debug.Log($"[722 shots] {ev}: closest two standing: {watch.Where}"); Assert.GreaterOrEqual(watch.Closest, BodyWatch.Least, $"{ev}: nobody stands inside anybody ({watch.Where})"); }
+            if (watch != null) { Debug.Log($"[722 shots] {ev}: closest two standing: {watch.Where}; closest two outside the scene's area (camp life, not asserted): {watch.ByWhere}"); Assert.GreaterOrEqual(watch.Slack, 0f, $"{ev}: nobody stands inside anybody ({watch.Where})"); }
         }
 
         /// <summary>The "after" still: the camera on <paramref name="spot"/> (eased in over ~1.5 s), then the shot.</summary>
@@ -331,6 +350,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsNotNull(e, ev + ": its line");
             var sc = SceneOf(use);
             Debug.Log($"[722 shots] {ev}: beats a {sc.a:0.0} b {sc.b:0.0} c {sc.c:0.0} d {sc.d:0.0} of {sc.Length:0.0} s; starts " + string.Join(" ", System.Linq.Enumerable.Select(sc.parts, l => l.Count > 0 ? $"{l[0].from:0.0}-{l[0].to:0.0}" : "-")));
+            Debug.Log($"[779] {ev}: first spots " + string.Join(" ", System.Linq.Enumerable.Select(sc.parts, (l, i) => l.Count > 0 ? $"{sc.keys[i]}:({l[0].pos.x:0.00},{l[0].pos.y:0.00}) from ({(Where(sc.keys[i], out var w0) ? w0.x : 9f):0.00},{(Where(sc.keys[i], out var w1) ? w1.y : 9f):0.00})" : "-")));
             Debug.Log($"[722 shots] {ev}: line \"{e.text}\"; cast {string.Join(",", sc.keys)}; season {LifeClock.SeasonOf(pv.Now.day)}, snow {SeasonLook.Snow:0.00}");
             foreach (int k in named(e)) Assert.Contains(k, sc.keys, $"{ev}: {Sim.FindNotable(k)?.name ?? k.ToString()}, whom the line names, is in the scene");
             Assert.AreEqual(e.text, StoryMoment.LastCaption, ev + ": the caption says the line");
@@ -358,7 +378,7 @@ namespace AquariumCiv.View.PlayTests
 
         /// <summary>B78.a in summer: the kid the line names picks the fruit and it goes round. After: the fruit every summer after the first
         /// (that summer's one was picked, so the still shows the next summers' look: CampLife.CheatFruit).</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator B78a_FirstFruit() => Fast(0.15f, () => Story("b78a-first-fruit", StoryEvent.FirstFruit, CampUse.FirstFruit, 10f, null, Named, TreeSpot,
             before: () => CampLife.CheatFruit = true));
 
@@ -372,7 +392,7 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator B78b_TwoMarks() => Story("b78b-two-marks", StoryEvent.TwoMarks, CampUse.TwoMarks, 16.5f, null, Both, TreeSpot, bodies: true);
 
         /// <summary>B78.c: the name stone full, the second rolled in. After: the second stone beside the first.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator B78c_SecondStone() => Story("b78c-second-stone", StoryEvent.SecondStone, CampUse.SecondStone, 10f, () =>
         {
             Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone));
@@ -394,7 +414,7 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>The #722 tester's box: a lived-in camp WITH a pond and the natural camp uses ON (the clips switch them off). The first snow
         /// and the second stone must each start their scene from the cheat (the tester: the snow never cast a kid; the stone, anchored at the
         /// pond, waited for a camp spot that never came and held every later story back).</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator LivedCamp_SnowAndStonePlay()
         {
             yield return LivedCamp(10f, pond: true);
@@ -446,7 +466,7 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>The #722 tester's run: in one lived-in camp (a pond, natural uses on) every event's cheat in turn, each scene to its end,
         /// the first snow last. Each must start (or its cheat say why not, for a gate the box lacks), and the first snow must still cast a kid
         /// (the tester: after the others it never did).</summary>
-        [UnityTest, Timeout(1800000)]
+        [UnityTest, Explicit, Timeout(1800000)]
         public IEnumerator LivedCamp_AllInTurn_SnowLast()
         {
             yield return LivedCamp(10f, pond: true);
@@ -478,7 +498,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         /// <summary>B80.a: the Keeper's child handed their work's tool at the fire. After: the child with the tool.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator B80a_KeeperChildGrown()
         {
             int child = -1;
@@ -487,7 +507,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         /// <summary>B80.b: the antlers carried from the old door to the new chief's. After: the antlers at the new door.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator B80b_AntlersPassed() => Story("b80b-antlers", StoryEvent.AntlersPassed, CampUse.AntlersPass, 10f, null,
             e => new[] { e.otherNotableId }, () => Door(Sim.StoryMarks.antlersAtId));
 
@@ -501,12 +521,12 @@ namespace AquariumCiv.View.PlayTests
         }
 
         /// <summary>B80.e: the ring of flowers at the name stone. After: the flowers.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator B80e_GardenerFlowers() => Story("b80e-gardener", StoryEvent.GardenerFlowers, CampUse.GardenerFlowers, 10f,
             () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone)), Named, () => PropSpot(Sim.StoryMarks.flowersStoneId), thing: ConsequenceKind.NameStone);
 
         /// <summary>B80.f: the joker's grin on the woodpile, two kids peek. After: the face log.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator B80f_JokerFace() => Story("b80f-joker", StoryEvent.JokerFace, CampUse.JokerFace, 10f,
             () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof)), Named, () => PropSpot(Sim.StoryMarks.faceLogPropId), thing: ConsequenceKind.WoodpileRoof);
 
@@ -549,11 +569,11 @@ namespace AquariumCiv.View.PlayTests
             s => TakeAway(s, ConsequenceKind.WoodpileRoof), s => Assert.IsNotNull(s.WoodpileProp, "the woodpile's roof stands now"));
 
         /// <summary>B80.g in a dry spell: the bucket from the pond to the Keeper's tree, the others look up for rain. After: the tree.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator B80g_DrySpell() => Story("b80g-dry-spell", StoryEvent.DrySpell, CampUse.DrySpell, 10f, null, Named, TreeSpot, pond: true);
 
         /// <summary>B80.h in winter, snow on the ground and falling: tongues out, then the snow figure. After: the snow figure by the fire.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator B80h_FirstSnow() => Story("b80h-first-snow", StoryEvent.FirstSnow, CampUse.FirstSnow, 10f, null, Named,
             () => Fire() is Vector2 f ? StoryScenes.FigureSpot(f) : (Vector2?)null);
 
@@ -600,23 +620,23 @@ namespace AquariumCiv.View.PlayTests
         }
 
         /// <summary>The fruit's life use: a summer day after the first fruit, a kid picks one from the tree.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator FruitPick() => Fast(0.15f, () => Life("fruit-pick", CampUse.FruitPick, 11f, null,
             () => Debug.Log("[722 shots] " + StoryMoment.ReadyForCheat(Sim, Pv, Season.Summer, false, 11f)), CampCheats.FruitPick, TreeSpot));
 
         /// <summary>B80.e's morning water on the gardener's flowers.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator B80e_FlowerWater() => Life("b80e-flower-water", CampUse.FlowerWater, 8f, StoryEvent.GardenerFlowers,
             () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.NameStone)), CampCheats.FlowerWater, () => PropSpot(Sim.StoryMarks.flowersStoneId), prop: ConsequenceKind.NameStone);
 
         /// <summary>B80.f's life use: a kid pats the face log as they pass.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator B80f_FacePat() => Life("b80f-face-pat", CampUse.FacePat, 11f, StoryEvent.JokerFace,
             () => Debug.Log("[722 shots] " + CampCheats.OnlyThing(ConsequenceKind.WoodpileRoof)), CampCheats.FacePat, () => PropSpot(Sim.StoryMarks.faceLogPropId), prop: ConsequenceKind.WoodpileRoof);
 
         /// <summary>B80.g's evening repeat in a later dry spell: the waterer's bucket from the pond to the Keeper's tree (the pond is the spec's: the
         /// bucket is dipped at its edge, so the box has one).</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator B80g_TreeWater() => Life("b80g-tree-water", CampUse.TreeWater, 16.5f, StoryEvent.DrySpell,
             () => Debug.Log("[722 shots] " + EcoDebug.DrySpell()), CampCheats.TreeWater, TreeSpot, pond: true, named: () => Sim.TreeWaterer?.id ?? -1);
 
@@ -645,21 +665,21 @@ namespace AquariumCiv.View.PlayTests
             CloseSlice();
         }
 
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator Ask_OfferingCarrier() => Ask("ask-offering", StoryChoices.Offering, s =>
             Assert.AreEqual(s.StoryMarks.offeringCarrierId, s.RitualLead(RitualKind.Offering)?.id, "the pick leads the offering"));
 
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator Ask_FirstLog() => Ask("ask-first-log", StoryChoices.FirstLog, s =>
             Assert.AreEqual(s.StoryMarks.firstLogId, s.RitualLead(RitualKind.Woodpile)?.id, "the pick leads the woodpile"));
 
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator Ask_PupHolder() => Ask("ask-pup", StoryChoices.PupHolder, s =>
             Assert.AreEqual(s.StoryMarks.pupKidB, s.FindDog(s.StoryMarks.pupDogId)?.keeperId, "the pup's keeper is the pick"));
 
         /// <summary>4.3 with 2.2 first: the song's ask raised (its ritual, the song's first year, plays as it is made) and answered; then its
         /// ritual's cheat (what plays is ended) plays it again with the name on the caption ("The harvest feast: The Long Table"), filmed.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator Ask_SongName_ThenTheRitualsCaption()
         {
             const string ev = "ask-song-name";
@@ -686,7 +706,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         /// <summary>2.2: the singer's song is made as a ritual plays: its line on the caption, filmed for 10 s.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator SingerSong()
         {
             const string ev = "singer-song";
@@ -702,7 +722,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         /// <summary>B80.d: the singer's song rides the ritual's moment: its line is the caption, the singer's notes first; the whole ritual filmed.</summary>
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Explicit, Timeout(600000)]
         public IEnumerator B80d_SingerSong_OnTheRitualsCaption()
         {
             const string ev = "b80d-song";
