@@ -120,7 +120,7 @@ Shader "AquariumCiv/View/Glass"
                 // Detail noise breaks the mask into smudges and drip streaks; heavier grime fills in the gaps. The curve tops out above
                 // what a full mask gives on average, so the noise still shows on heavy grime: with a top of 0.9 the mask flattened into one
                 // plateau with hard outlines (cow hide).
-                half cover = smoothstep(0.02, 1.05, mask * (0.55 + 0.9 * n.a) - (1 - mask) * 0.15);
+                half cover = smoothstep(0.02, 0.95, mask * (0.55 + 0.9 * n.a) - (1 - mask) * 0.15); // #775: the top at 0.95 (was 1.05): heavy grime covers more, and still short of a flat plateau
 
                 float3 viewDir = normalize(GetWorldSpaceViewDir(i.positionWS));
                 float3 normal = normalize(i.normalWS);
@@ -187,7 +187,11 @@ Shader "AquariumCiv/View/Glass"
                 half rim = saturate(max(rimTop, rimSide) * (0.75 + fresnel * 2.0)) * (1 - cover * 0.7) * (1 - lid);
                 rgb = lerp(rgb, _RimColor.rgb, rim);
                 alpha = max(alpha, rim * _RimColor.a);
-                return half4(rgb, alpha * _Fade);
+                // #775: the near pane fades, its dirt does not go with it: the grime keeps DirtKeep of its strength where it sits (a lighter film, as the
+                // glass has not been cleaned), and the faded pane's film is capped, so it is a veil and never a wall in front of the people.
+                half keep = lerp(_Fade, 1, 0.6 * cover);
+                half film = min(alpha * keep, lerp(0.4, 1, _Fade));
+                return half4(rgb, film);
             }
             ENDHLSL
         }

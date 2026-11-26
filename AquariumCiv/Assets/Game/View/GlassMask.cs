@@ -291,7 +291,7 @@ namespace AquariumCiv.View
 
         /// <summary>The panes' opacity at full cover. Grime is a film you look through: at 0.8 (with the shader's old curve) it read as
         /// opaque blotches that hid the people, day or night. The dirtiest glass stays see-through, and it is the same at every hour.</summary>
-        public const float PatchAlpha = 0.66f;
+        public const float PatchAlpha = 0.76f; // #775: dirty glass read too light (was 0.66)
         /// <summary>The film's colour: a brown drab, because the olive it was disappears on a green box once the film is see-through.</summary>
         public static readonly Color GrimeColor = new(0.29f, 0.26f, 0.17f, 1f);
 
