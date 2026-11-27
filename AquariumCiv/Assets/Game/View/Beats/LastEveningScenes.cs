@@ -46,6 +46,8 @@ namespace AquariumCiv.View
         public const float Beside = 0.07f;
         /// <summary>At the door: the turn, the small wave, the step in; the kin stand and look, then go back one by one.</summary>
         public const float TurnFor = 0.8f, WaveFor = 1f, InFor = 0.5f, DoorLook = 1.5f;
+        /// <summary>A paced walk's step (s): the spot moves on this often (see Track.PacedWalk).</summary>
+        public const float WalkStep = 0.3f;
 
         static Vector2 Unit(Vector2 v, Vector2 fallback) => v.sqrMagnitude > 1e-8f ? v.normalized : fallback;
         static Vector2 Rot(Vector2 v, float deg) { float r = deg * Mathf.Deg2Rad, c = Mathf.Cos(r), s = Mathf.Sin(r); return new Vector2(v.x * c - v.y * s, v.x * s + v.y * c); }
@@ -69,6 +71,22 @@ namespace AquariumCiv.View
                 var p = s.Part(m, from, to, at, faceTo, style, pose, PropKind.None, speed);
                 end[m] = to; pos[m] = at; face[m] = faceTo; held[m] = style == DollStyle.Hidden ? DollStyle.Hidden : style is DollStyle.Sit ? DollStyle.Sit : DollStyle.Stand;
                 return p;
+            }
+
+            /// <summary>A walk at its own pace: in steps of <see cref="WalkStep"/> s along the line, so the view's catch-up (a part's pace plus 1.5 x
+            /// the gap to its spot) never runs the whole way at once (the first clips: the elder's slow walk home was over in a second, then they
+            /// stood at the door). The pose keeps one clock over the whole walk.</summary>
+            public void PacedWalk(int m, float from, float to, Vector2 a, Vector2 b, Vector2 faceTo, DollStyle style, CampPoseFn pose, float speed)
+            {
+                int n = Mathf.Max(1, Mathf.CeilToInt((to - from) / WalkStep));
+                float len = to - from;
+                for (int i = 0; i < n; i++)
+                {
+                    float t0 = from + len * i / n, t1 = from + len * (i + 1) / n, off = t0 - from;
+                    CampPoseFn sub = pose == null ? null : (ref DollPose p, float t, float l) => pose(ref p, t + off, len);
+                    var part = Part(m, t0, t1, Vector2.Lerp(a, b, (i + 1f) / n), faceTo, style, sub, speed);
+                    part.poseWalking = true;
+                }
             }
 
             public float EndOf(int m) => end.TryGetValue(m, out float e) ? e : 0f;
@@ -292,13 +310,12 @@ namespace AquariumCiv.View
             float walk = WalkTime(seat, atDoor, frail);
             s.d = tStood;
             float tDoor = tStood + walk;
-            var home = T.Part(me, tStood, tDoor, atDoor, c.door, DollStyle.Stand, FrailWalk, frail); home.poseWalking = true;
+            T.PacedWalk(me, tStood, tDoor, seat, atDoor, c.door, DollStyle.Stand, FrailWalk, frail);
             for (int h = 0; h < helpers.Count; h++)
             {
                 int i = helpers[h];
                 var end = atDoor + (Vector2.Dot(stand[h] - seat, across) >= 0f ? across : -across) * Beside;
-                var p = T.Part(ms[i], tStood, tDoor, end, end + dir, DollStyle.Stand, PairWalk(LeftOf(end, end + dir, atDoor)), (end - stand[h]).magnitude / Mathf.Max(0.1f, walk - 0.25f));
-                p.poseWalking = true;
+                T.PacedWalk(ms[i], tStood, tDoor, stand[h], end, end + dir, DollStyle.Stand, PairWalk(LeftOf(end, end + dir, atDoor)), (end - stand[h]).magnitude / Mathf.Max(0.1f, walk - 0.25f));
             }
             if (kneeKid >= 0)
             {
@@ -307,8 +324,7 @@ namespace AquariumCiv.View
                 var near = seat - side * (Beside + 0.04f) - toFire * 0.03f;
                 T.Part(ms[i], tRise, tStood, near, seat, DollStyle.Stand, null, KidWalk);
                 var end = atDoor + kidSide;
-                var p = T.Part(ms[i], tStood, tDoor, end, end + dir, DollStyle.Stand, HoldHand(LeftOf(end, end + dir, atDoor)), (end - near).magnitude / Mathf.Max(0.1f, walk - 0.25f));
-                p.poseWalking = true;
+                T.PacedWalk(ms[i], tStood, tDoor, near, end, end + dir, DollStyle.Stand, HoldHand(LeftOf(end, end + dir, atDoor)), (end - near).magnitude / Mathf.Max(0.1f, walk - 0.25f));
             }
             if (dog)
             {

@@ -72,7 +72,8 @@ namespace AquariumCiv.View.Tests
                 var h = PartAt(s, 10 + i, mid);
                 Assert.IsTrue(h.poseWalking && h.pose != null, $"helper {i} at the elbow while walking");
                 Assert.AreEqual(e.to - e.from, h.to - h.from, 1e-3f, "the same stretch of time as the elder's");
-                Assert.AreEqual(LastEveningScenes.Beside, (h.pos - e.pos).magnitude, 0.01f, "at the elder's side at the door");
+                float atDoor = s.c - LastEveningScenes.InFor - LastEveningScenes.WaveFor - LastEveningScenes.TurnFor - 0.05f; // the walk's last step
+                Assert.AreEqual(LastEveningScenes.Beside, (PartAt(s, 10 + i, atDoor).pos - PartAt(s, 1, atDoor).pos).magnitude, 0.01f, "at the elder's side at the door");
             }
             var inDoor = PartAt(s, 1, s.c + 0.1f);
             Assert.AreEqual(DollStyle.Hidden, inDoor.style, "in at their door");
@@ -83,6 +84,21 @@ namespace AquariumCiv.View.Tests
                 Assert.Greater(p.from, s.c, $"kin {i}'s last part comes after the elder went in");
                 Assert.AreEqual(DollStyle.Sit, p.style, $"kin {i} sits at the fire again");
                 Assert.Less((p.pos - Fire).magnitude, 0.6f, $"kin {i} back by the fire");
+            }
+        }
+
+        [Test]
+        public void Home_IsPacedInShortSteps_SoTheViewNeverRunsTheWalk()
+        {
+            var s = LastEveningScenes.Evening(Cast(2, 1), 0f);
+            float tDoor = s.c - LastEveningScenes.InFor - LastEveningScenes.WaveFor - LastEveningScenes.TurnFor;
+            var walk = s.parts[s.IndexOf(1)].Where(x => x.from >= s.d - 1e-3f && x.to <= tDoor + 1e-3f).OrderBy(x => x.from).ToList();
+            Assert.Greater(walk.Count, 3, "the walk home in steps");
+            for (int i = 0; i < walk.Count; i++)
+            {
+                Assert.LessOrEqual(walk[i].to - walk[i].from, LastEveningScenes.WalkStep + 1e-3f, "each step short");
+                var from = i == 0 ? LastEveningScenes.SeatOf(Fire, ToCam) : walk[i - 1].pos;
+                Assert.LessOrEqual((walk[i].pos - from).magnitude, walk[i].speed * (walk[i].to - walk[i].from) + 1e-3f, $"step {i}: the spot moves on at the elder's own pace");
             }
         }
 
