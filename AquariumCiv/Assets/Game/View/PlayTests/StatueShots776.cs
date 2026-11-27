@@ -99,24 +99,13 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSeconds(4f);
             yield return StillOnStatue(beat, "haze-cleaned");
             haze += $"; {where}; after Clean all: grime {Sim.State.grime:0.00}";
-            // still milky after the wipe (first v4 run): what is drawn between the camera and the statue (renderer bounds the sight line crosses)?
-            StatueWorld(out var foot, out var top);
-            var mid = Vector3.Lerp(foot, top, 0.5f); var from = cam.transform.position; float dist = (mid - from).magnitude;
-            var ray = new Ray(from, (mid - from).normalized);
-            var between = new List<Renderer>();
-            foreach (var rr in Resources.FindObjectsOfTypeAll<Renderer>())
-                if (rr != null && rr.enabled && !rr.forceRenderingOff && rr.gameObject.activeInHierarchy && rr.bounds.IntersectRay(ray, out float hit) && hit < dist - 0.05f
-                    && !(rr.bounds.Contains(mid))) between.Add(rr);
-            haze += "; between: " + string.Join(", ", between.Select(b => $"{b.name}[{(b.sharedMaterial != null ? b.sharedMaterial.name : "-")}] {b.bounds.min:F2}-{b.bounds.max:F2}"));
-            foreach (var b in between) b.forceRenderingOff = true;
-            yield return StillOnStatue(beat, "haze-nothing-between");
-            foreach (var b in between) if (b != null) b.forceRenderingOff = false;
-            var vols = UnityEngine.Object.FindObjectsByType<UnityEngine.Rendering.Volume>(FindObjectsSortMode.None);
-            haze += "; volumes: " + string.Join(", ", vols.Select(v => v.name + (v.sharedProfile != null ? ":" + string.Join("/", v.sharedProfile.components.Where(c => c.active).Select(c => c.GetType().Name)) : "")));
-            var w0 = vols.Select(v => v.weight).ToArray();
-            foreach (var v in vols) v.weight = 0f;
-            yield return StillOnStatue(beat, "haze-no-postfx");
-            for (int i = 0; i < vols.Length; i++) vols[i].weight = w0[i];
+            // v4 run 2: the sight line from the camera down to the statue crosses the box's glass Lid (y 2.95; the camera sits above it): a still with
+            // the lid not drawn shows how much of the pale look is the lid (the game always draws it: the clips keep it)
+            var lids = Resources.FindObjectsOfTypeAll<Renderer>().Where(x => x != null && x.name == "Lid" && x.gameObject.activeInHierarchy && x.enabled).ToList();
+            foreach (var l in lids) l.forceRenderingOff = true;
+            yield return StillOnStatue(beat, "haze-no-lid");
+            foreach (var l in lids) if (l != null) l.forceRenderingOff = false;
+            haze += $"; lid renderers {lids.Count}";
             File.WriteAllText(OutDir(beat) + "haze.txt", haze);
             Debug.Log($"[776 shots] {beat} haze: {haze}");
         }
@@ -169,7 +158,7 @@ namespace AquariumCiv.View.PlayTests
             StatueWorld(out var foot, out var top);
             var at = Pv.Camp.StatueDrawnAt;
             var w = Vector3.Lerp(foot, top, 0.5f);
-            rig.target = snap ? w : Vector3.Lerp(rig.target, w, 0.2f);
+            rig.target = w; // v4: always on the statue (an eased target sat off centre: the camera's pan spring pulls it back toward the middle every Update)
             rig.pitch = aimPitch; rig.yaw = aimYaw;
             rig.Apply();
             for (int i = 0; i < (snap ? 4 : 1); i++)
