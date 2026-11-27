@@ -3,6 +3,8 @@
 // - TheRaising: "Statue: raise now" in a village box: the held scene plays (its caption is the line), leaves the carved statue on the green with the
 //   bunch at its foot; the statue stands where the sim says and is solid.
 // - EachUse: the statue stands; each use's cheat starts its scene, it plays out and the people are free again.
+// - TheRaising_TheLeanHolds (#783/#776 tester, polish 2): from the home view of a village with its life on, the lean holds the plinth and the carver
+//   in the middle 60 % of the screen for the whole raising (a village use starting meanwhile must not pull it away) and lets go only when it ends.
 // - TapOnTheStatue: a tap on the statue opens the person's card.
 // - TheStatueUses_TakeFreeTimeOnly: 10 view days of a town with the statue and the natural uses on: the work minutes the uses take stay under 5 %,
 //   no meal or sleep is lost (D rules), and the uses ran by themselves.
@@ -85,6 +87,65 @@ namespace AquariumCiv.View.PlayTests
             Assert.Less((pv.Camp.StatueDrawnAt - new Vector2(x, z)).magnitude, 0.01f, "it stands where the sim says");
             Assert.IsTrue(PeopleView.StatueSolid.HasValue, "people go round it");
             Assert.IsEmpty(pv.Camp.Scenes.Where(s => s.use == CampUse.StatueRaise), "the people are free");
+            CloseSlice();
+        }
+
+        static PersonRef RefOf(int key) => key > 0 ? PersonRef.Notable(key) : PersonRef.Crowd(-key - 1);
+
+        /// <summary>#783/#776 tester (polish 2): the raising's lean framed the plinth at 3 s, slid toward the front glass by 10 to 17 s (the carver and
+        /// the crowd under the HUD) and was home at 24 s while the raising ran to 32 s. The lean now holds the plinth and the carver in the middle
+        /// 60 % for the whole scene, whatever other use starts in the village meanwhile, and lets go when it ends. Shots: Temp/agent/776/lean_*.</summary>
+        [UnityTest, Timeout(900000)]
+        public IEnumerator TheRaising_TheLeanHoldsThePlinthAndTheCarver_UntilItEnds()
+        {
+            yield return VillageBox(10f, onlyCheats: false); // the village's own life on, as a player has it: its uses start during the raising
+            var sim = Sim; var pv = Pv;
+            var rig = Camera.main.GetComponent<BoxCamera>(); var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+            HeldMomentLean.Enabled = true; HeldMomentLean.DebugForget();
+            yield return Until(() => !rig.IsFlying, 6f);
+            var homeTarget = rig.target; float homeZoom = rig.zoom;
+            int leans = HeldMomentLean.Leans;
+            string r = CampCheats.StatueRaiseNow();
+            Debug.Log("[776 lean] " + r);
+            yield return Until(() => pv.Camp.Playing(CampUse.StatueRaise), 25f);
+            Assert.IsTrue(pv.Camp.Playing(CampUse.StatueRaise), $"the raising plays ({r}; {StoryMoment.LastWhy}; {pv.Camp.LastStoryWhy})");
+            var sc = pv.Camp.Scenes.Last(s => s.use == CampUse.StatueRaise);
+            float start = Time.time;
+            yield return Until(() => HeldMomentLean.Leans > leans, 8f);
+            Assert.Greater(HeldMomentLean.Leans, leans, "the camera leaned in: " + HeldMomentLean.LastWhy);
+            yield return Until(() => !rig.IsFlying, 6f);
+            yield return new WaitForSeconds(1f);
+            Vector3 Vp(Vector2 at) => Camera.main.WorldToViewportPoint(box.Root.TransformPoint(new Vector3(at.x, box.SurfaceHeight(at.x, at.y) + 0.06f, at.y)));
+            bool Mid(Vector3 v) => v.z > 0f && v.x >= 0.2f && v.x <= 0.8f && v.y >= 0.2f && v.y <= 0.8f;
+            int frames = 0, plinthOff = 0, carverOff = 0, released = 0, othersMax = 0, shot = 0;
+            string firstOff = "", stateWas = "";
+            var carver = RefOf(sc.keys[0]);
+            while (pv.Camp.Playing(CampUse.StatueRaise) && Time.time - start < 90f)
+            {
+                float u = Time.time - start;
+                bool last = u > sc.Length - 1.5f; // the last steps back: the moment closes a frame after
+                frames++;
+                othersMax = Mathf.Max(othersMax, pv.Camp.Scenes.Count(s => s != sc));
+                var pvp = Vp(sc.focus);
+                if (!Mid(pvp)) { plinthOff++; if (firstOff == "") firstOff = $"plinth at ({pvp.x:0.00}, {pvp.y:0.00}) at {u:0.0} s"; }
+                if (pv.TryGetDollPosition(carver, out var cp) && !Mid(Vp(cp)) && !last) { carverOff++; if (firstOff == "") { var cv = Vp(cp); firstOff = $"carver at ({cv.x:0.00}, {cv.y:0.00}) at {u:0.0} s"; } }
+                if (!HeldMomentLean.Holding && !last) released++;
+                string stateNow = $"holding {HeldMomentLean.Holding}, leaning {rig.Leaning}, glide {rig.GlideArmed}, raise scenes {pv.Camp.Scenes.Count(s => s.use == CampUse.StatueRaise)}, ours {pv.Camp.Scenes.Contains(sc)}, staging {HeldMomentStage.Instance?.AnyPlayingStaging()?.Moment?.kind}#{HeldMomentStage.Instance?.AnyPlayingStaging()?.Moment?.id} of {HeldMomentStage.Instance?.StagingCount}, sim playing {string.Join(",", sim.PlayingMoments().Select(m => m.kind + "#" + m.id))}, why {HeldMomentLean.LastWhy}";
+                if (stateNow != stateWas) { Debug.Log($"[776 lean] {u:0.0} s: {stateNow}"); stateWas = stateNow; }
+                if (u >= 3f + shot * 7f && shot < 5) { yield return Shot($"776/lean_{shot}_{u:00}s"); shot++; }
+                yield return null;
+            }
+            Debug.Log($"[776 lean] {frames} frames of the raising: plinth off the middle 60 % {plinthOff}, carver off {carverOff}, lean let go early {released}; other scenes at once up to {othersMax}; {firstOff}; last look {HeldMomentLean.LastLook}; why {HeldMomentLean.LastWhy}");
+            Assert.IsFalse(pv.Camp.Playing(CampUse.StatueRaise), "the raising ends");
+            Assert.Greater(frames, 100, "watched the raising");
+            Assert.AreEqual(0, released, "the lean holds until the raising ends");
+            Assert.LessOrEqual(plinthOff, frames / 20, "the plinth stays in the middle 60 % (" + firstOff + ")");
+            Assert.LessOrEqual(carverOff, frames / 10, "the carver stays in the middle 60 % (" + firstOff + ")");
+            yield return Until(() => !rig.GlideArmed && !rig.Leaning && !rig.IsFlying, 15f);
+            yield return new WaitForSeconds(0.5f);
+            Assert.AreEqual(homeZoom, rig.zoom, 0.03f, "back at the player's zoom after the raising");
+            Assert.Less(Vector3.Distance(homeTarget, rig.target), 0.1f, "back at the player's view after the raising");
+            AssertNoErrors("776 lean");
             CloseSlice();
         }
 

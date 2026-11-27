@@ -38,5 +38,19 @@ namespace AquariumCiv.View.Tests
                 Assert.IsNull(NewStartView.HungerLineFor(sim), "seed " + seed);
             }
         }
-    }
+    
+        /// <summary>#776 tester (polish 2): a village with fields said "The ground is bare..." during the statue raising. The bare-land lines are the
+        /// first camp's; past the camp none is said, hungry or not.</summary>
+        [Test]
+        public void PastTheCamp_TheBareLandLineIsNeverPicked()
+        {
+            for (int seed = 1; seed <= 20; seed++)
+            {
+                var sim = HungryBox(seed);
+                Assert.IsNotNull(NewStartView.HungerLineFor(sim), "seed " + seed + ": the camp says it");
+                sim.State.era = Era.Village;
+                Assert.IsNull(NewStartView.HungerLineFor(sim), "seed " + seed + ": a village does not");
+            }
+        }
+}
 }

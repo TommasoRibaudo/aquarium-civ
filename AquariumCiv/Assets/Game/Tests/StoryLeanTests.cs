@@ -148,5 +148,16 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(28f, yaw, 1e-2f); Assert.AreEqual(34f, pitch, 1e-2f);
             Assert.That(t, Is.InRange(GlideBack.Hold + GlideBack.Duration - 0.15f, GlideBack.Hold + GlideBack.Duration + 0.15f), "1.2 s wait, 1.1 s ease");
         }
+
+        [Test]
+        public void AtTheZoomFloor_TheLeanKeepsThePitch_AboveItItLooksDown()
+        {
+            Assert.AreEqual(Pitch, StoryLean.LeanPitchFor(Pitch, Lean, 0.2f, 0.2f), 1e-4f, "at the floor: no tilt, it would only shorten the dolls");
+            Assert.AreEqual(Pitch, StoryLean.LeanPitchFor(Pitch, Lean, 0.15f, 0.2f), 1e-4f, "under the player's floor (the lean's own): no tilt");
+            Assert.AreEqual(Lean, StoryLean.LeanPitchFor(Pitch, Lean, 0.35f, 0.2f), 1e-4f, "above the floor: it looks down");
+            Assert.AreEqual(60f, StoryLean.LeanPitchFor(60f, Lean, 0.35f, 0.2f), 1e-4f, "never flatter than now");
+            float px = 50f, at = PxAfter(px, 0.2f, 0.2f, Pitch, StoryLean.LeanPitchFor(Pitch, Lean, 0.2f, 0.2f));
+            Assert.GreaterOrEqual(at, px - 1e-3f, "at the floor the dolls don't get smaller");
+        }
     }
 }

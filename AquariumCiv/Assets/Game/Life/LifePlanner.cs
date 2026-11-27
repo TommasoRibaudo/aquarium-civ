@@ -175,6 +175,7 @@ namespace AquariumCiv.Life
         {
             lastAsked = t; // #607
             var a = PlanBase(p, t);
+            if (a.kind == ActivityKind.SitWithOld && !a.moving) SitOnlyBesideTheSeated(ref a, t); // #788: never beside an empty stool
             ApplyCarry(p, ref a, t); // #192: a parent carrying a baby, a baby carried
             HeldMomentCarry(p, ref a, t); // #370: the newborn in the arms, held up to the glass
             return a;
