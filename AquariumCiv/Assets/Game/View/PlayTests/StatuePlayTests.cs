@@ -92,6 +92,77 @@ namespace AquariumCiv.View.PlayTests
 
         static PersonRef RefOf(int key) => key > 0 ? PersonRef.Notable(key) : PersonRef.Crowd(-key - 1);
 
+        /// <summary>#799: the held scenes on screen now, one word each: every held moment the sim plays, the last evening, and a story's or the
+        /// raising's camp scene that no held moment owns (a cheat's replay).</summary>
+        static List<string> HeldNow(SimCore sim, PeopleView pv)
+        {
+            var on = sim.PlayingMoments().Select(m => m.kind + "#" + m.id).ToList();
+            if (CampLife.LastEveningNow) on.Add("last evening");
+            bool storyMoment = sim.PlayingMoments().Any(m => m.kind == MomentKind.Story);
+            int replays = pv.Camp.Scenes.Count(s => s.use is CampUse.StatueRaise or CampUse.FirstFruit or CampUse.TwoMarks or CampUse.SecondStone or CampUse.KeeperChildGrown) - (storyMoment ? 1 : 0);
+            for (int i = 0; i < replays; i++) on.Add("camp replay");
+            return on;
+        }
+
+        /// <summary>#799 (polish-2 tester): two held-moment cheats pressed back to back played both scenes at once. Each pair here plays the first,
+        /// waits for it to start, presses the second while it plays: never two held scenes at once (the cheat ends the first, as the #722 cheats
+        /// do, or the second waits), and the second cheat's status line says which.</summary>
+        [UnityTest, Timeout(1500000)]
+        public IEnumerator TwoHeldCheatsBackToBack_NeverPlayTwoScenesAtOnce()
+        {
+            yield return VillageBox(10f, onlyCheats: false);
+            var sim = Sim; var pv = Pv;
+            var fails = new List<string>();
+            Debug.Log("[799] setup: " + CampCheats.StatueStand() + " | " + CampCheats.GrowTree());
+            yield return new WaitForSeconds(2f);
+            string Wedding() => StagedMoments.DebugPlayNow(MomentKind.Wedding);
+            string LastEvening() => CampLife.LastEveningNow ? "the last evening plays on" : CampCheats.LastEveningPlayNow();
+            // the ones that start from the last evening come last: nothing ends it but its own end
+            // each with what the second's status line must say: the first ended, or the second waits for it
+            const string Ended = "(ended ", Waits = "the last evening is playing (wait for it to end)";
+            var pairs = new (string name, Func<string> first, Func<string> second, string says)[]
+            {
+                ("the raising, then the raising again", CampCheats.StatueRaiseNow, CampCheats.StatueRaiseAgain, Ended),
+                ("the wedding, then the raising again", Wedding, CampCheats.StatueRaiseAgain, Ended),
+                ("the wedding, then the first fruit again", Wedding, CampCheats.FirstFruitAgain, Ended),
+                ("the raising, then the newborn", CampCheats.StatueRaiseNow, () => StagedMoments.DebugPlayNow(MomentKind.Newborn), "a moment is playing"),
+                ("the wedding, then the last evening", Wedding, CampCheats.LastEveningPlayNow, Ended),
+                ("the last evening, then the raising again", LastEvening, CampCheats.StatueRaiseAgain, Waits),
+                ("the last evening, then the raising", LastEvening, CampCheats.StatueRaiseNow, Waits),
+                ("the last evening, then the wedding", LastEvening, Wedding, Waits),
+            };
+            foreach (var (name, first, second, says) in pairs)
+            {
+                if (!CampLife.LastEveningNow)
+                {
+                    HeldMomentStage.DebugEndPlaying(); pv.Camp.CutForCheat();
+                    PeopleView.DebugSetHour(10f);
+                    yield return new WaitForSeconds(1.5f);
+                }
+                string r1 = first();
+                yield return Until(() => HeldNow(sim, pv).Count > 0, 25f);
+                if (HeldNow(sim, pv).Count == 0) { yield return new WaitForSeconds(3f); r1 += " | again: " + first(); yield return Until(() => HeldNow(sim, pv).Count > 0, 25f); } // its people were busy: once more
+                var was = HeldNow(sim, pv);
+                if (was.Count == 0) { fails.Add($"{name}: the first did not start ({r1})"); continue; }
+                yield return new WaitForSeconds(2f);
+                string r2 = second();
+                Debug.Log($"[799] {name}: first '{r1}' playing [{string.Join(", ", was)}]; second '{r2}'");
+                int worst = 0; string at = "";
+                for (float t = 0f; t < 12f; t += Time.deltaTime)
+                {
+                    var now = HeldNow(sim, pv);
+                    if (now.Count > worst) { worst = now.Count; at = $"{t:0.0} s: {string.Join(", ", now)}"; }
+                    yield return null;
+                }
+                Debug.Log($"[799] {name}: most at once {worst} ({at})");
+                if (worst > 1) fails.Add($"{name}: two held scenes at once ({at}); the second said '{r2}'");
+                if (!r2.Contains(says)) fails.Add($"{name}: the second's status line '{r2}' does not say '{says}'");
+            }
+            HeldMomentStage.DebugEndPlaying(); pv.Camp.CutForCheat();
+            CloseSlice();
+            Assert.IsEmpty(fails, string.Join(" | ", fails));
+        }
+
         /// <summary>#783/#776 tester (polish 2): the raising's lean framed the plinth at 3 s, slid toward the front glass by 10 to 17 s (the carver and
         /// the crowd under the HUD) and was home at 24 s while the raising ran to 32 s. The lean now holds the plinth and the carver in the middle
         /// 60 % for the whole scene, whatever other use starts in the village meanwhile, and lets go when it ends. Shots: Temp/agent/776/lean_*.</summary>

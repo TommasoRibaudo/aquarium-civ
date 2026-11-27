@@ -24,6 +24,10 @@ namespace AquariumCiv.View
 
         /// <summary>The last evening is playing now (HeldMomentStage holds every other moment back while it does).</summary>
         public static bool LastEveningNow { get; private set; }
+
+        /// <summary>#799: a held-scene cheat pressed while the last evening plays: never a second scene over it, and never cut short (its elder's
+        /// death is set for tonight), so the cheat does nothing and its status line says why. Null when nothing holds the box.</summary>
+        public static string CheatWaitsFor => LastEveningNow ? "not now: the last evening is playing (wait for it to end)" : null;
         /// <summary>Tests and the panel: the scene playing (null none), why the last look started nothing, the caption said, how many started.</summary>
         public CampScene LastEveningScene { get; private set; }
         public string LastEveningWhy { get; private set; } = "";
