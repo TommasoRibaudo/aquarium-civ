@@ -13,8 +13,7 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator BarrenBox_ClosesTheTimeLapseFirst()
         {
             yield return OpenSlice(750, 1334);
-            var tls = TimeLapseScreenView.Instance;
-            Assert.IsNotNull(tls, "the time-lapse screen is in the scene");
+            var tls = TimeLapseScreenView.Ensure(); // as History does
             Assert.IsTrue(tls.Open(), "the time-lapse opens");
             yield return new WaitForSecondsRealtime(1f);
             Assert.IsTrue(tls.IsOpen);
