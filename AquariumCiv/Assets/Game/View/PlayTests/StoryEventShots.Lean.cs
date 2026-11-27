@@ -269,5 +269,111 @@ namespace AquariumCiv.View.PlayTests
 
         [UnityTest, Explicit, Timeout(900000)]
         public IEnumerator Lean783_Film_Ritual() => Film("ritual", () => StagedMoments.DebugPlayRitualNow(RitualKind.All[0]), () => HeldMomentStage.Instance != null && HeldMomentStage.Instance.AnyPlayingStaging() != null);
+
+        // ================================================================== #783: every held scene leans in
+
+        /// <summary>The held scenes the box can play, each by its own cheat: two stories, a wedding, a newborn, a new chief, two rituals.</summary>
+        static readonly (string name, System.Func<string> start)[] EveryHeld =
+        {
+            ("story_bucket", () => StoryMoment.DebugPlayNow(StoryEvent.TinkererBucket)),
+            ("story_flowers", () => StoryMoment.DebugPlayNow(StoryEvent.GardenerFlowers)),
+            ("wedding", () => StagedMoments.DebugPlayNow(MomentKind.Wedding)),
+            ("newborn", () => StagedMoments.DebugPlayNow(MomentKind.Newborn)),
+            ("new_leader", () => StagedMoments.DebugPlayNow(MomentKind.NewLeader)),
+            ("ritual_feast", () => StagedMoments.DebugPlayRitualNow(RitualKind.Feast)),
+            ("ritual_berrying", () => StagedMoments.DebugPlayRitualNow(RitualKind.Berrying)),
+        };
+
+        static readonly System.Collections.Generic.List<Vector2> leanCast = new System.Collections.Generic.List<Vector2>();
+
+        /// <summary>The playing scene's cast spots (box x, z) and the middle of their box (the lean's aim); false when nothing is drawn.</summary>
+        static bool SceneNow(out Vector2 mid)
+        {
+            mid = default;
+            leanCast.Clear();
+            var st = HeldMomentStage.Instance != null ? HeldMomentStage.Instance.AnyPlayingStaging() : null;
+            if (st == null) return false;
+            st.Cast?.Invoke(leanCast);
+            if (leanCast.Count == 0 && st.Focus?.Invoke() is Vector2 f) leanCast.Add(f);
+            if (leanCast.Count == 0) return false;
+            Vector2 lo = leanCast[0], hi = leanCast[0];
+            foreach (var q in leanCast) { lo = Vector2.Min(lo, q); hi = Vector2.Max(hi, q); }
+            mid = (lo + hi) * 0.5f;
+            return true;
+        }
+
+        static Vector3 ViewportOf(Vector2 at)
+        {
+            var box = Box;
+            return Camera.main.WorldToViewportPoint(box.Root.TransformPoint(new Vector3(at.x, box.SurfaceHeight(at.x, at.y) + 0.06f, at.y)));
+        }
+
+        /// <summary>Every held scene from the default view: the camera leans in (a person ~5 % of the screen's height, or the player's floor), the
+        /// scene's middle sits in the middle of the view, most of its cast is on screen, yaw is never touched, and when the scene ends the camera
+        /// glides back to the default view. Shots: 783/every_{size}_{scene}_before (the lean's first frame) and _after (landed).</summary>
+        IEnumerator EveryHeldSceneLeansIn(int w, int h, string tag)
+        {
+            yield return LivedCamp(10f, pond: true, w: w, h: h);
+            var rig = Rig;
+            var home = PoseOf(rig);
+            float want = StoryLean.ScenePx(Screen.height);
+            var report = new System.Text.StringBuilder();
+            var failed = new System.Collections.Generic.List<string>();
+            HeldMomentLean.Enabled = true;
+            foreach (var (name, start) in EveryHeld)
+            {
+                HeldMomentStage.DebugEndPlaying();
+                yield return Until(() => !rig.GlideArmed && !rig.Leaning && !rig.IsFlying, 15f);
+                HeldMomentLean.DebugForget();
+                PeopleView.DebugSetHour(10f);
+                yield return new WaitForSecondsRealtime(1f);
+                int leans = HeldMomentLean.Leans, framed = HeldMomentLean.Framed;
+                string r = start();
+                Debug.Log($"[783] every {tag} {name}: {r}");
+                yield return Until(() => HeldMomentLean.Leans > leans || HeldMomentLean.Framed > framed, 10f);
+                if (HeldMomentLean.Leans == leans)
+                {
+                    failed.Add($"{name}: no lean ({r}; {HeldMomentLean.LastWhy})");
+                    continue;
+                }
+                yield return Shot($"783/every_{tag}_{name}_before");
+                float before = SceneNow(out var m0) ? PersonPx(rig, Box, m0) : 0f;
+                yield return Until(() => !rig.IsFlying, 6f);
+                // the cast may still be gathering: the lean tightens as it does (re-looked every second)
+                yield return Until(() => !SceneNow(out var mm) || PersonPx(rig, Box, mm) >= want * 0.8f || rig.zoom <= rig.minZoom + 0.015f, 12f);
+                yield return new WaitForSecondsRealtime(1.2f);
+                if (!SceneNow(out var mid)) { failed.Add($"{name}: the scene ended before it was framed"); continue; }
+                float after = PersonPx(rig, Box, mid);
+                var v = ViewportOf(mid);
+                int on = 0;
+                foreach (var q in leanCast) { var qv = ViewportOf(q); if (qv.z > 0f && qv.x > 0.02f && qv.x < 0.98f && qv.y > 0.02f && qv.y < 0.98f) on++; }
+                yield return Shot($"783/every_{tag}_{name}_after");
+                string line = $"{name}: person {before:0} -> {after:0} px (target {want:0}), zoom {home.zoom:0.00} -> {rig.zoom:0.00} (floor {rig.minZoom:0.00}), pitch {rig.pitch:0}, middle at ({v.x:0.00}, {v.y:0.00}), cast on screen {on}/{leanCast.Count}";
+                Debug.Log($"[783] every {tag} {line}");
+                report.AppendLine(line);
+                bool atFloor = rig.zoom <= rig.minZoom + 0.015f;
+                if (rig.zoom > home.zoom - 0.02f) failed.Add(name + ": it did not lean in");
+                if (Mathf.Abs(rig.yaw - home.yaw) > 0.5f) failed.Add(name + ": yaw moved");
+                if (after < want * (atFloor ? 0.55f : 0.7f)) failed.Add($"{name}: a person is {after:0} px, under {(atFloor ? 55 : 70)} % of the {want:0} px target");
+                if (v.z <= 0f || v.x < 0.2f || v.x > 0.8f || v.y < 0.2f || v.y > 0.8f) failed.Add($"{name}: the scene's middle is off centre ({v.x:0.00}, {v.y:0.00})");
+                if (on < Mathf.CeilToInt(leanCast.Count * 0.75f)) failed.Add($"{name}: only {on} of {leanCast.Count} of its cast on screen");
+                // the end: the camera glides back to the default view
+                HeldMomentStage.DebugEndPlaying();
+                yield return Until(() => !rig.GlideArmed && !rig.Leaning && !rig.IsFlying, 15f);
+                yield return new WaitForSecondsRealtime(0.3f);
+                if (Mathf.Abs(rig.zoom - home.zoom) > 0.03f || Vector3.Distance(rig.target, home.target) > 0.1f) failed.Add($"{name}: did not come back to the default view (zoom {rig.zoom:0.00}, target off {Vector3.Distance(rig.target, home.target):0.00})");
+            }
+            Debug.Log($"[783] every {tag}:\n{report}");
+            Assert.IsEmpty(failed, $"{tag}: {string.Join(" | ", failed)}\n{report}");
+            Assert.AreEqual(0, rig.LeanCancels, tag + ": nobody touched the camera");
+            AssertNoErrors(tag);
+            CloseSlice();
+        }
+
+        [UnityTest, Timeout(1200000)]
+        public IEnumerator Lean783_EveryHeldScene_LeansIn_750x1334() => EveryHeldSceneLeansIn(750, 1334, "p750");
+
+        [UnityTest, Timeout(1200000)]
+        public IEnumerator Lean783_EveryHeldScene_LeansIn_1179x2556() => EveryHeldSceneLeansIn(1179, 2556, "p1179");
     }
 }
