@@ -32,6 +32,8 @@ namespace AquariumCiv.View
         /// <summary>The last lean's aim (world) and the zoom it was sent to (tests).</summary>
         public static Vector3 LastAim;
         public static float LastZoomTo, LastDollPx, LastExtX, LastExtY;
+        /// <summary>The last look of a held lean (tests, the panel): where the scene sat and what the lean did.</summary>
+        public static string LastLook = "";
         /// <summary>A lean holds the camera for a scene now.</summary>
         public static bool Holding => cur != null;
 
@@ -72,11 +74,13 @@ namespace AquariumCiv.View
             if (!Look(cur.staging, cam, out var world, out float zoomTo, out float vx, out float vy)) return;
             if (StoryLean.LeftTheFrame(vx, vy)) { LastWhy = "the scene left the frame"; Release(cam); return; }
             bool closer = zoomTo < cam.zoom - TightenBy; // the cast has gathered (a lead walked in from far): the lean comes closer, never farther out
-            if ((StoryLean.NeedsFollow(vx, vy) || closer) && !cam.Touching)
+            bool follow = StoryLean.NeedsFollow(vx, vy), re = false;
+            if ((follow || closer) && !cam.Touching)
             {
                 var c = cur;
-                if (cam.LeanIn(world, closer ? zoomTo : cam.zoom, () => !c.dead && Playing(c.id), 0.9f)) { c.cancelsSeen = cam.LeanCancels; LastAim = world; }
+                if (cam.LeanIn(world, closer ? zoomTo : cam.zoom, () => !c.dead && Playing(c.id), 0.9f)) { c.cancelsSeen = cam.LeanCancels; LastAim = world; re = true; }
             }
+            LastLook = $"t {Time.unscaledTime:0.0}: at ({vx:0.00}, {vy:0.00}) follow {follow} closer {closer} touching {cam.Touching} re-aimed {re}";
         }
 
         static void Release(BoxCamera cam)
