@@ -29,9 +29,12 @@ namespace AquariumCiv.View.PlayTests
     public class StatueShots776 : PlayTestBase
     {
         const int W = 750, H = 1334;
-        const float Pitch = 56f, StatueShare = 0.14f, MinDollPx = 64f, FrameEvery = 0.1f, MaxScene = 100f;
-        /// <summary>v2: the poses tried, 30 degrees apart through the default 28, and two pitches that look over the roofs.</summary>
-        static readonly float[] Yaws = { -92f, -62f, -32f, -2f, 28f, 58f, 88f, 118f, 148f }, Pitches = { 56f, 62f };
+        const float Pitch = 56f, MinDollPx = 64f, FrameEvery = 0.1f, MaxScene = 100f;
+        /// <summary>v4: the statue's share of the screen's height (the nod films wider, so the walk in and on is in the frame).</summary>
+        static float StatueShare = 0.14f;
+        /// <summary>v4 (2026-11-26): the poses tried are on the statue's FRONT side only (v3 picked yaw -32 and filmed its back): the yaw that looks
+        /// straight at its face (<see cref="CampLife.StatueDrawnYaw"/>) and 30 / 60 degrees either side, at two pitches that look over the roofs.</summary>
+        static readonly float[] FrontOffsets = { 0f, -30f, 30f, -60f, 60f }, Pitches = { 56f, 62f };
 
         static SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : null;
         static PeopleView Pv => PeopleView.Find();
@@ -43,7 +46,7 @@ namespace AquariumCiv.View.PlayTests
         {
             GlassMotion.Instant = false;
             CampLife.OnlyCheats = false;
-            aimYaw = 28f; aimPitch = Pitch;
+            aimYaw = 28f; aimPitch = Pitch; StatueShare = 0.14f;
             var pv = PeopleView.Find(); if (pv != null) pv.timeScale = 1f;
             var rig = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
             if (rig != null) { rig.minZoom = CameraReach.MinZoom; rig.minYaw = -30f; rig.maxYaw = 55f; }
@@ -62,6 +65,8 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log("[776 shots] " + AsGrown()); // v2: what a real grown village has (the hunger line and the first-seed toast showed in the v1 raising)
             yield return new WaitForSeconds(3f);
             GlassMotion.Instant = false; // real time
+            haze = $"grime {Sim.State.grime:0.00}, overgrowth {Sim.State.overgrowth:0.00}, fog {RenderSettings.fog} {RenderSettings.fogMode} d{RenderSettings.fogDensity:0.000} {RenderSettings.fogStartDistance:0.0}-{RenderSettings.fogEndDistance:0.0}";
+            Debug.Log("[776 shots] haze at staging: " + haze);
             Assert.AreEqual(town ? Era.Town : Era.Village, Sim.State.era);
             Assert.IsNull(NewStartView.HungerLineFor(Sim), "a grown village says no hunger line of bare land");
             Assert.IsFalse(Sim.CanPlantTree, "a grown village has its Keeper's tree: no first-seed toast");
@@ -79,6 +84,23 @@ namespace AquariumCiv.View.PlayTests
             if (!sim.LandGivesFood) { sim.State.eco.milestoneKeys.Add(EcoMilestones.FirstBush); sim.State.eco.milestoneMonths.Add(sim.State.month); r += "; the land gives food"; }
             sim.State.food = Math.Max(sim.State.food, 200f);
             return r;
+        }
+
+        static string haze = "";
+
+        /// <summary>v4 (2026-11-26): the v3 town shots looked milky. A still as staged (dirty), then the glass wiped clean the way the debug panel's
+        /// "Clean all" does (grime and overgrowth to 0, the panes' masks fade), a still again: the two side by side say what the haze was.</summary>
+        IEnumerator CleanGlass(string beat)
+        {
+            yield return StillOnStatue(beat, "haze-as-staged");
+            var cam = Camera.main;
+            string where = $"camera {cam.transform.position} near {cam.nearClipPlane:0.000}, zoom {Rig.zoom:0.000}";
+            Sim.CleanAll();
+            yield return new WaitForSeconds(4f);
+            yield return StillOnStatue(beat, "haze-cleaned");
+            haze += $"; {where}; after Clean all: grime {Sim.State.grime:0.00}";
+            File.WriteAllText(OutDir(beat) + "haze.txt", haze);
+            Debug.Log($"[776 shots] {beat} haze: {haze}");
         }
 
         static string OutDir(string beat) { string d = Shots + "media/statue776/" + beat + "/"; Directory.CreateDirectory(d); return d; }
@@ -212,16 +234,22 @@ namespace AquariumCiv.View.PlayTests
             if (statue != null)
             {
                 var others = Resources.FindObjectsOfTypeAll<Renderer>().Where(r => r != statue && r.enabled && !r.forceRenderingOff && r.gameObject.activeInHierarchy && r.gameObject.scene.IsValid()).ToList();
-                float fy = Pv.Camp.StatueDrawnYaw * Mathf.Deg2Rad;
-                var face = new Vector2(-Mathf.Sin(fy), -Mathf.Cos(fy)); // the statue faces its local -z
+                float faceYaw = Pv.Camp.StatueDrawnYaw; // it faces its local -z; the camera at this yaw sits on that side (BoxCamera.Apply)
+                float fy = faceYaw * Mathf.Deg2Rad;
+                var face = new Vector2(-Mathf.Sin(fy), -Mathf.Cos(fy));
+                log.Append($" faces yaw {faceYaw:0};");
                 Freeze(true);
-                var g = new Color32[4][];
+                var g = new Color32[4][]; var wide = new Color32[1][];
                 foreach (float pitch in Pitches)
-                    foreach (float yaw in Yaws)
+                    foreach (float off in FrontOffsets)
                     {
+                        float yaw = Mathf.Repeat(faceYaw + off + 180f, 360f) - 180f;
                         aimYaw = yaw; aimPitch = pitch;
                         Frame(true); yield return null; Frame(true);
                         var rect = ActorBox(0.1f);
+                        var around = ActorBox(0.3f); // where the use's people stand and walk: a roof over it hides them (v3: a roof over the left third)
+                        yield return GrabAt(around, wide, 0);
+                        float roof = RoofShare(wide[0]);
                         yield return GrabAt(rect, g, 0);
                         statue.forceRenderingOff = true; yield return GrabAt(rect, g, 1);
                         foreach (var o in others) if (o != null) o.forceRenderingOff = true;
@@ -231,8 +259,8 @@ namespace AquariumCiv.View.PlayTests
                         int shown = Diff(g[0], g[1]), all = Diff(g[2], g[3]);
                         float cover = all <= 0 ? 1f : Mathf.Clamp01(1f - shown / (float)all);
                         var dir = new Vector2(-Mathf.Sin(yaw * Mathf.Deg2Rad), -Mathf.Cos(yaw * Mathf.Deg2Rad)); // from the statue toward the camera
-                        float score = cover + 0.08f * (1f - Vector2.Dot(face, dir)) * 0.5f + 0.0002f * Mathf.Abs(yaw - 28f) + 0.0005f * (pitch - Pitch);
-                        log.Append($" y{yaw:0}/p{pitch:0} {cover:0.00} ({shown}/{all})");
+                        float score = cover + 0.6f * roof + 0.15f * (1f - Vector2.Dot(face, dir)) * 0.5f + 0.0005f * (pitch - Pitch);
+                        log.Append($" y{yaw:0}/p{pitch:0} cover {cover:0.00} ({shown}/{all}) roof {roof:0.00}");
                         if (score < best) { best = score; bestYaw = yaw; bestPitch = pitch; }
                     }
             }
@@ -244,13 +272,27 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log("[776 shots] aim by cover: " + aimLog);
         }
 
+        /// <summary>v4: the share of pixels that are roof (the town's terracotta and dark-red roofs: hue under 28 degrees, saturated), the grass and
+        /// paths being green or tan. People in red are a few pixels; a roof over the actors is a big share.</summary>
+        static float RoofShare(Color32[] px)
+        {
+            if (px == null || px.Length == 0) return 0f;
+            int n = 0;
+            for (int i = 0; i < px.Length; i++)
+            {
+                Color.RGBToHSV(px[i], out float h, out float s, out float v);
+                if ((h < 28f / 360f || h > 345f / 360f) && s > 0.38f && v > 0.25f) n++;
+            }
+            return n / (float)px.Length;
+        }
+
         /// <summary>The clock held still while the camera lands (the lesson of the 788 shots), then running again.</summary>
         static void Freeze(bool on) { var pv = Pv; if (pv != null) pv.timeScale = on ? 0f : 1f; }
 
         /// <summary>v2: films real time, statue-centred from the pose <see cref="AimByCover"/> picked: from <paramref name="preRoll"/> s before
         /// <paramref name="start"/> says it started the use (null: the scene already plays) until the scene ends plus <paramref name="postRoll"/> s
         /// (at most <paramref name="max"/> s). A JPG about every 0.1 s into media/statue776/&lt;beat&gt;/, each frame's real time in times.txt.</summary>
-        IEnumerator Film(string beat, CampUse use, float max, List<int> frames, Func<bool> start = null, float preRoll = 0f, float postRoll = 1.5f,
+        IEnumerator Film(string beat, CampUse use, float max, List<int> frames, Func<bool, bool> start = null, float preRoll = 0f, float postRoll = 1.5f,
             float startBy = 30f, List<bool> played = null)
         {
             string dir = OutDir(beat);
@@ -265,7 +307,11 @@ namespace AquariumCiv.View.PlayTests
             while (Time.realtimeSinceStartup - t0 < max)
             {
                 float now = Time.realtimeSinceStartup - t0;
-                if (!started && now >= preRoll && (start() || now > preRoll + startBy)) started = true;
+                if (!started && now >= preRoll && (start(false) || now > preRoll + startBy && start(true))) // v4: past the wait the cheat is pressed anyway (v3 never pressed it)
+                {
+                    started = true;
+                    File.WriteAllText(dir + "press.txt", now.ToString("0.000", CultureInfo.InvariantCulture) + " s, frame " + n);
+                }
                 bool on = Pv.Camp.Playing(use);
                 if (on) seen = true;
                 if (started && seen && !on && endAt < 0f) endAt = now;
@@ -316,20 +362,23 @@ namespace AquariumCiv.View.PlayTests
             var pv = Pv; var at = pv.Camp.StatueDrawnAt;
             var who = new List<PersonRef>(); var xs = new List<float>(); var zs = new List<float>();
             pv.StandingNow(who, xs, zs);
-            bool found = false;
+            bool found = false; float nearest = float.MaxValue; int walker = -1, near = -1;
             for (int i = 0; i < who.Count; i++)
             {
                 var st = pv.Planner.StageOf(who[i]);
                 if (st != LifeStage.Adult && st != LifeStage.Elder) continue;
                 var p = new Vector2(xs[i], zs[i]);
                 float d = (p - at).magnitude;
-                if (d <= reach && d >= 0.15f && lastSeen.TryGetValue(who[i].Key, out var q) && (p - q).magnitude > 0.002f && OnScreen(p)) found = true;
+                if (d < nearest) { nearest = d; near = who[i].Key; } // v4: the cheat nods the NEAREST grown-up: the walker must be that one
+                if (d <= reach && d >= 0.15f && lastSeen.TryGetValue(who[i].Key, out var q) && (p - q).magnitude > 0.002f && OnScreen(p)) { found = true; walker = who[i].Key; }
                 lastSeen[who[i].Key] = p;
             }
-            if (found) lastSeen.Clear();
+            found = found && walker == near;
+            if (found) { lastSeen.Clear(); lastWalker = walker; }
             return found;
         }
         static readonly Dictionary<int, Vector2> lastSeen = new();
+        static int lastWalker = -1;
 
         /// <summary>v3: the walker is in the frame (the v2 nod was pressed for someone off screen: the clip showed no one).</summary>
         static bool OnScreen(Vector2 p)
@@ -341,7 +390,8 @@ namespace AquariumCiv.View.PlayTests
 
         /// <summary>A use on the standing statue: the cheat the user presses (once <paramref name="when"/> holds), the scene must start; filmed from
         /// <paramref name="preRoll"/> s before the cheat to 2 s after its end; the before and after stills.</summary>
-        IEnumerator Use(string beat, CampUse use, float hour, Func<string> cheat, bool town = true, float preRoll = 2f, Func<bool> when = null)
+        IEnumerator Use(string beat, CampUse use, float hour, Func<string> cheat, bool town = true, float preRoll = 2f, Func<bool> when = null,
+            float share = 0.14f, float startBy = 30f, float max = MaxScene)
         {
             yield return VillageBox(hour, town);
             var pv = Pv;
@@ -350,14 +400,19 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(pv.Camp.StatueDrawn, "the statue stands");
             PeopleView.DebugSetHour(hour);
             yield return new WaitForSeconds(1.5f);
+            StatueShare = share;
+            yield return CleanGlass(beat);
             yield return StillOnStatue(beat, "before");
             string r = null;
             var frames = new List<int>(); var played = new List<bool>();
-            yield return Film(beat, use, MaxScene, frames, () =>
+            yield return Film(beat, use, max, frames, force =>
             {
-                if (when != null && !when()) return false;
-                r = cheat(); Debug.Log($"[776 shots] {beat}: {r}"); return true;
-            }, preRoll, 2f, 30f, played);
+                if (!force && when != null && !when()) return false;
+                r = cheat(); Debug.Log($"[776 shots] {beat}: {(force ? "pressed at the wait's end (no walker came by): " : "")}{r}");
+                var sc = pv.Camp.Scenes.LastOrDefault(x => x.use == use);
+                if (sc != null && sc.keys.Count > 0) Debug.Log($"[776 shots] {beat}: the scene's person {sc.keys[0]}, walker seen {lastWalker}");
+                return true;
+            }, preRoll, 2f, startBy, played);
             Assert.IsTrue(played[0], $"{beat}: the use plays ({r})");
             Assert.IsFalse(pv.Camp.Playing(use), beat + ": the scene ends");
             Assert.Greater(frames[0], 5, beat + ": frames of the scene");
@@ -407,7 +462,8 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator B81d_SitAtItsFoot() => Use("d-sit", CampUse.StatueSit, 12f, CampCheats.StatueSit);
 
         [UnityTest, Explicit, Timeout(900000)]
-        public IEnumerator B81e_ANodInPassing() => Use("e-nod", CampUse.StatueNod, 11f, CampCheats.StatueNod, preRoll: 1f, when: () => WalkerNear(0.6f)); // v2: pressed as someone walks past, so the clip has the walk in and on
+        public IEnumerator B81e_ANodInPassing() => Use("e-nod", CampUse.StatueNod, 11f, CampCheats.StatueNod, preRoll: 3f, when: () => WalkerNear(0.45f),
+            share: 0.09f, startBy: 150f, max: 200f); // v4: pressed as a grown-up walks past on screen (the nearest one, so the cheat picks them), filmed wider, waited up to 150 s (v3: nobody came in 30 s)
 
         [UnityTest, Explicit, Timeout(900000)]
         public IEnumerator B81f_TheGreensSweep() => Use("f-sweep", CampUse.StatueSweep, 9f, CampCheats.StatueSweep);
