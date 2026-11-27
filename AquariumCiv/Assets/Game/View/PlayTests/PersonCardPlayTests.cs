@@ -777,6 +777,105 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(120000)]
         public IEnumerator HoldsTheBoardOnAShortPhone() => HoldsTheBoard(750, 1334);
 
+        /// <summary>#801 (the #774 card shots): with the tall card up, the toast lane sits just above the card, where the person's name tag
+        /// is; "All tidy…" printed over "Hob · cheering" (and over a tie label, "Arne · partner"). A caption plate or a toast over a tag hides it,
+        /// and the tag comes back after; tie labels go round it, or hide when there is no room.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator ACaptionOrToastOverTheNameTagHidesIt()
+        {
+            int id = -1;
+            yield return CardUp(750, 1334, i => id = i);
+            GlassCaption plate = null;
+            try
+            {
+                var cards = PersonCardView.Instance;
+                cards.ShowTab(CardTab.Family);
+                cards.SetExpanded(true);
+                yield return new WaitForSecondsRealtime(1.4f);
+                var tree = cards.CardRoot.panel.visualTree;
+                var tag = tree.Q("pc-name-tag");
+                Assert.AreEqual(DisplayStyle.Flex, tag.resolvedStyle.display, "their name tag shows over the tall card");
+                var spot = tag.worldBound;
+
+                // a caption plate laid right over the tag: the tag goes
+                int before = cards.TagsUnderPlate;
+                plate = new GlassCaption("A caption over the tag") { name = "test801-plate", Inline = true };
+                plate.style.position = Position.Absolute;
+                plate.style.left = spot.xMin - 20f; plate.style.top = spot.yMin - 6f;
+                plate.style.width = spot.width + 40f; plate.style.height = spot.height + 12f;
+                tree.Add(plate);
+                yield return null; yield return null; yield return null;
+                Assert.AreEqual(DisplayStyle.None, tag.resolvedStyle.display, "a caption over the name tag hides it");
+                Assert.Greater(cards.TagsUnderPlate, before, "counted as hidden under a plate");
+                plate.RemoveFromHierarchy(); plate = null;
+                yield return null; yield return null; yield return null;
+                Assert.AreEqual(DisplayStyle.Flex, tag.resolvedStyle.display, "the tag comes back once the caption goes");
+
+                // the real case: the toast in its lane over the tall card; no tag shows under it on any frame
+                var hud = GameHud.Instance;
+                hud.Toast("All tidy. Look at that sky!", 4f);
+                int toastFrames = 0;
+                bool shot = false;
+                for (int f = 0; f < 90; f++)
+                {
+                    yield return null;
+                    var toast = tree.Query(className: "kg-toast").ToList().FirstOrDefault(t => t.resolvedStyle.display == DisplayStyle.Flex && t.resolvedStyle.opacity > 0.05f && !t.ClassListContains(GlassMotion.FadeOff));
+                    if (toast == null) continue;
+                    toastFrames++;
+                    foreach (var t in new[] { tag, tree.Q("pc-pin-tag") }.Concat(tree.Query<GlassTag>(className: "kg-tag--tie").ToList()))
+                        if (t != null && t.resolvedStyle.display == DisplayStyle.Flex)
+                            Assert.IsFalse(t.worldBound.Overlaps(toast.worldBound), $"{t.name} shows under the toast ({t.worldBound} / {toast.worldBound})");
+                    if (!shot && toastFrames > 20) { shot = true; yield return Shot("pc801-toast-750"); }
+                }
+                Assert.Greater(toastFrames, 0, "the toast showed");
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
+            }
+            finally { plate?.RemoveFromHierarchy(); Close(); }
+        }
+
+        /// <summary>#803 (tester 2026-11-27): on the Family tab a dead child's name showed as "Bry / n" in the frame the card grew tall. A name
+        /// under a face (and a relation's name) never wraps: on every frame of the growth each is one line, and a short name shows whole.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator FaceNamesNeverBreakWhileTheCardGrows()
+        {
+            int id = -1;
+            yield return CardUp(750, 1334, i => id = i);
+            try
+            {
+                var cards = PersonCardView.Instance;
+                var root = cards.CardRoot;
+                cards.ShowTab(CardTab.Family);
+                yield return null; yield return null;
+                int seen = 0, frames = 0;
+                void Check(string cls, string where)
+                {
+                    foreach (var l in root.Query<Label>(className: cls).ToList())
+                    {
+                        if (l.resolvedStyle.display == DisplayStyle.None || l.worldBound.height <= 1f || string.IsNullOrEmpty(l.text)) continue;
+                        seen++;
+                        Assert.AreEqual(WhiteSpace.NoWrap, l.resolvedStyle.whiteSpace, $"{where}: '{l.text}' may wrap ({string.Join(" ", l.GetClasses())})");
+                        float line = l.MeasureTextSize("Ag", 100000f, VisualElement.MeasureMode.Undefined, 0f, VisualElement.MeasureMode.Undefined).y;
+                        Assert.Less(l.contentRect.height, line * 1.5f, $"{where}: '{l.text}' is on more than one line ({l.contentRect.height:0} px, a line {line:0})");
+                        float wide = l.MeasureTextSize(l.text, 100000f, VisualElement.MeasureMode.Undefined, 0f, VisualElement.MeasureMode.Undefined).x;
+                        if (l.text.Length <= 6) Assert.LessOrEqual(wide, l.contentRect.width + 1.5f, $"{where}: the short name '{l.text}' shows whole ({wide:0} in {l.contentRect.width:0} px)");
+                    }
+                }
+                cards.SetExpanded(true);
+                for (float t = 0f; t < 1.5f; t += Time.unscaledDeltaTime)
+                {
+                    yield return null;
+                    frames++;
+                    Check("pc-kin-name", $"Family, frame {frames}");
+                }
+                yield return Shot("pc803-family-750");
+                cards.ShowTab(CardTab.Friends);
+                for (int f = 0; f < 8; f++) { yield return null; if (f >= 3) Check("pc-rel-name", "Friends"); } // new rows have their style a frame or two on
+                Assert.Greater(seen, 0, "names under faces were on screen");
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
+            }
+            finally { Close(); }
+        }
+
         /// <summary>#674 (tester): on a short phone a two-line subtitle left room for the quote only; the chips lead now.</summary>
         [UnityTest, Timeout(120000)]
         public IEnumerator HoldsTheBoardOnAShortPhoneWithATwoLineSubtitle() => HoldsTheBoard(750, 1334, true);

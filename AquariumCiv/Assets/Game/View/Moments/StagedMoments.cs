@@ -332,6 +332,7 @@ namespace AquariumCiv.View
             if (!sim.MomentsOn && GameClock.Instance != null) GameClock.Instance.config.moments = true;
             if (!sim.MomentsOn) return "moments off";
             if (sim.PlayingMoments().Count > 0) return "a moment is playing: wait, or End staged moments";
+            if (CampLife.CheatWaitsFor is string wait) return wait; // #799
             var pv = PeopleView.Find();
             if (pv == null || pv.Planner == null) return "no people";
             string skipped = "";
@@ -360,6 +361,7 @@ namespace AquariumCiv.View
             if (!sim.MomentsOn) return "moments off";
             var pv = PeopleView.Find();
             if (pv == null || pv.Planner == null) return "no people";
+            if (CampLife.CheatWaitsFor is string wait) return wait; // #799
             string skipped = "";
             int ended = HeldMomentStage.DebugEndPlaying(); // #722: the cheat plays now: what plays is ended (its people back to their day)
             if (ended > 0) skipped += $" (ended {ended} moment{(ended == 1 ? "" : "s")})";

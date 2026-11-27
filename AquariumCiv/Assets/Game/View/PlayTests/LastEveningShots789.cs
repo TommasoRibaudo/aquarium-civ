@@ -218,6 +218,7 @@ namespace AquariumCiv.View.PlayTests
             ShowMeDirector.BubblesOn = false;
             yield return new WaitForSeconds(2f);
             var sim = Sim; var pv = Pv;
+            float homeYaw = Rig.yaw; // #800 (a): the player's own yaw, the one the wave's side of the tent is picked for
             sim.CleanAll(); // clean glass (the panel's "Clean all")
             Debug.Log("[789 shots] " + clip + ": family " + Family(sim));
             yield return new WaitForSeconds(4f); // the kid is drawn
@@ -265,7 +266,8 @@ namespace AquariumCiv.View.PlayTests
                 if (!doorAimed && st >= tDoor - 0.2f)
                 {
                     doorAimed = true;
-                    Recut(sc, YawFrom(WorldDir((sc.focus - DoorOf(sc)).normalized)) + 5f, "at the door"); // from the fire's side: the wave back to the fire
+                    // #800 (a): from the player's own side, which the wave's spot is on (from the fire's side the tent stood in front of a helper)
+                    Recut(sc, homeYaw, "at the door");
                 }
                 Frame(sc, false);
                 float now = Time.realtimeSinceStartup - t0;

@@ -727,7 +727,8 @@ namespace AquariumCiv.View
             bool moving = dist > 0.012f;
             if (moving) { a.pos += dv / dist * Mathf.Min(dist, speed * dt); }
             if (carriedMove) { moving = true; speed = DogGeo.RideSpeed; } // walking under its rider
-            if (moving != a.moving || act != a.act) { a.actSince = 0f; a.act = act; a.moving = moving; } else a.actSince += dt;
+            if (moving != a.moving || (act != a.act && !(Lying(act) && Lying(a.act)))) a.actSince = 0f; else a.actSince += dt; // #800: lying on into the thumps, and back, never lies down again
+            a.act = act; a.moving = moving;
             a.speed = speed;
             var lookTo = moving && !carriedMove ? dv : face != Vector2.zero ? face - a.pos : Vector2.zero;
             if (lookTo.sqrMagnitude > 1e-6f) a.yaw = Mathf.MoveTowardsAngle(a.yaw, Mathf.Atan2(lookTo.x, lookTo.y) * Mathf.Rad2Deg, 260f * Mathf.Max(dt, 0.016f));
@@ -739,8 +740,11 @@ namespace AquariumCiv.View
             DrawHeld(a, held, holder, material);
         }
 
-        /// <summary>The pose of a dog or the visiting wolf: the gait from the speed while it moves, else the act.</summary>
-        static void PoseQuad(ref QuadPose p, bool moving, float speed, QuadAct act, float since, float t, bool dog)
+        /// <summary>#800: the lying acts: one into the other keeps the dog down (its lie-down clock runs on).</summary>
+        public static bool Lying(QuadAct a) => a is QuadAct.Lie or QuadAct.LieThump;
+
+        /// <summary>The pose of a dog or the visiting wolf: the gait from the speed while it moves, else the act (public for the pose tests).</summary>
+        public static void PoseQuad(ref QuadPose p, bool moving, float speed, QuadAct act, float since, float t, bool dog)
         {
             if (moving)
             {
@@ -776,6 +780,11 @@ namespace AquariumCiv.View
                 }
                 case QuadAct.Growl: p.neck = 22f; p.head = 14f; p.bodyPitch = 5f; p.earSwivel = -30f; p.tail = -20f; p.lift = -0.004f; break;
                 case QuadAct.Wag: if (dog) { p.tail = 40f; p.wag = Mathf.Sin(t * Mathf.PI * 8f) * 30f; } p.neck = -6f; break; // 4 Hz
+                case QuadAct.LieThump:
+                    // #800 (B82.a beat 2, "the dog's tail thumps twice, 1.5 Hz"): lying on, the head resting; the tail lifts and drops on the ground
+                    QuadMotion.LieDown(ref p, since);
+                    if (dog) { p.tail = -10f + 35f * Mathf.Max(0f, Mathf.Sin(t * Mathf.PI * 3f)); p.wag = 0f; }
+                    break;
                 case QuadAct.HeadDown: p.neck = 50f; p.head = 30f; p.bodyPitch = 6f; break;
                 default: if (dog) { p.tail = 15f; p.wag = Mathf.Sin(t * 3f) * 8f; } break;
             }

@@ -188,10 +188,40 @@ namespace AquariumCiv.View.Tests
             var atHand = s.QuadAt(0, s.a + 1f);
             Assert.AreEqual(QuadAct.Lie, atHand.act);
             Assert.Less((atHand.pos - LastEveningScenes.SeatOf(Fire, ToCam)).magnitude, 0.1f, "at the elder's feet");
-            Assert.AreEqual(QuadAct.Wag, s.QuadAt(0, s.a + 3.5f).act, "the tail thumps");
+            Assert.AreEqual(QuadAct.LieThump, s.QuadAt(0, s.a + 3.5f).act, "the tail thumps, lying down (#800: a Wag stood the dog up)");
             var after = s.QuadAt(0, s.c + 0.5f);
             Assert.AreEqual(QuadAct.Lie, after.act);
             Assert.Less((after.pos - Door).magnitude, 0.15f, "lies down at the door");
+        }
+
+        /// <summary>#800 (a) (the #789 v2 shoot: at the door the helpers were half cut off): on seed 4242's living land (the lean test's geometry)
+        /// the wave is on the tent's shown side, and the helper walking abreast on the tent's side stood in its canvas and stepped out behind it.
+        /// Everyone at the door, from the walk's end to the elder going in, stays on the shown side, as far out as the elder.</summary>
+        [Test]
+        public void AtTheDoor_NobodyStandsInOrBehindTheTent()
+        {
+            var fire = new Vector2(-0.45f, 0.05f); var door = new Vector2(-1.57f, -1.09f); var wave = new Vector2(-1.64f, -1.09f);
+            var c = new LastEveningCast { elder = 1, elderAt = fire + new Vector2(0.3f, 0.2f), fire = fire, toCam = new Vector2(-0.47f, -0.88f), door = door, wave = wave, dog = 5, dogAt = fire + new Vector2(0.3f, 0.3f) };
+            for (int i = 0; i < 3; i++) { c.kin.Add(10 + i); c.kinAt.Add(fire + new Vector2(-0.4f + 0.2f * i, -0.3f)); c.kinKid.Add(i == 2); }
+            c.partner = 0;
+            var s = LastEveningScenes.Evening(c, 0f);
+            var lookOut = (wave - door).normalized;
+            float shown = Vector2.Dot(wave - door, lookOut);
+            float tDoor = s.c - LastEveningScenes.InFor - LastEveningScenes.WaveFor - LastEveningScenes.TurnFor;
+            int checkedParts = 0;
+            for (float u = tDoor; u < s.c; u += 0.25f)
+            {
+                foreach (int k in new[] { 10, 11, 12 })
+                {
+                    var p = PartAt(s, k, u);
+                    if (p == null || (p.pos - wave).magnitude > 0.4f) continue; // the ones by the fire
+                    checkedParts++;
+                    Assert.GreaterOrEqual(Vector2.Dot(p.pos - door, lookOut), shown - 0.005f, $"{k} at {p.pos} at {u:0.0} s is in or behind the tent (door {door}, shown side {lookOut})");
+                }
+                var d = s.QuadAt(0, u);
+                Assert.GreaterOrEqual(Vector2.Dot(d.pos - door, lookOut), shown - 0.005f, $"the dog at {d.pos} at {u:0.0} s is in the tent");
+            }
+            Assert.Greater(checkedParts, 10, "the helpers and the kid were at the door");
         }
 
         [Test]
@@ -232,6 +262,14 @@ namespace AquariumCiv.View.Tests
             Assert.Greater(Vector2.Dot((partner.face - partner.pos).normalized, (elderPart.face - elderPart.pos).normalized), 0.999f, "the partner faces the way the elder does (the fire), side by side with them");
             Assert.Greater(Vector2.Dot((partner.face - partner.pos).normalized, (Fire - partner.pos).normalized), 0.9f, "toward the fire");
             Assert.AreEqual(LastEveningScenes.ShoulderArmZ, Out(PoseOf(10, s.a + 3f)), 1.5f, "the arm out across to the elder's shoulder");
+            // #800: the elder's own hand comes up over the partner's: the arm on the partner's side rises sideways (it shows from the front),
+            // from the seated rest before the hand to above the partner's arm once it is there
+            bool partnerOnLeft = LastEveningScenes.LeftOf(seat, elderPart.face, partner.pos);
+            float ElderOut(DollPose p) => partnerOnLeft ? p.armR.z : -p.armL.z;
+            float before = ElderOut(PoseOf(1, s.a + 0.5f)), laid = ElderOut(PoseOf(1, s.a + 3f));
+            Assert.Greater(laid - before, 60f, $"the elder's hand comes up ({before:0} -> {laid:0})");
+            Assert.Greater(laid, LastEveningScenes.ShoulderArmZ, "over the partner's arm, raised sideways so it reads from the front");
+            Assert.Less(Mathf.Abs(partnerOnLeft ? PoseOf(1, s.a + 3f).armR.x : PoseOf(1, s.a + 3f).armL.x), 45f, "not raised forward toward the camera (it read as a stub)");
             Assert.Less(PoseOf(1, s.b + 2.5f).lean, LastEveningScenes.ElderLookLean + 1.5f, "the elder leans well back at the stars");
             Assert.Less(PoseOf(10, s.b + 2.5f).lean, LastEveningScenes.KinLookLean * 0.8f, "the partner looks up too");
             var walk = PoseOf(1, s.d + 2f);

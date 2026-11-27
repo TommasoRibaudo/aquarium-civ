@@ -376,6 +376,7 @@ namespace AquariumCiv.View
         {
             var sim = StatueSim;
             if (sim == null) return "no living box";
+            if (CampLife.CheatWaitsFor is string wait) return wait; // #799: not over the last evening (the statue stays as it is)
             string jump = sim.State.era == Era.Camp ? StageVillage(10f, false, 4, false) + " | " : "";
             sim.DebugStatueRemove();
             return jump + StoryMoment.DebugPlayNow(StoryEvent.FounderStatue);

@@ -163,6 +163,7 @@ namespace AquariumCiv.View
             if (!sim.MomentsOn && GameClock.Instance != null) GameClock.Instance.config.moments = true;
             var pv = PeopleView.Find();
             if (pv == null || pv.Planner == null) return "no people";
+            if (CampLife.CheatWaitsFor is string wait) return wait; // #799
             string skipped = ReadyForCheat(sim, pv, SeasonOf(id), NeedsWater(id), id == StoryEvent.TwoMarks ? 16.5f : 9.5f); // the marks: toward dusk after the wedding
             if (NeedsTree(id) && !sim.KeeperTreeGrown) skipped += " | " + CampCheats.GrowTree();
             if (id == StoryEvent.FirstSnow) SnowNow(pv);
@@ -236,6 +237,7 @@ namespace AquariumCiv.View
             if (!sim.MomentsOn && GameClock.Instance != null) GameClock.Instance.config.moments = true;
             var pv = PeopleView.Find();
             if (pv == null || pv.Planner == null) return "no people";
+            if (CampLife.CheatWaitsFor is string wait) return wait; // #799
             string skipped = ReadyForCheat(sim, pv, null, false, 9.5f, MomentKind.Wedding);
             ChronicleEntry e; string why;
             sim.DebugCastable = CastFilter(pv); // a couple the planner can stage now (awake, not hunting, not at a tent)

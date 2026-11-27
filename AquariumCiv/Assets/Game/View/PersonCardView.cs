@@ -515,6 +515,7 @@ namespace AquariumCiv.View
             var cam = Camera.main;
             if (overlayRoot == null) EnsureUi();
             bool hide = sim == null || pv == null || cam == null || overlayRoot.panel == null || LabelsHidden();
+            if (hide) plates.Clear(); else PlatesOn(overlayRoot.panel, plates); // #801
             // the pin's gold tag over their head
             var pinned = hide ? null : sim.Pinned;
             bool pinOn = pinned != null && pinned.alive && Place(pinTag, pv, cam, PersonRef.Notable(pinned.id));
@@ -540,6 +541,7 @@ namespace AquariumCiv.View
             if (pinDrawn) Claim(pinTag);
             if (nameOn) Claim(nameTag);
             ClaimDoll(pv, cam);
+            foreach (var r in plates) placed.Add(new Vector4(r.center.x, r.center.y, r.width, r.height)); // #801: tie labels go round a caption or a toast
             if (!hide && IsOpen && Card != null && Card.alive && pv.TryGetDollTop(PersonRef.Notable(OpenId), out var meW))
             {
                 var me = ToPanel(cam, meW, out bool meOk);
@@ -614,6 +616,7 @@ namespace AquariumCiv.View
                 var size = new Vector2(Sized(label.resolvedStyle.width, label.Word.Length * 19f + 100f), Sized(label.resolvedStyle.height, TieH));
                 var spot = new Vector2(p.x, p.y + TieTop);
                 var at = Hit(spot, size) >= 0 ? FarEnd(spot, size) : spot; // the name tag and the doll are claimed too
+                if (UnderPlate(new Rect(at - size * 0.5f, size))) { label.style.display = DisplayStyle.None; TagsUnderPlate++; continue; } // #801: no room clear of it
                 placed.Add(new Vector4(at.x, at.y, size.x, size.y));
                 label.style.left = at.x;
                 label.style.top = at.y;
@@ -629,10 +632,12 @@ namespace AquariumCiv.View
                 more.Mark = "person";
                 var size = new Vector2(Sized(more.resolvedStyle.width, more.Word.Length * 19f + 100f), Sized(more.resolvedStyle.height, TieH));
                 var at = FarEnd(me + new Vector2(0f, -TieH), size);
-                placed.Add(new Vector4(at.x, at.y, size.x, size.y));
+                bool under = UnderPlate(new Rect(at - size * 0.5f, size)); // #801
+                if (under) TagsUnderPlate++;
+                else placed.Add(new Vector4(at.x, at.y, size.x, size.y));
                 more.style.left = at.x;
                 more.style.top = at.y;
-                more.style.display = DisplayStyle.Flex;
+                more.style.display = under ? DisplayStyle.None : DisplayStyle.Flex;
             }
             // Tester run 8: once every label has its place, each leader goes round the others.
             LabelBox Drawn(int k) => new LabelBox(placed[k].x, placed[k].y, placed[k].z, placed[k].w);
@@ -747,7 +752,46 @@ namespace AquariumCiv.View
                 top -= LiftPin(pv, cam, who, tag.style.left.value.value, top, Sized(tag.resolvedStyle.width, 160f), Sized(tag.resolvedStyle.height, 72f));
             }
             tag.style.top = top;
+            // #801: a caption plate or a toast over the tag's spot hides it ("Hob · cheering" under "All tidy…"); it comes back when they go
+            float tw = Sized(tag.resolvedStyle.width, 120f), th = Sized(tag.resolvedStyle.height, 40f);
+            if (UnderPlate(new Rect(tag.style.left.value.value - tw * 0.5f, top - th, tw, th)))
+            {
+                TagsUnderPlate++;
+                return false;
+            }
             return true;
+        }
+
+        /// <summary>#801: tags and tie labels hidden because a caption plate or a toast was over them, counted per frame drawn (tests).</summary>
+        public int TagsUnderPlate { get; private set; }
+
+        /// <summary>#801: the caption plates and toasts on screen this frame (panel px).</summary>
+        readonly List<Rect> plates = new();
+
+        bool UnderPlate(Rect r)
+        {
+            foreach (var p in plates) if (p.Overlaps(r)) return true;
+            return false;
+        }
+
+        /// <summary>#801: every caption plate (<c>kg-caption</c>) and toast (<c>kg-toast</c>) shown on <paramref name="panel"/>, in panel px. The HUD's
+        /// toast and the scenes' captions share the overlay's panel (one <see cref="GameUiPanel.Settings"/>).</summary>
+        public static void PlatesOn(IPanel panel, List<Rect> into)
+        {
+            into.Clear();
+            var tree = panel?.visualTree;
+            if (tree == null) return;
+            void Check(VisualElement c)
+            {
+                if (c.ClassListContains(GlassMotion.CaptionOff) || c.ClassListContains(GlassMotion.FadeOff)) return;
+                var b = c.worldBound;
+                if (float.IsNaN(b.height) || b.height <= 1f || b.width <= 1f) return;
+                for (var p = c; p != null; p = p.parent)
+                    if (p.resolvedStyle.display == DisplayStyle.None || p.resolvedStyle.visibility == Visibility.Hidden || p.resolvedStyle.opacity < 0.05f) return;
+                into.Add(b);
+            }
+            tree.Query(className: "kg-caption").ForEach(Check);
+            tree.Query(className: "kg-toast").ForEach(Check);
         }
 
         /// <summary>

@@ -983,13 +983,22 @@ namespace AquariumCiv.View
         /// <summary>Starts a use now with the people nearest the thing (D rules: "a cheat starts the use now"). Returns a status line.</summary>
         public string Force(CampUse use)
         {
+            // #799: a held scene's replay (a story's, the raising's) never plays over another held scene: what plays is ended first, as the #722
+            // cheats do (StoryMoment.ReadyForCheat); the last evening is not cut: the cheat waits for it
+            string ended = "";
+            if (IsStoryUse(use) && use != CampUse.FruitPick)
+            {
+                if (CheatWaitsFor is string wait) return wait;
+                int n = HeldMomentStage.DebugEndPlaying();
+                if (n > 0) ended = $" (ended {n} moment{(n == 1 ? "" : "s")})";
+            }
             int before = scenes.Count;
             forcing = true;
             string r;
             try { r = IsStoryUse(use) ? ForceStory(use) : IsRitualUse(use) ? ForceRitual(use) : IsVillageUse(use) ? ForceVillage(use) : IsDogUse(use) ? ForceDog(use) : IsPropUse(use) ? ForceProp(use) : IsTreeUse(use) ? ForceTree(use) : IsLandUse(use) ? ForceLand(use) : IsAnimalUse(use) ? ForceAnimal(use) : IsCampUse(use) ? ForceCamp(use) : ForceUse(use); }
             finally { forcing = false; }
             if (scenes.Count > before) forced = scenes[^1];
-            return r;
+            return r + ended;
         }
 
         string ForceUse(CampUse use)
