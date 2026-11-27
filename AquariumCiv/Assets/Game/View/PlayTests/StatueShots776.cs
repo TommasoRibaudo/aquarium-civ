@@ -469,8 +469,10 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator B81d_SitAtItsFoot() => Use("d-sit", CampUse.StatueSit, 12f, CampCheats.StatueSit);
 
         [UnityTest, Explicit, Timeout(900000)]
-        public IEnumerator B81e_ANodInPassing() => Use("e-nod", CampUse.StatueNod, 11f, CampCheats.StatueNod, preRoll: 3f, when: () => WalkerNear(0.45f),
-            share: 0.09f, startBy: 150f, max: 200f); // v4: pressed as a grown-up walks past on screen (the nearest one, so the cheat picks them), filmed wider, waited up to 150 s (v3: nobody came in 30 s)
+        public IEnumerator B81e_ANodInPassing() => Use("e-nod", CampUse.StatueNod, 8f, CampCheats.StatueNod, preRoll: 3f, when: () => WalkerNear(0.8f),
+            share: 0.08f, startBy: 150f, max: 200f); // v4: pressed as a grown-up walks past on screen (the nearest one, so the cheat picks them), filmed wider, waited up to 150 s.
+            // v3 waited 30 s and v4's first run 150 s at 11 h within 0.45 u: nobody passed (the statue's corner of the green is quiet); now 8 h (people
+            // going to work) and within 0.8 u
 
         [UnityTest, Explicit, Timeout(900000)]
         public IEnumerator B81f_TheGreensSweep() => Use("f-sweep", CampUse.StatueSweep, 9f, CampCheats.StatueSweep);
