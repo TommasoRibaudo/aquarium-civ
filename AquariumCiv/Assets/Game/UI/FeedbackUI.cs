@@ -25,6 +25,10 @@ namespace AquariumCiv.GameUI
         const string FoldClass = "fb-fold", RidingClass = "fb-sheet--keyboard", FullClass = "kg-sheet--full";
 
         public static FeedbackUI Instance { get; private set; }
+
+        /// <summary>#805: is a full page (the book) open under the button? It then stands on a soft disc, so it reads as a button and
+        /// not as ink on the page. Set by the page's view (another assembly).</summary>
+        public static System.Func<bool> OverPage;
         /// <summary>Set false (tests) to keep the bootstrap from adding the sheet to the scene.</summary>
         public static bool AutoCreate = true;
         /// <summary>Feedback is for test builds (the Editor, development builds, and slice test builds with the SLICE_TEST define,
@@ -123,6 +127,7 @@ namespace AquariumCiv.GameUI
             if (sheet == null) return;
             if (pillSlot != null && (Screen.safeArea != pillSafe || Screen.width != pillScreen.x || Screen.height != pillScreen.y)) PlacePill();
             Ride();
+            pill?.EnableInClassList("hud-icon--on-page", OverPage != null && OverPage());
             if (IsOpen && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) Close();
         }
 

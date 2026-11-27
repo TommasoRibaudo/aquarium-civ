@@ -38,7 +38,14 @@ namespace AquariumCiv.View
                    (t.planted ? $"tree stage {t.stage}" : s.CanPlantTree ? "seed ready" : "no seed");
         }
 
-        public static string NewBox(bool on) => GameClock.DebugEcologyBox(on);
+        public static string NewBox(bool on)
+        {   // #807: the time-lapse (and its year bar) belong to the old box: closed first, or the new first run starts under them
+            var tls = TimeLapseScreenView.Instance;
+            if (tls != null && tls.IsOpen) tls.Close();
+            var tl = TimeLapseView.Find();
+            if (tl != null && tl.Active) tl.Close();
+            return GameClock.DebugEcologyBox(on);
+        }
 
         /// <summary>Mists the middle of the founding flat (or a point) for a few seconds, as a held finger would.</summary>
         public static string MistAt(float x, float z, float seconds = 2f)
