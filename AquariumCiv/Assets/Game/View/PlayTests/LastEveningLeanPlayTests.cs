@@ -126,7 +126,7 @@ namespace AquariumCiv.View.PlayTests
                         seatedN++;
                         px.Add(StandingPx(lead));
                         float fe = FacingOff(who), fm = partner > 0 ? FacingOff(mate) : 0f;
-                        if (pv.TryGetDollFeet(who, out var feetW) && pv.TryGetDollTop(who, out var topW) && (RimAcross(feetW) || RimAcross(topW) || RimAcross((feetW + topW) * 0.5f))) underRim++;
+                        if (pv.TryGetDollFeet(who, out var feetW) && pv.TryGetDollTop(who, out var topW) && RimAcross(feetW, topW)) underRim++;
                         if (fe >= 0f && fe <= FacingMax) elderFacing++;
                         if (fm >= 0f && fm <= FacingMax) mateFacing++;
                         if (seatedN % 30 == 1) frames.AppendLine($"t {t:0.0}: middle ({v.x:0.00}, {v.y:0.00}) elder px {px[px.Count - 1]:0} facing off: elder {fe:0} partner {fm:0}; zoom {rig.zoom:0.00} pitch {rig.pitch:0}");
@@ -158,17 +158,61 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("the last evening");
         }
 
+        /// <summary>The cheat pressed while another held scene's lean holds the camera: it ends that scene, and the camera goes straight on to the last
+        /// evening; it never eases back out to the whole box in between (the tester, 2026-11-27).</summary>
+        [UnityTest, Timeout(900000)]
+        public IEnumerator PlayNow_DuringAHeldScene_TheCameraGoesStraightToTheLastEvening()
+        {
+            UseLivingLand(true);
+            GameUiPanel.AcceptInputUnfocused(true);
+            ShowMeDirector.BubblesOn = false;
+            yield return OpenSlice(750, 1334, seed: 4242);
+            GameUiPanel.AcceptInputUnfocused(true);
+            yield return new WaitForSeconds(2f);
+            var pv = Pv; var rig = Rig;
+            HeldMomentLean.Enabled = true; HeldMomentLean.DebugForget();
+            float home = rig.zoom;
+            var starts = new System.Func<string>[] { () => StoryMoment.DebugPlayNow(StoryEvent.TinkererBucket), () => StoryMoment.DebugPlayNow(StoryEvent.GardenerFlowers), () => StagedMoments.DebugPlayNow(MomentKind.Newborn), () => StagedMoments.DebugPlayRitualNow(RitualKind.All[0]) };
+            string first = "";
+            foreach (var s in starts)
+            {
+                int l0 = HeldMomentLean.Leans;
+                first = s();
+                yield return Until(() => HeldMomentLean.Leans > l0, 10f);
+                if (HeldMomentLean.Leans > l0) break;
+                HeldMomentStage.DebugEndPlaying();
+                yield return new WaitForSeconds(1f);
+            }
+            if (!HeldMomentLean.Holding) Assert.Inconclusive("no held scene leaned in this box: " + first + "; " + HeldMomentLean.LastWhy);
+            yield return Until(() => !rig.IsFlying, 6f);
+            float leaned = rig.zoom;
+            Debug.Log($"[789 lean] a held scene leaned: {first}; zoom {home:0.00} -> {leaned:0.00}");
+            int leans = HeldMomentLean.Leans;
+            string r = CampCheats.LastEveningPlayNow();
+            Debug.Log("[789 lean] cheat during a held scene: " + r);
+            float most = rig.zoom;
+            for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 10f; ) { most = Mathf.Max(most, rig.zoom); yield return null; }
+            Assert.IsNotNull(pv.Camp.LastEveningScene, "the last evening plays: " + pv.Camp.LastEveningWhy);
+            Assert.Greater(HeldMomentLean.Leans, leans, "its lean took the camera: " + HeldMomentLean.LastWhy);
+            Assert.IsTrue(HeldMomentLean.Holding, "and holds it");
+            Assert.Less(most, home - 0.2f, $"the camera never eased back out to the whole box (zoom {home:0.00}, leaned {leaned:0.00}, at most {most:0.00} after the cheat)");
+            AssertNoErrors("the cheat during a held scene");
+        }
+
         /// <summary>Is the front glass's top edge (a bright band, with the lid seen edge-on) drawn across this world point? Its screen row is within
         /// a few px of the point's, and it is nearer the camera.</summary>
-        static bool RimAcross(Vector3 world)
+        static bool RimAcross(Vector3 feet, Vector3 top)
         {
             var box = Box; var cam = Camera.main;
-            var local = box.Root.InverseTransformPoint(world);
-            var back = (box.Root.InverseTransformPoint(cam.transform.position) - local).normalized; // the real ray to the camera
-            if (back.z > -1e-3f) return false;
-            float t = (Land.CZ - (Land.HZ + 0.075f) - local.z) / back.z;
-            return Mathf.Abs(local.y + back.y * t - Land.GlassTop) < 0.06f;
+            float fz = Land.CZ - (Land.HZ + 0.075f);
+            Vector3 a = cam.WorldToScreenPoint(box.Root.TransformPoint(new Vector3(-Land.HX, Land.GlassTop, fz))), b = cam.WorldToScreenPoint(box.Root.TransformPoint(new Vector3(Land.HX, Land.GlassTop, fz)));
+            var f = cam.WorldToScreenPoint(feet); var t = cam.WorldToScreenPoint(top);
+            if (a.z <= 0f || b.z <= 0f || Mathf.Abs(b.x - a.x) < 1f) return false;
+            float rimY = Mathf.Lerp(a.y, b.y, (f.x - a.x) / (b.x - a.x));
+            return rimY > Mathf.Min(f.y, t.y) - RimPx && rimY < Mathf.Max(f.y, t.y) + RimPx; // the band, half its width either side
         }
+        /// <summary>Half the bright band's height on a 1334 px screen (the glass's top edge and the lid edge-on).</summary>
+        const float RimPx = 14f;
 
         /// <summary>Diagnostics: the renderers drawn over a world point (their screen box holds it and they are nearer the camera).</summary>
         static string Occluders(Vector3 world)
