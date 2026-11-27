@@ -255,6 +255,19 @@ namespace AquariumCiv.Life
             return list;
         }
 
+        /// <summary>#791: does <paramref name="who"/> have a run-in beat starting in [<paramref name="h0"/>, <paramref name="h1"/>) on <paramref name="day"/>?
+        /// A use that borrows someone's free time (the view's camp and village uses) leaves them be: it would hold them past the walk the
+        /// beat stops on, and the other would stop to chat with nobody.</summary>
+        public bool RunInBetween(PersonRef who, long day, float h0, float h1)
+        {
+            Sync();
+            EnsureDay(day);
+            EnsureRunIns();
+            if (!byKey.TryGetValue(who.Key, out var p) || !runInCache.TryGetValue(p.key, out var l)) return false;
+            foreach (var s in l) if (s.start >= h0 && s.start < h1) return true;
+            return false;
+        }
+
         /// <summary>#791 (tests): one person's day and interruption blocks round [<paramref name="h0"/>, <paramref name="h1"/>]: the stitched
         /// pieces, each block's pieces and legs, and where the plan has them every few minutes, so a run-in that misses says why.</summary>
         public string DebugRunInTrace(PersonRef who, long day, float h0, float h1)

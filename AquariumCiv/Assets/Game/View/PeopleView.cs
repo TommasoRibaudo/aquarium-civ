@@ -643,6 +643,7 @@ namespace AquariumCiv.View
             if (hidden && stage == LifeStage.Kid && HideReason != null) HideReason($"{a.who} hidden by Drive: kind {a.kind} place {a.place.kind} moving {a.moving} (kind None, or no position for the plan: #698 diagnosis)");
             var spot = new Vector2(x, z);
             var target = spot;
+            int claimedFrom = claimed.Count; // #791: what this doll claims below; replaced by where it ends up standing
             Vector2? face = null;
             if (hunting || tenting)
             {
@@ -785,6 +786,14 @@ namespace AquariumCiv.View
                 // #791: pushed out onto the ring, it may land on a spot already taken (a pair's listener stood on a drinker): the nearest clear one
                 if (was != target) { d.dbgBy += " fire"; if (!stirring && !hunting && !a.moving && !a.enRoute) target = FreeSpot(target, spot, a.who.Key, true, was); }
             }
+            // #791: the spot claimed is where they stand after every push (a pair's cue, the fire's ring), so the dolls after them keep off it:
+            // a drinker took the spot a pair's cue had just put a woman on
+            if (!hidden && !a.moving && !a.enRoute && claimed.Count > claimedFrom)
+            {
+                claimed.RemoveRange(claimedFrom, claimed.Count - claimedFrom);
+                claimed.Add(target);
+            }
+            else if (!hidden && !a.moving && !a.enRoute && paired) claimed.Add(target);
             // B3 tester fixes: a use whose seat is on its thing may step onto it; a staged moment's spot is its own (the feast's benches)
             d.enterProp = hidden ? -1 : camping ? Camp.EnterThing(a.who.Key) : tenting && !started && a.tent == TentPhase.None && !d.walking ? -2 : -1;
 

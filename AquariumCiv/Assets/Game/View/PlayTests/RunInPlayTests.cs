@@ -35,7 +35,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(4);
         }
 
-        struct Sample { public float t, speed, step, dt, gap, facing; public ActivityKind kind; public bool enRoute, moving, seen; public Vector2 at; public string why; }
+        struct Sample { public float t, speed, step, dt, gap, facing; public ActivityKind kind; public bool enRoute, moving, seen; public Vector2 at; public string why, spot; }
 
         /// <summary>Watches one person through <paramref name="seconds"/> real seconds, each frame.</summary>
         IEnumerator Watch(PersonRef who, PersonRef with, float seconds, List<Sample> into)
@@ -62,7 +62,7 @@ namespace AquariumCiv.View.PlayTests
                 {
                     t = now - start, speed = stepSeen ? (p - last).magnitude / Mathf.Max(1e-4f, pv.LastTickDt) : 0f, step = stepSeen ? (p - last).magnitude : 0f, dt = pv.LastTickDt, gap = to.magnitude, seen = seen,
                     facing = to.sqrMagnitude > 1e-6f ? Vector2.Dot(f.normalized, to.normalized) : -2f,
-                    kind = a.kind, enRoute = a.enRoute, moving = a.moving, at = p, why = $"{a.kind}@{a.place.kind}/{a.source}/{a.hunt}",
+                    kind = a.kind, enRoute = a.enRoute, moving = a.moving, at = p, why = $"{a.kind}@{a.place.kind}/{a.source}/{a.hunt}", spot = pv.DebugSpotOf(who),
                 });
                 last = p; has = true;
             }
@@ -129,6 +129,7 @@ namespace AquariumCiv.View.PlayTests
             {
                 Debug.Log("[runin] trace " + pv.Planner.DebugRunInTrace(stop.who, pv.Now.day, stop.start - 0.1f, stop.end + 0.05f));
                 Debug.Log("[runin] trace " + pv.Planner.DebugRunInTrace(stop.with, pv.Now.day, stop.start - 0.1f, stop.end + 0.05f));
+                Debug.Log($"[runin] spot first {settled.First().spot} || last {settled.Last().spot} || beat start {mid.First().spot}");
                 Debug.Log("[runin] settled " + string.Join(" ", settled.Where((x, k) => k % 3 == 0).Select(x => $"{x.t:0.00}:{x.at.x:0.000},{x.at.y:0.000}/{x.why}")));
                 Debug.Log("[runin] beats now " + string.Join(" | ", pv.Planner.RunInBeatsOn(pv.Now.day).Where(x => x.who == stop.who || x.who == stop.with).Select(x => $"{x.kind} {x.who}>{x.with} {x.start:0.000}-{x.end:0.000} over {x.walksOver}")) + " ; " + pv.Planner.DebugLiveScenes());
             }
