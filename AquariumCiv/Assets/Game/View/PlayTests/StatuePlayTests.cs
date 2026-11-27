@@ -130,7 +130,7 @@ namespace AquariumCiv.View.PlayTests
                 if (!Mid(pvp)) { plinthOff++; if (firstOff == "") firstOff = $"plinth at ({pvp.x:0.00}, {pvp.y:0.00}) at {u:0.0} s"; }
                 if (pv.TryGetDollPosition(carver, out var cp) && !Mid(Vp(cp)) && !last) { carverOff++; if (firstOff == "") { var cv = Vp(cp); firstOff = $"carver at ({cv.x:0.00}, {cv.y:0.00}) at {u:0.0} s"; } }
                 if (!HeldMomentLean.Holding && !last) released++;
-                string stateNow = $"holding {HeldMomentLean.Holding}, leaning {rig.Leaning}, glide {rig.GlideArmed}, raise scenes {pv.Camp.Scenes.Count(s => s.use == CampUse.StatueRaise)}, ours {pv.Camp.Scenes.Contains(sc)}, staging {(HeldMomentStage.Instance != null && HeldMomentStage.Instance.AnyPlayingStaging() != null)}, why {HeldMomentLean.LastWhy}";
+                string stateNow = $"holding {HeldMomentLean.Holding}, leaning {rig.Leaning}, glide {rig.GlideArmed}, raise scenes {pv.Camp.Scenes.Count(s => s.use == CampUse.StatueRaise)}, ours {pv.Camp.Scenes.Contains(sc)}, staging {HeldMomentStage.Instance?.AnyPlayingStaging()?.Moment?.kind}#{HeldMomentStage.Instance?.AnyPlayingStaging()?.Moment?.id} of {HeldMomentStage.Instance?.StagingCount}, sim playing {string.Join(",", sim.PlayingMoments().Select(m => m.kind + "#" + m.id))}, why {HeldMomentLean.LastWhy}";
                 if (stateNow != stateWas) { Debug.Log($"[776 lean] {u:0.0} s: {stateNow}"); stateWas = stateNow; }
                 if (u >= 3f + shot * 7f && shot < 5) { yield return Shot($"776/lean_{shot}_{u:00}s"); shot++; }
                 yield return null;
