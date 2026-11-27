@@ -74,7 +74,11 @@ namespace AquariumCiv.View
             if (Time.unscaledTime < cur.nextLook) return;
             cur.nextLook = Time.unscaledTime + LookEvery;
             if (!Look(cur.staging, cam, out var world, out float zoomTo, out float vx, out float vy)) return;
-            if (StoryLean.LeftTheFrame(vx, vy)) { LastWhy = "the scene left the frame"; Release(cam); return; }
+            if (StoryLean.LeftTheFrame(vx, vy))
+            {   // the aim can jump (a lead walking in from far is followed, then the cast fits and the aim is its middle again): the scene has
+                // only left when none of its people is on screen any more; else the lean re-aims on it below
+                if (!AnyCastOnScreen()) { LastWhy = "the scene left the frame"; Release(cam); return; }
+            }
             bool closer = zoomTo < cam.zoom - TightenBy; // the cast has gathered (a lead walked in from far): the lean comes closer, never farther out
             bool follow = StoryLean.NeedsFollow(vx, vy), re = false;
             if ((follow || closer) && !cam.Touching)
@@ -196,6 +200,20 @@ namespace AquariumCiv.View
                     }
                 return true;
             }
+        }
+
+        /// <summary>Is any of the cast <see cref="Look"/> last read drawn inside the view?</summary>
+        static bool AnyCastOnScreen()
+        {
+            var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+            var c = Camera.main;
+            if (box == null || c == null) return false;
+            foreach (var p in cast)
+            {
+                var v = c.WorldToViewportPoint(box.Root.TransformPoint(new Vector3(p.x, box.SurfaceHeight(p.x, p.y) + 0.06f, p.y)));
+                if (v.z > 0f && v.x > 0f && v.x < 1f && v.y > 0f && v.y < 1f) return true;
+            }
+            return false;
         }
 
         static readonly List<float> sortX = new List<float>(), sortZ = new List<float>();
