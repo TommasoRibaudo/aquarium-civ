@@ -220,8 +220,8 @@ namespace AquariumCiv.View.PlayTests
             {
                 var mine = sim.DogsOfKeeper(sc.keys[0]);
                 string dogs = $"era {sim.State.era}, eco {sim.EcologyOn}, the elder's dogs: " + string.Join(", ", mine.Select(d => $"{d.name} {sim.DogStageOf(d)} at {pv.Camp.DogAt(d.id)?.ToString() ?? "not drawn"}"));
-                Debug.Log("[789 shots] " + clip + ": " + dogs + "; why " + pv.Camp.LastEveningWhy);
-                Assert.GreaterOrEqual(sc.dog, 0, "the dog is in the scene: " + dogs);
+                Debug.Log("[789 shots] " + clip + ": " + dogs + "; why " + pv.Camp.LastEveningWhy + "; at the cast: " + pv.Camp.LastEveningDogNote);
+                Assert.GreaterOrEqual(sc.dog, 0, "the dog is in the scene: " + dogs + "; at the cast: " + pv.Camp.LastEveningDogNote);
             }
             string dir = OutDir(clip);
             foreach (var old in Directory.GetFiles(dir, "f*.jpg")) File.Delete(old);

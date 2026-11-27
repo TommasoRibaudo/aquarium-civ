@@ -635,7 +635,7 @@ namespace AquariumCiv.View
             StartCue startCue = default;
             bool started = !hunting && StartHook != null && stage != LifeStage.Baby && !Camp.Busy(a.who.Key) /* #692: a cheat's use takes them from a new-start scene */ && StartHook(a, out startCue);
             if (started) { x = startCue.pos.x; z = startCue.pos.y; huntFace = startCue.face; }
-            bool tenting = !hunting && (started || (a.tent != TentPhase.None && TentSpot(a, out x, out z, out huntFace)) // #284: the planned walk to the frame and the lot
+            bool tenting = !hunting && (started || (a.tent != TentPhase.None && !Camp.LastEveningHolds(a.who.Key) && TentSpot(a, out x, out z, out huntFace)) // #284: the planned walk to the frame and the lot
                 || (StagedSpot != null && !Camp.CheatHolds(a.who.Key) && StagedSpot(a, now, out x, out z, out huntFace)) // #370: a staged moment's own spots (the aisle, the ring, the glass) ride the same path; #695: never over a cheat's use
                 || (LifeSpot != null && !Camp.CheatHolds(a.who.Key) && LifeSpot(a, now, out x, out z, out huntFace)) // #427: a placed-life scene holds them (the dawn drink: stop and watch)
                 || (TellerSpot != null && !Camp.Busy(a.who.Key) && TellerSpot(a, now, out x, out z, out huntFace))); // B76: the teller behind the fire, the listeners round it

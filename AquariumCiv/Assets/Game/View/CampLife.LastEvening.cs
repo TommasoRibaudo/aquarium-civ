@@ -29,6 +29,8 @@ namespace AquariumCiv.View
         public string LastEveningWhy { get; private set; } = "";
         public string LastEveningCaption { get; private set; }
         public int LastEveningsStarted { get; private set; }
+        /// <summary>Tests: the dogs the last cast looked at (who was drawn, who was busy).</summary>
+        public string LastEveningDogNote { get; private set; } = "";
 
         long lastEveningDone = long.MinValue;
         float lastEveningLook = float.MinValue;
@@ -145,8 +147,10 @@ namespace AquariumCiv.View
             c.door = !home.IsNone && planner.Positions.TryGetPosition(home, out float hx, out float hz) ? new Vector2(hx, hz) : fire + c.toCam * 0.8f;
             // the dog: the elder's own, else a grown one, if one is drawn and free
             Dog dog = null;
+            LastEveningDogNote = "own dogs:";
             foreach (var d in sim.DogsOfKeeper(who.id))
             {
+                LastEveningDogNote += $" {d.name} {sim.DogStageOf(d)} drawn {DogAt(d.id).HasValue} busy {DogBusy(d.id)};";
                 if (sim.DogStageOf(d) == DogStage.Pup || !DogAt(d.id).HasValue) continue;
                 if (DogBusy(d.id)) // their own dog in an everyday use gives way to the last evening, as the people's do (the first "with a dog" clips: never cast)
                 {
