@@ -78,6 +78,11 @@ namespace AquariumCiv.Lighting
         public static bool LeftTheFrame(float vx, float vy) => vx < 0.04f || vx > 0.96f || vy < 0.04f || vy > 0.96f;
 
         /// <summary>The focus has drifted far enough from the middle that the lean follows it (re-aims).</summary>
-        public static bool NeedsFollow(float vx, float vy) => Math.Abs(vx - 0.5f) > 0.22f || Math.Abs(vy - 0.5f) > 0.2f;
+        public static bool NeedsFollow(float vx, float vy) => Math.Abs(vx - 0.5f) > FollowX || Math.Abs(vy - 0.5f) > FollowY;
+
+        /// <summary>How far off the middle (viewport share, across and up) the focus of a held lean may drift before the lean re-aims on it.
+        /// #796: 0.07 (was 0.22 / 0.2): the lean aims at the cast's middle while its lead is still walking in, and once the cast had gathered
+        /// the scene settled up to a fifth of the screen off-centre and was never re-aimed. A look a second keeps the re-aims gentle.</summary>
+        public const float FollowX = 0.07f, FollowY = 0.07f;
     }
 }

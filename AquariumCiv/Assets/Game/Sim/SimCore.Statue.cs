@@ -55,7 +55,7 @@ namespace AquariumCiv.Sim
             w.Fire(out float fx, out float fz, out _);
             keep.Add((fx, fz));
             foreach (var p in ConsequenceProps) if (p.placed) keep.Add((p.x, p.z)); // the name stone, the Keeper's post and the rest of the Keeper's things
-            statueSiteFound = StatueSpot.Find(w.Map, keep, out statueX, out statueZ);
+            statueSiteFound = StatueSpot.Find(w.Map, keep, out statueX, out statueZ, StatueSpot.FencesOf(w.Lots, State.era == Era.Camp)); // #798: room from the fences
             statueYaw = statueSiteFound ? StatueSpot.FaceYaw(statueX, statueZ, w.Map.greenX, w.Map.greenZ) : 0f;
             statueSiteKnown = true;
             x = statueX; z = statueZ; yaw = statueYaw;
