@@ -30,7 +30,7 @@ namespace AquariumCiv.View.PlayTests
     public class LastEveningShots789 : PlayTestBase
     {
         const int W = 750, H = 1334;
-        const float FrameEvery = 0.1f, PersonPx = 90f;
+        const float FrameEvery = 0.1f, PersonPx = 100f, ClosePx = 170f;
         static readonly float[] Offsets = { 0f, -30f, 30f, -60f, 60f }, Pitches = { 46f, 58f };
 
         static SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : null;
@@ -109,7 +109,9 @@ namespace AquariumCiv.View.PlayTests
                 var r = ScreenRect(CastPoints(sc, out _));
                 float ext = Mathf.Max(r.width / (0.75f * Screen.width), r.height / (0.5f * Screen.height));
                 float px = ElderPx(sc);
-                float z = Mathf.Max(rig.zoom * Mathf.Max(ext, 0.05f), px > 1f ? rig.zoom * px / PersonPx : 0f);
+                float st = SceneClock(Pv) - sc.t0;
+                float wantPx = st >= sc.a - 0.5f && st < sc.d + 0.5f ? ClosePx : PersonPx; // v3: closer from the hand to the help up (the arms are the point)
+                float z = Mathf.Max(rig.zoom * Mathf.Max(ext, 0.05f), px > 1f ? rig.zoom * px / wantPx : 0f);
                 z = Mathf.Clamp(z, 0.03f, rig.maxZoom);
                 zoomNow = snap ? z : Mathf.Lerp(zoomNow, z, 0.1f);
                 rig.zoom = zoomNow; rig.Apply(); rig.FitDepthNow();
@@ -262,7 +264,7 @@ namespace AquariumCiv.View.PlayTests
                     UnityEngine.Object.Destroy(tex);
                     times.AppendLine(now.ToString("0.000", CultureInfo.InvariantCulture));
                     float px = ElderPx(sc);
-                    if (st < tIn && px > 1f) { minPx = Mathf.Min(minPx, px); maxPx = Mathf.Max(maxPx, px); }
+                    if (st >= 3f && st < tIn && px > 1f) { minPx = Mathf.Min(minPx, px); maxPx = Mathf.Max(maxPx, px); }
                     scene.AppendLine(string.Format(CultureInfo.InvariantCulture, "{0:0.000} {1:0.000} {2:0}", now, SceneClock(pv) - sc.t0, px));
                     if (n % 20 == 0) // every ~2 s: where each of the cast is drawn and why (the planner's spot or the scene's part)
                         foreach (int k in sc.keys)

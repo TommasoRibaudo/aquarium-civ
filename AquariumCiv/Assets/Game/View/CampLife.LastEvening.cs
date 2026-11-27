@@ -40,7 +40,7 @@ namespace AquariumCiv.View
         /// <summary>When the cheat was pressed (real time: the cheat jumps the clock to dusk): "with a dog" gives the dog that frame, and it is drawn only after the camp's step.</summary>
         float lastEveningCheatAt;
         /// <summary>A cheat waits up to this long (real s) for the elder's own new dog to be drawn, so it is cast (the first "with a dog" clip had none).</summary>
-        const float LastEveningDogWait = 3f;
+        const float LastEveningDogWait = 8f;
 
         void ResetLastEvening()
         {
@@ -147,7 +147,7 @@ namespace AquariumCiv.View
             c.door = !home.IsNone && planner.Positions.TryGetPosition(home, out float hx, out float hz) ? new Vector2(hx, hz) : fire + c.toCam * 0.8f;
             // the dog: the elder's own, else a grown one, if one is drawn and free
             Dog dog = null;
-            LastEveningDogNote = "own dogs:";
+            LastEveningDogNote = $"{Time.unscaledTime - lastEveningCheatAt:0.0} s after the cheat; own dogs:";
             foreach (var d in sim.DogsOfKeeper(who.id))
             {
                 LastEveningDogNote += $" {d.name} {sim.DogStageOf(d)} drawn {DogAt(d.id).HasValue} busy {DogBusy(d.id)};";
