@@ -195,6 +195,14 @@ namespace AquariumCiv.View.PlayTests
             Freeze(false);
         }
 
+        /// <summary>A cut to a new yaw without a search or a held clock (the pitch stays the first search's).</summary>
+        void Recut(CampScene sc, float yaw, string tag)
+        {
+            aimYaw = Mathf.Repeat(yaw + 180f, 360f) - 180f;
+            Frame(sc, true);
+            aimLog += $"{tag}: cut to y{aimYaw:0}/p{aimPitch:0} elder {ElderPx(sc):0} px\n";
+        }
+
         Vector3 WorldDir(Vector2 boxDir) => Box.Root.TransformDirection(new Vector3(boxDir.x, 0f, boxDir.y));
 
         // ================================================================== the clip
@@ -247,12 +255,14 @@ namespace AquariumCiv.View.PlayTests
                 {
                     walkAimed = true;
                     Vector2 door = DoorOf(sc);
-                    yield return Aim(sc, YawFrom(WorldDir((door - sc.focus).normalized)), sc.keys, "the walk home");
+                    // v4: no search here (the search holds the scene's clock but the dolls' steps run on, so the walk was over before the first
+                    // frame) and not from beyond the door (the tent stood in front of them): from the side, a little ahead of them
+                    Recut(sc, YawFrom(WorldDir((door - sc.focus).normalized)) + 65f, "the walk home");
                 }
                 if (!doorAimed && st >= tDoor - 0.2f)
                 {
                     doorAimed = true;
-                    yield return Aim(sc, YawFrom(WorldDir((sc.focus - DoorOf(sc)).normalized)), new List<int> { sc.keys[0] }, "at the door");
+                    Recut(sc, YawFrom(WorldDir((sc.focus - DoorOf(sc)).normalized)) + 20f, "at the door"); // from the fire's side: the wave back to the fire
                 }
                 Frame(sc, false);
                 float now = Time.realtimeSinceStartup - t0;
