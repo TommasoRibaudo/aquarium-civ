@@ -13,7 +13,6 @@ namespace AquariumCiv.View
     {
         /// <summary>#267: the brown, murky water of a bucket scooped while the pond is dry.</summary>
         static readonly Color MuddyWater = new Color(0.42f, 0.30f, 0.17f);
-        public const float KidScale = 0.68f;
 
         /// <summary>The proportions every part hangs from (adult; multiply by the doll's scale).</summary>
         public const float BodyH = 0.13f, ShoulderX = 0.046f, ArmLen = 0.075f, HeadR = 0.043f;

@@ -164,3 +164,9 @@ Not modelled: crowd easing and catch-up glides (the doll stands on the clip's po
   worktree, two runs of the **same** clip write the same out dir. A build in one worktree takes a lock in that
   worktree's `obj/` only.
 - The 0.25× gif runs at 7.5 fps. Frames are rendered in parallel (`ANIMBENCH_JOBS`, default cores − 1, at most 8).
+
+## Keeping it building (#786)
+CI runs `dotnet build Tools/AnimBench` and `dotnet test Tools/AnimBench.Tests` (job "AnimBench (dotnet)"). When a beat file under
+View/Beats reads a constant from a class that needs UnityEngine meshes or MonoBehaviours, move the constant into a Unity-free partial
+`View/<Class>.Consts.cs` (they compile in through the `*.Consts.cs` glob in AnimBench.csproj); same class, same value, the game is unchanged.
+A clip that runs past the end of a play round fails `endBeat`: cut its `duration` to the round's end.
