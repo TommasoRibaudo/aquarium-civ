@@ -744,20 +744,21 @@ namespace AquariumCiv.View
             if (!hunting && !tenting && !a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
             // sign-off 2026-11-14 (ChoreBeats): the feeder kneels close at the fire (the ring's 0.3 is too far to push grass in); the scraper
             // stands at the hide rack facing it
-            if (!hidden && !a.moving && !a.enRoute && a.kind == ActivityKind.FeedFire && a.place.kind == PlaceKind.Fire && planner.FirePoint(out float ffx, out float ffz))
+            if (!hidden && !campMoves && !a.moving && !a.enRoute && a.kind == ActivityKind.FeedFire && a.place.kind == PlaceKind.Fire && planner.FirePoint(out float ffx, out float ffz))
             {
                 // between the fire and its grass heap (Pieces.GrassHeapAt), the heap behind them: the gather is a turn round to it
                 var fp = new Vector2(ffx, ffz); var away = new Vector2(Pieces.GrassHeapAt.x, Pieces.GrassHeapAt.z);
                 target = fp + away.normalized * FeedReach; face = fp;
             }
-            if (!hidden && !a.moving && !a.enRoute && a.kind == ActivityKind.ScrapeHide && planner.Positions.TryGetPosition(RackMiddle, out float rkx, out float rkz))
+            if (!hidden && !campMoves && !a.moving && !a.enRoute && a.kind == ActivityKind.ScrapeHide && planner.Positions.TryGetPosition(RackMiddle, out float rkx, out float rkz))
             {
                 var rk = new Vector2(rkx, rkz); var away = target - rk;
                 if (away.sqrMagnitude < 1e-6f) away = Vector2.right;
                 target = rk + away.normalized * ScrapeReach; face = rk;
             }
+            // (#798 statue test: these three work spots never take a doll out of a camp scene that places it; the scene says where)
             // #684: a woodcutter at a living land's tree stands so the axe's blade lands on the trunk at chop height (it struck the ground beside it), the two of a tree on opposite sides
-            if (!hidden && !a.moving && !a.enRoute && a.kind == ActivityKind.Chop && a.place.kind == PlaceKind.Woods && plannerSim != null && plannerSim.EcologyOn)
+            if (!hidden && !campMoves && !a.moving && !a.enRoute && a.kind == ActivityKind.Chop && a.place.kind == PlaceKind.Woods && plannerSim != null && plannerSim.EcologyOn)
             {
                 target = DollMotion.ChopStand(spot, Hash01(a.who.Key, 7) * Mathf.PI * 2f + a.slot * Mathf.PI, out var chopFace);
                 face = chopFace;
