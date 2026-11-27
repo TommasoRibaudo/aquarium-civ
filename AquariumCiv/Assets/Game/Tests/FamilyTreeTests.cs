@@ -183,5 +183,26 @@ namespace AquariumCiv.Tests
             Assert.NotNull(pim.story);
             Assert.AreEqual(501, pim.story.entryId);
         }
+
+        [Test]
+        public void TheDeepFamilyCheat_StepsAGenerationBetweenParentAndChild()
+        {
+            var sim = NewSim(4);
+            int root = sim.DebugDeepFamily(3);
+            Assert.GreaterOrEqual(root, 0, "a founder");
+            var t = sim.FamilyTreeOf(root);
+            Assert.GreaterOrEqual(t.rows, 4, "four generations");
+            int pairs = 0;
+            foreach (var n in sim.State.notables.Where(n => n.parentId >= 0))
+            {
+                var parent = sim.FindNotable(n.parentId);
+                if (parent == null || t.Node(n.id) == null) continue;
+                pairs++;
+                Assert.GreaterOrEqual(parent.age - n.age, SimCore.ParentMinAge - 0.01f, $"{parent.FullName} ({parent.age:0}) is a generation older than {n.FullName} ({n.age:0})");
+            }
+            Assert.GreaterOrEqual(pairs, 9, "three children a generation, three generations");
+            sim.Advance(1);
+            Assert.IsTrue(sim.FindNotable(root).alive, "the founder outlives the cheat's month");
+        }
     }
 }
