@@ -1,0 +1,30 @@
+{
+  "name": "789-help-up",
+  "notes": "#789 B82.a beat 4 (new HelpUp, a pair pose), v2 2026-11-27 (the user: 'a helper each side' was lost from the side): the partner and one grown kin stand at the elder's sides, 0.11 u off, facing the fire as the elder does; each helper's near arm goes down and out under the elder's arm (z 60, x 15, eased 0.3 s), leaning in, a small lift with the knees; the elder pushes up off the stool over 1.2 s (the seat's drop and squash ease out) with a small sway (roll +-5), and as they come up both arms go out over the helpers' shoulders (z 75): the three linked, seen from the front. Every number [est] until the user signs off the clip.",
+  "duration": 4.0,
+  "fps": 30,
+  "warmup": 1,
+  "camera": { "view": "default", "focus": [0, 0.26], "span": 0.6, "yaw": 28, "pitch": 24 },
+  "sheet": { "from": 0.6, "to": 3.6, "frames": 24, "columns": 6 },
+  "objects": [ { "id": "fire", "kind": "fire", "pos": [0, 0] } ],
+  "dolls": [
+    { "id": "elder", "seed": 7891, "pos": [0, 0.28], "face": [0, 0],
+      "timeline": [
+        { "t": 0, "dur": 1.0, "style": "Sit" },
+        { "t": 1.0, "dur": 1.2, "style": "Stand", "pose": "HelpedUp", "label": "helped up" },
+        { "t": 2.2, "style": "Stand", "pose": "HeldUpWalk", "label": "held up" }
+      ] },
+    { "id": "partner", "seed": 7892, "style": "Stand", "pos": [0.11, 0.28], "face": [0.11, 0],
+      "timeline": [
+        { "t": 0, "dur": 1.0 },
+        { "t": 1.0, "dur": 1.2, "pose": "HelpUpR", "label": "arm under the elder's" },
+        { "t": 2.2, "pose": "PairWalkR" }
+      ] },
+    { "id": "son", "seed": 7894, "style": "Stand", "pos": [-0.11, 0.28], "face": [-0.11, 0],
+      "timeline": [
+        { "t": 0, "dur": 1.0 },
+        { "t": 1.0, "dur": 1.2, "pose": "HelpUpL", "label": "arm under the elder's" },
+        { "t": 2.2, "pose": "PairWalkL" }
+      ] }
+  ]
+}

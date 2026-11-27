@@ -149,6 +149,7 @@ namespace AquariumCiv.Sim
             if (s.firstRun.active) FirstRunStep(); // opt-in, no dice: the first rain is answered inside the first year (SimCore.FirstRun.cs, #94)
             AccrueMess((float)Config.StepHours);
             if (season == 0) YearlyNotables();
+            DebugDeathTonight(); // #789: a cheat's last evening dies in the night as the age roll would (nothing without a cheat)
             NarrativeChecks(winter, festivalRoll);
             StoryStep(season, winter); // draws only from its own stream (SimCore.Story.cs)
             if (season == 0) RecordYear();

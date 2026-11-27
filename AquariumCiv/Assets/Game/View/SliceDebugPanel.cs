@@ -576,6 +576,13 @@ namespace AquariumCiv.View
             if (Btn("Statue: skip a year")) last = CampCheats.StatueSkipYear(); // #776 the wait after the death is over
             if (Btn("Statue: skip to the anniversary")) last = CampCheats.StatueSkipToAnniversary(); // #776 today is the death day, a year on, morning
             EndRow();
+            // #789 Last evening (B82): each sets an elder's death for tonight, clears what plays and the spacing, and jumps to dusk
+            Row(); // #789
+            if (Btn("Last evening: play now")) last = CampCheats.LastEveningPlayNow(); // #789 B82.a (names who)
+            if (Btn("Last evening: elder with no kin")) last = CampCheats.LastEveningNoKin(); // #789 the no-scene path: they just die in the night
+            if (Btn("Last evening: with a dog")) last = CampCheats.LastEveningWithDog(); // #789 a grown dog of their own first (a camp box)
+            if (Btn("Last evening: two elders at once")) last = CampCheats.LastEveningTwo(); // #789 two in their last evening: only one scene
+            EndRow();
         }
 
         void OnGUI()

@@ -281,6 +281,7 @@ namespace AquariumCiv.View
             if (sv != null && sv.ShapeMode) return "shape mode";
             var care = CareView.Instance;
             if (care != null && care.IsWiping) return "a wipe";
+            if (CampLife.LastEveningNow) return "the last evening"; // #789: nothing else starts over it
             return null;
         }
 

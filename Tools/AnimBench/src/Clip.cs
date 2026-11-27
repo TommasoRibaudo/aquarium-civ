@@ -247,6 +247,9 @@ namespace AnimBench
         public AquariumCiv.Life.MomentStagePlan Plan;
         public AquariumCiv.Life.MomentMember Member;
         public int StepIndex = -1;
+        /// <summary>#789: a camp scene's pose laid over the move, by name (<c>"pose"</c>: LastEveningScenes.PoseOf), on the segment's own clock.</summary>
+        public CampPoseFn Pose;
+        public string PoseName;
 
         public float Length => Math.Max(1e-4f, T1 - T0);
         public bool Moves => (To - From).sqrMagnitude > 1e-10f;
@@ -363,6 +366,11 @@ namespace AnimBench
                 seg.Partner = Get("partner")?.ToString();
                 seg.Target = Get("target")?.ToString();
                 seg.Label = Clip.Str(so, "label");
+                if (Get("pose") is JsonValue pn) // #789
+                {
+                    seg.PoseName = pn.GetValue<string>();
+                    seg.Pose = LastEveningScenes.PoseOf(seg.PoseName) ?? throw new ClipException($"{sw} pose: '{seg.PoseName}' is not a known camp pose");
+                }
                 d.Segments.Add(seg);
                 t = seg.T1;
             }

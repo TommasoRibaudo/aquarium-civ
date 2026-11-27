@@ -451,6 +451,7 @@ namespace AnimBench
             if (chatMate != null)
                 PairBeats.Talk(ref pose, PairBeats.TalkAt(spec.Seed, chatMate.Seed, clip.Clock + t, Mathf.Max(0f, ChatEnd(spec, si) - tc)), Desync.Of(spec.Seed, 363).amp, holds);
             if (seg.Plan != null) MomentBeats.Apply(ref pose, seg.Plan, seg.Member, seg.StepIndex, tc, out _); // #370, as PeopleView's StagedPose hook
+            if (seg.Pose != null) seg.Pose(ref pose, Mathf.Max(0f, tc - seg.T0), seg.Length); // #789: a camp scene's pose, as PeopleView lays a CampPart's (walking too: poseWalking)
             if (poking) MealBeats.Poke.Apply(ref pose, pokeSince); // #365 B9.c
             if (kind == ActivityKind.FetchWater) // #360, as PeopleView.Drive
             {

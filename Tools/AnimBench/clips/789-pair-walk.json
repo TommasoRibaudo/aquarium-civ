@@ -1,0 +1,16 @@
+{
+  "name": "789-pair-walk",
+  "notes": "#789 B82.a beat 5 (the pair walk's pacing), v2 2026-11-27: the elder walks home at their own slow pace (#788's frail walk, 0.4 of the usual 0.22 u/s: 0.088 u/s, a little stoop), held up between the helpers: a helper each side 0.1 u off at the same pace, the near arm under the elder's (z 60, x 15), the elder's arms over their shoulders (z 75); the kid at a hand behind. One box unit in about 11.6 s. Filmed from in front of them (the camera on the door's side). Every number [est] until the user signs off the clip.",
+  "duration": 13.0,
+  "fps": 30,
+  "warmup": 0.5,
+  "camera": { "view": "default", "focus": [0, 0.8], "span": 1.4, "yaw": 208, "pitch": 30 },
+  "sheet": { "from": 0.5, "to": 12.0, "frames": 24, "columns": 6 },
+  "objects": [ { "id": "tent", "kind": "tent", "pos": [0.5, 1.6] } ],
+  "dolls": [
+    { "id": "elder", "seed": 7891, "timeline": [ { "t": 0, "dur": 11.6, "from": [0, 0.28], "to": [0, 1.28], "pose": "HeldUpWalk", "label": "held up" }, { "t": 11.6, "style": "Stand", "face": [0, 1.4] } ] },
+    { "id": "partner", "seed": 7892, "timeline": [ { "t": 0, "dur": 11.6, "from": [0.1, 0.28], "to": [0.1, 1.28], "pose": "PairWalkL", "label": "at the elbow" }, { "t": 11.6, "style": "Stand", "face": [0.1, 1.4] } ] },
+    { "id": "son", "seed": 7894, "timeline": [ { "t": 0, "dur": 11.6, "from": [-0.1, 0.28], "to": [-0.1, 1.28], "pose": "PairWalkR", "label": "at the elbow" }, { "t": 11.6, "style": "Stand", "face": [-0.1, 1.4] } ] },
+    { "id": "kid", "seed": 7893, "kid": true, "timeline": [ { "t": 0, "dur": 11.6, "from": [-0.14, 0.19], "to": [-0.14, 1.19], "pose": "HoldHandR", "label": "holding a hand" }, { "t": 11.6, "style": "Stand", "face": [-0.14, 1.4] } ] }
+  ]
+}

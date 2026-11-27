@@ -325,6 +325,9 @@ namespace AquariumCiv.View
         StatueNod,
         /// <summary>B81.f (work): the weekly sweep of the green brushes round its feet.</summary>
         StatueSweep,
+        // #789 the last evening (View/Beats/LastEveningScenes.cs, View/CampLife.LastEvening.cs). Appended: keep these last.
+        /// <summary>B82.a: on the dusk before an elder's death, their people sit close round them at the fire, look up at the stars and walk them home.</summary>
+        LastEvening,
     }
 
     /// <summary>#694: what a dog or a visiting wolf does in a <see cref="QuadPart"/> (P0's moves; CampLife.Dogs poses them).</summary>
