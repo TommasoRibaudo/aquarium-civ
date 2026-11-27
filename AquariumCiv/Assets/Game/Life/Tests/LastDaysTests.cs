@@ -515,5 +515,47 @@ namespace AquariumCiv.Life.Tests
                 { bothDays++; if (System.Math.Abs(a - b) < 0.1f) together++; }
             Assert.LessOrEqual(together, bothDays / 4, "the two families don't gather on a schedule");
         }
-    }
+    
+        /// <summary>#788 tester (polish 2, a village at x8): a visitor sat "with" a frail elder 372 frames while she was never on her stool. Anyone whose
+        /// plan says SitWithOld with a frail elder as the partner (the family at the door, and the priest's morning hour with an elder at the
+        /// gather) sits there only while that elder is seated in the same place: nobody keeps company with an empty seat.</summary>
+        [TestCase(1)]
+        [TestCase(3)]
+        [TestCase(4242)]
+        public void NobodySitsWithAFrailElderWhoIsNotSeatedThere_AnyPlaceAnyReason(int seed)
+        {
+            var sim = Village(seed);
+            var alive = sim.State.notables.Where(n => n.alive).OrderBy(n => n.id).ToList();
+            sim.DebugFillRoles(); // a village's seats filled (the priest, when a church stands)
+            var old = alive.Where(n => sim.KinOf(n).Any()).OrderByDescending(n => n.age).First();
+            old.age = System.Math.Max(old.age, sim.Config.retireAge + 6f); old.lifespan = old.age + 0.5f; old.job = JobType.Elder;
+            var planner = LifePlanner.Wired(sim);
+            var who = PersonRef.Notable(old.id);
+            Assert.Greater(planner.FrailtyOf(who), 0f, old.name);
+            int minutes = 0, wrong = 0;
+            var hist = new Dictionary<string, int>(); var bad = new List<string>();
+            for (long d = 2; d < 22; d++)
+                for (int m = 0; m < 24 * 60; m++)
+                {
+                    var t = new ViewTime(d, m / 60f + 1f / 120f);
+                    var ae = planner.Plan(who, t);
+                    foreach (var v in alive)
+                    {
+                        if (v.id == old.id) continue;
+                        var av = planner.Plan(PersonRef.Notable(v.id), t);
+                        if (av.kind != ActivityKind.SitWithOld || av.partner != who || av.moving) continue;
+                        minutes++;
+                        bool seated = !ae.moving && ae.place == av.place && (ae.kind == ActivityKind.SitOut || ae.kind == ActivityKind.SitWithOld || ae.kind == ActivityKind.StoryTell);
+                        if (seated) continue;
+                        wrong++;
+                        string key = $"{av.source}@{av.place.kind} vs elder {ae.kind}@{ae.place.kind}";
+                        hist[key] = hist.TryGetValue(key, out int c0) ? c0 + 1 : 1;
+                        if (bad.Count < 6) bad.Add($"day {d} {t.hour:0.00} h: {v.name} ({sim.RoleOf(v) ?? v.job}) {av.source} at {av.place} beside {old.name}, who is {ae.kind} at {ae.place} (moving {ae.moving}, prop {ae.prop}, src {ae.source}, from {ae.from}, chron {ae.chronicleId})");
+                    }
+                }
+            TestContext.WriteLine($"seed {seed}: {minutes} minutes someone sat with {old.name}; wrong {wrong}");
+            foreach (var kv in hist.OrderByDescending(x => x.Value)) TestContext.WriteLine($"  {kv.Key}: {kv.Value}");
+            Assert.AreEqual(0, wrong, string.Join("; ", bad));
+        }
+}
 }

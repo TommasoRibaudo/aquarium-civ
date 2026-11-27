@@ -168,6 +168,19 @@ namespace AquariumCiv.Life
             static Seg Stand(Seg v, float a, float z) { v.start = a; v.end = z; v.kind = ActivityKind.Stretch; v.partner = PersonRef.None; return v; }
         }
 
+        /// <summary>#788 tester (polish 2): the last guard on "visitors sit only while the elder is on the stool". The day's visits are cut to the
+        /// elder's planned seat (<see cref="FrailVisits"/>, <see cref="KeepVisitsToTheSeat"/>), but a layer over the day can still take the elder
+        /// off the stool (a scene block and the walk back into the day after it, a hunt, a prayer visit): while it does, the visitor stands and
+        /// stretches at the door instead of sitting beside an empty stool.</summary>
+        void SitOnlyBesideTheSeated(ref PersonActivity a, ViewTime t)
+        {
+            if (a.partner.IsNone || !byKey.TryGetValue(a.partner.Key, out var e) || e.frail <= 0f || e.who == a.who) return;
+            var ea = PlanBase(e, t);
+            if (ea.kind == ActivityKind.SitOut && !ea.moving && ea.prop == Prop.Stool && ea.place == a.place) return;
+            a.kind = ActivityKind.Stretch;
+            a.partner = PersonRef.None;
+        }
+
         /// <summary>The elder on the stool at their own door (not walking, not indoors).</summary>
         static bool SeatedAtDoor(Person e, Seg o) => o.kind == ActivityKind.SitOut && o.place == e.home && !o.Moving && o.prop == Prop.Stool;
 
