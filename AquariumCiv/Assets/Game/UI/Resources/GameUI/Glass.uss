@@ -653,6 +653,7 @@
 .hud-corner { flex-direction: row; align-items: center; flex-shrink: 0; }
 .hud-icon { width: 144px; height: 144px; min-width: 144px; }
 .hud-icon--quiet { opacity: 0.72; }
+.hud-icon--on-page .hud-disc { background-color: var(--off-fill); border-width: 2px; border-color: rgba(92, 64, 40, 0.30); } /* #805: over the book, a disc so it reads as a button */
 /* #707: no backing behind the round buttons; they draw in the title's ink (GameHud.ApplyIconInk) */
 .hud-icon:active .hud-disc, .hud-title:active .hud-disc { background-color: var(--pressed-fill); }
 .hud-icon--shot { transition-duration: 0s; }
