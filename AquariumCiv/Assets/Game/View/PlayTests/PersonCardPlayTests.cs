@@ -833,6 +833,49 @@ namespace AquariumCiv.View.PlayTests
             finally { plate?.RemoveFromHierarchy(); Close(); }
         }
 
+        /// <summary>#803 (tester 2026-11-27): on the Family tab a dead child's name showed as "Bry / n" in the frame the card grew tall. A name
+        /// under a face (and a relation's name) never wraps: on every frame of the growth each is one line, and a short name shows whole.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator FaceNamesNeverBreakWhileTheCardGrows()
+        {
+            int id = -1;
+            yield return CardUp(750, 1334, i => id = i);
+            try
+            {
+                var cards = PersonCardView.Instance;
+                var root = cards.CardRoot;
+                cards.ShowTab(CardTab.Family);
+                yield return null; yield return null;
+                int seen = 0, frames = 0;
+                void Check(string cls, string where)
+                {
+                    foreach (var l in root.Query<Label>(className: cls).ToList())
+                    {
+                        if (l.resolvedStyle.display == DisplayStyle.None || l.worldBound.height <= 1f || string.IsNullOrEmpty(l.text)) continue;
+                        seen++;
+                        Assert.AreEqual(WhiteSpace.NoWrap, l.resolvedStyle.whiteSpace, $"{where}: '{l.text}' may wrap ({string.Join(" ", l.GetClasses())})");
+                        float line = l.MeasureTextSize("Ag", 100000f, VisualElement.MeasureMode.Undefined, 0f, VisualElement.MeasureMode.Undefined).y;
+                        Assert.Less(l.contentRect.height, line * 1.5f, $"{where}: '{l.text}' is on more than one line ({l.contentRect.height:0} px, a line {line:0})");
+                        float wide = l.MeasureTextSize(l.text, 100000f, VisualElement.MeasureMode.Undefined, 0f, VisualElement.MeasureMode.Undefined).x;
+                        if (l.text.Length <= 6) Assert.LessOrEqual(wide, l.contentRect.width + 1.5f, $"{where}: the short name '{l.text}' shows whole ({wide:0} in {l.contentRect.width:0} px)");
+                    }
+                }
+                cards.SetExpanded(true);
+                for (float t = 0f; t < 1.5f; t += Time.unscaledDeltaTime)
+                {
+                    yield return null;
+                    frames++;
+                    Check("pc-kin-name", $"Family, frame {frames}");
+                }
+                yield return Shot("pc803-family-750");
+                cards.ShowTab(CardTab.Friends);
+                for (int f = 0; f < 8; f++) { yield return null; if (f >= 3) Check("pc-rel-name", "Friends"); } // new rows have their style a frame or two on
+                Assert.Greater(seen, 0, "names under faces were on screen");
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
+            }
+            finally { Close(); }
+        }
+
         /// <summary>#674 (tester): on a short phone a two-line subtitle left room for the quote only; the chips lead now.</summary>
         [UnityTest, Timeout(120000)]
         public IEnumerator HoldsTheBoardOnAShortPhoneWithATwoLineSubtitle() => HoldsTheBoard(750, 1334, true);
