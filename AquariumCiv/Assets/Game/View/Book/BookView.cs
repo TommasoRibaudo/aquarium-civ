@@ -92,6 +92,7 @@ namespace AquariumCiv.View
             doc.sortingOrder = 11.5f; // over the time-lapse (11), under the person card (12): a portrait opens the card over the page
             TimeLapseScreenView.BookHandler = s => { if (Instance != null) Instance.Open(s); };
             TimeLapseScreenView.BookHasNew = s => s.BookHasNewPages;
+            AquariumCiv.GameUI.FeedbackUI.OverPage = () => Instance != null && Instance.IsOpen; // #805: the feedback button over a page gets its disc
         }
 
         void OnEnable()
