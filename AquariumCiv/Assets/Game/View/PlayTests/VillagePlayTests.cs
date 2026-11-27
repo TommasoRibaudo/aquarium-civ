@@ -149,7 +149,10 @@ namespace AquariumCiv.View.PlayTests
             var oldest = sim.State.notables.Where(n => n.alive && sim.KinOf(n).Any()).OrderByDescending(n => n.age).First();
             Debug.Log("[788 live] " + SimDebugPanel.LastDaysCheat(sim, oldest.id));
             var elder = PersonRef.Notable(oldest.id);
-            yield return new WaitForSeconds(1f);
+            // a view day is a sim month and is planned once: on to the next month, so the elder's day is planned with the last days in it
+            // (else the run can watch the day planned before the cheat, looping, with no stool spell in it)
+            AquariumCiv.Game.GameClock.DebugSkipHours(1.0 / 12.0 + 0.001);
+            yield return new WaitForSeconds(2f);
             Assert.Greater(pv.Planner.FrailtyOf(elder), 0f, "the elder is in their last days");
             var plan = new System.Collections.Generic.List<PersonActivity>();
             pv.Planner.DaySchedule(elder, pv.Now.day, plan);
