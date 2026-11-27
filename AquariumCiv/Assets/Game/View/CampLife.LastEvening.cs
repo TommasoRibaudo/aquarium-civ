@@ -37,10 +37,8 @@ namespace AquariumCiv.View
         bool lastEveningSaid;
         /// <summary>A cheat's elder to play now (−1 none) and whether the rule is skipped (a cheat's "play now").</summary>
         int lastEveningCheat = -1; bool lastEveningForce;
-        /// <summary>When the cheat was pressed (real time: the cheat jumps the clock to dusk): "with a dog" gives the dog that frame, and it is drawn only after the camp's step.</summary>
+        /// <summary>When the cheat was pressed (real time; the note of the dogs at the cast says how long after).</summary>
         float lastEveningCheatAt;
-        /// <summary>A cheat waits up to this long (real s) for the elder's own new dog to be drawn, so it is cast (the first "with a dog" clip had none).</summary>
-        const float LastEveningDogWait = 8f;
 
         void ResetLastEvening()
         {
@@ -95,12 +93,7 @@ namespace AquariumCiv.View
             string busy = LastEveningBusy();
             if (cheat && lastEveningForce) { if (busy != null) { LastEveningWhy = "waits: " + busy; return; } }
             Notable who;
-            if (cheat && lastEveningForce)
-            {
-                who = sim.FindNotable(lastEveningCheat) is Notable ch && ch.alive ? ch : null;
-                if (who != null && Time.unscaledTime - lastEveningCheatAt < LastEveningDogWait
-                    && sim.DogsOfKeeper(who.id).Any(d => sim.DogStageOf(d) != DogStage.Pup && !DogAt(d.id).HasValue)) { LastEveningWhy = "waits: their dog comes"; return; }
-            }
+            if (cheat && lastEveningForce) who = sim.FindNotable(lastEveningCheat) is Notable ch && ch.alive ? ch : null;
             else
             {
                 who = sim.ChooseLastEvening(k => LastEveningFree(acts, k), !sim.CatchingUp, busy != null, out string why);
@@ -151,7 +144,7 @@ namespace AquariumCiv.View
             foreach (var d in sim.DogsOfKeeper(who.id))
             {
                 LastEveningDogNote += $" {d.name} {sim.DogStageOf(d)} drawn {DogAt(d.id).HasValue} busy {DogBusy(d.id)};";
-                if (sim.DogStageOf(d) == DogStage.Pup || !DogAt(d.id).HasValue) continue;
+                if (sim.DogStageOf(d) == DogStage.Pup) continue; // their own dog comes even when not drawn yet (a cheat's new dog: from by the fire)
                 if (DogBusy(d.id)) // their own dog in an everyday use gives way to the last evening, as the people's do (the first "with a dog" clips: never cast)
                 {
                     int cut = scenes.RemoveAll(x => x.dog == d.id && !StoryHeld(x));
@@ -161,7 +154,7 @@ namespace AquariumCiv.View
                 dog = d; break;
             }
             if (dog == null) { var g = FirstDog(DogStage.Grown); if (g != null && !DogBusy(g.id) && DogAt(g.id).HasValue) dog = g; }
-            if (dog != null) { c.dog = dog.id; c.dogAt = DogAt(dog.id).Value; }
+            if (dog != null) { c.dog = dog.id; c.dogAt = DogNow(dog); }
             var sc = LastEveningScenes.Evening(c, time);
             bool was = forcing; forcing = true; // a held scene: no bedtime or meal check, as a story's
             try { Add(Thing(sc, ThingFire)); }
