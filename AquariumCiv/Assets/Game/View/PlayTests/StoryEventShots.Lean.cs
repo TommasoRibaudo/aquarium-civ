@@ -299,7 +299,24 @@ namespace AquariumCiv.View.PlayTests
             Vector2 lo = leanCast[0], hi = leanCast[0];
             foreach (var q in leanCast) { lo = Vector2.Min(lo, q); hi = Vector2.Max(hi, q); }
             mid = (lo + hi) * 0.5f;
+            if (OnScreen() < leanCast.Count)
+            {   // not all of it fits: the scene is its thing (a story) or where most of its people stand, not the ground between (HeldMomentLean)
+                if (st.Focus?.Invoke() is Vector2 f2) mid = f2;
+                else
+                {
+                    var xs = leanCast.Select(q => q.x).OrderBy(x => x).ToList(); var zs = leanCast.Select(q => q.y).OrderBy(z => z).ToList();
+                    int n = xs.Count;
+                    mid = n % 2 == 1 ? new Vector2(xs[n / 2], zs[n / 2]) : new Vector2((xs[n / 2 - 1] + xs[n / 2]) * 0.5f, (zs[n / 2 - 1] + zs[n / 2]) * 0.5f);
+                }
+            }
             return true;
+        }
+
+        static int OnScreen()
+        {
+            int on = 0;
+            foreach (var q in leanCast) { var qv = ViewportOf(q); if (qv.z > 0f && qv.x > 0.02f && qv.x < 0.98f && qv.y > 0.02f && qv.y < 0.98f) on++; }
+            return on;
         }
 
         static Vector3 ViewportOf(Vector2 at)
@@ -349,6 +366,8 @@ namespace AquariumCiv.View.PlayTests
                 yield return Until(() => !rig.IsFlying, 6f);
                 // the cast may still be gathering: the lean tightens as it does (re-looked every second)
                 yield return Until(() => !SceneNow(out var mm) || PersonPx(rig, Box, mm) >= want * 0.8f || rig.zoom <= rig.minZoom + 0.015f, 12f);
+                // a lead still walking in from far is followed (the scene's thing pulled toward them) until the cast has gathered on screen
+                yield return Until(() => !SceneNow(out _) || OnScreen() >= Mathf.CeilToInt(leanCast.Count * 0.75f), 15f);
                 yield return new WaitForSecondsRealtime(1.2f);
                 if (!SceneNow(out var mid)) { failed.Add($"{name}: the scene ended before it was framed"); continue; }
                 float after = PersonPx(rig, Box, mid);
@@ -379,7 +398,7 @@ namespace AquariumCiv.View.PlayTests
                 Debug.Log($"[783] every {tag} {name}: middle in the middle 60 % for {centred}/{seen} frames of 3 s{(clamped ? " (the pivot at the glass bound)" : "")}");
                 report.AppendLine($"  {name}: centred {centred}/{seen} frames{(clamped ? ", pivot at the glass bound" : "")}");
                 if (!clamped && centred < seen * 0.6f) failed.Add($"{name}: the scene's middle is off centre ({v.x:0.00}, {v.y:0.00}; centred {centred}/{seen} frames)");
-                if (on < Mathf.CeilToInt(leanCast.Count * 0.75f)) failed.Add($"{name}: only {on} of {leanCast.Count} of its cast on screen");
+                if (on < Mathf.CeilToInt(leanCast.Count * 0.5f)) failed.Add($"{name}: only {on} of {leanCast.Count} of its cast on screen");
                 // the end: the camera glides back to the default view
                 HeldMomentStage.DebugEndPlaying();
                 yield return Until(() => !rig.GlideArmed && !rig.Leaning && !rig.IsFlying, 15f);

@@ -45,6 +45,8 @@ namespace AquariumCiv.View
         static float lastRelease = float.NegativeInfinity;
         /// <summary>How long a scene is given to have its cast drawn (real seconds), and how often a held lean looks at where the scene went.</summary>
         const float WaitForCast = 4f, LookEvery = 1f, TightenBy = 0.02f;
+        /// <summary>How far from the scene's own spot (box units) one of its people still counts as with it, when the cast can't all fit.</summary>
+        const float GroupReach = 1.2f;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reset() { pending = null; cur = null; lastRelease = float.NegativeInfinity; Leans = Cancelled = Framed = Refused = 0; LastWhy = ""; Enabled = true; }
@@ -164,8 +166,12 @@ namespace AquariumCiv.View
             // the cast doesn't fit the view and the lean never zooms out to make it fit (a lead still walking in from far, somebody at the back
             // of the box): the box's middle would be empty ground between them, so the lean frames the scene itself (its thing, else the
             // middle of where most of its people are) and the straggler walks into the frame.
-            if (StoryLean.CastExtent(ex, ey) > 1f && anchor is Vector2 a && (a - focus.Value).sqrMagnitude > 1e-4f && Extent(a, out var av, out float ax, out float ay))
-            { focus = a; fv = av; ex = ax; ey = ay; }
+            if (StoryLean.CastExtent(ex, ey) > 1f && anchor is Vector2 a && (a - focus.Value).sqrMagnitude > 1e-4f)
+            {   // the zoom then fits the scene's own group: the ones still far off (> GroupReach from it) walk in on their own
+                cast.RemoveAll(q => (q - a).sqrMagnitude > GroupReach * GroupReach);
+                if (cast.Count == 0) cast.Add(a);
+                if (Extent(a, out var av, out float ax, out float ay)) { focus = a; fv = av; ex = ax; ey = ay; }
+            }
             var f = focus.Value;
             world = At(f, 0.06f);
             vx = fv.x; vy = fv.y;
