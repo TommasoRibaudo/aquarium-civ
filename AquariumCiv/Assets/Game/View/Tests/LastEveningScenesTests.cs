@@ -24,6 +24,9 @@ namespace AquariumCiv.View.Tests
             return c;
         }
 
+        /// <summary>The angle between two ways (degrees); AnimBench's Unity stand-in has no Vector2.Angle.</summary>
+        static float Deg(Vector2 a, Vector2 b) => Mathf.Acos(Mathf.Clamp(Vector2.Dot(a.normalized, b.normalized), -1f, 1f)) * Mathf.Rad2Deg;
+
         static CampPart PartAt(CampScene s, int key, float u) { s.TryPart(key, s.t0 + u, out var p, out _); return p; }
 
         [Test]
@@ -71,7 +74,7 @@ namespace AquariumCiv.View.Tests
             foreach (int k in new[] { 1, 10 })
             {
                 var p = PartAt(s, k, s.a + 2f);
-                Assert.LessOrEqual(Vector2.Angle(p.face - p.pos, tc), 45f, $"{k} faces the camera while seated");
+                Assert.LessOrEqual(Deg(p.face - p.pos, tc), 45f, $"{k} faces the camera while seated");
             }
             for (int i = 1; i < 3; i++) Assert.Greater(Vector2.Dot(PartAt(s, 10 + i, s.a + 2f).pos - seat, tc), -0.02f, $"kin {i} not behind the elder");
         }
@@ -104,7 +107,7 @@ namespace AquariumCiv.View.Tests
             float tWave = s.c - LastEveningScenes.InFor - LastEveningScenes.WaveFor * 0.5f;
             var p = PartAt(s, 1, tWave);
             Assert.Less((p.pos - wave).magnitude, 1e-3f, "waves at the shown side");
-            Assert.Less(Vector2.Angle(p.face - p.pos, ToCam.normalized), 90f, "turned to the camera");
+            Assert.Less(Deg(p.face - p.pos, ToCam.normalized), 90f, "turned to the camera");
             Assert.AreEqual(DollStyle.Hidden, PartAt(s, 1, s.c + 0.1f).style, "then in");
         }
 
