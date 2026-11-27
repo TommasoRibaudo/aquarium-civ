@@ -58,6 +58,9 @@ namespace AquariumCiv.View
             if (!Enabled && !force) { LastWhy = "the lean is off"; return; }
             if (st.Moment.kind == MomentKind.Festival) { LastWhy = "a box-wide festival has no focus"; return; }
             if (st.Focus == null && st.Cast == null) { LastWhy = "no cast to frame"; return; }
+            // #776 tester (polish 2): a scene that starts while another's lean holds the camera (a newborn's in a village, during the statue
+            // raising) never takes it: the lean stayed on the newborn, slid off the plinth and went home when the newborn ended, 16 s into the raising
+            if (cur != null && cur.id != st.Moment.id && Playing(cur.id)) { Refused++; LastWhy = "another scene's lean holds the camera"; return; }
             pending = new Pending { staging = st, until = Time.unscaledTime + WaitForCast, force = force };
             TryPending();
         }
