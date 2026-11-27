@@ -300,7 +300,7 @@ namespace AquariumCiv.View
             CloseBuilding(false); // one card at a time (tester run 10)
             var hud = GameHud.Instance;
             if (hud != null) { hud.CloseSheet(); hud.SetCleanMode(false); }
-            if (OpenId != notableId) { RenameReset(); Tab = CardTab.Family; if (logOpen) GameClock.Tel.CardOpened("person", notableId); }
+            if (OpenId != notableId) { RenameReset(); Tab = CardTab.Family; if (body != null) body.scrollOffset = Vector2.zero; if (logOpen) GameClock.Tel.CardOpened("person", notableId); } // tester 11-27: another person opens at the top
             OpenId = notableId;
             Card = card;
             edges = sim.RelationshipGraph(true, notableId);

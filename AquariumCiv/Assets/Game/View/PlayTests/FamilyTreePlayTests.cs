@@ -147,8 +147,12 @@ namespace AquariumCiv.View.PlayTests
             }
             var dead = full.nodes.FirstOrDefault(n => !n.alive);
             Assert.NotNull(dead, "the deep family has a stone");
+            var scroller = cards.CardRoot.Q<ScrollView>("person-card-body");
+            scroller.scrollOffset = new Vector2(0f, 145f); // tester 11-27: the last card was scrolled down to the tree link
+            yield return Frames(2);
             cards.Open(dead.id, false);
             yield return new WaitForSecondsRealtime(0.5f);
+            Assert.AreEqual(0f, cards.CardRoot.Q<ScrollView>("person-card-body").scrollOffset.y, 0.5f, "another person's card opens at the top: the died line shows");
             Assert.IsNotNull(cards.CardRoot.Q("person-card-memorial"));
             yield return Shot($"pc774-dead-{w}");
             cards.Close();

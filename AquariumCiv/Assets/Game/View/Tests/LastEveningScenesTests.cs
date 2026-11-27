@@ -24,6 +24,9 @@ namespace AquariumCiv.View.Tests
             return c;
         }
 
+        /// <summary>The angle between two ways (degrees); AnimBench's Unity stand-in has no Vector2.Angle.</summary>
+        static float Deg(Vector2 a, Vector2 b) => Mathf.Acos(Mathf.Clamp(Vector2.Dot(a.normalized, b.normalized), -1f, 1f)) * Mathf.Rad2Deg;
+
         static CampPart PartAt(CampScene s, int key, float u) { s.TryPart(key, s.t0 + u, out var p, out _); return p; }
 
         [Test]
@@ -57,6 +60,55 @@ namespace AquariumCiv.View.Tests
                 else if (i == 3) Assert.Less(d, 0.1f, "the kid at the knee");
                 else { Assert.GreaterOrEqual(d, 0.12f - 1e-3f); Assert.LessOrEqual(d, 0.2f + 1e-3f, "within 0.12 to 0.2 u"); Assert.Greater(Vector2.Dot(p.pos - seat, ToCam.normalized), -0.05f, "on the camera's half"); }
             }
+        }
+
+        /// <summary>The tester 2026-11-27: from the home view the camera saw the family's backs. The seat is on the far side of the fire from the
+        /// camera, so the elder and the partner face the fire and the camera at once; the others sit at their sides or in front, never behind them.</summary>
+        [Test]
+        public void TheSeat_IsOnTheFarSideOfTheFire_TheElderAndPartnerFaceTheCamera()
+        {
+            var s = LastEveningScenes.Evening(Cast(3, 1), 0f);
+            var tc = ToCam.normalized;
+            var seat = LastEveningScenes.SeatOf(Fire, ToCam);
+            Assert.Less(Vector2.Dot(seat - Fire, tc), -0.2f, "beyond the fire from the camera");
+            foreach (int k in new[] { 1, 10 })
+            {
+                var p = PartAt(s, k, s.a + 2f);
+                Assert.LessOrEqual(Deg(p.face - p.pos, tc), 45f, $"{k} faces the camera while seated");
+            }
+            for (int i = 1; i < 3; i++) Assert.Greater(Vector2.Dot(PartAt(s, 10 + i, s.a + 2f).pos - seat, tc), -0.02f, $"kin {i} not behind the elder");
+        }
+
+        /// <summary>The racks' legs never stand among the family or between them and the camera: the seat turns round the fire away from them.</summary>
+        [Test]
+        public void TheSeat_TurnsAwayFromTheRacksLegs()
+        {
+            var tc = ToCam.normalized;
+            var straight = Fire - tc * LastEveningScenes.SeatR;
+            var c = Cast(2, 1);
+            c.clear.Add(straight + tc * 0.1f); c.clear.Add(straight + new Vector2(-tc.y, tc.x) * 0.15f); // a leg in front of the straight seat, one beside it
+            var seat = LastEveningScenes.SeatOf(Fire, ToCam, c.clear);
+            Assert.Greater((seat - straight).magnitude, 0.05f, "it moved off the straight seat");
+            Assert.AreEqual(0, LastEveningScenes.Hidden(seat, ToCam, c.clear), "no leg between the family and the camera");
+            Assert.Less(Vector2.Dot(seat - Fire, tc), 0f, "still beyond the fire");
+            var s = LastEveningScenes.Evening(c, 0f);
+            Assert.Less((PartAt(s, 1, s.a + 1f).pos - seat).magnitude, 1e-3f, "the scene uses that seat");
+        }
+
+        /// <summary>The tester 2026-11-27: at the door the elder waved behind the tent. With the tent's shown side given (c.wave), they wave there,
+        /// turned to the camera, then go in.</summary>
+        [Test]
+        public void TheWave_IsWhereTheCameraSeesIt()
+        {
+            var c = Cast(2, 1);
+            var wave = Door + new Vector2(0f, -0.25f);
+            c.wave = wave;
+            var s = LastEveningScenes.Evening(c, 0f);
+            float tWave = s.c - LastEveningScenes.InFor - LastEveningScenes.WaveFor * 0.5f;
+            var p = PartAt(s, 1, tWave);
+            Assert.Less((p.pos - wave).magnitude, 1e-3f, "waves at the shown side");
+            Assert.Less(Deg(p.face - p.pos, ToCam.normalized), 90f, "turned to the camera");
+            Assert.AreEqual(DollStyle.Hidden, PartAt(s, 1, s.c + 0.1f).style, "then in");
         }
 
         [Test]
@@ -176,7 +228,9 @@ namespace AquariumCiv.View.Tests
             }
             var partner = PartAt(s, 10, s.a + 3f);
             var seat = PartAt(s, 1, s.a + 3f).pos;
-            Assert.Greater(Vector2.Dot((partner.face - partner.pos).normalized, (Fire - partner.pos).normalized), 0.999f, "the partner faces the fire, side by side with the elder");
+            var elderPart = PartAt(s, 1, s.a + 3f);
+            Assert.Greater(Vector2.Dot((partner.face - partner.pos).normalized, (elderPart.face - elderPart.pos).normalized), 0.999f, "the partner faces the way the elder does (the fire), side by side with them");
+            Assert.Greater(Vector2.Dot((partner.face - partner.pos).normalized, (Fire - partner.pos).normalized), 0.9f, "toward the fire");
             Assert.AreEqual(LastEveningScenes.ShoulderArmZ, Out(PoseOf(10, s.a + 3f)), 1.5f, "the arm out across to the elder's shoulder");
             Assert.Less(PoseOf(1, s.b + 2.5f).lean, LastEveningScenes.ElderLookLean + 1.5f, "the elder leans well back at the stars");
             Assert.Less(PoseOf(10, s.b + 2.5f).lean, LastEveningScenes.KinLookLean * 0.8f, "the partner looks up too");

@@ -2842,6 +2842,13 @@ until the user signs off the clips again:
 - **The clips** are filmed from the family's front (the camera beyond the fire, 24–32 degrees up, at most 40 degrees round) and the walk home
   from in front of them, at portrait phone size. A fifth AnimBench clip, `789-wave`, joins the four.
 
+**Tester fix (2026-11-27, staging only; the motions are unchanged).** From the player's own camera the family's backs showed and the scene was a
+speck: (1) it now takes the #783 lean like every held scene (`HeldMomentLean.BeginScene`; the cheat skips the cooldown so the camera never eases out
+between the scene it ended and this one); (2) the elder sits on the **far side of the fire from the camera**, facing between the fire and the camera,
+the partner side by side, the others at their sides or in front (never behind them); the seat turns round the fire, or goes a little farther out
+(0.28 to 0.45 u), to keep the racks' legs and the front glass's top edge off the family; (3) the wave is on the side of the tent the camera sees.
+In a year-1 camp there is no fire yet (`CampFireStage.None`), so the scene plays in the dusk light: no fire or lantern exists to light it.
+
 ### How it ends
 The elder goes in through their own door alive. **Nothing is shown of the death**: in the night the sim removes them (no lying pose, the tent is
 never entered by the camera). At the next dawn the existing chain runs unchanged: the death card, then B32.h's quiet visit at the

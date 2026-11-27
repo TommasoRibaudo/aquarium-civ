@@ -20,6 +20,12 @@ namespace AquariumCiv.View
         /// <summary>The elder's own dog, else a grown dog by the fire (−1: none).</summary>
         public int dog = -1; public Vector2 dogAt;
         public Vector2 fire, toCam, door;
+        /// <summary>#789 tester (2026-11-27): what stands by the fire that must not come between the family and the camera (the racks' legs),
+        /// and the spot at the door the camera sees (the tent's shown side; null: just short of the door, as before).</summary>
+        public readonly List<Vector2> clear = new();
+        public Vector2? wave;
+        /// <summary>The camera sees a seat whole (in the box, the front glass's top edge not across the family); null: every seat is seen.</summary>
+        public System.Func<Vector2, bool> seen;
         /// <summary>The elder's walk as a share of the usual pace (#788's frail walk, about 0.4).</summary>
         public float pace = LastEveningScenes.FrailPace;
     }
@@ -31,8 +37,15 @@ namespace AquariumCiv.View
         public const float Walk = 0.22f, KidWalk = 0.3f, FrailPace = 0.4f;
         /// <summary>Up to four kin or friends sit in close (B82.0; LastEveningRules.MaxKin in the sim).</summary>
         public const int MaxKin = 4;
-        /// <summary>The elder's seat: this far from the fire's middle, toward the camera and a little round.</summary>
-        public const float SeatR = 0.28f, SeatTurn = 40f;
+        /// <summary>The elder's seat: this far from the fire's middle. #789 tester (2026-11-27): on the far side of the fire from the camera, so the
+        /// elder faces the fire and the player at once (from the camera's side the home view saw their back); turned round by the first of
+        /// <see cref="SeatTurns"/> that keeps the racks' legs (<see cref="LastEveningCast.clear"/>) from between the family and the camera.</summary>
+        public const float SeatR = 0.28f;
+        public static readonly float[] SeatTurns = { 0f, 20f, -20f, 40f, -40f, 60f, -60f, 80f, -80f };
+        /// <summary>How far beyond the fire the seat may go when nearer it the camera would not see them whole (the glass's top edge across them).</summary>
+        public static readonly float[] SeatRs = { SeatR, 0.36f, 0.45f };
+        /// <summary>The family round the seat as the camera sees it: this far either side across the view, from this far behind the seat.</summary>
+        public const float FamilyHalf = 0.22f, FamilyBehind = 0.05f;
         /// <summary>The kin sit this close round the elder (0.12 to 0.2 u), on the camera's half; the partner right beside them, within an arm's reach
         /// (AnimBench: at 0.16 u the hand fell short of the shoulder). v2 (2026-11-27, the hand did not read): side by side with the elder, both
         /// facing the fire, 0.11 u apart (shoulder to shoulder, not inside each other), so the arm laid across the elder's shoulder shows from the front.</summary>
@@ -249,12 +262,36 @@ namespace AquariumCiv.View
         };
 
         // ================================================================== B82.a the scene
-        /// <summary>The elder's seat at the fire (box x, z): on the camera's side, a little round.</summary>
-        public static Vector2 SeatOf(Vector2 fire, Vector2 toCam) => fire + Rot(Unit(toCam, Vector2.down), SeatTurn) * SeatR;
+        /// <summary>The elder's seat at the fire (box x, z): on the far side from the camera (see <see cref="SeatR"/>).</summary>
+        public static Vector2 SeatOf(Vector2 fire, Vector2 toCam, IReadOnlyList<Vector2> clear = null, System.Func<Vector2, bool> seen = null)
+        {
+            // the tester 2026-11-27: every far seat round the fire (a turn, a little farther out), scored: a rack leg among the family or in front of
+            // them costs most, then a spot the camera does not see whole (<paramref name="seen"/>: the front glass's top edge across them, or out of
+            // the box), then the turn and the distance (straight beyond the fire at SeatR is best)
+            var tc = Unit(toCam, Vector2.down);
+            Vector2 best = fire - tc * SeatR; float bestCost = float.MaxValue;
+            foreach (float r in SeatRs)
+                foreach (float a in SeatTurns)
+                {
+                    var s = fire - Rot(tc, a) * r;
+                    float cost = 10f * Hidden(s, tc, clear) + (seen != null && !seen(s) ? 5f : 0f) + Mathf.Abs(a) / 100f + (r - SeatR) * 4f;
+                    if (cost < bestCost - 1e-4f) { best = s; bestCost = cost; }
+                }
+            return best;
+        }
+
+        /// <summary>How many of <paramref name="clear"/> stand among the family round <paramref name="seat"/> or between them and the camera.</summary>
+        public static int Hidden(Vector2 seat, Vector2 toCam, IReadOnlyList<Vector2> clear)
+        {
+            if (clear == null) return 0;
+            var tc = Unit(toCam, Vector2.down); var ac = Across(tc); int n = 0;
+            foreach (var p in clear) { var d = p - seat; if (Vector2.Dot(d, tc) > -FamilyBehind && Mathf.Abs(Vector2.Dot(d, ac)) < FamilyHalf) n++; }
+            return n;
+        }
 
         /// <summary>
         /// B82.a (about 30 s and the walk home): the elder sits at the fire (walking there slowly if they aren't), the kin come one by one and sit in
-        /// close in a half ring on the camera's side (the partner beside them), the dog lies across their feet; the partner's hand on the shoulder,
+        /// close round them on the far side of the fire, facing the camera (the partner beside them; the tester 2026-11-27), the dog lies across their feet; the partner's hand on the shoulder,
         /// the elder's hand over it, a kid's head on the knee and one stroke; all look up at the stars (the caption at <see cref="CampScene.b"/>),
         /// a hold; the elder pats the dog, the partner and one grown kin help them up, and they walk them home at the elder's own slow pace, the kid
         /// holding a hand, the dog a step behind; at the door the elder turns, a small wave, and goes in (<see cref="CampScene.c"/>); the kin stand
@@ -263,8 +300,11 @@ namespace AquariumCiv.View
         public static CampScene Evening(LastEveningCast c, float t0)
         {
             var toCam = Unit(c.toCam, Vector2.down);
-            var seat = SeatOf(c.fire, toCam);
-            var toFire = Unit(c.fire - seat, -toCam);
+            var seat = SeatOf(c.fire, toCam, c.clear, c.seen);
+            // the tester 2026-11-27: they face between the fire and the camera (the fire itself when the seat is straight beyond it), so a seat turned
+            // round the fire away from a rack still shows their fronts; everything "toward the fire" below is this way
+            var toFire = Unit(Unit(c.fire - seat, toCam) + toCam, toCam);
+            var faceAt = seat + toFire;
             var side = Across(toFire); // the elder's left, as they face the fire
             var s = new CampScene(CampUse.LastEvening, t0, seat) { holdFocus = false, followReach = 0.9f, dog = c.dog };
             var T = new Track(s);
@@ -285,14 +325,14 @@ namespace AquariumCiv.View
             float wE = (c.elderAt - seat).magnitude < 0.03f ? 0.2f : WalkTime(c.elderAt, seat, frail);
             var walkIn = T.Part(me, 0f, wE, seat, c.fire, DollStyle.Stand, FrailWalk, frail); walkIn.poseWalking = true;
             var ms = new int[n]; var spots = new Vector2[n];
-            var ring = new[] { 60f, -40f, 20f }; int slot = 0; // v2: the first slot on the elder's other side from the partner (at 0.11 u the -85 slot sat on the partner)
+            var ring = new[] { -90f, -50f, 50f }; int slot = 0; // round from the way they face (the fire, the camera): the elder's other side from the partner first, then the two in front at the sides (the tester 2026-11-27: none behind them, hidden by the elder)
             float gather = Mathf.Max(GatherMin, wE + 0.5f);
             for (int i = 0; i < n; i++)
             {
                 ms[i] = s.Add(c.kin[i]);
                 Vector2 at = i == kneeKid ? seat + toFire * KneeAt + side * 0.025f
                     : i == helper ? seat + side * PartnerR
-                    : seat + Rot(-toFire, ring[Mathf.Min(slot++, ring.Length - 1)]) * RingR;
+                    : seat + Rot(toFire, ring[Mathf.Min(slot++, ring.Length - 1)]) * RingR;
                 spots[i] = at;
                 float start = 0.8f + i * ComeEvery;
                 float spd = c.kinKid[i] ? KidWalk : Walk;
@@ -308,9 +348,9 @@ namespace AquariumCiv.View
 
             // the elder, seated through beats 1 to 3: the hand over the shoulder's, the kid's head, the look up and the nod
             bool handLeft = helper >= 0 && Vector2.Dot(spots[helper] - seat, side) > 0f;
-            T.Part(me, wE, tRise, seat, c.fire, DollStyle.Sit,
+            T.Part(me, wE, tRise, seat, faceAt, DollStyle.Sit,
                 ElderAtTheFire(helper >= 0 ? tHand + 1f - wE : -1f, handLeft, kneeKid >= 0 ? tHand + 1.5f - wE : -1f, tHand + 4f - wE, tStars - wE));
-            if (dog) T.Part(me, tRise, tUp, seat, c.fire, DollStyle.Sit, PatDog);
+            if (dog) T.Part(me, tRise, tUp, seat, faceAt, DollStyle.Sit, PatDog);
 
             // the kin: sit in close facing the elder; the hand, the knee, the look up one after another
             for (int i = 0; i < n; i++)
@@ -318,7 +358,7 @@ namespace AquariumCiv.View
                 float arrive = T.EndOf(ms[i]);
                 float look = tStars + KinLookEvery * (i + 1);
                 // the partner sits turned to the elder, the hand reaching straight to the shoulder; the kid at the knee faces the fire, the knee beside them
-                var face = i == kneeKid || i == helper ? c.fire : seat; // v2: the partner side by side with the elder, both facing the fire
+                var face = i == kneeKid || i == helper ? spots[i] + toFire : Vector2.Lerp(seat, c.fire, 0.5f); // v2: the partner side by side with the elder, both facing the fire; the tester 2026-11-27: the others turned in toward the elder from facing the fire, so their fronts show too
                 CampPoseFn over = i == helper ? Window(HandOnShoulder(LeftOf(spots[i], face, seat)), tHand - arrive, tStars + LookFor - arrive)
                     : i == kneeKid ? Window(LeanOnKnee(LeftOf(spots[i], face, seat)), tHand + 1.5f - arrive, tRise - arrive) : null;
                 T.Part(ms[i], arrive, tRise, spots[i], face, DollStyle.Sit, LookUpAt(look - arrive, over));
@@ -352,19 +392,21 @@ namespace AquariumCiv.View
                 var at = seat + (h == 0 ? side : -side) * (Beside + 0.01f);
                 stand[h] = at;
                 T.Part(ms[i], tRise, tUp, spots[i], seat, DollStyle.Stand);
-                T.Part(ms[i], tUp, tUp + 0.6f, at, c.fire, DollStyle.Stand, null, Walk);
-                T.Part(ms[i], tUp + 0.6f, tStood, at, c.fire, DollStyle.Stand, HelpUp(LeftOf(at, at + toFire, seat)));
+                T.Part(ms[i], tUp, tUp + 0.6f, at, at + toFire, DollStyle.Stand, null, Walk);
+                T.Part(ms[i], tUp + 0.6f, tStood, at, at + toFire, DollStyle.Stand, HelpUp(LeftOf(at, at + toFire, seat)));
             }
-            T.Part(me, tUp, tUp + 0.6f, seat, c.fire, DollStyle.Sit);
+            T.Part(me, tUp, tUp + 0.6f, seat, faceAt, DollStyle.Sit);
             // v2: the elder's arm on each helper's side goes out over that helper's shoulders (armR is the doll's left: LeftOf)
             bool upR = false, upL = false;
-            foreach (var at in stand) { if (LeftOf(seat, c.fire, at)) upR = true; else upL = true; }
-            T.Part(me, tUp + 0.6f, tStood, seat, c.fire, DollStyle.Stand, HelpedUpBy(upL, upR));
+            foreach (var at in stand) { if (LeftOf(seat, faceAt, at)) upR = true; else upL = true; }
+            T.Part(me, tUp + 0.6f, tStood, seat, faceAt, DollStyle.Stand, HelpedUpBy(upL, upR));
 
             // 5 home: at the elder's own slow pace, a helper each side, the kid at a hand a little behind, the dog a step behind
-            var dir = Unit(c.door - seat, toCam);
+            // the tester 2026-11-27: the wave on the side of the tent the camera sees (c.wave), not behind the tent; else just short of the door
+            var dir = Unit((c.wave ?? c.door) - seat, toCam);
             var across = Across(dir);
-            var atDoor = c.door - dir * 0.05f;
+            var atDoor = c.wave ?? c.door - dir * 0.05f;
+            var waveFace = atDoor + Unit(Unit(c.fire - atDoor, toCam) + toCam * 1.3f, toCam); // to the fire, turned well round to the camera (a fire behind the tent: about 40 degrees off it)
             float walk = WalkTime(seat, atDoor, frail);
             s.d = tStood;
             float tDoor = tStood + walk;
@@ -396,9 +438,9 @@ namespace AquariumCiv.View
             }
             // at the door: the turn back to the fire, a small wave, in
             float tTurn = tDoor + TurnFor, tWave = tTurn + WaveFor, tIn = tWave + InFor;
-            T.Part(me, tDoor, tTurn, atDoor, c.fire, DollStyle.Stand);
-            T.Part(me, tTurn, tWave, atDoor, c.fire, DollStyle.Stand, BigWave); // v2: big and slow (was WaveSmall)
-            T.Part(me, tWave, tIn, c.door, c.door + dir, DollStyle.Stand, null, Walk * 0.5f);
+            T.Part(me, tDoor, tTurn, atDoor, waveFace, DollStyle.Stand);
+            T.Part(me, tTurn, tWave, atDoor, waveFace, DollStyle.Stand, BigWave); // v2: big and slow (was WaveSmall)
+            T.Part(me, tWave, tIn, c.door, c.door + Unit(c.door - atDoor, dir), DollStyle.Stand, null, Walk * 0.5f);
             T.Part(me, tIn, tIn + 0.3f, c.door, c.door + dir, DollStyle.Hidden);
             s.c = tIn;
             // the others stay by the fire, standing to see them off; those at the door stand and look (1.5 s), then come back one by one and sit
