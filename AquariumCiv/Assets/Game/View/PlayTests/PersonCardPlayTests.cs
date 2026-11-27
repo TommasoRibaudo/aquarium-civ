@@ -777,6 +777,62 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(120000)]
         public IEnumerator HoldsTheBoardOnAShortPhone() => HoldsTheBoard(750, 1334);
 
+        /// <summary>#801 (the #774 card shots): with the tall card up, the toast lane sits just above the card, where the person's name tag
+        /// is; "All tidy…" printed over "Hob · cheering" (and over a tie label, "Arne · partner"). A caption plate or a toast over a tag hides it,
+        /// and the tag comes back after; tie labels go round it, or hide when there is no room.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator ACaptionOrToastOverTheNameTagHidesIt()
+        {
+            int id = -1;
+            yield return CardUp(750, 1334, i => id = i);
+            GlassCaption plate = null;
+            try
+            {
+                var cards = PersonCardView.Instance;
+                cards.ShowTab(CardTab.Family);
+                cards.SetExpanded(true);
+                yield return new WaitForSecondsRealtime(1.4f);
+                var tree = cards.CardRoot.panel.visualTree;
+                var tag = tree.Q("pc-name-tag");
+                Assert.AreEqual(DisplayStyle.Flex, tag.resolvedStyle.display, "their name tag shows over the tall card");
+                var spot = tag.worldBound;
+
+                // a caption plate laid right over the tag: the tag goes
+                int before = cards.TagsUnderPlate;
+                plate = new GlassCaption("A caption over the tag") { name = "test801-plate", Inline = true };
+                plate.style.position = Position.Absolute;
+                plate.style.left = spot.xMin - 20f; plate.style.top = spot.yMin - 6f;
+                plate.style.width = spot.width + 40f; plate.style.height = spot.height + 12f;
+                tree.Add(plate);
+                yield return null; yield return null; yield return null;
+                Assert.AreEqual(DisplayStyle.None, tag.resolvedStyle.display, "a caption over the name tag hides it");
+                Assert.Greater(cards.TagsUnderPlate, before, "counted as hidden under a plate");
+                plate.RemoveFromHierarchy(); plate = null;
+                yield return null; yield return null; yield return null;
+                Assert.AreEqual(DisplayStyle.Flex, tag.resolvedStyle.display, "the tag comes back once the caption goes");
+
+                // the real case: the toast in its lane over the tall card; no tag shows under it on any frame
+                var hud = GameHud.Instance;
+                hud.Toast("All tidy. Look at that sky!", 4f);
+                int toastFrames = 0;
+                bool shot = false;
+                for (int f = 0; f < 90; f++)
+                {
+                    yield return null;
+                    var toast = tree.Query(className: "kg-toast").ToList().FirstOrDefault(t => t.resolvedStyle.display == DisplayStyle.Flex && t.resolvedStyle.opacity > 0.05f && !t.ClassListContains(GlassMotion.FadeOff));
+                    if (toast == null) continue;
+                    toastFrames++;
+                    foreach (var t in new[] { tag, tree.Q("pc-pin-tag") }.Concat(tree.Query<GlassTag>(className: "kg-tag--tie").ToList()))
+                        if (t != null && t.resolvedStyle.display == DisplayStyle.Flex)
+                            Assert.IsFalse(t.worldBound.Overlaps(toast.worldBound), $"{t.name} shows under the toast ({t.worldBound} / {toast.worldBound})");
+                    if (!shot && toastFrames > 20) { shot = true; yield return Shot("pc801-toast-750"); }
+                }
+                Assert.Greater(toastFrames, 0, "the toast showed");
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
+            }
+            finally { plate?.RemoveFromHierarchy(); Close(); }
+        }
+
         /// <summary>#674 (tester): on a short phone a two-line subtitle left room for the quote only; the chips lead now.</summary>
         [UnityTest, Timeout(120000)]
         public IEnumerator HoldsTheBoardOnAShortPhoneWithATwoLineSubtitle() => HoldsTheBoard(750, 1334, true);
