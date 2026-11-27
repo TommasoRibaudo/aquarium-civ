@@ -98,6 +98,36 @@ jobs:
       - name: dotnet test
         run: dotnet test Tools/SimTests
 
+  # #786: the offline motion bench (Tools/AnimBench, its beat files and clip principles) kept breaking unseen when View code
+  # moved on. Pure dotnet, no Unity, no secrets. Not in the Unity gate: a red here means a View file reached UnityEngine types
+  # the bench does not compile (split the constants into a *.Consts.cs partial, see Tools/AnimBench/README.md).
+  anim-bench:
+    name: AnimBench (dotnet)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-bench-${{ hashFiles('Tools/AnimBench/*.csproj', 'Tools/AnimBench.Tests/*.csproj') }}
+          restore-keys: nuget-bench-
+
+      - name: dotnet build
+        run: dotnet build Tools/AnimBench
+
+      - name: dotnet test
+        run: dotnet test Tools/AnimBench.Tests
+
   # Does this run need Unity at all? Only a PR into main (or a manual run), and only when something other than docs changed.
   unity-scope:
     name: Unity scope

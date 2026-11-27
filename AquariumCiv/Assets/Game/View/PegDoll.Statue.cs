@@ -9,8 +9,6 @@ namespace AquariumCiv.View
     {
         /// <summary>The statue's stone: the name stone's grey in three tones (the figure is one flat grey: no skin or tunic colours).</summary>
         public static readonly Color StatueStone = Color.Lerp(Palette.Stone, Palette.Rock, 0.35f), StatueStoneLit = Palette.RockLight, StatueStoneDark = Palette.RockDark;
-        /// <summary>The plinth's two steps (box units), where the figure's feet stand on it, and the figure's size (1.3 x a person: 0.28 u of doll).</summary>
-        public const float StatueLowW = 0.14f, StatueStepH = 0.03f, StatueUpW = 0.09f, StatueFeetY = 0.06f, StatueScale = 1.3f;
         /// <summary>The whole carved statue's height above the ground (box units): the plinth and the 1.3 x doll.</summary>
         public static float StatueHeight => StatueFeetY + (HeadY + HeadR) * StatueScale;
 

@@ -13,11 +13,8 @@ namespace AquariumCiv.View
     /// remembering stone's names, a charm pole, a stew pot, a long table, a carved bird on a ridge pole... Box units, standing on their
     /// origin, bigger than life a little (<see cref="Scale"/>) so they read at the default zoom.
     /// </summary>
-    public static class ConsequenceMeshes
+    public static partial class ConsequenceMeshes
     {
-        /// <summary>How much bigger than life the things stand, so they read at default zoom (as the relics do).</summary>
-        public const float Scale = 1.5f;
-
         /// <summary>The mesh of a <see cref="ConsequenceKind"/> (an unknown kind: a small cairn, so nothing is ever missing). #693: a
         /// <paramref name="variant"/> is how a use has it now: baskets taken off the stack (1-3), the axe out of the stump or the staff off its
         /// stone (1), new rows cut in the name stone (1-3), the offering's cloth fuller (1) or lifted (2: the food shows; 3: more of it), fish
@@ -325,7 +322,6 @@ namespace AquariumCiv.View
         /// <summary>The goat pen, before <see cref="Scale"/>: 0.2 square (0.3 u drawn), corner posts and side posts, two rails a side; the corner at
         /// +x +z is gnawed: the top rail there stops short with a chewed end, the low rail is gone, a gap a kid can crawl through
         /// (<see cref="PenGap"/>). <paramref name="variant"/> 1: mended, a new pale rail bound on across the gap.</summary>
-        public const float PenHalf = 0.1f;
         public static readonly Vector3 PenGap = new Vector3(PenHalf, 0f, PenHalf * 0.55f);
         static void GoatPenMesh(MeshBuilder mb, int variant)
         {
@@ -386,8 +382,6 @@ namespace AquariumCiv.View
             }
         }
 
-        /// <summary>The runestone's footprint (local half-sizes before <see cref="Scale"/>): people stand outside it (tests: NoOneInsideTheStone).</summary>
-        public const float StoneHalfX = 0.07f, StoneHalfZ = 0.035f, StoneH = 0.36f;
         /// <summary>#722 (1.3, B78.c): the second name stone: the same runestone with another seed (its own rough shape), and only the rows cut
         /// on it so far (<paramref name="rows"/>, 0-3: the first name, then the next; the newest pale), not the first stone's four old rows.</summary>
         public static Mesh SecondStone(int rows)
@@ -564,7 +558,6 @@ namespace AquariumCiv.View
 
         /// <summary>#693 notes: the carved name post by the family's door: a short square post, notches up its edges, a carved mark (a ring with a
         /// stroke through it) on its face, a rounded top. Variant bits: 1-3 the kids' height scratches (B54.zz), +4 the mark freshly re-cut.</summary>
-        public const float PostH = 0.2f, PostHalf = 0.022f;
         static void NamePostMesh(MeshBuilder mb, int variant)
         {
             var wood = new Color(0.55f, 0.38f, 0.22f); var cut = new Color(0.30f, 0.20f, 0.12f); var fresh = new Color(0.88f, 0.76f, 0.55f);
@@ -692,14 +685,6 @@ namespace AquariumCiv.View
             return mesh;
         }
 
-        /// <summary>Where the cords tie on for a drawn tree of play radius <paramref name="spotR"/> (BoxView.TreeSpots): the Keeper's grown tree
-        /// (KeeperTreeKit stage 4) or a wild one (Pieces.Tree, radius 0.16 x its scale).</summary>
-        public static void CharmTie(bool keeperTree, float spotR, out float attachY, out float ringR)
-        {
-            if (keeperTree) { attachY = 0.4f; ringR = 0.11f; return; }
-            float s = spotR / 0.16f;
-            attachY = 0.27f * s; ringR = 0.12f * s;
-        }
     }
 
     /// <summary>
