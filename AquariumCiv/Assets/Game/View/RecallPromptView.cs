@@ -110,6 +110,7 @@ namespace AquariumCiv.View
             if (FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen) return true;
             if (MomentPlayer.Instance != null && (MomentPlayer.Instance.Playing || GameClock.Instance != null && GameClock.Instance.Held)) return true;
             if (PersonCardView.Instance != null && PersonCardView.Instance.AnyOpen) return true;
+            if (HeldMomentLean.Holding || HeldMomentStage.Instance != null && HeldMomentStage.Instance.StagingCount > 0) return true; // #797: never over a held scene
             var tl = TimeLapseView.Find();
             if (tl != null && tl.Active) return true;
             var sm = ShowMeDirector.Instance;

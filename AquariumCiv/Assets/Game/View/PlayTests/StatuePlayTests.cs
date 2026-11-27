@@ -117,7 +117,7 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSeconds(1f);
             Vector3 Vp(Vector2 at) => Camera.main.WorldToViewportPoint(box.Root.TransformPoint(new Vector3(at.x, box.SurfaceHeight(at.x, at.y) + 0.06f, at.y)));
             bool Mid(Vector3 v) => v.z > 0f && v.x >= 0.2f && v.x <= 0.8f && v.y >= 0.2f && v.y <= 0.8f;
-            int frames = 0, plinthOff = 0, carverOff = 0, released = 0, othersMax = 0, shot = 0;
+            int askable = 0, frames = 0, plinthOff = 0, carverOff = 0, released = 0, othersMax = 0, shot = 0;
             string firstOff = "", stateWas = "";
             var carver = RefOf(sc.keys[0]);
             while (pv.Camp.Playing(CampUse.StatueRaise) && Time.time - start < 90f)
@@ -130,6 +130,7 @@ namespace AquariumCiv.View.PlayTests
                 if (!Mid(pvp)) { plinthOff++; if (firstOff == "") firstOff = $"plinth at ({pvp.x:0.00}, {pvp.y:0.00}) at {u:0.0} s"; }
                 if (pv.TryGetDollPosition(carver, out var cp) && !Mid(Vp(cp)) && !last) { carverOff++; if (firstOff == "") { var cv = Vp(cp); firstOff = $"carver at ({cv.x:0.00}, {cv.y:0.00}) at {u:0.0} s"; } }
                 if (!HeldMomentLean.Holding && !last) released++;
+                if (HeldMomentLean.Holding && !RecallPromptView.Busy()) askable++; // #797: no question over the scene
                 string stateNow = $"holding {HeldMomentLean.Holding}, leaning {rig.Leaning}, glide {rig.GlideArmed}, raise scenes {pv.Camp.Scenes.Count(s => s.use == CampUse.StatueRaise)}, ours {pv.Camp.Scenes.Contains(sc)}, staging {HeldMomentStage.Instance?.AnyPlayingStaging()?.Moment?.kind}#{HeldMomentStage.Instance?.AnyPlayingStaging()?.Moment?.id} of {HeldMomentStage.Instance?.StagingCount}, sim playing {string.Join(",", sim.PlayingMoments().Select(m => m.kind + "#" + m.id))}, why {HeldMomentLean.LastWhy}";
                 if (stateNow != stateWas) { Debug.Log($"[776 lean] {u:0.0} s: {stateNow}"); stateWas = stateNow; }
                 if (u >= 3f + shot * 7f && shot < 5) { yield return Shot($"776/lean_{shot}_{u:00}s"); shot++; }
@@ -139,6 +140,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsFalse(pv.Camp.Playing(CampUse.StatueRaise), "the raising ends");
             Assert.Greater(frames, 100, "watched the raising");
             Assert.AreEqual(0, released, "the lean holds until the raising ends");
+            Assert.AreEqual(0, askable, "#797: the playtest question waits while a held scene plays");
             Assert.LessOrEqual(plinthOff, frames / 20, "the plinth stays in the middle 60 % (" + firstOff + ")");
             Assert.LessOrEqual(carverOff, frames / 10, "the carver stays in the middle 60 % (" + firstOff + ")");
             yield return Until(() => !rig.GlideArmed && !rig.Leaning && !rig.IsFlying, 15f);
