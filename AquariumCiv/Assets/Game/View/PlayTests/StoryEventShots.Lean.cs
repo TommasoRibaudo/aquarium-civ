@@ -349,7 +349,9 @@ namespace AquariumCiv.View.PlayTests
                 foreach (var q in leanCast) { var qv = ViewportOf(q); if (qv.z > 0f && qv.x > 0.02f && qv.x < 0.98f && qv.y > 0.02f && qv.y < 0.98f) on++; }
                 yield return Shot($"783/every_{tag}_{name}_after");
                 string line = $"{name}: person {before:0} -> {after:0} px (target {want:0}), zoom {home.zoom:0.00} -> {rig.zoom:0.00} (floor {rig.minZoom:0.00}), pitch {rig.pitch:0}, middle at ({v.x:0.00}, {v.y:0.00}), cast on screen {on}/{leanCast.Count}";
-                Debug.Log($"[783] every {tag} {line}");
+                var want0 = BoxCameraMath.PivotOver(HeldMomentLean.LastAim, rig.target.y, rig.yaw, rig.pitch);
+                var aimV = Camera.main.WorldToViewportPoint(HeldMomentLean.LastAim);
+                Debug.Log($"[783] every {tag} {line}; aim {HeldMomentLean.LastAim} at ({aimV.x:0.00}, {aimV.y:0.00}), pivot {rig.target} (unclamped {want0}), why {HeldMomentLean.LastWhy}");
                 report.AppendLine(line);
                 bool atFloor = rig.zoom <= rig.minZoom + 0.015f;
                 if (rig.zoom > home.zoom - 0.02f) failed.Add(name + ": it did not lean in");
