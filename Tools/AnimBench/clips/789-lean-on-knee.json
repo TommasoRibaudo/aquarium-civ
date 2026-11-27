@@ -1,0 +1,19 @@
+{
+  "name": "789-lean-on-knee",
+  "notes": "#789 B82.a beat 2 (new LeanOnKnee): a kid sits at the elder's feet facing the fire and leans the head onto the elder's knee: the body tilted 25 degrees toward it (eased in 0.8 s), a little forward, the near arm across; the elder's other hand rests on the kid's head (2.5 s) and strokes once (a slow x 20, 1 s, at 4.5 s); the look up at 7 s. Every number [est] until the user signs off the clip.",
+  "duration": 10.0,
+  "fps": 30,
+  "warmup": 1,
+  "camera": { "view": "default", "focus": [0.02, 0.24], "span": 0.6 },
+  "sheet": { "from": 0.5, "to": 6.0, "frames": 24, "columns": 6 },
+  "objects": [ { "id": "fire", "kind": "fire", "pos": [0, 0] } ],
+  "dolls": [
+    { "id": "elder", "seed": 7891, "style": "Sit", "pos": [0, 0.28], "face": [0, 0], "pose": "ElderAtTheFire" },
+    { "id": "kid", "seed": 7893, "kid": true, "style": "Sit", "pos": [0.025, 0.21], "face": [0, 0],
+      "timeline": [
+        { "t": 0, "dur": 1.5 },
+        { "t": 1.5, "dur": 7, "pose": "LeanOnKneeR", "label": "head on the knee" },
+        { "t": 8.5 }
+      ] }
+  ]
+}
