@@ -183,5 +183,18 @@ namespace AquariumCiv.Life
 
         /// <summary>The elder on the stool at their own door (not walking, not indoors).</summary>
         static bool SeatedAtDoor(Person e, Seg o) => o.kind == ActivityKind.SitOut && o.place == e.home && !o.Moving && o.prop == Prop.Stool;
+
+        /// <summary>#789: this person's home (their tent or house; the fire when they have none), for the last evening's walk to the door.</summary>
+        public Place HomeOf(PersonRef who) { Sync(); return byKey.TryGetValue(who.Key, out var p) ? ValidHome(p) : Place.None; }
+
+        /// <summary>#789 (B82.a beat 5): the elder walked home from their last evening and went in; they stay in (asleep that night, indoors
+        /// after) until the sim's night takes them, so nobody sees them come out again. Nothing for anyone else, nothing without the stamp.</summary>
+        void LastEveningIndoors(Person p, DayInfo d, List<Seg> list)
+        {
+            if (sim == null || !sim.StaysInAfterLastEvening(p.key, d.day, 24f, out bool allDay)) return;
+            if (allDay) { Put(list, Mk(ActivityKind.Indoors, 0f, 24f, p.home), d); return; }
+            float from = Math.Max(0f, Math.Min(23.9f, sim.State.lastEveningHour));
+            Put(list, Mk(ActivityKind.Sleep, from, 24f, p.home), d);
+        }
     }
 }

@@ -78,6 +78,7 @@ doll-level fields as defaults and can override any of them.
 | `target` | the object or doll this segment's hits are aimed at (principles 1 and 2) |
 | `endBeat` | mark this segment as the end beat of the loop before it |
 | `hidden` | not drawn |
+| `pose` | #789: a camp scene's pose by name (`LastEveningScenes.PoseOf`: `HandOnShoulderL`, `HelpUpR`, `PairWalkL`, ...), laid over the move on the segment's own clock, walking too |
 | `t` / `dur` / `hours` / `until` | timing. Without `t` a segment starts where the last ended. Without an end it runs to the next `t` or forever |
 | `label` | shown on the curves |
 

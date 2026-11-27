@@ -1,0 +1,18 @@
+{
+  "name": "789-wave",
+  "notes": "#789 B82.a beat 5 at the door, v2 2026-11-27 (the user: the wave was too small): the elder at their door turns back to the fire (0.8 s) and waves big and slow: the arm up high over the head (z 150, 0.5 s) and swung +-25 at 0.6 Hz for 2.4 s, a little lean back, the body swaying with it; then in. Filmed from the fire's side (their front). Every number [est] until the user signs off the clip.",
+  "duration": 4.5,
+  "fps": 30,
+  "warmup": 0.5,
+  "camera": { "view": "default", "focus": [0, 0.3], "span": 0.6, "yaw": 28, "pitch": 24 },
+  "sheet": { "from": 0.3, "to": 4.2, "frames": 24, "columns": 6 },
+  "objects": [ { "id": "tent", "kind": "tent", "pos": [0, 0.5] } ],
+  "dolls": [
+    { "id": "elder", "seed": 7891, "pos": [0, 0.3], "face": [0, 0],
+      "timeline": [
+        { "t": 0, "dur": 0.8, "style": "Stand" },
+        { "t": 0.8, "dur": 2.4, "style": "Stand", "pose": "BigWave", "label": "the wave" },
+        { "t": 3.2, "style": "Stand" }
+      ] }
+  ]
+}
