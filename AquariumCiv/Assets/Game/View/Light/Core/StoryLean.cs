@@ -52,6 +52,15 @@ namespace AquariumCiv.Lighting
             return Math.Min(z, zoomNow);
         }
 
+        /// <summary>The pitch a lean eases to. It looks down to <paramref name="leanPitch"/> (never flatter than now), except when its zoom
+        /// <paramref name="zoomTo"/> ends at the closest the player may zoom (<paramref name="minZoom"/>): there it can't come closer to
+        /// make up for it, and looking steeper only shortens the dolls, so the camera keeps its pitch (#783, signed off 2026-11-27).</summary>
+        public static float LeanPitchFor(float pitchNow, float leanPitch, float zoomTo, float minZoom)
+            => zoomTo <= minZoom + FloorSlack ? pitchNow : Math.Max(pitchNow, leanPitch);
+
+        /// <summary>How near the floor a lean's zoom counts as at it.</summary>
+        public const float FloorSlack = 1e-3f;
+
         /// <summary>Does the lean move the camera at all? Not when the zoom stays the player's (<paramref name="zoomTo"/> within
         /// <see cref="ZoomSame"/> of <paramref name="zoomNow"/>) and the scene's focus already sits in the middle of the view
         /// (<paramref name="vx"/>, <paramref name="vy"/>: its viewport point).</summary>
