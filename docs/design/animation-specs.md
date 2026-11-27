@@ -2799,7 +2799,7 @@ the figure changing with the era. All could be later polish rows.
 
 ## B82. The last evening: a goodbye before an elder dies (#789, 2026-11-26)
 
-**Status: spec approved by the user 2026-11-26 (★ for all three questions: every elder with kin or a friend nearby, the dog at their feet, the one caption). The four new clips still need the user's sign-off before merge.** No Unity was run. Every number is [est] until the clip. Source:
+**Status: spec approved by the user 2026-11-26 (★ for all three questions: every elder with kin or a friend nearby, the dog at their feet, the one caption). The four new clips still need the user's sign-off before merge.** **Built offline on `vs/789-last-evening` (2026-11-26): the rule `Sim/LastEveningRules.cs` + `SimCore.LastEvening.cs`, the scene `View/Beats/LastEveningScenes.cs`, `CampLife.LastEvening.cs`, the cheats; AnimBench clips `789-hand-on-shoulder`, `789-lean-on-knee`, `789-help-up`, `789-pair-walk`. Not built yet: the fire's 10 % dip, the 0.3 h quiet after, the dog at the door next morning.** No Unity was run. Every number is [est] until the clip. Source:
 `docs/research/23-ageing-and-death.md` §3 B and §4 (chosen 2026-11-26). It pairs with #788 (last days: the elder walks slower and sits
 longer in the final ~2 years, family beside them): this beat is the last evening of that window. Writing rule: closed world, nobody
 says or hints at anything outside the box; no grim, no gore, no lying or fallen pose.
