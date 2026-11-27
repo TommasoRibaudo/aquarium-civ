@@ -14,8 +14,6 @@ namespace AquariumCiv.View
 {
     public sealed partial class CampLife
     {
-        /// <summary>How often a use plays (D rules): <b>sometimes</b> about one view day in three; <b>often</b> most days.</summary>
-        public const float Sometimes = 0.35f, Often = 0.85f, RabbitSpit = 0.5f;
         /// <summary>B11: the same life use never twice within this many seconds.</summary>
         public const float SameUseGap = 30f, SniffGap = 20f;
         /// <summary>How far a free person may be from the thing to be borrowed for it (box units).</summary>

@@ -17,6 +17,8 @@ namespace UnityEngine
         public static float Cos(float f) => MathF.Cos(f);
         public static float Tan(float f) => MathF.Tan(f);
         public static float Atan(float f) => MathF.Atan(f);
+        public static float Acos(float f) => MathF.Acos(f);
+        public static float Asin(float f) => MathF.Asin(f);
         public static float Atan2(float y, float x) => MathF.Atan2(y, x);
         public static float Sqrt(float f) => MathF.Sqrt(f);
         public static float Abs(float f) => MathF.Abs(f);
@@ -138,6 +140,7 @@ namespace UnityEngine
         public static Vector3 LerpUnclamped(Vector3 a, Vector3 b, float t) => new Vector3(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
         public static Vector3 Scale(Vector3 a, Vector3 b) => new Vector3(a.x * b.x, a.y * b.y, a.z * b.z);
         public static float Dot(Vector3 a, Vector3 b) => a.x * b.x + a.y * b.y + a.z * b.z;
+        public static float Angle(Vector3 a, Vector3 b) { float d = a.magnitude * b.magnitude; if (d < 1e-15f) return 0f; return Mathf.Acos(Mathf.Clamp(Dot(a, b) / d, -1f, 1f)) * Mathf.Rad2Deg; }
         public static Vector3 Cross(Vector3 a, Vector3 b) => new Vector3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
         public static float Distance(Vector3 a, Vector3 b) => (a - b).magnitude;
         public static Vector3 MoveTowards(Vector3 current, Vector3 target, float maxDelta)
