@@ -199,11 +199,11 @@ namespace AquariumCiv.View
             var back = box.Root.InverseTransformDirection(-cam.transform.forward);
             if (back.z > -1e-3f) return true; // the camera is not in front of the box
             var across = new Vector2(-back.z, back.x).normalized;
-            float front = Land.CZ - (Land.HZ + 0.075f), head = CampFrame.DollHeight * 1.4f;
+            float front = Land.CZ - (Land.HZ + 0.075f), head = AquariumCiv.Lighting.CampFrame.DollHeight * 1.4f;
             foreach (float side in new[] { -0.15f, 0f, 0.15f })
             {
                 var q = seat + across * side;
-                if (!Terrain.InBox(q.x, q.y, Terrain.GlassMargin + 0.1f)) return false;
+                if (!AquariumCiv.Sim.Settle.Terrain.InBox(q.x, q.y, AquariumCiv.Sim.Settle.Terrain.GlassMargin + 0.1f)) return false;
                 float t = (front - q.y) / back.z, ground = box.SurfaceHeight(q.x, q.y);
                 foreach (float up in new[] { 0f, head * 0.5f, head })
                     if (Mathf.Abs(ground + up + back.y * t - Land.GlassTop) < RimBand) return false;
