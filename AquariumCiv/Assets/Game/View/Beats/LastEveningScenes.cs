@@ -36,8 +36,8 @@ namespace AquariumCiv.View
         /// <summary>The kin sit this close round the elder (0.12 to 0.2 u), on the camera's half; the partner right beside them, within an arm's reach
         /// (AnimBench: at 0.16 u the hand fell short of the shoulder).</summary>
         public const float RingR = 0.16f, PartnerR = 0.085f;
-        /// <summary>The kid at the knee and the dog across the feet: this far in front of the elder (toward the fire).</summary>
-        public const float KneeAt = 0.07f, FeetAt = 0.06f;
+        /// <summary>The kid at the knee and the dog at the feet: this far in front of the elder (toward the fire); the dog also FeetSide to the elder's other side from the kid.</summary>
+        public const float KneeAt = 0.07f, FeetAt = 0.04f, FeetSide = 0.075f;
         /// <summary>Beat 1 lasts at least this long; the kin come 1 to 2 s apart.</summary>
         public const float GatherMin = 8f, ComeEvery = 1.5f;
         /// <summary>Beat 2 (the hand), beat 3 (the stars: look up 3 s, the nod, a hold), beat 4 (rising).</summary>
@@ -273,16 +273,19 @@ namespace AquariumCiv.View
             }
 
             // the dog: to the feet, lies across them, two thumps of the tail (1.5 Hz) in beat 2
-            var feet = seat + toFire * FeetAt - side * 0.02f;
+            // v2 (the first in-box clip: the dog lay across the kid at the knee, the two inside each other): at the feet on the elder's other
+            // side from the kid, lying with its head toward the fire
+            var feet = seat + toFire * FeetAt - side * FeetSide;
+            var lieFace = feet + toFire;
             if (dog)
             {
                 float dw = WalkTime(c.dogAt, feet, Walk);
                 float d0 = Mathf.Clamp(gather - dw - 0.2f, 0f, 2f);
                 s.Quad(0, 0f, d0, c.dogAt, seat, QuadAct.Lie);
-                s.Quad(0, d0, d0 + dw, feet, feet + side, QuadAct.Stand, Walk);
-                s.Quad(0, d0 + dw, tHand + 3f, feet, feet + side, QuadAct.Lie);
-                s.Quad(0, tHand + 3f, tHand + 3f + 1.33f, feet, feet + side, QuadAct.Wag);
-                s.Quad(0, tHand + 3f + 1.33f, tUp, feet, feet + side, QuadAct.Lie);
+                s.Quad(0, d0, d0 + dw, feet, lieFace, QuadAct.Stand, Walk);
+                s.Quad(0, d0 + dw, tHand + 3f, feet, lieFace, QuadAct.Lie);
+                s.Quad(0, tHand + 3f, tHand + 3f + 1.33f, feet, lieFace, QuadAct.Wag);
+                s.Quad(0, tHand + 3f + 1.33f, tUp, feet, lieFace, QuadAct.Lie);
             }
 
             // 4 rising: the two helpers stand, step to the elder's sides (facing the fire, as the elder) and help them up
