@@ -268,7 +268,8 @@ namespace AquariumCiv.View.PlayTests
                         foreach (int k in sc.keys)
                         {
                             bool cued = sc.TryPart(k, SceneClock(pv), out var part, out _);
-                            spots.AppendLine($"{st:0.0} {k} {sim.FindNotable(k)?.name} use {pv.Camp.UseOf(k)} cued {cued} part {(cued ? part.pos.ToString("0.00") + " " + part.style : "-")} | {pv.DebugSpotOf(PersonRef.Notable(k))}");
+                            string act = pv.TryGetActivityOf(PersonRef.Notable(k), out var pa) ? $"{pa.kind} at {pa.place.kind} hunt {pa.hunt} tent {pa.tent} moving {pa.moving}" : "-";
+                            spots.AppendLine($"{st:0.0} {k} {sim.FindNotable(k)?.name} use {pv.Camp.UseOf(k)} cued {cued} part {(cued ? part.pos.ToString("0.00") + " " + part.style : "-")} | {act} | {pv.DebugSpotOf(PersonRef.Notable(k))}");
                         }
                     n++; lastAt = now;
                 }

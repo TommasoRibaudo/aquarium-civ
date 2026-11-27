@@ -145,7 +145,17 @@ namespace AquariumCiv.View
             c.door = !home.IsNone && planner.Positions.TryGetPosition(home, out float hx, out float hz) ? new Vector2(hx, hz) : fire + c.toCam * 0.8f;
             // the dog: the elder's own, else a grown one, if one is drawn and free
             Dog dog = null;
-            foreach (var d in sim.DogsOfKeeper(who.id)) if (sim.DogStageOf(d) != DogStage.Pup && !DogBusy(d.id) && DogAt(d.id).HasValue) { dog = d; break; }
+            foreach (var d in sim.DogsOfKeeper(who.id))
+            {
+                if (sim.DogStageOf(d) == DogStage.Pup || !DogAt(d.id).HasValue) continue;
+                if (DogBusy(d.id)) // their own dog in an everyday use gives way to the last evening, as the people's do (the first "with a dog" clips: never cast)
+                {
+                    int cut = scenes.RemoveAll(x => x.dog == d.id && !StoryHeld(x));
+                    if (cut > 0) Index();
+                    if (DogBusy(d.id)) continue;
+                }
+                dog = d; break;
+            }
             if (dog == null) { var g = FirstDog(DogStage.Grown); if (g != null && !DogBusy(g.id) && DogAt(g.id).HasValue) dog = g; }
             if (dog != null) { c.dog = dog.id; c.dogAt = DogAt(dog.id).Value; }
             var sc = LastEveningScenes.Evening(c, time);

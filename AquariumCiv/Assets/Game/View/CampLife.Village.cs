@@ -521,7 +521,8 @@ namespace AquariumCiv.View
 
         /// <summary>#695 (b58c): the cheat's scene has them now: a staged moment that starts meanwhile (a town's market watch) doesn't take them out
         /// of it (they walked back to the moment and the clip saw nobody at the bakery door).</summary>
-        public bool CheatHolds(int key) => forced != null && scenes.Contains(forced) && forced.keys.Contains(key) && forced.TryPart(key, clock, out _, out _);
+        public bool CheatHolds(int key) => forced != null && scenes.Contains(forced) && forced.keys.Contains(key) && forced.TryPart(key, clock, out _, out _)
+            || LastEveningScene != null && scenes.Contains(LastEveningScene) && LastEveningScene.keys.Contains(key) && LastEveningScene.TryPart(key, clock, out _, out _); // #789: the last evening's cast too (a staged or placed-life spot took the grown child off to the pond mid-scene)
 
         /// <summary>The first bedtimes are 19.2 h (LifePlanner.Day): no use starts after this.</summary>
         public const float LastStart = 18.2f;
