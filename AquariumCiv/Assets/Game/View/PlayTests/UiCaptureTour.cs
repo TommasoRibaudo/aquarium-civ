@@ -426,17 +426,16 @@ namespace AquariumCiv.View.PlayTests
             yield return Cap("3.2-marker-name-tag", Cards.IsOpen);
             Cards.SetExpanded(true); // #674: the tabs show on the tall card only
             yield return new WaitForSecondsRealtime(1.0f);
-            yield return Tap(root, "person-card-recent");
+            yield return Tap(root, "person-card-tab-friends"); // #774 card B: Family, Friends, Story
             var scroll = root.Q<ScrollView>("person-card-body");
-            scroll.scrollOffset = new Vector2(0f, 99999f);
             yield return Frames(4);
-            yield return Cap("3.4-person-recent", !Cards.ShowingBest);
-            yield return Tap(root, "person-card-best");
+            yield return Cap("3.4-person-friends", Cards.Tab == CardTab.Friends);
+            yield return Tap(root, "person-card-tab-story");
             root.Q<ScrollView>("person-card-body").scrollOffset = new Vector2(0f, 99999f);
             yield return Frames(4);
-            yield return Cap("3.4-person-best", Cards.ShowingBest);
+            yield return Cap("3.4-person-story", Cards.ShowingStory);
             root.Q<ScrollView>("person-card-body").scrollOffset = Vector2.zero;
-            yield return Tap(root, "person-card-recent");
+            yield return Tap(root, "person-card-tab-family");
             Cards.SetExpanded(false);
 
             yield return Tap(root, "person-card-pin");

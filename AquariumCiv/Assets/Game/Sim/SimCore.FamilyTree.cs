@@ -218,5 +218,35 @@ namespace AquariumCiv.Sim
             t.rows = rowOf.Count;
             return t;
         }
+
+        /// <summary>Debug (#774, the debug panel): a deep family to look at. From the biggest tree's founder (or the first founder), each
+        /// generation weds if it has no partner and has three children, the youngest already gone (a stone in the tree); the eldest carries
+        /// on. Draws on the main dice (names), as the other birth cheats do. Returns the founder's id, or -1.</summary>
+        public int DebugDeepFamily(int generations = 3)
+        {
+            var s = State;
+            var roots = FamilyTreeRoots();
+            var p = roots.Count > 0 ? FindNotable(roots[0]) : s.notables.Where(n => n.parentId < 0).OrderBy(n => n.bornMonth).ThenBy(n => n.id).FirstOrDefault();
+            if (p == null) return -1;
+            int head = p.id;
+            for (int g = 0; g < generations; g++)
+            {
+                if (MatesOf(p.id).Count == 0)
+                {
+                    var mate = AddNotable(Math.Max(AdultAge, p.age), -1, null);
+                    p.partnerId = mate.id; mate.partnerId = p.id;
+                    Chronicle("wedding", $"{p.FullName} and {mate.FullName} were wed.", 0.5f, p.id, mate.id);
+                }
+                Notable eldest = null;
+                for (int k = 0; k < 3; k++)
+                {
+                    var child = AddNotable(k == 0 ? AdultAge + 4f : k == 1 ? 12f : 2f, p.id, p.family);
+                    if (k == 2) { child.alive = false; child.diedMonth = s.month; }
+                    eldest ??= child;
+                }
+                p = eldest;
+            }
+            return head;
+        }
     }
 }
