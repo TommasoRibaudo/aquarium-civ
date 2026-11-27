@@ -30,7 +30,7 @@ namespace AquariumCiv.View.PlayTests
     public class LastEveningShots789 : PlayTestBase
     {
         const int W = 750, H = 1334;
-        const float FrameEvery = 0.1f, PersonPx = 120f, ClosePx = 170f; // v5: 120 (was 100) for the walk home and the wave
+        const float FrameEvery = 0.1f, PersonPx = 120f, ClosePx = 240f; // v5: closer (170 was too small at phone size)
         /// <summary>v5 (2026-11-27, the user: from the fire's side the camera saw mostly the tops of heads): from the family's front, low (24 to 32
         /// degrees, was 46 to 58) and no more than 40 degrees round, so the faces, the arms and the lean back show.</summary>
         static readonly float[] Offsets = { 0f, -20f, 20f, -40f, 40f }, Pitches = { 24f, 32f };
@@ -112,7 +112,7 @@ namespace AquariumCiv.View.PlayTests
                 float ext = Mathf.Max(r.width / (0.75f * Screen.width), r.height / (0.5f * Screen.height));
                 float px = ElderPx(sc);
                 float st = SceneClock(Pv) - sc.t0;
-                float wantPx = st >= sc.a - 0.5f && st < sc.d + 0.5f ? ClosePx : PersonPx; // v3: closer from the hand to the help up (the arms are the point)
+                float wantPx = st >= sc.a - 0.5f && st < sc.c + 0.3f ? ClosePx : PersonPx; // v5: close from the hand to the elder going in (the arms and the wave are the point)
                 float z = Mathf.Max(rig.zoom * Mathf.Max(ext, 0.05f), px > 1f ? rig.zoom * px / wantPx : 0f);
                 z = Mathf.Clamp(z, 0.03f, rig.maxZoom);
                 zoomNow = snap ? z : Mathf.Lerp(zoomNow, z, 0.1f);
@@ -259,13 +259,13 @@ namespace AquariumCiv.View.PlayTests
                     Vector2 door = DoorOf(sc);
                     // v4: no search here (the search holds the scene's clock but the dolls' steps run on, so the walk was over before the first
                     // frame) and not from beyond the door (the tent stood in front of them): from the side, a little ahead of them
-                    // v5: from in front of them (the door's side, 35 degrees round so the tent is not in front of them): a helper each side, the arms linked
-                    Recut(sc, YawFrom(WorldDir((door - sc.focus).normalized)) + 35f, "the walk home");
+                    // v5: from in front of them (the door's side, 20 degrees round so the tent is not in front of them): a helper each side, the arms linked
+                    Recut(sc, YawFrom(WorldDir((door - sc.focus).normalized)) + 20f, "the walk home");
                 }
                 if (!doorAimed && st >= tDoor - 0.2f)
                 {
                     doorAimed = true;
-                    Recut(sc, YawFrom(WorldDir((sc.focus - DoorOf(sc)).normalized)) + 20f, "at the door"); // from the fire's side: the wave back to the fire
+                    Recut(sc, YawFrom(WorldDir((sc.focus - DoorOf(sc)).normalized)) + 5f, "at the door"); // from the fire's side: the wave back to the fire
                 }
                 Frame(sc, false);
                 float now = Time.realtimeSinceStartup - t0;

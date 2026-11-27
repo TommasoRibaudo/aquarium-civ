@@ -176,7 +176,7 @@ namespace AquariumCiv.View.Tests
             }
             var partner = PartAt(s, 10, s.a + 3f);
             var seat = PartAt(s, 1, s.a + 3f).pos;
-            Assert.Less(Vector2.Angle(partner.face - partner.pos, Fire - partner.pos), 1f, "the partner faces the fire, side by side with the elder");
+            Assert.Greater(Vector2.Dot((partner.face - partner.pos).normalized, (Fire - partner.pos).normalized), 0.999f, "the partner faces the fire, side by side with the elder");
             Assert.AreEqual(LastEveningScenes.ShoulderArmZ, Out(PoseOf(10, s.a + 3f)), 1.5f, "the arm out across to the elder's shoulder");
             Assert.Less(PoseOf(1, s.b + 2.5f).lean, LastEveningScenes.ElderLookLean + 1.5f, "the elder leans well back at the stars");
             Assert.Less(PoseOf(10, s.b + 2.5f).lean, LastEveningScenes.KinLookLean * 0.8f, "the partner looks up too");

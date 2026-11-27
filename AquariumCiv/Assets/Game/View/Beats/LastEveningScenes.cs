@@ -285,7 +285,7 @@ namespace AquariumCiv.View
             float wE = (c.elderAt - seat).magnitude < 0.03f ? 0.2f : WalkTime(c.elderAt, seat, frail);
             var walkIn = T.Part(me, 0f, wE, seat, c.fire, DollStyle.Stand, FrailWalk, frail); walkIn.poseWalking = true;
             var ms = new int[n]; var spots = new Vector2[n];
-            var ring = new[] { -85f, 40f, -40f }; int slot = 0;
+            var ring = new[] { 60f, -40f, 20f }; int slot = 0; // v2: the first slot on the elder's other side from the partner (at 0.11 u the -85 slot sat on the partner)
             float gather = Mathf.Max(GatherMin, wE + 0.5f);
             for (int i = 0; i < n; i++)
             {
@@ -413,7 +413,9 @@ namespace AquariumCiv.View
                     T.Part(ms[i], sitAt, sitAt + 1.2f, to, c.fire, DollStyle.Sit, null, Walk);
                     continue;
                 }
-                var from = T.PosOf(ms[i], spots[i]);
+                // v2: at the door they step out to the sides (0.1 u, a little back), so the elder turns and waves alone, not inside their huddle
+                var end0 = T.PosOf(ms[i], spots[i]);
+                var from = end0 + Unit(end0 - atDoor, -across) * 0.1f - dir * 0.03f;
                 T.Part(ms[i], T.EndOf(ms[i]), back, from, c.door, DollStyle.Look);
                 float go = back + 0.6f * k++;
                 float spd = c.kinKid[i] ? KidWalk : Walk;
