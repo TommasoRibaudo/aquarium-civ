@@ -47,6 +47,7 @@ namespace AquariumCiv.View
         {
             storyHeld.Clear(); storyEntry.Clear(); storyScanCount = -1; storyScanned = null;
             ResetStatue(); // #776
+            ResetLastEvening(); // #789
             ConsequencePropsView.HeldBack.Clear();
         }
 
@@ -348,6 +349,7 @@ namespace AquariumCiv.View
         {
             StepStories3(acts, time); // batch 3: the antlers' hold, the face log, the snow figure, their life uses
             StepStatue(acts, time); // #776: the founder's statue: its solid, its bunch, the people's uses
+            StepLastEvening(acts, time); // #789: the last evening at dusk, while watched
             // B78.c: the second stone stays off its spot while it is rolled in and stood up, and while its moment still waits for the Keeper
             var held = ConsequencePropsView.HeldBack;
             held.Clear();

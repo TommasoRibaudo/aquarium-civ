@@ -263,8 +263,8 @@ namespace AquariumCiv.View.Tests
         public void TheUses_AreAppendedLast_AndTheStatueKindsAreAllNamed()
         {
             var all = System.Enum.GetValues(typeof(CampUse)).Cast<CampUse>().ToList();
-            Assert.AreEqual(CampUse.StatueSweep, all.Max());
-            Assert.AreEqual(5, all.Count(u => u >= CampUse.StatueRaise) - 1, "five uses after the raising");
+            Assert.AreEqual(CampUse.LastEvening, all.Max(), "#789 appended after the statue's uses");
+            Assert.AreEqual(5, all.Count(u => u >= CampUse.StatueRaise && u <= CampUse.StatueSweep) - 1, "five uses after the raising");
             foreach (var u in new[] { CampUse.StatueClimb, CampUse.StatueFlowers, CampUse.StatueSit, CampUse.StatueNod, CampUse.StatueSweep })
                 Assert.IsTrue(u > CampUse.StatueRaise);
         }
