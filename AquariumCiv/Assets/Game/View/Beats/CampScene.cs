@@ -331,7 +331,8 @@ namespace AquariumCiv.View
     }
 
     /// <summary>#694: what a dog or a visiting wolf does in a <see cref="QuadPart"/> (P0's moves; CampLife.Dogs poses them).</summary>
-    public enum QuadAct { Stand, Sit, Lie, Sleep, PlayBow, Sniff, Bark, Alert, Chew, Growl, Wag, HeadDown }
+    /// <remarks><see cref="LieThump"/> (#800, B82.a beat 2): lying as <see cref="Lie"/>, the tail thumping on the ground (1.5 Hz); the dog never gets up for it.</remarks>
+    public enum QuadAct { Stand, Sit, Lie, Sleep, PlayBow, Sniff, Bark, Alert, Chew, Growl, Wag, HeadDown, LieThump }
 
     /// <summary>#694: what a dog carries in its mouth for a part.</summary>
     public enum QuadHeld { None, Stick, Fish, Hide }

@@ -36,7 +36,9 @@ namespace AnimBenchTests
             Assert.Greater(Mathf.Abs(held.roll), 8f, "leaning in toward the elder");
             Assert.Less(ArmMoved(At(t, c, "partner", 9f).Pose, before), 15f, "and comes back after");
             var e0 = At(t, c, "elder", 0.5f).Pose; var e1 = At(t, c, "elder", 3f).Pose;
-            Assert.Greater(Mathf.Max(e1.armL.x - e0.armL.x, e1.armR.x - e0.armR.x), 60f, "the elder's hand comes up over it (x 110)");
+            // #800 (the v2 shoot: it was still small): the elder's hand comes up sideways over the partner's arm (z 115), not forward toward the camera
+            Assert.Greater(Mathf.Max(Out(e1, true) - Out(e0, true), Out(e1, false) - Out(e0, false)), 60f, "the elder's hand comes up over it (sideways, z 115)");
+            Assert.Greater(Mathf.Max(Out(e1, true), Out(e1, false)), L.ShoulderArmZ, "above the partner's arm (z 95)");
             bool hit = false;
             for (float s = 1.8f; s < 2.2f; s += 1f / c.Fps) hit |= At(t, c, "elder", s).Pose.hit > 0f;
             Assert.IsTrue(hit, "a soft hit as the hands meet");

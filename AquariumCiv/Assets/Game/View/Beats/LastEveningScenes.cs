@@ -66,6 +66,10 @@ namespace AquariumCiv.View
         /// The help up: the helper's near arm down and out under the elder's arm (z 60, x 15); the elder's arms out over both helpers' shoulders
         /// (z 75). The wave: the arm high over the head (z 150) swung ±25 slowly (0.6 Hz). The stars: the elder leans back 32 (the head
         /// goes back with the body: the doll's head is part of it), the hands back on the seat (x −40); the kin lean back 24.</summary>
+        /// <remarks>#800 (the v2 shoot: the elder's own hand coming over the partner's was still small): the elder's arm on the partner's side goes
+        /// up sideways over the partner's arm (z <see cref="ElderHandZ"/>, a little forward, x <see cref="ElderHandX"/>), as the partner's own, so
+        /// it shows in silhouette from the front; it was raised forward (x 110, z 34), toward the camera, where it read as a stub.</remarks>
+        public const float ElderHandZ = 115f, ElderHandX = 22f;
         public const float ShoulderArmZ = 95f, ShoulderArmX = 12f, UnderArmZ = 60f, UnderArmX = 15f, OverArmZ = 75f,
             WaveArmZ = 150f, WaveSwing = 25f, WaveHz = 0.6f, ElderLookLean = -32f, KinLookLean = -24f, HandsBackX = -40f;
         /// <summary>A paced walk's step (s): the spot moves on this often (see Track.PacedWalk).</summary>
@@ -217,7 +221,7 @@ namespace AquariumCiv.View
         public static CampPoseFn ElderAtTheFire(float handAt, bool handLeft, float kidAt, float strokeAt, float lookAt) => (ref DollPose p, float t, float len) =>
         {
             float hand = handAt >= 0f ? In(t, handAt, 1f) * (1f - In(t, len - 0.4f, 0.4f)) : 0f;
-            var over = new Vector3(110f, 0f, handLeft ? 34f : -34f);
+            var over = new Vector3(ElderHandX, 0f, handLeft ? ElderHandZ : -ElderHandZ); // #800: sideways over the partner's arm (was x 110, z 34: toward the camera)
             if (handLeft) p.armR = Lerp(p.armR, over, hand); else p.armL = Lerp(p.armL, over, hand); // the doll faces its local -z: armR is on its left (AnimBench)
             if (handAt >= 0f && t >= handAt + 0.9f && t < handAt + 1.05f) p.hit = 0.4f; // softly, as the hands meet
             float kid = kidAt >= 0f ? In(t, kidAt, 0.6f) * (1f - In(t, len - 0.4f, 0.4f)) : 0f;
@@ -376,7 +380,7 @@ namespace AquariumCiv.View
                 s.Quad(0, 0f, d0, c.dogAt, seat, QuadAct.Lie);
                 s.Quad(0, d0, d0 + dw, feet, lieFace, QuadAct.Stand, Walk);
                 s.Quad(0, d0 + dw, tHand + 3f, feet, lieFace, QuadAct.Lie);
-                s.Quad(0, tHand + 3f, tHand + 3f + 1.33f, feet, lieFace, QuadAct.Wag);
+                s.Quad(0, tHand + 3f, tHand + 3f + 1.33f, feet, lieFace, QuadAct.LieThump); // #800: the two thumps lying down (Wag is a standing wag: the dog got up for it)
                 s.Quad(0, tHand + 3f + 1.33f, tUp, feet, lieFace, QuadAct.Lie);
             }
 
@@ -406,17 +410,22 @@ namespace AquariumCiv.View
             var dir = Unit((c.wave ?? c.door) - seat, toCam);
             var across = Across(dir);
             var atDoor = c.wave ?? c.door - dir * 0.05f;
+            // #800 (a): the helpers, the kid and the dog at the door keep out of the tent's canvas, on its shown side as the elder is (abreast of the
+            // elder, the helper on the tent's side stood in the canvas and stepped out behind it: half hidden from the fire's side)
+            var lookOut = c.wave.HasValue ? Unit(c.wave.Value - c.door, -dir) : Vector2.zero;
+            float shown = c.wave.HasValue ? Vector2.Dot(atDoor - c.door, lookOut) : 0f;
+            Vector2 OutOfTent(Vector2 p) => c.wave.HasValue ? p + lookOut * Mathf.Max(0f, shown - Vector2.Dot(p - c.door, lookOut)) : p;
             var waveFace = atDoor + Unit(Unit(c.fire - atDoor, toCam) + toCam * 1.3f, toCam); // to the fire, turned well round to the camera (a fire behind the tent: about 40 degrees off it)
             float walk = WalkTime(seat, atDoor, frail);
             s.d = tStood;
             float tDoor = tStood + walk;
             bool walkR = false, walkL = false;
-            for (int h = 0; h < helpers.Count; h++) { var end = atDoor + (Vector2.Dot(stand[h] - seat, across) >= 0f ? across : -across) * Beside; if (LeftOf(atDoor - dir, atDoor, end)) walkR = true; else walkL = true; }
+            for (int h = 0; h < helpers.Count; h++) { var end = OutOfTent(atDoor + (Vector2.Dot(stand[h] - seat, across) >= 0f ? across : -across) * Beside); if (LeftOf(atDoor - dir, atDoor, end)) walkR = true; else walkL = true; }
             T.PacedWalk(me, tStood, tDoor, seat, atDoor, c.door, DollStyle.Stand, helpers.Count > 0 ? HeldUpWalk(walkL, walkR) : FrailWalk, frail);
             for (int h = 0; h < helpers.Count; h++)
             {
                 int i = helpers[h];
-                var end = atDoor + (Vector2.Dot(stand[h] - seat, across) >= 0f ? across : -across) * Beside;
+                var end = OutOfTent(atDoor + (Vector2.Dot(stand[h] - seat, across) >= 0f ? across : -across) * Beside);
                 var st0 = seat + (end - atDoor); // v2: abreast of the elder from the first step (from the help-up spot it was a diagonal the whole walk)
                 T.PacedWalk(ms[i], tStood, tDoor, st0, end, end + dir, DollStyle.Stand, PairWalk(LeftOf(end, end + dir, atDoor)), (end - st0).magnitude / Mathf.Max(0.1f, walk - 0.25f));
             }
@@ -426,13 +435,13 @@ namespace AquariumCiv.View
                 var kidSide = helpers.Count > 1 ? -dir * 0.09f - across * (Beside + 0.04f) : -across * Beside; // v2: clear of the wider helpers
                 var near = helpers.Count > 1 ? seat - toFire * 0.1f - side * 0.05f : seat - side * (Beside + 0.04f) - toFire * 0.03f; // v2: behind, clear of the helper there
                 T.Part(ms[i], tRise, tStood, near, seat, DollStyle.Stand, null, KidWalk);
-                var end = atDoor + kidSide;
-                var k0 = seat + kidSide; // v2: a step behind from the start (from the rise spot the kid walked ahead of them)
+                var end = OutOfTent(atDoor + kidSide);
+                var k0 = seat + (end - atDoor); // v2: a step behind from the start (from the rise spot the kid walked ahead of them)
                 T.PacedWalk(ms[i], tStood, tDoor, k0, end, end + dir, DollStyle.Stand, HoldHand(LeftOf(end, end + dir, atDoor)), (end - k0).magnitude / Mathf.Max(0.1f, walk - 0.25f));
             }
             if (dog)
             {
-                var behind = atDoor - dir * 0.1f - across * 0.03f;
+                var behind = OutOfTent(atDoor - dir * 0.1f - across * 0.03f);
                 s.Quad(0, tUp, tStood, feet, seat, QuadAct.Stand);
                 s.Quad(0, tStood, tDoor, behind, c.door, QuadAct.Stand, (behind - feet).magnitude / Mathf.Max(0.1f, walk - 0.25f));
             }
@@ -459,7 +468,7 @@ namespace AquariumCiv.View
                 }
                 // v2: at the door they step out to the sides (0.1 u, a little back), so the elder turns and waves alone, not inside their huddle
                 var end0 = T.PosOf(ms[i], spots[i]);
-                var from = end0 + Unit(end0 - atDoor, -across) * 0.1f - dir * 0.03f;
+                var from = OutOfTent(end0 + Unit(end0 - atDoor, -across) * 0.1f - dir * 0.03f);
                 T.Part(ms[i], T.EndOf(ms[i]), back, from, c.door, DollStyle.Look);
                 float go = back + 0.6f * k++;
                 float spd = c.kinKid[i] ? KidWalk : Walk;
@@ -467,7 +476,7 @@ namespace AquariumCiv.View
                 T.Part(ms[i], go, go + w, to, c.fire, DollStyle.Stand, null, spd);
                 T.Part(ms[i], go + w, go + w + 1.2f, to, c.fire, DollStyle.Sit);
             }
-            if (dog) s.Quad(0, tDoor, Mathf.Max(tIn + 0.3f, s.Length), c.door - dir * 0.08f + across * 0.05f, c.door, QuadAct.Lie);
+            if (dog) s.Quad(0, tDoor, Mathf.Max(tIn + 0.3f, s.Length), OutOfTent(c.door - dir * 0.08f + across * 0.05f), c.door, QuadAct.Lie);
             return s;
         }
 
