@@ -12,7 +12,8 @@ using UnityEngine.UIElements;
 
 namespace AquariumCiv.View
 {
-    public enum CardTab { About, Recent, Best }
+    /// <summary>#774 (card B, 2026-11-26): the tabs are named for what they hold.</summary>
+    public enum CardTab { Family, Friends, Story }
 
     /// <summary>
     /// Notables in the view (#39; game definition §4, first-session §5 "Person card", notable-roles §6). Added to the box at
@@ -23,10 +24,11 @@ namespace AquariumCiv.View
     /// closes it. A tap that hits nobody is still the Keeper's knock.</item>
     /// <item><b>The person card</b> (<see cref="SimCore.PersonCardOf"/>, spec §4, board 3.4): a <see cref="GlassSheet"/> at 30 % of the
     /// screen, the person in view above it and kept there while they walk. Portrait, name, Pin and Close in one row, the subtitle
-    /// on its own row, then About, Recent, Best. About holds family, friends, rivals and mentors as chips
-    /// first (a tap opens that person's card; #674: the first view shows a row of them), then their line for the belief stage, their roles and relics, and a story (question 35: never half empty).
-    /// Recent and Best hold stories, each with "Show me" (<see cref="ShowMeDirector"/>). The dead get a memorial (when, how old,
-    /// why they are a legend, who remembers them) and no Pin.</item>
+    /// on its own row, then (#774, card B) Family, Friends and Story, the first two with counts. Family: the partner with their one line,
+    /// then parents, children and siblings as faces (a tap opens that person's card), the dead greyed with a stone, and a link to the
+    /// family's tree in the book. Friends: each relation with its tag and one line together, with "Show me" (<see cref="ShowMeDirector"/>).
+    /// Story: their words, roles and relics, then one timeline where Recent and Best were (a star marks the most told). The dead get a
+    /// memorial (when, how old, why they are a legend, who remembers them) on top of Family, and no Pin.</item>
     /// <item><b>Relationships visible.</b> While a card is open, light arcs run from the person's doll to the dolls of their
     /// ties (<see cref="SimCore.RelationshipGraph"/>), each kind with its own line and mark, its label over the far end and off
     /// the name tag: at most <see cref="MaxLines"/>, strongest first. They clear when the card closes.</item>
@@ -62,7 +64,8 @@ namespace AquariumCiv.View
         public bool IsOpen => OpenId >= 0;
         public PersonCard Card { get; private set; }
         public CardTab Tab { get; private set; }
-        public bool ShowingBest => Tab == CardTab.Best;
+        /// <summary>#774: the Story tab (Recent and Best are one timeline there).</summary>
+        public bool ShowingStory => Tab == CardTab.Story;
         /// <summary>Lines drawn last frame, and to whom (tests).</summary>
         public int LinesDrawn => drawn.Count;
         public IReadOnlyList<int> LinesTo => drawnTo;
@@ -102,6 +105,7 @@ namespace AquariumCiv.View
         ScrollView body;
         GlassPortrait portrait;
         GlassTabs tabs;
+        readonly Label[] tabCounts = new Label[2];
         Label title, subtitle;
         GlassButton pinButton;
         readonly List<GlassTag> tieLabels = new();
@@ -296,7 +300,7 @@ namespace AquariumCiv.View
             CloseBuilding(false); // one card at a time (tester run 10)
             var hud = GameHud.Instance;
             if (hud != null) { hud.CloseSheet(); hud.SetCleanMode(false); }
-            if (OpenId != notableId) { RenameReset(); Tab = CardTab.About; if (logOpen) GameClock.Tel.CardOpened("person", notableId); }
+            if (OpenId != notableId) { RenameReset(); Tab = CardTab.Family; if (logOpen) GameClock.Tel.CardOpened("person", notableId); }
             OpenId = notableId;
             Card = card;
             edges = sim.RelationshipGraph(true, notableId);
@@ -949,11 +953,24 @@ namespace AquariumCiv.View
             subtitle.AddToClassList("pc-sub");
             sheet.Add(subtitle);
 
-            tabs = new GlassTabs("About", "Recent", "Best") { name = "person-card-tabs" };
+            tabs = new GlassTabs("Family", "Friends", "Story") { name = "person-card-tabs" }; // #774 card B
             tabs.AddToClassList("pc-tabs");
-            tabs.Tab(0).name = "person-card-about";
-            tabs.Tab(1).name = "person-card-recent";
-            tabs.Tab(2).name = "person-card-best";
+            tabs.Tab(0).name = "person-card-tab-family";
+            tabs.Tab(1).name = "person-card-tab-friends";
+            tabs.Tab(2).name = "person-card-tab-story";
+            for (int i = 0; i < 3; i++)
+            {
+                // a button with children no longer lays out its own text: the word is a child, the count beside it
+                var word = new Label(tabs.Tab(i).text) { pickingMode = PickingMode.Ignore };
+                word.AddToClassList("pc-tab-word");
+                tabs.Tab(i).text = "";
+                tabs.Tab(i).Add(word);
+                if (i == 2) break;
+                var count = new Label { name = "person-card-tab-count-" + i, pickingMode = PickingMode.Ignore };
+                count.AddToClassList("pc-tab-count");
+                tabs.Tab(i).Add(count);
+                tabCounts[i] = count;
+            }
             tabs.Changed += i => { Tab = (CardTab)i; if (Card != null) Build(Card); body.scrollOffset = Vector2.zero; };
             sheet.Add(tabs);
 
@@ -1039,7 +1056,8 @@ namespace AquariumCiv.View
             sb.Append(c.id).Append('|').Append(c.fullName).Append('|').Append(c.age).Append('|').Append(c.alive).Append('|').Append(c.roleLine).Append('|').Append(c.keeperLine).Append('|').Append(c.frailLine).Append('|').Append(c.pinned)
               .Append('|').Append(c.relics.Count).Append('|').Append(c.quote?.text);
             foreach (var t in c.family.Concat(c.friends).Concat(c.rivals).Concat(c.mentors)) sb.Append('|').Append(t.otherId).Append(t.otherName).Append(t.kind).Append(t.otherAlive);
-            foreach (var st in c.recentStories) sb.Append('|').Append(st.entryId);
+            foreach (var st in c.timeline) sb.Append('|').Append(st.entryId);
+            foreach (var t in c.family.Concat(c.friends).Concat(c.rivals).Concat(c.mentors)) sb.Append('|').Append(t.story?.entryId ?? -1);
             return sb.ToString();
         }
 
@@ -1096,13 +1114,45 @@ namespace AquariumCiv.View
             pinButton.Marked("pin", c.pinned);
             pinButton.style.display = c.alive || c.pinned ? DisplayStyle.Flex : DisplayStyle.None;
             tabs.Select((int)Tab, false);
+            var kin = FamilyShown(c);
+            var friends = FriendsShown(c, out int more);
+            tabCounts[0].text = kin.Count.ToString();
+            tabCounts[1].text = friends.Count.ToString();
+            tabCounts[0].style.display = kin.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            tabCounts[1].style.display = friends.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
 
             body.Clear();
-            if (Tab == CardTab.About) BuildAbout(c);
-            else BuildStories(Tab == CardTab.Best ? c.bestStories : c.recentStories);
+            if (Tab == CardTab.Family) BuildFamily(c, kin);
+            else if (Tab == CardTab.Friends) BuildFriends(friends, more);
+            else BuildStory(c);
         }
 
-        void BuildAbout(PersonCard c)
+        // ================================================================== #774 card B: Family, Friends, Story
+        /// <summary>The family, one face each (a partner who is also a cousin shows once), in the Family tab's order.</summary>
+        static List<PersonTie> FamilyShown(PersonCard c)
+        {
+            var seen = new HashSet<int>();
+            return c.family.Where(t => t.kind == TieKind.Partner).Concat(c.family.Where(t => t.kind == TieKind.Parent))
+                .Concat(c.family.Where(t => t.kind == TieKind.Child)).Concat(c.family.Where(t => t.kind == TieKind.Sibling))
+                .Where(t => seen.Add(t.otherId)).ToList();
+        }
+
+        /// <summary>Shared-stories people listed by name on the Friends tab; the rest are counted in a line under them.</summary>
+        public const int SharedShown = 2;
+
+        /// <summary>The Friends tab's rows: friends (and those made up after a feud), rivals, mentors and apprentices, then the two people
+        /// most often in their stories. <paramref name="more"/>: the others often in their stories.</summary>
+        static List<PersonTie> FriendsShown(PersonCard c, out int more)
+        {
+            var seen = new HashSet<int>();
+            var list = c.friends.Where(t => t.kind != TieKind.Shared).Concat(c.rivals).Concat(c.mentors).Where(t => seen.Add(t.otherId)).ToList();
+            var shared = c.friends.Where(t => t.kind == TieKind.Shared && seen.Add(t.otherId)).ToList();
+            list.AddRange(shared.Take(SharedShown));
+            more = Mathf.Max(0, shared.Count - SharedShown);
+            return list;
+        }
+
+        void BuildFamily(PersonCard c, List<PersonTie> kin)
         {
             if (c.alive && RenameOpen) BuildRenameRow(c); // #575: the open field leads the tab (the card folds to it, #584)
             if (c.memorial != null)
@@ -1112,7 +1162,7 @@ namespace AquariumCiv.View
                 box.Add(Body($"Died in year {m.diedYear}, aged {m.ageAtDeath}{(m.diedInOffice ? ", still in office" : "")}."));
                 var note = new List<string>();
                 if (m.legendReasons.Count > 0) note.Add("A legend of the box: " + string.Join(", ", m.legendReasons) + ".");
-                if (m.rememberedBy.Count > 0) // a line, not chips: the family and friends rows below hold the chips
+                if (m.rememberedBy.Count > 0) // a line, not faces: the groups below hold the faces
                 {
                     var names = m.rememberedBy.Select(t => t.otherName.Split(' ')[0]).ToList();
                     if (names.Distinct().Count() < names.Count) names = m.rememberedBy.Select(t => t.otherName).ToList(); // two Tildas: full names
@@ -1121,25 +1171,55 @@ namespace AquariumCiv.View
                 }
                 if (note.Count > 0) box.Add(Note(string.Join(" ", note)));
             }
-            // one chip per person, strongest tie first (a partner who was once a friend shows as the partner); rivals always
-            // show, even in the family (the drama)
-            var ties = new VisualElement();
-            ties.AddToClassList("pc-ties");
-            body.Add(ties);
-            var listed = new HashSet<int>();
-            List<PersonTie> Fresh(IEnumerable<PersonTie> ts) => ts.Where(t => listed.Add(t.otherId)).ToList();
-            AddTies(ties, "person-card-family", Fresh(c.family));
-            AddTies(ties, "person-card-rivals", c.rivals);
-            foreach (var t in c.rivals) listed.Add(t.otherId);
-            AddTies(ties, "person-card-friends", Fresh(c.friends.OrderBy(t => t.kind == TieKind.Friend ? 0 : 1)));
-            AddTies(ties, "person-card-mentors", Fresh(c.mentors));
-            // #674: the chips lead the tab, then the Keeper's line, their words, then the pencil: on a short phone with a
-            // two-line subtitle the 30 % card has room for one row only, and it is the chips
-            if (!string.IsNullOrEmpty(c.keeperLine)) // #371: the Keeper's hand on this person
+            var partners = kin.Where(t => t.kind == TieKind.Partner).ToList();
+            if (partners.Count > 0)
             {
-                var k = Note(c.keeperLine);
-                k.name = "person-card-keeper";
-                body.Add(k);
+                var g = Group("person-card-partner", "PARTNER");
+                foreach (var t in partners) RelationRow(g, t, true);
+            }
+            KinGroup("person-card-parents", "PARENTS", kin.Where(t => t.kind == TieKind.Parent).ToList());
+            KinGroup("person-card-children", "CHILDREN", kin.Where(t => t.kind == TieKind.Child).ToList());
+            KinGroup("person-card-siblings", "SIBLINGS", kin.Where(t => t.kind == TieKind.Sibling).ToList());
+            if (kin.Count == 0) // question 35: the sheet is never half empty, because a story follows
+            {
+                var story = c.bestStories.FirstOrDefault() ?? c.recentStories.FirstOrDefault();
+                var s = Section("person-card-family-story");
+                if (story != null) StoryRow(s, "person-card-family-story-0", story);
+                else s.Add(Note(NoStories));
+            }
+            var sim = Sim;
+            if (sim != null && BookView.Instance != null && sim.FamilyTreeRootOf(c.id) >= 0)
+            {
+                int id = c.id;
+                var link = new Button(() => { UiSound.Play(UiRole.Open); OpenTree(id); }) { name = "person-card-tree" };
+                link.RemoveFromClassList(Button.ussClassName);
+                link.AddToClassList("pc-tree-link");
+                link.AddToClassList(GlassScroll.RowClass);
+                var words = new Label("See the whole line in History · Family tree") { pickingMode = PickingMode.Ignore };
+                words.AddToClassList("type-note");
+                words.AddToClassList("pc-tree-words");
+                link.Add(words);
+                link.Add(new GlassIcon("next", "kg-icon--small", "pc-tree-mark"));
+                body.Add(link);
+            }
+            if (c.alive && !RenameOpen) BuildRenameRow(c); // #575
+        }
+
+        void BuildFriends(List<PersonTie> rows, int more)
+        {
+            var g = Section("person-card-friends");
+            foreach (var t in rows) RelationRow(g, t, false);
+            if (more > 0) g.Add(Note($"{CountWord(more)} more {(more == 1 ? "is" : "are")} often in their stories."));
+            if (rows.Count == 0 && more == 0) g.Add(Note("No friends or rivals yet."));
+        }
+
+        void BuildStory(PersonCard c)
+        {
+            if (c.quote != null && !string.IsNullOrEmpty(c.quote.text))
+            {
+                var q = Para($"“{c.quote.text}”", "type-quote", 14f, 1.3f);
+                q.name = "person-card-quote";
+                body.Add(q);
             }
             if (!string.IsNullOrEmpty(c.frailLine)) // #790: an elder in their last days, said softly
             {
@@ -1147,13 +1227,12 @@ namespace AquariumCiv.View
                 f.name = "person-card-frail";
                 body.Add(f);
             }
-            if (c.quote != null && !string.IsNullOrEmpty(c.quote.text))
+            if (!string.IsNullOrEmpty(c.keeperLine)) // #371: the Keeper's hand on this person
             {
-                var q = Para($"“{c.quote.text}”", "type-quote", 14f, 1.3f);
-                q.name = "person-card-quote";
-                body.Add(q);
+                var k = Note(c.keeperLine);
+                k.name = "person-card-keeper";
+                body.Add(k);
             }
-            if (c.alive && !RenameOpen) BuildRenameRow(c); // #575
             if (c.role != null || c.terms.Count > 0)
             {
                 var r = Section("person-card-roles");
@@ -1167,22 +1246,177 @@ namespace AquariumCiv.View
                 var rl = Section("person-card-relics");
                 foreach (var r in c.relics) rl.Add(Body($"{r.name}. {r.label}"));
             }
-            // question 35: the sheet is never half empty, because a story follows
-            var story = c.bestStories.FirstOrDefault() ?? c.recentStories.FirstOrDefault();
-            if (story != null) StoryRow(Section("person-card-about-stories"), "person-card-about-story-0", story);
-            else Section("person-card-about-stories").Add(Note(NoStories));
+            var head = new VisualElement { name = "person-card-story-head", pickingMode = PickingMode.Ignore };
+            head.AddToClassList("pc-group-head-row");
+            head.AddToClassList(GlassScroll.RowClass);
+            var title = new Label("THEIR STORY") { pickingMode = PickingMode.Ignore };
+            title.AddToClassList("type-small-head");
+            title.AddToClassList("pc-group-head");
+            head.Add(title);
+            if (c.timeline.Any(x => x.toldMost))
+            {
+                head.Add(new GlassIcon("star", "kg-icon--small", "pc-star"));
+                var told = new Label("told most") { pickingMode = PickingMode.Ignore };
+                told.AddToClassList("type-note");
+                told.AddToClassList("pc-told");
+                head.Add(told);
+            }
+            body.Add(head);
+            var line = Section("person-card-stories");
+            line.AddToClassList("pc-tl");
+            if (c.timeline.Count == 0) line.Add(Note(NoStories));
+            int i = 0;
+            foreach (var st in c.timeline) TimelineRow(line, "person-card-story-" + i++, st);
+        }
+
+        static string CountWord(int n) => n switch { 1 => "One", 2 => "Two", 3 => "Three", 4 => "Four", 5 => "Five", 6 => "Six", 7 => "Seven", 8 => "Eight", 9 => "Nine", _ => n.ToString() };
+
+        /// <summary>A group's small heading; its faces follow.</summary>
+        VisualElement Group(string name, string head)
+        {
+            var g = Section(name);
+            var h = new Label(head) { pickingMode = PickingMode.Ignore };
+            h.AddToClassList("type-small-head");
+            h.AddToClassList("pc-group-head");
+            h.AddToClassList(GlassScroll.RowClass);
+            g.Add(h);
+            return g;
+        }
+
+        /// <summary>Parents, children or siblings: a row of faces, each with the first name and the tie under it; a tap opens their card.</summary>
+        void KinGroup(string name, string head, List<PersonTie> ties)
+        {
+            if (ties.Count == 0) return;
+            var g = Group(name, head);
+            var row = new VisualElement { pickingMode = PickingMode.Ignore };
+            row.AddToClassList("pc-kins");
+            foreach (var t in ties)
+            {
+                int id = t.otherId;
+                var b = new Button(() => { UiSound.Play(UiRole.Tap); Open(id, true); }) { name = "person-card-tie-" + id };
+                b.RemoveFromClassList(Button.ussClassName);
+                b.AddToClassList("pc-kin");
+                b.AddToClassList(GlassScroll.RowClass);
+                b.Add(Doll(t.otherName, t.otherAlive));
+                var n = new Label(t.otherName.Split(' ')[0]) { pickingMode = PickingMode.Ignore };
+                n.AddToClassList("type-note");
+                n.AddToClassList("pc-kin-name");
+                b.Add(n);
+                var k = new Label(t.label) { pickingMode = PickingMode.Ignore };
+                k.AddToClassList("pc-kin-note");
+                b.Add(k);
+                row.Add(b);
+            }
+            g.Add(row);
+        }
+
+        /// <summary>A face: the living in colour with a moss dot, the dead in timber with a small stone (tree A's marks, on the card too).</summary>
+        public static GlassPortrait Doll(string name, bool alive)
+        {
+            var p = new GlassPortrait(name) { pickingMode = PickingMode.Ignore };
+            p.AddToClassList("kg-portrait--chip");
+            p.AddToClassList("pc-doll");
+            if (!alive) p.AddToClassList("kg-portrait--gone");
+            var mark = new VisualElement { pickingMode = PickingMode.Ignore };
+            mark.AddToClassList(alive ? "pc-alive" : "pc-stone");
+            p.Add(mark);
+            return p;
+        }
+
+        /// <summary>One relation with its one line: the face and the name open their card, the tag says the tie, Show me plays the line.
+        /// <paramref name="span"/>: a partner who has died says their years first.</summary>
+        void RelationRow(VisualElement parent, PersonTie t, bool span)
+        {
+            int id = t.otherId;
+            var row = new VisualElement { name = "person-card-rel-" + id, pickingMode = PickingMode.Ignore };
+            row.AddToClassList("pc-rel");
+            row.AddToClassList(GlassScroll.RowClass);
+            var who = new Button(() => { UiSound.Play(UiRole.Tap); Open(id, true); }) { name = "person-card-tie-" + id };
+            who.RemoveFromClassList(Button.ussClassName);
+            who.AddToClassList("pc-rel-who");
+            who.Add(Doll(t.otherName, t.otherAlive));
+            var words = new VisualElement { pickingMode = PickingMode.Ignore };
+            words.AddToClassList("pc-rel-words");
+            var top = new VisualElement { pickingMode = PickingMode.Ignore };
+            top.AddToClassList("pc-rel-top");
+            var name = new Label(t.otherName.Split(' ')[0]) { pickingMode = PickingMode.Ignore };
+            name.AddToClassList("type-body");
+            name.AddToClassList("pc-rel-name");
+            top.Add(name);
+            var tag = new Label(t.label) { pickingMode = PickingMode.Ignore };
+            tag.AddToClassList("pc-tag");
+            if (t.kind == TieKind.Rival) tag.AddToClassList("pc-tag--rival");
+            top.Add(tag);
+            words.Add(top);
+            string said = t.story != null ? $"Year {t.story.year}. {OneLine(t.story)}" : "";
+            if (span && !t.otherAlive && Sim?.FindNotable(id) is Notable o && o.diedMonth >= 0)
+                said = $"Years {SimCore.YearNo(o.bornMonth)}–{SimCore.YearNo(o.diedMonth)}." + (t.story != null ? " " + OneLine(t.story) : "");
+            if (said.Length > 0)
+            {
+                var line = Para(said, "type-note", 13f, 1.3f);
+                line.AddToClassList("pc-rel-line");
+                words.Add(line);
+            }
+            who.Add(words);
+            row.Add(who);
+            if (t.story != null)
+            {
+                int entry = t.story.entryId;
+                row.Add(new GlassButton("Show me", () => ShowMe(entry), ButtonKind.Secondary, UiRole.ShowMe) { name = "person-card-tie-" + id + "-show", Compact = true });
+            }
+            parent.Add(row);
+        }
+
+        /// <summary>The headline, or the whole line where the headline had to be cut (as the book does).</summary>
+        static string OneLine(PersonStory st) =>
+            string.IsNullOrEmpty(st.headline) || st.headline.EndsWith("…") || st.headline.EndsWith("...") ? st.text : st.headline;
+
+        /// <summary>One story on the timeline: a dot on the line (filled for the most told), the year, the words, Show me.</summary>
+        void TimelineRow(VisualElement parent, string name, PersonStory st)
+        {
+            var row = new VisualElement { name = name };
+            row.AddToClassList("pc-tl-row");
+            row.AddToClassList(GlassScroll.RowClass);
+            var dot = new VisualElement { pickingMode = PickingMode.Ignore };
+            dot.AddToClassList("pc-tl-dot");
+            if (st.toldMost) dot.AddToClassList("pc-tl-dot--best");
+            row.Add(dot);
+            var words = new VisualElement { pickingMode = PickingMode.Ignore };
+            words.AddToClassList("pc-story-text");
+            var year = new VisualElement { pickingMode = PickingMode.Ignore };
+            year.AddToClassList("pc-tl-year-row");
+            var y = new Label($"Year {st.year}") { pickingMode = PickingMode.Ignore };
+            y.AddToClassList("pc-tl-year");
+            year.Add(y);
+            if (st.toldMost)
+            {
+                year.Add(new GlassIcon("star", "kg-icon--small", "pc-star"));
+                var often = new Label("told often") { pickingMode = PickingMode.Ignore };
+                often.AddToClassList("pc-tl-year");
+                often.AddToClassList("pc-told");
+                year.Add(often);
+            }
+            words.Add(year);
+            words.Add(Para(st.text, "type-sub", 14f, 1.3f));
+            row.Add(words);
+            int entryId = st.entryId;
+            row.Add(new GlassButton("Show me", () => ShowMe(entryId), ButtonKind.Secondary, UiRole.ShowMe) { name = name + "-show", Compact = true });
+            parent.Add(row);
+        }
+
+        /// <summary>#774: the Family tab's link: the book's tree page of this person's family, with them ringed.</summary>
+        public bool OpenTree(int notableId)
+        {
+            var sim = Sim;
+            var book = BookView.Instance;
+            if (sim == null || book == null) return false;
+            int root = sim.FamilyTreeRootOf(notableId);
+            return root >= 0 && book.OpenAtTree(root, notableId);
         }
 
         const string NoStories = "Nothing told about them yet.";
 
-        void BuildStories(List<PersonStory> list)
-        {
-            var stories = Section("person-card-stories");
-            if (list.Count == 0) stories.Add(Note(NoStories));
-            int i = 0;
-            foreach (var st in list) StoryRow(stories, "person-card-story-" + i++, st);
-        }
-
+        /// <summary>One story with Show me (the Family tab's story when there is no family to show).</summary>
         void StoryRow(VisualElement parent, string name, PersonStory st)
         {
             var row = new VisualElement { name = name };
@@ -1194,21 +1428,6 @@ namespace AquariumCiv.View
             int entryId = st.entryId;
             row.Add(new GlassButton("Show me", () => ShowMe(entryId), ButtonKind.Secondary, UiRole.ShowMe) { name = name + "-show", Compact = true });
             parent.Add(row);
-        }
-
-        void AddTies(VisualElement parent, string name, List<PersonTie> ties)
-        {
-            if (ties.Count == 0) return;
-            var wrap = new VisualElement { name = name };
-            wrap.AddToClassList("pc-chips");
-            foreach (var t in ties)
-            {
-                int id = t.otherId;
-                var chip = new GlassChip($"{t.otherName} · {t.label}", () => Open(id, true)) { name = "person-card-tie-" + id, Gone = !t.otherAlive };
-                chip.Face.AddToClassList(GlassScroll.RowClass); // what shows: the slot's clear edges may run past the view
-                wrap.Add(chip);
-            }
-            parent.Add(wrap);
         }
 
         VisualElement Section(string name)
@@ -1261,11 +1480,10 @@ namespace AquariumCiv.View
             return v.shownCrowd.Count > 0 && v.OpenCrowd(v.shownCrowd[0].crowdIndex, true) ? "crowd card: " + v.Crowd.name : "nobody in the crowd on view";
         }
 
-        /// <summary>Selects a tab by hand, or by the debug panel.</summary>
-        /// <summary>Shows a tab; Recent and Best stand on the tall card only (#674), so they expand it first.</summary>
-        public void ShowTab(CardTab tab) { if (!IsOpen) return; if (tab != CardTab.About) SetExpanded(true); tabs.Select((int)tab); }
+        /// <summary>Shows a tab. The tabs stand on the tall card only (#674), so it expands first, Family included (#774).</summary>
+        public void ShowTab(CardTab tab) { if (!IsOpen) return; SetExpanded(true); tabs.Select((int)tab); }
 
-        /// <summary>Debug: the open card's next tab (About, Recent, Best).</summary>
+        /// <summary>Debug: the open card's next tab (Family, Friends, Story).</summary>
         public static string DebugNextTab()
         {
             var v = Instance;

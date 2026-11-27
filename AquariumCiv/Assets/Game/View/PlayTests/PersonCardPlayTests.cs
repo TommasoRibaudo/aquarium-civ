@@ -271,8 +271,8 @@ namespace AquariumCiv.View.PlayTests
                 var scroll = cards.CardRoot.Q<ScrollView>("person-card-body");
                 cards.SetExpanded(true); // #674: the tabs show on the tall card only
                 yield return new WaitForSecondsRealtime(1.0f);
-                yield return TapAt(GameUiPanel.ScreenCenter(cards.CardRoot.Q("person-card-recent")));
-                Assert.AreEqual(CardTab.Recent, cards.Tab, "a tap on Recent");
+                yield return TapAt(GameUiPanel.ScreenCenter(cards.CardRoot.Q("person-card-tab-story")));
+                Assert.AreEqual(CardTab.Story, cards.Tab, "a tap on Story (#774: Recent and Best are its timeline)");
                 yield return null; yield return null;
                 yield return Shot("pc-card-stories");
                 var show = cards.CardRoot.Q<Button>("person-card-story-0-show");
@@ -286,7 +286,7 @@ namespace AquariumCiv.View.PlayTests
                 }
 
                 // lines to the ties: zoom out so their dolls are in view
-                yield return TapAt(GameUiPanel.ScreenCenter(cards.CardRoot.Q("person-card-about")));
+                yield return TapAt(GameUiPanel.ScreenCenter(cards.CardRoot.Q("person-card-tab-family")));
                 cards.SetExpanded(false);
                 cards.Open(id, false);
                 cam.FlyTo(Vector3.zero, 1f, 0.2f);
@@ -301,7 +301,9 @@ namespace AquariumCiv.View.PlayTests
                     CollectionAssert.Contains(cards.LinesTo, n0.friendId);
                 yield return Shot("pc-lines");
 
-                // tap-through to a tie: their card opens
+                // tap-through to a tie: their card opens (#774: a friend is on the Friends tab)
+                cards.ShowTab(CardTab.Friends);
+                yield return new WaitForSecondsRealtime(1.0f);
                 var chip = cards.CardRoot.Q<Button>("person-card-tie-" + n0.friendId);
                 if (chip != null)
                 {
@@ -829,7 +831,7 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator ThePencilShowsWholeAtTheEndOfTheCardOnAShortPhone() => PencilAtTheEnd(750, 1334);
 
         [UnityTest, Timeout(120000)]
-        public IEnumerator TabsSwitchAndANewPersonStartsOnAbout()
+        public IEnumerator TabsSwitchAndANewPersonStartsOnFamily()
         {
             int id = -1;
             yield return CardUp(1179, 2556, i => id = i);
@@ -838,11 +840,11 @@ namespace AquariumCiv.View.PlayTests
                 var cards = PersonCardView.Instance;
                 var root = cards.CardRoot;
                 var hud = GameHud.Instance;
-                Assert.AreEqual(CardTab.About, cards.Tab, "About first");
+                Assert.AreEqual(CardTab.Family, cards.Tab, "#774: Family first");
                 Assert.AreEqual(hud.Root.Q("hud-history").resolvedStyle.visibility, Visibility.Hidden, "the tools step back");
                 Assert.IsTrue(root.Q("person-card-portrait").resolvedStyle.width > 0f, "the portrait");
-                Assert.IsTrue(root.Q("person-card-about").ClassListContains("kg-tab--on"));
-                Assert.IsNotNull(root.Q("person-card-about-stories"), "question 35: About ends in a story");
+                Assert.IsTrue(root.Q("person-card-tab-family").ClassListContains("kg-tab--on"));
+                Assert.IsTrue(new[] { "person-card-partner", "person-card-parents", "person-card-children", "person-card-siblings", "person-card-family-story" }.Any(n => root.Q(n) != null), "question 35: Family is never half empty (their family, or a story)");
                 Assert.IsNull(root.Q("person-card-stories"), "the story lists wait under their tabs");
                 Assert.AreEqual(DisplayStyle.None, root.Q("person-card-tabs").resolvedStyle.display, "#674: the short card has no tabs");
                 var tabsAt = root.Q("person-card-tabs");
@@ -851,20 +853,21 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual(DisplayStyle.Flex, tabsAt.resolvedStyle.display, "#674: the tall card shows them");
                 Assert.Greater(tabsAt.worldBound.yMin, root.Q("person-card-sub").worldBound.yMax - 8f, "under the subtitle, where they always stood (pc-tabs tucks up 5.5 px)");
 
-                yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-recent"));
-                Assert.AreEqual(CardTab.Recent, cards.Tab);
-                Assert.IsTrue(root.Q("person-card-recent").ClassListContains("kg-tab--on"));
-                Assert.IsNotNull(root.Q("person-card-stories"));
-                yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-best"));
-                Assert.IsTrue(cards.ShowingBest);
-                Assert.AreEqual("card tab: About", PersonCardView.DebugNextTab(), "the cheat goes round");
-                yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-recent"));
+                yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-tab-friends"));
+                Assert.AreEqual(CardTab.Friends, cards.Tab);
+                Assert.IsTrue(root.Q("person-card-tab-friends").ClassListContains("kg-tab--on"));
+                Assert.IsNotNull(root.Q("person-card-friends"));
+                yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-tab-story"));
+                Assert.IsTrue(cards.ShowingStory);
+                Assert.IsNotNull(root.Q("person-card-stories"), "#774: one timeline");
+                Assert.AreEqual("card tab: Family", PersonCardView.DebugNextTab(), "the cheat goes round");
+                yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-tab-story"));
                 cards.SetExpanded(false);
                 yield return null;
-                Assert.AreEqual(CardTab.About, cards.Tab, "#674: folding the card goes back to About");
+                Assert.AreEqual(CardTab.Family, cards.Tab, "#674: folding the card goes back to Family");
 
                 // the toast rides above the card, the pin mark shows
-                cards.ShowTab(CardTab.Recent); // #674: expands the card first
+                cards.ShowTab(CardTab.Story); // #674: expands the card first
                 yield return new WaitForSecondsRealtime(1.0f);
                 yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-pin"));
                 yield return null; yield return null;
@@ -873,12 +876,12 @@ namespace AquariumCiv.View.PlayTests
                 yield return Until(() => toast.resolvedStyle.display == DisplayStyle.Flex, 1f);
                 yield return null; yield return null;
                 Assert.LessOrEqual(toast.worldBound.yMax, root.Q("person-card").worldBound.yMin, "the toast is above the card");
-                Assert.AreEqual(CardTab.Recent, cards.Tab, "pinning stays on the tab");
+                Assert.AreEqual(CardTab.Story, cards.Tab, "pinning stays on the tab");
 
                 int other = GameClock.Instance.Sim.State.notables.First(n => n.alive && n.id != id).id;
                 cards.Open(other, false);
                 yield return null;
-                Assert.AreEqual(CardTab.About, cards.Tab, "a new person starts on About");
+                Assert.AreEqual(CardTab.Family, cards.Tab, "a new person starts on Family");
 
                 cards.Close();
                 yield return null; yield return null;
@@ -898,19 +901,23 @@ namespace AquariumCiv.View.PlayTests
                 var cards = PersonCardView.Instance;
                 var sim = GameClock.Instance.Sim;
                 yield return new WaitForSecondsRealtime(0.4f);
-                yield return Shot("pc165-about" + at);
-                cards.ShowTab(CardTab.Recent);
+                yield return Shot("pc165-family" + at);
+                cards.ShowTab(CardTab.Family); // #774: the tall card's Family tab
+                cards.SetExpanded(true);
+                yield return new WaitForSecondsRealtime(1.0f);
+                yield return Shot("pc774-family-tall" + at);
+                cards.ShowTab(CardTab.Friends);
                 yield return new WaitForSecondsRealtime(0.2f);
-                yield return Shot("pc165-recent" + at);
-                cards.ShowTab(CardTab.Best);
+                yield return Shot("pc774-friends" + at);
+                cards.ShowTab(CardTab.Story);
                 yield return new WaitForSecondsRealtime(0.2f);
-                yield return Shot("pc165-best" + at);
+                yield return Shot("pc774-story" + at);
                 cards.TogglePin();
                 yield return new WaitForSecondsRealtime(0.3f);
                 yield return Shot("pc165-pinned" + at);
                 cards.TogglePin();
                 yield return new WaitForSecondsRealtime(3.5f);
-                cards.ShowTab(CardTab.About);
+                cards.ShowTab(CardTab.Family);
                 var cam = Camera.main.GetComponent<BoxCamera>();
                 cards.Open(id, false);
                 cam.FlyTo(Vector3.zero, 0.75f, 0.2f);
@@ -930,7 +937,7 @@ namespace AquariumCiv.View.PlayTests
                     cards.Open(blank, true);
                     yield return new WaitForSecondsRealtime(1.2f);
                     yield return Shot("pc165-no-stories-about" + at);
-                    cards.ShowTab(CardTab.Recent);
+                    cards.ShowTab(CardTab.Story);
                     yield return new WaitForSecondsRealtime(0.2f);
                     yield return Shot("pc165-no-stories" + at);
                     cards.Close();

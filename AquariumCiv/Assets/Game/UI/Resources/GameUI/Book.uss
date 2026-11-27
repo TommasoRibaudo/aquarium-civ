@@ -59,12 +59,34 @@
 .book-head-row { min-height: var(--hit); flex-direction: row; align-items: center; flex-shrink: 0; margin-bottom: 16.5px; margin-right: 110px; }
 .book-head-name { flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0 0 0 var(--space-10); white-space: normal; color: var(--ink); }
 
-/* the family tree: cells and connectors are placed by the code */
-.book-tree { width: 948px; align-self: center; flex-shrink: 0; margin-top: 27.5px; }
-.book-who { position: absolute; width: 237px; height: 232px; align-items: center; }
-.book-who-name { margin: 11px 0 0 0; padding: 0 8px; white-space: normal; -unity-text-align: upper-center; color: var(--ink); }
-.book-who-star { position: absolute; left: 150px; top: -8px; -unity-background-image-tint-color: var(--primary); }
+/* #774 the family tree (tree A): faces, lines, knots and chips are placed by the code; the view scrolls both ways under the title */
+.book-tree-view { flex-grow: 1; flex-shrink: 1; min-height: 0; margin: 0 -44px 248px -44px; overflow: hidden; border-top-width: 2.75px; border-color: var(--edge); }
+.book-tree-scroll { flex-grow: 1; }
+.book-tree-canvas { flex-shrink: 0; }
 .book-tree-line { position: absolute; background-color: var(--timber); }
+.book-tree-couple { background-color: var(--brass); }
+.book-tree-face { position: absolute; width: 200px; height: 170px; align-items: center; }
+.book-tree-doll { border-color: var(--timber); }
+.book-tree-here { border-width: 11px; border-color: var(--brass); }
+.book-tree-name { margin: 8px 0 0 0; padding: 0 6px; -unity-font-definition: var(--font-serif-bold); white-space: nowrap; overflow: hidden; -unity-text-align: upper-center; color: var(--ink); }
+.book-tree-knot { position: absolute; width: 99px; height: 99px; align-items: center; justify-content: center; }
+.book-tree-knot-dot { width: 27.5px; height: 27.5px; border-radius: 13.75px; background-color: var(--paper); border-width: 5.5px; border-color: var(--timber); }
+.book-tree-knot:active > .book-tree-knot-dot { background-color: var(--brass-light); }
+.book-tree-fold {
+    position: absolute; width: 200px; height: 80px; flex-direction: row; align-items: center; justify-content: center;
+    background-color: var(--pressed-fill); border-width: 4px; border-color: var(--timber); border-radius: 33px;
+}
+.book-tree-fold:active { background-color: var(--brass-light); }
+.book-tree-fold-words { margin: 0; -unity-font-definition: var(--font-serif-bold); color: var(--ink); }
+.book-tree-fold-mark { margin-left: 5.5px; -unity-background-image-tint-color: var(--timber); }
+.book-tree-gutter { position: absolute; left: 0; top: 0; width: 150px; background-color: var(--paper); border-right-width: 5.5px; border-color: var(--edge); }
+.book-tree-gen { position: absolute; left: 0; width: 150px; height: 100px; align-items: center; justify-content: center; }
+.book-tree-gen-no { margin: 0; color: var(--timber); }
+.book-tree-gen-year { margin: 0; font-size: 27.5px; color: var(--timber); }
+.book-tree-map { position: absolute; right: 22px; bottom: 22px; background-color: rgba(243, 233, 214, 0.95); border-width: 4px; border-color: var(--timber); border-radius: 22px; overflow: hidden; }
+.book-tree-map-dot { position: absolute; width: 10px; height: 10px; border-radius: 5px; background-color: var(--timber); }
+.book-tree-map-dot--gone { background-color: #9A9288; }
+.book-tree-map-view { position: absolute; border-width: 4px; border-color: var(--primary); border-radius: 8px; background-color: rgba(158, 80, 51, 0.12); }
 
 /* relics: found, with the people's label; unfound, a dark silhouette with a paper "?" */
 .book-relic { flex-direction: row; align-items: flex-start; flex-shrink: 0; margin-top: 22px; min-height: var(--hit); }

@@ -34,14 +34,6 @@ namespace AquariumCiv.Sim
         public string ownerName = "";
     }
 
-    /// <summary>One family: both parents always shown (P4's polish), so nobody reads as a half-sibling.</summary>
-    public sealed class BookFamily
-    {
-        public List<BookPerson> parents = new();  // the main person's own parents: none, one or both
-        public BookPerson main, partner;
-        public List<BookPerson> children = new(); // legends first, then by age, at most SimCore.BookTreeChildren
-    }
-
     /// <summary>One page, ready to draw. Not saved: built from the sim on demand. <see cref="key"/> is stable, for the ribbon.</summary>
     public sealed class BookPage
     {
@@ -55,7 +47,7 @@ namespace AquariumCiv.Sim
         public List<BookStory> stories = new();
         public List<BookRelic> relics = new();
         public PersonCard person;       // a legend's page
-        public BookFamily family;
+        public FamilyTree tree;         // #774: a family's page is its whole tree (tree A), the dead kept
         public List<KeeperChoiceLine> choices = new();   // #373: the Keeper's choices page
     }
 
@@ -72,7 +64,7 @@ namespace AquariumCiv.Sim
     /// </summary>
     public partial class SimCore
     {
-        public const int BookLegendCap = 10, BookLegendCeiling = 14, BookFamilyCap = 4, BookTreeChildren = 8, BookStoriesOnALegend = 3;
+        public const int BookLegendCap = 10, BookLegendCeiling = 14, BookStoriesOnALegend = 3;
         /// <summary>The painted camp's page keeps to its picture, its caption and one story.</summary>
         public const int BookCampStories = 1;
 
@@ -97,7 +89,7 @@ namespace AquariumCiv.Sim
                 foreach (var n in legends.Where(n => LegendEra(n, chapters) == c.era).OrderBy(n => n.bornMonth).ThenBy(n => n.id))
                     pages.Add(BookLegend(n, ids));
             }
-            pages.AddRange(BookFamilies(legends, ids));
+            pages.AddRange(BookTrees());
             if (FoundRelics.Any()) pages.Add(BookRelics());
             if (s.boxComplete || DebugBookEnd) pages.Add(BookEnd());
             var seen = s.bookSeen ?? new List<string>();
@@ -270,36 +262,16 @@ namespace AquariumCiv.Sim
 
         static string FirstName(string full) => string.IsNullOrEmpty(full) ? "" : full.Split(' ')[0];
 
-        /// <summary>A family with a legend in it, the family's best legend at the middle of the tree. The families with the most legends
-        /// first, at most <see cref="BookFamilyCap"/>; someone with no family to draw earns no tree.</summary>
-        IEnumerable<BookPage> BookFamilies(List<Notable> legends, HashSet<int> ids)
+        /// <summary>#774: the family trees replace the small book's Family pages (the user, 2026-11-26): one page per founding family, the
+        /// whole family top-down with the dead kept for everyone, the biggest families first (<see cref="FamilyTreeRoots"/>).</summary>
+        IEnumerable<BookPage> BookTrees()
         {
-            var groups = legends.GroupBy(n => n.family).OrderByDescending(g => g.Count()).ThenByDescending(g => g.Max(n => LegendScore(n.id))).ThenBy(g => g.Key);
-            int made = 0;
-            foreach (var g in groups)
+            foreach (int root in FamilyTreeRoots())
             {
-                if (made >= BookFamilyCap) yield break;
-                foreach (var n in g.OrderByDescending(x => LegendScore(x.id)).ThenBy(x => x.id))
-                {
-                    var f = BookFamilyOf(n, ids);
-                    if (f == null) continue;
-                    yield return new BookPage { kind = BookPageKind.Family, key = "family:" + g.Key, title = $"The {g.Key} family", family = f };
-                    made++;
-                    break;
-                }
+                var t = FamilyTreeOf(root);
+                if (t == null) continue;
+                yield return new BookPage { kind = BookPageKind.Family, key = t.key, title = $"The {t.familyName} family", tree = t };
             }
-        }
-
-        BookFamily BookFamilyOf(Notable n, HashSet<int> legends)
-        {
-            var c = PersonCardOf(n.id);
-            var f = new BookFamily { main = BookPersonOf(n.id, "", legends) };
-            var partner = c.family.FirstOrDefault(t => t.kind == TieKind.Partner);
-            if (partner != null) f.partner = BookPersonOf(partner.otherId, "", legends);
-            f.parents = c.family.Where(t => t.kind == TieKind.Parent).OrderBy(t => t.otherId).Take(2).Select(t => BookPersonOf(t.otherId, "", legends)).Where(x => x != null).ToList();
-            f.children = c.family.Where(t => t.kind == TieKind.Child).Select(t => BookPersonOf(t.otherId, "", legends)).Where(x => x != null)
-                .OrderBy(x => x.legend ? 0 : 1).ThenBy(x => FindNotable(x.id).bornMonth).ThenBy(x => x.id).Take(BookTreeChildren).ToList();
-            return f.partner == null && f.parents.Count == 0 && f.children.Count == 0 ? null : f;
         }
 
         BookPage BookRelics()

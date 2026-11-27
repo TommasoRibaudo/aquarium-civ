@@ -20,7 +20,12 @@ namespace AquariumCiv.View
     /// Opens from the time-lapse's Book button, or from Remember on a legend's card. A portrait opens the person's card over the page; a
     /// story's row is Show me, which leaves the book for the live box. New pages wear a ribbon here, and the Book button until they're read.
     /// Stable names: book-root, book-page-&lt;kind&gt;, book-prev, book-next, book-close, book-page-label, book-ribbon, book-picture,
-    /// book-person-&lt;id&gt;, book-story-&lt;entry&gt;, book-relic-&lt;id&gt;, book-tree, book-tree-line.
+    /// book-person-&lt;id&gt;, book-story-&lt;entry&gt;, book-relic-&lt;id&gt;, book-tree, book-tree-line, book-tree-view, book-tree-map,
+    /// book-tree-knot-&lt;id&gt;, book-tree-fold-&lt;id&gt;, book-tree-gen-&lt;gen&gt;.
+    /// <para>#774 (tree A, the user's calls 2026-11-26): the Family pages are each founding family's whole tree, top-down, the dead kept
+    /// for everyone (<see cref="SimCore.FamilyTreeOf"/>). It scrolls sideways and down (a drag on it never turns the page), a gutter names
+    /// each generation and its year, a corner map shows where you are, a branch folds to a chip ("11 more") at the knot under its couple,
+    /// and a tap on a face opens that person's card and rings them.</para>
     /// </summary>
     public class BookView : MonoBehaviour
     {
@@ -31,7 +36,9 @@ namespace AquariumCiv.View
         public const float SwipeShare = 0.14f;
         public const string PageClass = "book-page", RightOff = "book-page--right";
 
-        const float TreeW = 948f, CellW = 237f, CellH = 232f, RowGap = 74f, Portrait = 121f, CoupleOff = 130f, BusUp = 37f, LineW = 5.5f;
+        /// <summary>#774: the tree's measures (panel units): a face's cell, a generation's row, the doll, the gutter, the corner map.</summary>
+        public const float CellW = 200f, RowH = 300f, Doll = 110f, NameH = 52f, TopPad = 30f, SidePad = 24f, Gutter = 150f, BusUp = 44f, LineW = 5.5f,
+            MapW = 210f, MapH = 270f, KnotHit = 99f;
 
         UIDocument doc;
         VisualElement root, host, current;
@@ -46,6 +53,20 @@ namespace AquariumCiv.View
         bool pressing;
 
         public bool IsOpen { get; private set; }
+        /// <summary>#774: the face ringed on a tree page (the card it was opened from, or the last face tapped); -1 = nobody.</summary>
+        public int TreeFocus { get; private set; } = -1;
+        /// <summary>#774: the households folded to a chip on the tree pages, until the book closes.</summary>
+        public IReadOnlyCollection<int> Folded => folded;
+        /// <summary>#774: the tree on screen, as drawn (folds applied), and its scroll (tests).</summary>
+        public FamilyTree Tree { get; private set; }
+        public ScrollView TreeScroll => treeScroll;
+        readonly HashSet<int> folded = new();
+        readonly Dictionary<int, VisualElement> treeFaces = new();
+        ScrollView treeScroll;
+        VisualElement treeView, treeGutter, mapView;
+        Vector2 restoreScroll = new(-1f, -1f); // a fold or an unfold redraws the page where it was
+        int focusNext = -1;
+        bool pressOnTree;
         public List<BookPage> Pages { get; private set; } = new();
         public int At { get; private set; }
         public BookPage Page => At >= 0 && At < Pages.Count ? Pages[At] : null;
@@ -144,6 +165,9 @@ namespace AquariumCiv.View
             int start = key == null ? 0 : Pages.FindIndex(p => p.key == key);
             if (start < 0) return false;
             closed = whenClosed;
+            TreeFocus = focusNext; // #774
+            focusNext = -1;
+            folded.Clear();
             var person = PersonCardView.Instance;
             if (person != null) { person.Close(); person.CloseCrowd(); person.CloseBuilding(); } // #766: one sheet at a time
             var hud = GameHud.Instance;
@@ -155,6 +179,15 @@ namespace AquariumCiv.View
             UiSound.Play(UiRole.BookOpen);
             ShowPage(start, 0);
             return true;
+        }
+
+        /// <summary>#774: the card's "See the whole line": the family's tree page, <paramref name="focusId"/> ringed and in view.</summary>
+        public bool OpenAtTree(int rootId, int focusId, Action whenClosed = null)
+        {
+            focusNext = focusId;
+            bool ok = Open(null, SimCore.BookTreeKey(rootId), whenClosed);
+            focusNext = -1;
+            return ok;
         }
 
         /// <summary>Remember on a legend's card: their page, if they have one.</summary>
@@ -202,6 +235,7 @@ namespace AquariumCiv.View
         void ShowPage(int index, int dir)
         {
             var old = current;
+            treeView = null;
             At = index;
             var page = Pages[index];
             current = Draw(page);
@@ -240,17 +274,25 @@ namespace AquariumCiv.View
             var card = PersonCardView.Instance;
             if (card != null && card.AnyOpen) { pressing = false; return; }
             bool down = ReadPointer(out var pos);
-            if (down && !pressing) { pressing = true; pressAt = pos; }
+            if (down && !pressing) { pressing = true; pressAt = pos; pressOnTree = OverTree(pos); }
             else if (!down && pressing)
             {
                 pressing = false;
-                int dir = SwipeTurn(lastPos - pressAt, Screen.width);
+                int dir = pressOnTree ? 0 : SwipeTurn(lastPos - pressAt, Screen.width); // #774: a drag on the tree scrolls it
                 if (dir != 0) Turn(dir);
             }
             if (down) lastPos = pos;
         }
 
         Vector2 lastPos;
+
+        /// <summary>#774: a screen point (pixels, y up) on the tree's scrolling view.</summary>
+        bool OverTree(Vector2 screen)
+        {
+            if (treeView == null || treeView.panel == null || current == null || !current.Contains(treeView)) return false;
+            var at = RuntimePanelUtils.ScreenToPanel(treeView.panel, new Vector2(screen.x, Screen.height - screen.y));
+            return treeView.worldBound.Contains(at);
+        }
 
         /// <summary>+1 next (a drag to the left), -1 back, 0 not a swipe: a scroll, a tap.</summary>
         public static int SwipeTurn(Vector2 drag, float width)
@@ -279,6 +321,12 @@ namespace AquariumCiv.View
             string look = p.kind == BookPageKind.Era ? p.era switch { Era.Camp => "book-page--bark", Era.Village => "book-page--hand", _ => "book-page--print" } : null;
             if (look != null) page.AddToClassList(look);
             page.style.paddingTop = topInset;
+            if (p.kind == BookPageKind.Family) // #774: the tree scrolls both ways on its own
+            {
+                TreePage(page, p);
+                if (p.isNew) { var rb = new GlassRibbon { name = "book-ribbon" }; rb.AddToClassList("book-ribbon"); page.Add(rb); }
+                return page;
+            }
             var scroll = new ScrollView(ScrollViewMode.Vertical)
             {
                 verticalScrollerVisibility = ScrollerVisibility.Hidden, horizontalScrollerVisibility = ScrollerVisibility.Hidden,
@@ -293,7 +341,6 @@ namespace AquariumCiv.View
                 case BookPageKind.Founding: Founding(body, p); break;
                 case BookPageKind.Era: EraSpread(body, p); break;
                 case BookPageKind.Legend: Legend(body, p); break;
-                case BookPageKind.Family: Family(body, p); break;
                 case BookPageKind.Relics: Relics(body, p); break;
                 case BookPageKind.End: End(body, p); break;
                 case BookPageKind.Choices: Choices(body, p); break;
@@ -408,12 +455,6 @@ namespace AquariumCiv.View
                 if (canShow && c.answerEntryId >= 0) { int entry = c.answerEntryId; Tap(block, () => ShowMe(entry)); }
                 to.Add(block);
             }
-        }
-
-        void Family(VisualElement to, BookPage p)
-        {
-            Text(to, p.title, "type-title", "book-title");
-            to.Add(Tree(p.family));
         }
 
         void Relics(VisualElement to, BookPage p)
@@ -547,85 +588,225 @@ namespace AquariumCiv.View
             return live;
         }
 
-        // ================================================================== the family tree
-        /// <summary>The tree: parents over the main person, the couple joined, their children hanging from a bus. Up to four children a row,
-        /// so with a second row the trunk runs down the gap between the second and third of the first. Cells and lines are placed here
-        /// because USS can't draw a connector (limits.md).</summary>
-        VisualElement Tree(BookFamily f)
+        // ================================================================== the family tree (#774, tree A)
+        /// <summary>A family's page: its name, then the tree in a view that scrolls both ways, the gutter of generations on its left edge and
+        /// the corner map over its bottom right. Cells, lines, knots and chips are placed here because USS can't draw a connector (limits.md).</summary>
+        void TreePage(VisualElement page, BookPage p)
         {
-            var t = new VisualElement { name = "book-tree", pickingMode = PickingMode.Ignore };
-            t.AddToClassList("book-tree");
-            float mid = TreeW / 2f, mainX = f.partner != null ? mid - CoupleOff : mid, y = 0f, portraitMid = Portrait / 2f;
-            if (f.parents.Count > 0)
+            var t = folded.Count > 0 ? sim.FamilyTreeOf(p.tree.rootId, folded) ?? p.tree : p.tree;
+            Tree = t;
+            treeFaces.Clear();
+            var keep = restoreScroll;
+            Text(page, p.title, "type-title", "book-title");
+            treeView = new VisualElement { name = "book-tree-view" };
+            treeView.AddToClassList("book-tree-view");
+            page.Add(treeView);
+            treeScroll = new ScrollView(ScrollViewMode.VerticalAndHorizontal)
             {
-                bool two = f.parents.Count == 2;
-                Cell(t, f.parents[0], two ? mainX - CoupleOff : mainX, y);
-                if (two)
+                name = "book-tree",
+                verticalScrollerVisibility = ScrollerVisibility.Hidden, horizontalScrollerVisibility = ScrollerVisibility.Hidden,
+                touchScrollBehavior = ScrollView.TouchScrollBehavior.Clamped,
+            };
+            treeScroll.AddToClassList("book-tree-scroll");
+            treeView.Add(treeScroll);
+            float w = Gutter + 2f * SidePad + t.width * CellW, h = TopPad + t.rows * RowH;
+            var canvas = new VisualElement { name = "book-tree-canvas", pickingMode = PickingMode.Ignore };
+            canvas.AddToClassList("book-tree-canvas");
+            canvas.style.width = w;
+            canvas.style.height = h;
+            treeScroll.Add(canvas);
+
+            // the lines first, so the faces sit on them
+            foreach (var c in t.couples)
+            {
+                var a = t.Node(c.a); var b = t.Node(c.b);
+                if (a == null || b == null) continue;
+                float y = RowTop(a.row) + Doll / 2f;
+                Line(canvas, Mathf.Min(X(a.x), X(b.x)), y, Mathf.Abs(X(b.x) - X(a.x)), LineW, "book-tree-couple");
+            }
+            foreach (var br in t.branches)
+            {
+                var owner = t.Node(br.ownerId);
+                bool couple = t.couples.Any(c => c.a == br.ownerId);
+                float from = couple ? RowTop(br.fromRow) + Doll / 2f : RowTop(br.fromRow) + Doll + NameH;
+                float bus = RowTop(br.fromRow + 1) - BusUp, x0 = X(br.fromX);
+                Line(canvas, x0, from, LineW, bus - from);
+                float lo = Mathf.Min(x0, br.childX.Min(X)), hi = Mathf.Max(x0, br.childX.Max(X));
+                if (hi - lo > 0.5f) Line(canvas, lo, bus, hi - lo + LineW, LineW);
+                foreach (float cx in br.childX) Line(canvas, X(cx), bus, LineW, BusUp);
+                int id = br.ownerId;
+                if (br.folded) Fold(canvas, id, br.hidden, X(br.childX[0]), RowTop(br.fromRow + 1));
+                else Knot(canvas, id, x0, bus);
+            }
+            foreach (var n in t.nodes) Face(canvas, n);
+
+            // the gutter: on the left edge whatever the sideways scroll
+            treeGutter = new VisualElement { name = "book-tree-gutter", pickingMode = PickingMode.Ignore };
+            treeGutter.AddToClassList("book-tree-gutter");
+            treeGutter.style.height = h;
+            foreach (var g in t.gens)
+            {
+                var cell = new VisualElement { name = "book-tree-gen-" + g.gen, pickingMode = PickingMode.Ignore };
+                cell.AddToClassList("book-tree-gen");
+                cell.style.top = RowTop(g.row) + Doll / 2f - 50f;
+                Text(cell, "G" + g.gen, "type-small-head", "book-tree-gen-no");
+                Text(cell, "Yr " + g.year, "type-note", "book-tree-gen-year");
+                treeGutter.Add(cell);
+            }
+            canvas.Add(treeGutter);
+
+            // the corner map: every face a dot (the dead in stone), the view a frame; only when the tree is bigger than its view
+            var map = new VisualElement { name = "book-tree-map", pickingMode = PickingMode.Ignore };
+            map.AddToClassList("book-tree-map");
+            float k = Mathf.Min((MapW - 16f) / w, (MapH - 16f) / h);
+            map.style.width = w * k + 16f;
+            map.style.height = h * k + 16f;
+            foreach (var n in t.nodes)
+            {
+                var d = new VisualElement { pickingMode = PickingMode.Ignore };
+                d.AddToClassList("book-tree-map-dot");
+                if (!n.alive) d.AddToClassList("book-tree-map-dot--gone");
+                d.style.left = 8f + X(n.x) * k - 5f;
+                d.style.top = 8f + (RowTop(n.row) + Doll / 2f) * k - 5f;
+                map.Add(d);
+            }
+            mapView = new VisualElement { name = "book-tree-map-view", pickingMode = PickingMode.Ignore };
+            mapView.AddToClassList("book-tree-map-view");
+            map.Add(mapView);
+            treeView.Add(map);
+
+            void Follow()
+            {
+                var off = treeScroll.scrollOffset;
+                treeGutter.style.left = off.x;
+                var vp = treeScroll.contentViewport.layout;
+                bool bigger = vp.width > 1f && (w > vp.width + 1f || h > vp.height + 1f);
+                map.style.display = bigger ? DisplayStyle.Flex : DisplayStyle.None;
+                mapView.style.left = 8f + off.x * k;
+                mapView.style.top = 8f + off.y * k;
+                mapView.style.width = Mathf.Min(w, vp.width) * k;
+                mapView.style.height = Mathf.Min(h, vp.height) * k;
+            }
+            treeScroll.horizontalScroller.valueChanged += _ => Follow();
+            treeScroll.verticalScroller.valueChanged += _ => Follow();
+            bool placed = false;
+            treeScroll.contentViewport.RegisterCallback<GeometryChangedEvent>(_ =>
+            {
+                if (!placed)
                 {
-                    Cell(t, f.parents[1], mainX + CoupleOff, y);
-                    Line(t, mainX - CoupleOff + portraitMid, y + portraitMid, 2f * CoupleOff - Portrait, LineW);
-                    Line(t, mainX, y + portraitMid, LineW, CellH + RowGap - portraitMid);
+                    placed = true;
+                    var vp = treeScroll.contentViewport.layout;
+                    if (keep.x >= 0f) treeScroll.scrollOffset = keep; // a fold or an unfold keeps the view
+                    else
+                    {
+                        var at = t.Node(TreeFocus) ?? t.Node(t.rootId);
+                        float fx = at != null ? X(at.x) : w / 2f, fy = at != null ? RowTop(at.row) : 0f;
+                        treeScroll.scrollOffset = new Vector2(Mathf.Clamp(fx - vp.width / 2f, 0f, Mathf.Max(0f, w - vp.width)),
+                            Mathf.Clamp(fy - vp.height / 3f, 0f, Mathf.Max(0f, h - vp.height)));
+                    }
                 }
-                else Line(t, mainX, y + CellH, LineW, RowGap);
-                y += CellH + RowGap;
-            }
-            Cell(t, f.main, mainX, y);
-            float trunk = y + CellH;
-            if (f.partner != null)
-            {
-                Cell(t, f.partner, mid + CoupleOff, y);
-                Line(t, mainX + portraitMid, y + portraitMid, 2f * CoupleOff - Portrait, LineW);
-                trunk = y + portraitMid;
-            }
-            float rowX = f.partner != null ? mid : mainX;
-            int done = 0;
-            while (done < f.children.Count)
-            {
-                int n = Mathf.Min(4, f.children.Count - done);
-                y += CellH + RowGap;
-                float bus = y - BusUp;
-                Line(t, rowX, trunk, LineW, bus - trunk);
-                float x0 = rowX - (n - 1) * CellW / 2f;
-                if (n > 1) Line(t, x0, bus, (n - 1) * CellW + LineW, LineW);
-                for (int i = 0; i < n; i++)
-                {
-                    float x = x0 + i * CellW;
-                    Line(t, x, bus, LineW, BusUp);
-                    Cell(t, f.children[done + i], x, y);
-                }
-                trunk = bus;
-                done += n;
-            }
-            t.style.height = y + CellH;
-            return t;
+                Follow();
+            });
         }
 
-        void Cell(VisualElement t, BookPerson who, float centre, float y)
+        static float X(float cells) => Gutter + SidePad + cells * CellW;
+        static float RowTop(int row) => TopPad + row * RowH;
+
+        /// <summary>A face: the doll (in colour with a moss dot, or greyed with a stone), the first name under it. A tap opens their card
+        /// over the page and rings them.</summary>
+        void Face(VisualElement canvas, TreeNode n)
         {
-            var c = Tap(new VisualElement { name = "book-person-" + who.id }, () => OpenPerson(who.id));
-            c.AddToClassList("book-who");
-            c.style.left = centre - CellW / 2f;
-            c.style.top = y;
-            c.Add(PortraitOf(who.name, who.alive));
-            if (who.legend)
-            {
-                var star = new GlassIcon("star", "kg-icon--small", "book-who-star");
-                c.Add(star);
-            }
-            Text(c, who.name, "type-note", "book-who-name");
-            t.Add(c);
+            var cell = Tap(new VisualElement { name = "book-person-" + n.id }, () => { Ring(n.id); OpenPerson(n.id); });
+            cell.AddToClassList("book-tree-face");
+            cell.style.left = X(n.x) - CellW / 2f;
+            cell.style.top = RowTop(n.row);
+            var doll = PersonCardView.Doll(n.fullName, n.alive);
+            doll.AddToClassList("book-tree-doll");
+            if (n.id == TreeFocus) doll.AddToClassList("book-tree-here");
+            cell.Add(doll);
+            Text(cell, n.name, "type-note", "book-tree-name");
+            canvas.Add(cell);
+            treeFaces[n.id] = doll;
         }
 
-        static void Line(VisualElement t, float x, float y, float w, float h)
+        void Ring(int id)
+        {
+            if (treeFaces.TryGetValue(TreeFocus, out var was)) was.RemoveFromClassList("book-tree-here");
+            TreeFocus = id;
+            if (treeFaces.TryGetValue(id, out var now)) now.AddToClassList("book-tree-here");
+        }
+
+        /// <summary>The knot where a household's drop meets its children's bus: a tap folds the branch to a chip.</summary>
+        void Knot(VisualElement canvas, int ownerId, float x, float y)
+        {
+            var knot = Tap(new VisualElement { name = "book-tree-knot-" + ownerId }, () => FoldBranch(ownerId, true));
+            knot.AddToClassList("book-tree-knot");
+            knot.style.left = x - KnotHit / 2f;
+            knot.style.top = y - KnotHit / 2f;
+            var dot = new VisualElement { pickingMode = PickingMode.Ignore };
+            dot.AddToClassList("book-tree-knot-dot");
+            knot.Add(dot);
+            canvas.Add(knot);
+        }
+
+        /// <summary>A folded branch: "11 more" where its children would hang; a tap opens it again.</summary>
+        void Fold(VisualElement canvas, int ownerId, int hidden, float x, float y)
+        {
+            var chip = Tap(new VisualElement { name = "book-tree-fold-" + ownerId }, () => FoldBranch(ownerId, false));
+            chip.AddToClassList("book-tree-fold");
+            chip.style.left = x - CellW / 2f;
+            chip.style.top = y + Doll / 2f - 40f;
+            Text(chip, hidden + " more", "type-note", "book-tree-fold-words");
+            chip.Add(new GlassIcon("next", "kg-icon--small", "book-tree-fold-mark"));
+            canvas.Add(chip);
+        }
+
+        /// <summary>#774: fold a household's children to a chip, or open it again; the page redraws where it was.</summary>
+        public bool FoldBranch(int ownerId, bool fold)
+        {
+            if (!IsOpen || Page == null || Page.kind != BookPageKind.Family) return false;
+            bool changed = fold ? folded.Add(ownerId) : folded.Remove(ownerId);
+            if (!changed) return false;
+            restoreScroll = treeScroll != null ? treeScroll.scrollOffset : new Vector2(-1f, -1f);
+            ShowPage(At, 0);
+            restoreScroll = new Vector2(-1f, -1f);
+            return true;
+        }
+
+        static void Line(VisualElement t, float x, float y, float w, float h, string extra = null)
         {
             var l = new VisualElement { pickingMode = PickingMode.Ignore };
             l.AddToClassList("book-tree-line");
+            if (extra != null) l.AddToClassList(extra);
             l.name = "book-tree-line";
             l.style.left = x - (w <= LineW ? LineW / 2f : 0f);
             l.style.top = y - (h <= LineW ? LineW / 2f : 0f);
             l.style.width = w;
             l.style.height = h;
             t.Add(l);
+        }
+
+        /// <summary>Debug (#774): the book at the biggest family's tree, the pin (or the first living face in it) ringed.</summary>
+        public static string DebugOpenTree()
+        {
+            var sim = GameClock.Instance?.Sim;
+            if (sim == null || Instance == null) return "no book";
+            var roots = sim.FamilyTreeRoots();
+            if (roots.Count == 0) return "no family to draw yet (try Family: deep)";
+            var t = sim.FamilyTreeOf(roots[0]);
+            int focus = sim.Pinned != null && t.Node(sim.Pinned.id) != null ? sim.Pinned.id : t.nodes.Where(n => n.alive).Select(n => n.id).DefaultIfEmpty(roots[0]).First();
+            return Instance.OpenAtTree(roots[0], focus) ? $"tree of the {t.familyName} family: {t.people} people, {t.rows} rows" : "the tree page didn't open";
+        }
+
+        /// <summary>Debug (#774): on a tree page, fold the first open branch with children under it (or open them all again).</summary>
+        public static string DebugFoldNext()
+        {
+            var v = Instance;
+            if (v == null || !v.IsOpen || v.Tree == null || v.Page?.kind != BookPageKind.Family) return "open a tree page first";
+            var b = v.Tree.branches.FirstOrDefault(x => !x.folded && x.ownerId != v.Tree.rootId);
+            if (b == null) { foreach (int id in v.folded.ToList()) v.FoldBranch(id, false); return "every branch open"; }
+            v.FoldBranch(b.ownerId, true);
+            return "folded under " + v.sim.FindNotable(b.ownerId)?.name;
         }
 
         // ================================================================== debug (debug panel, `script eval`)

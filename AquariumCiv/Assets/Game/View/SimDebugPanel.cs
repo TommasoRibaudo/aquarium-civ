@@ -1016,6 +1016,13 @@ namespace AquariumCiv.View
             }
             if (GUILayout.Button("Card: next tab")) last = PersonCardView.DebugNextTab();
             GUILayout.EndHorizontal();
+            // #774: the family tree (the book's Family pages): a deep family to look at, the tree page, fold a branch, the card's link
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Family: deep (+3 gens)")) last = Done(sim.DebugDeepFamily(3) is int root && root >= 0 ? "a deep family under " + sim.FindNotable(root)?.FullName : "no founder");
+            if (GUILayout.Button("Family tree")) last = BookView.DebugOpenTree();
+            if (GUILayout.Button("Tree: fold next")) last = BookView.DebugFoldNext();
+            if (GUILayout.Button("Card: tree link")) last = PersonCardView.Instance != null && PersonCardView.Instance.OpenTree(cur.id) ? "tree of " + cur.FullName : "no tree for " + cur.FullName;
+            GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Birth")) last = Done(sim.DebugBirth() is Notable c ? "born: " + c.FullName : "no adult to bear");
             if (GUILayout.Button("Oldest dies")) last = Done(sim.DebugKillOldest() is Notable k ? "died: " + k.FullName : "nobody");
