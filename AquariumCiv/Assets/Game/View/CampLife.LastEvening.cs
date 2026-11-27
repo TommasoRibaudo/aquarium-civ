@@ -35,7 +35,7 @@ namespace AquariumCiv.View
         bool lastEveningSaid;
         /// <summary>A cheat's elder to play now (−1 none) and whether the rule is skipped (a cheat's "play now").</summary>
         int lastEveningCheat = -1; bool lastEveningForce;
-        /// <summary>When the cheat was pressed (the camp clock): "with a dog" gives the dog that frame, and it is drawn only after the camp's step.</summary>
+        /// <summary>When the cheat was pressed (real time: the cheat jumps the clock to dusk): "with a dog" gives the dog that frame, and it is drawn only after the camp's step.</summary>
         float lastEveningCheatAt;
         /// <summary>A cheat waits up to this long (real s) for the elder's own new dog to be drawn, so it is cast (the first "with a dog" clip had none).</summary>
         const float LastEveningDogWait = 3f;
@@ -96,7 +96,7 @@ namespace AquariumCiv.View
             if (cheat && lastEveningForce)
             {
                 who = sim.FindNotable(lastEveningCheat) is Notable ch && ch.alive ? ch : null;
-                if (who != null && clock - lastEveningCheatAt < LastEveningDogWait && clock >= lastEveningCheatAt
+                if (who != null && Time.unscaledTime - lastEveningCheatAt < LastEveningDogWait
                     && sim.DogsOfKeeper(who.id).Any(d => sim.DogStageOf(d) != DogStage.Pup && !DogAt(d.id).HasValue)) { LastEveningWhy = "waits: their dog comes"; return; }
             }
             else
@@ -168,7 +168,7 @@ namespace AquariumCiv.View
         /// (the visit and the spacing; the death set for tonight stays the sim's).</summary>
         public void DebugLastEvening(int elderId, bool force)
         {
-            lastEveningCheat = elderId; lastEveningForce = force; lastEveningDone = long.MinValue; lastEveningLook = float.MinValue; lastEveningCheatAt = clock;
+            lastEveningCheat = elderId; lastEveningForce = force; lastEveningDone = long.MinValue; lastEveningLook = float.MinValue; lastEveningCheatAt = Time.unscaledTime;
         }
     }
 

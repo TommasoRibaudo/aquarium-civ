@@ -216,7 +216,13 @@ namespace AquariumCiv.View.PlayTests
             yield return Until(() => pv.Camp.LastEveningScene != null, 20f);
             var sc = pv.Camp.LastEveningScene;
             Assert.IsNotNull(sc, $"it plays ({r}; why: {pv.Camp.LastEveningWhy})");
-            if (clip.Contains("dog")) Assert.GreaterOrEqual(sc.dog, 0, "the dog is in the scene");
+            if (clip.Contains("dog"))
+            {
+                var mine = sim.DogsOfKeeper(sc.keys[0]);
+                string dogs = $"era {sim.State.era}, eco {sim.EcologyOn}, the elder's dogs: " + string.Join(", ", mine.Select(d => $"{d.name} {sim.DogStageOf(d)} at {pv.Camp.DogAt(d.id)?.ToString() ?? "not drawn"}"));
+                Debug.Log("[789 shots] " + clip + ": " + dogs + "; why " + pv.Camp.LastEveningWhy);
+                Assert.GreaterOrEqual(sc.dog, 0, "the dog is in the scene: " + dogs);
+            }
             string dir = OutDir(clip);
             foreach (var old in Directory.GetFiles(dir, "f*.jpg")) File.Delete(old);
             aimLog = "";
@@ -229,7 +235,7 @@ namespace AquariumCiv.View.PlayTests
             // the seat faces the fire: the camera on the fire's side sees their faces
             var seat = sc.focus; // CampScene's focus is the elder's seat
             yield return Aim(sc, YawFrom(WorldDir((FireOf(sc) - seat).normalized)), sc.keys, "at the fire");
-            var times = new StringBuilder(); var scene = new StringBuilder();
+            var times = new StringBuilder(); var scene = new StringBuilder(); var spots = new StringBuilder();
             float t0 = Time.realtimeSinceStartup, lastAt = -1f; int n = 0; bool walkAimed = false, doorAimed = false;
             float minPx = float.MaxValue, maxPx = 0f;
             while (pv.Camp.Scenes.Contains(sc) && Time.realtimeSinceStartup - t0 < 240f)
@@ -258,12 +264,19 @@ namespace AquariumCiv.View.PlayTests
                     float px = ElderPx(sc);
                     if (st < tIn && px > 1f) { minPx = Mathf.Min(minPx, px); maxPx = Mathf.Max(maxPx, px); }
                     scene.AppendLine(string.Format(CultureInfo.InvariantCulture, "{0:0.000} {1:0.000} {2:0}", now, SceneClock(pv) - sc.t0, px));
+                    if (n % 20 == 0) // every ~2 s: where each of the cast is drawn and why (the planner's spot or the scene's part)
+                        foreach (int k in sc.keys)
+                        {
+                            bool cued = sc.TryPart(k, SceneClock(pv), out var part, out _);
+                            spots.AppendLine($"{st:0.0} {k} {sim.FindNotable(k)?.name} use {pv.Camp.UseOf(k)} cued {cued} part {(cued ? part.pos.ToString("0.00") + " " + part.style : "-")} | {pv.DebugSpotOf(PersonRef.Notable(k))}");
+                        }
                     n++; lastAt = now;
                 }
                 else yield return null;
             }
             File.WriteAllText(dir + "times.txt", times.ToString());
             File.WriteAllText(dir + "scene.txt", scene.ToString());
+            File.WriteAllText(dir + "spots.txt", spots.ToString());
             File.WriteAllText(dir + "aim.txt", aimLog + $"elder px {minPx:0}-{maxPx:0}; caption: {pv.Camp.LastEveningCaption}\n");
             Debug.Log($"[789 shots] {clip}: {n} frames, elder {minPx:0}-{maxPx:0} px; {aimLog}");
             Assert.IsFalse(pv.Camp.Scenes.Contains(sc), "the scene ends");
