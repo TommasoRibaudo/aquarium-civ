@@ -381,6 +381,7 @@ namespace AquariumCiv.Life
             if (eraReady && p == leader && era == Era.Village) Put(list, Mk(ActivityKind.PacePlans, 18.3f, 19.1f, gather, Prop.Plans, ActivitySource.RoleBeat), d);
             WeatherLayer(p, d, list);
             foreach (var sc in d.scenes) SceneLayer(sc, p, d, list, false);
+            if (p.n != null) LastEveningIndoors(p, d, list); // #789: after the last evening the elder stays in until the night takes them
             return KeepVisitsToTheSeat(p, Stitch(p, list)); // #788: the family sits at the door only while the elder does
         }
 
