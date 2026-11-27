@@ -317,6 +317,7 @@ namespace AquariumCiv.View.PlayTests
                     var pts = new List<Vector2> { new(l.ax, l.ay) };
                     if (l.bends) pts.Add(new Vector2(l.vx, l.vy));
                     if (l.twice) pts.Add(new Vector2(l.wx, l.wy));
+                    if (l.thrice) pts.Add(new Vector2(l.ux, l.uy));
                     pts.Add(new Vector2(l.bx, l.by));
                     for (int i = 0; i + 1 < pts.Count; i++) legs.Add((pts[i], pts[i + 1]));
                     var start = pts[0];
@@ -336,7 +337,7 @@ namespace AquariumCiv.View.PlayTests
                     }
                 }
                 Debug.Log($"[209] {n.name} routes: {string.Join(" || ", routes.Take(4))} ; shown {string.Join(" ", shown.Select(r => $"[{r.center.x:0},{r.center.y:0} {r.width:0}x{r.height:0}]"))} ; leaders {string.Join(" ", leaders.Select(l => $"({l.ax:0},{l.ay:0})->({l.bx:0},{l.by:0})"))}");
-                Debug.Log($"[209] {n.name}: {shown.Count} labels, {leaders.Count} leaders, {string.Join("; ", leaders.Select(l => l.twice ? "3 legs" : l.bends ? "2 legs" : "straight"))}");
+                Debug.Log($"[209] {n.name}: {shown.Count} labels, {leaders.Count} leaders, {string.Join("; ", leaders.Select(l => l.thrice ? "4 legs" : l.twice ? "3 legs" : l.bends ? "2 legs" : "straight"))}");
                 if (leaders.Count > mostLeaders)
                 {
                     mostLeaders = leaders.Count;

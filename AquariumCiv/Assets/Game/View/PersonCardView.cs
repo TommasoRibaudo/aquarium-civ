@@ -903,6 +903,7 @@ namespace AquariumCiv.View
                     p.BeginPath(); p.MoveTo(new Vector2(l.ax, l.ay));
                     if (l.bends) p.LineTo(new Vector2(l.vx, l.vy));
                     if (l.twice) p.LineTo(new Vector2(l.wx, l.wy));
+                    if (l.thrice) p.LineTo(new Vector2(l.ux, l.uy));
                     p.LineTo(new Vector2(l.bx, l.by)); p.Stroke();
                 }
                 p.strokeColor = underCol; p.lineWidth = LeaderWidth + 3f;

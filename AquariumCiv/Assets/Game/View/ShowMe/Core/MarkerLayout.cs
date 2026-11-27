@@ -39,11 +39,12 @@ namespace AquariumCiv.View.ShowMe
         public LabelBox(float x, float y, float w, float h) { this.x = x; this.y = y; this.w = w; this.h = h; }
     }
 
-    /// <summary>A leader line: from a label's edge (ax, ay) to the person (bx, by), by way of (vx, vy) when it has to bend, and then (wx, wy) if twice.</summary>
+    /// <summary>A leader line: from a label's edge (ax, ay) to the person (bx, by), by way of (vx, vy) when it has to bend, then (wx, wy) if twice,
+    /// then (ux, uy) if thrice.</summary>
     public struct LeaderRoute
     {
-        public float ax, ay, vx, vy, wx, wy, bx, by;
-        public bool bends, twice;
+        public float ax, ay, vx, vy, wx, wy, ux, uy, bx, by;
+        public bool bends, twice, thrice;
     }
 
     /// <summary>
@@ -126,7 +127,8 @@ namespace AquariumCiv.View.ShowMe
         public const float LeaderGap = 100f;
 
         /// <summary>Tester run 8: a leader that ran behind another label read as ending there. The way from a label to its person that stays out from under every
-        /// other label: straight from whichever edge can, else round the corner of what's in the way, else (the person is under a label) straight.
+        /// other label: straight from whichever edge can, else round the corner of what's in the way, else round two of its sides, else (the person
+        /// is under a label) straight.
         /// #209: labels stacked close together (FarEnd puts them 8 apart, its own label among them) are one block to go round, so no leg runs
         /// through the gaps of a stack and none runs back across its own label: every leg keeps <paramref name="air"/> off every label.</summary>
         public static LeaderRoute RouteLeader(LabelBox me, float toX, float toY, IList<LabelBox> others, float air = 6f)
@@ -170,6 +172,30 @@ namespace AquariumCiv.View.ShowMe
                             if (len >= bestLen || !Later(vx, vy, wx, wy) || !Later(wx, wy, toX, toY)) continue;
                             bestLen = len;
                             best = new LeaderRoute { ax = s.Item1, ay = s.Item2, vx = vx, vy = vy, wx = wx, wy = wy, bx = toX, by = toY, bends = true, twice = true };
+                        }
+                    }
+                }
+            if (bestLen < float.MaxValue) return best;
+            // #209: a person in a pocket (a label just below, the open card's name tag above, the open doll beside, one side open) is out of
+            // reach round one corner or along one side: the line goes round a label over two of its sides, corner to corner to corner.
+            foreach (var s in starts)
+                foreach (var o in blocks)
+                {
+                    float cx = o.w / 2f + air * 2f, cy = o.h / 2f + air * 2f;
+                    var corners = new[] { (o.x - cx, o.y - cy), (o.x + cx, o.y - cy), (o.x + cx, o.y + cy), (o.x - cx, o.y + cy) };
+                    for (int i = 0; i < 4; i++)
+                    {
+                        var (vx, vy) = corners[i];
+                        if (!First(s.Item1, s.Item2, vx, vy)) continue;
+                        float there = Dist(s.Item1, s.Item2, vx, vy);
+                        for (int step = 1; step <= 3; step += 2)
+                        {
+                            var (wx, wy) = corners[(i + step) % 4];
+                            var (ux, uy) = corners[(i + 2 * step) % 4];
+                            float len = there + Dist(vx, vy, wx, wy) + Dist(wx, wy, ux, uy) + Dist(ux, uy, toX, toY);
+                            if (len >= bestLen || !Later(vx, vy, wx, wy) || !Later(wx, wy, ux, uy) || !Later(ux, uy, toX, toY)) continue;
+                            bestLen = len;
+                            best = new LeaderRoute { ax = s.Item1, ay = s.Item2, vx = vx, vy = vy, wx = wx, wy = wy, ux = ux, uy = uy, bx = toX, by = toY, bends = true, twice = true, thrice = true };
                         }
                     }
                 }
