@@ -107,6 +107,10 @@ namespace AquariumCiv.View
             /// <summary>#363: who they last stood talking with, and when (a couple leaving together walks together, see <see cref="Mates"/>).</summary>
             public int mateKey;
             public float mateTime = -999f;
+            /// <summary>#791: walking together, eased: how much of the held hands and the lean is on (0..1), which side they walk on (true: the
+            /// lead, kept until the other is clearly on the other side) and the lean's way (-1..1, eased toward the side).</summary>
+            public float mateHold, mateLean;
+            public bool mateLead;
             /// <summary>#361: when the tip at the stash began (the first frame the doll stood still at the pile): the beat runs from there.</summary>
             public float tipStart;
             /// <summary>#404: at the lookout tower: since when (the first frame they stood still there), and where, how high, facing what, how (ApartGroupsView.TowerUse).</summary>
@@ -146,6 +150,8 @@ namespace AquariumCiv.View
         readonly Dictionary<(Place, SlotSpots.HomeSpot), int> homeRanks = new();
         /// <summary>Where the dolls placed so far this frame stand (rule 6: one doll per spot, also after a slot moved off a lot).</summary>
         readonly List<Vector2> claimed = new();
+        /// <summary>#791: this frame's rack crew stands and where the carriers are (the crew carry it round the fire): a pair's beat keeps a body's width off them.</summary>
+        readonly List<Vector2> rackStands = new();
         /// <summary>#779: where the people a held scene (a camp use, a staged moment, a life scene) places stand this frame, by key: camp life keeps a body's width off them.</summary>
         readonly List<(int key, Vector2 at)> heldSpots = new();
         /// <summary>Sign-off 2026-11-14: the laid-out bedrolls (CampBedrolls) taken this frame, one person on each.</summary>
@@ -244,10 +250,24 @@ namespace AquariumCiv.View
 #endif
         }
 
+        /// <summary>#791 (tests): the frame time the last <see cref="Tick"/> stepped the dolls by. A test sampling positions from a coroutine
+        /// must divide by this, not by its own clock: a hitch between this frame's tick and the sample splits the frames differently.</summary>
+        public float LastTickDt { get; private set; }
+
+        /// <summary>#791 (tests): the furthest a doll may move in one frame and not be seen to jump: <see cref="JumpStep"/> in a frame of the
+        /// game's resting pace (<see cref="FrameRateDirector.Rest"/> fps, so 3 u/s), and that speed over a longer frame. An Editor hitch carries
+        /// a longer step of the same walk; a teleport moves further than any frame's time explains.</summary>
+        public static float JumpLimit(float dt) => JumpStep * Mathf.Max(1f, dt * FrameRateDirector.Rest);
+        public const float JumpStep = 0.1f;
+        /// <summary>#791 (tests): did a step of <paramref name="step"/> world units in a frame of <paramref name="dt"/> real seconds jump?</summary>
+        public static bool IsJump(float step, float dt) => step > JumpLimit(dt);
+
         /// <summary>One frame: advance the view clock by <paramref name="dt"/> real seconds, replan if due, move and pose
         /// every doll. Public for tests and edit-mode renders.</summary>
+
         public void Tick(float dt)
         {
+            LastTickDt = dt;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var sim = Source != null ? Source.Sim : null;
             if (sim == null || Box == null || Box.Root == null) return;
@@ -526,10 +546,16 @@ namespace AquariumCiv.View
             meals.DrawPot(peopleRoot, Box.SolidMaterial, camp && planner.FireNow != CampFireStage.None /* #656: no pot by a fire that isn't lit */, (mx, mz) => Box.SurfaceHeight(mx, mz), LifeClock.SeasonOf(now.day) == Season.Winter, sim.StewOn(now.day)); // #676: it simmers, with what the camp has
             seen.Clear();
             claimed.Clear();
+            rackStands.Clear();
             // 2026-11-24 (the ADay test: a doll eating at the market stood on the log-pile sitter's seat): the spots a camp or village use holds
             // this frame are taken before anyone else picks a spot, so a settled doll's slot moves off them (Standable) instead of under a sitter
             for (int i = 0; i < acts.Count; i++)
+            {
                 if (Camp.Busy(acts[i].who.Key) && Camp.TryCue(acts[i].who.Key, time, out var held, out _) && !held.keepSpot) claimed.Add(held.pos);
+                // #791: so is a rack crew's stand (the crew carry it round the fire, past the story's listeners): a listener's spot moves off it
+                else if (acts[i].kind == ActivityKind.MoveRack && !acts[i].moving && !acts[i].enRoute && planner.TryGetRackRole(acts[i].who, now, out var rp, out var rr, out float rs))
+                { rp.Stand(rr, rs, out float rx, out float rz, out _, out _, out _); claimed.Add(new Vector2(rx, rz)); rackStands.Add(new Vector2(rx, rz)); if (dolls.TryGetValue(acts[i].who.Key, out var rd) && rd.placed) rackStands.Add(rd.drawn); }
+            }
             heldSpots.Clear();
             for (int i = 0; i < acts.Count; i++)
             {
@@ -618,6 +644,7 @@ namespace AquariumCiv.View
             if (hidden && stage == LifeStage.Kid && HideReason != null) HideReason($"{a.who} hidden by Drive: kind {a.kind} place {a.place.kind} moving {a.moving} (kind None, or no position for the plan: #698 diagnosis)");
             var spot = new Vector2(x, z);
             var target = spot;
+            int claimedFrom = claimed.Count; // #791: what this doll claims below; replaced by where it ends up standing
             Vector2? face = null;
             if (hunting || tenting)
             {
@@ -638,7 +665,7 @@ namespace AquariumCiv.View
                 d.dbgSpot = spot; d.dbgSlot = target;
                 bool yard = a.place.kind == PlaceKind.Home && (target - spot).sqrMagnitude > SlotSpots.AtDoorReach * SlotSpots.AtDoorReach;
                 if (!d.atTower) target = Standable(target, spot, !InField(a.place), yard); // #404: a spot on the ladder or the platform is the tower's own
-                if (!d.atTower) target = Apart(target, claimed, BodySpots.BodyW); // #779: a place's slots collide (a notable and a crowd extra got the same one at a home): a body's width apart
+                if (!d.atTower) target = SettleSlot(target, spot, a.who.Key, !(a.place.kind == PlaceKind.Fire && a.kind is ActivityKind.Cook or ActivityKind.FeedFire) /* their own spots at the flames, below */); // #779: a place's slots collide (a notable and a crowd extra got the same one at a home): a body's width apart
                 d.dbgStand = target;
                 claimed.Add(target);
                 if (yard && lotOfBuilding.TryGetValue(a.place.buildingId, out var yardLot))
@@ -682,7 +709,7 @@ namespace AquariumCiv.View
             if (hunting && a.hunt == HuntPhase.TakeSpear) HandSpear(d, a, time);
             PairCue pairCue = default; PairEvent pairEv = null;
             bool paired = !hidden && !playing && !tenting && PairStage.TryCue(a.who.Key, time, out pairEv, out pairCue);
-            if (paired) { target = pairCue.pos; face = pairCue.face; }
+            if (paired) { target = pairCue.pos; face = pairCue.face; if (rackStands.Count > 0) target = Apart(target, rackStands, BodySpots.BodyW); } // #791: a hand-over by the fire stood inside the rack crew carrying it round
             d.dbgBy = (playing ? "play " : "") + (camping ? "camp:" + Camp.UseOf(a.who.Key) + " " : "") + (paired ? "pair:" + pairEv : "") + (toddling ? "toddle" : "");
             if (toddling) // 2026-11-06: behind the walking carer, pottering in front of a standing one, sat down where it plopped
             {
@@ -696,7 +723,7 @@ namespace AquariumCiv.View
             bool poking = !hidden && !paired && !playing && !tenting && !camping && !a.moving && meals.Poking(a.who.Key, time, out pokeSince, out pokeBig);
             // #779: a camp-life standing spot (a slot, the laundry line's stand, the cook's) inside a held scene's ring moves off it: a body's width from each of the
             // scene's people (the wedding's guests, a camp use's cast), never on top of one
-            if (!hidden && !hunting && !tenting && !camping && !paired && !a.moving && !a.enRoute && !d.atTower && heldSpots.Count > 0) target = ApartFromHeld(target, a.who.Key);
+            if (!hidden && !hunting && !tenting && !camping && !paired && !a.moving && !a.enRoute && !d.atTower && heldSpots.Count > 0) { var was = target; target = ApartFromHeld(target, a.who.Key); if (was != target) d.dbgBy += " held"; }
             if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && !(playing && playCue.sink > 0f) /* #359: wading in on purpose */ && land.IsWater(target.x, target.y)
                 && !(playing && BallGame.PondAt != null && !BallGame.PondAt(target)) /* #744 (tester): a dried pond's hollow is dry ground to play in */
                 && !(IceView.Instance != null && IceView.Instance.OnIce(target)) /* #618: on the ice */)
@@ -754,7 +781,20 @@ namespace AquariumCiv.View
             bool feeding = !hidden && !a.moving && !a.enRoute && a.kind == ActivityKind.FeedFire && a.place.kind == PlaceKind.Fire;
             bool stirring = !hidden && !hunting && !tenting && !a.moving && !a.enRoute && a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && meals.HasFire && meals.PotHot;
             d.atFlames = feeding;
-            if (!hidden && !feeding) target = OutOfFire(target, stirring ? CrowdAvoid.FireKeep + 0.01f : FireClear);
+            if (!hidden && !feeding)
+            {
+                var was = target; target = OutOfFire(target, stirring ? CrowdAvoid.FireKeep + 0.01f : FireClear);
+                // #791: pushed out onto the ring, it may land on a spot already taken (a pair's listener stood on a drinker): the nearest clear one
+                if (was != target) { d.dbgBy += " fire"; if (!stirring && !hunting && !a.moving && !a.enRoute) target = FreeSpot(target, spot, a.who.Key, true, was); }
+            }
+            // #791: the spot claimed is where they stand after every push (a pair's cue, the fire's ring), so the dolls after them keep off it:
+            // a drinker took the spot a pair's cue had just put a woman on
+            if (!hidden && !a.moving && !a.enRoute && claimed.Count > claimedFrom)
+            {
+                claimed.RemoveRange(claimedFrom, claimed.Count - claimedFrom);
+                claimed.Add(target);
+            }
+            else if (!hidden && !a.moving && !a.enRoute && paired) claimed.Add(target);
             // B3 tester fixes: a use whose seat is on its thing may step onto it; a staged moment's spot is its own (the feast's benches)
             d.enterProp = hidden ? -1 : camping ? Camp.EnterThing(a.who.Key) : tenting && !started && a.tent == TentPhase.None && !d.walking ? -2 : -1;
 
@@ -908,7 +948,9 @@ namespace AquariumCiv.View
                 if (toCam.sqrMagnitude > 1e-4f) want = Yaw(d.pos, camPlane);
             }
             d.gaze = dt > 0f ? Mathf.MoveTowards(d.gaze, gazing ? 1f : 0f, dt / 0.8f) : (gazing ? 1f : 0f);
-            float most = walking || a.moving ? Mathf.Lerp(SlowTurn, MostTurn, d.speed / FaceFrom) : MostTurn; // nearly stopped in a crowd, a body doesn't spin
+            // nearly stopped in a crowd, a body doesn't spin. #791: by the slower of the smoothed speed and this frame's: the smoothed one lags, so a
+            // walker slowing to a crawl a few frames into a walk still turned at the walk's 300°/s on the spot
+            float most = walking || a.moving ? Mathf.Lerp(SlowTurn, MostTurn, Mathf.Min(d.speed, inst) / FaceFrom) : MostTurn;
             d.yaw = dt > 0f ? d.yaw + Mathf.Clamp(Mathf.DeltaAngle(d.yaw, want) * (1f - Mathf.Exp(-dt * (gazing ? GazeTurnRate : TurnRate))), -most * dt, most * dt) : want;
 
             // Pose: the apprentice copies the master a beat late (§4).
@@ -981,11 +1023,9 @@ namespace AquariumCiv.View
                 float left = LifeClock.RealSecondsBetween(Mathf.Clamp(now.hour, a.start, a.end), a.end);
                 PairBeats.Talk(ref pose, PairBeats.TalkAt(a.who.Key, a.partner.Key, time, left), Desync.Of(a.who.Key, 363).amp, holds);
             }
-            else if (style == DollStyle.Walk && Mates(d, a, time, out bool mateLead, out var mate))
-            {
-                if (a.who.Key > d.mateKey) d.stride = mate.stride;   // strides in step (a pair is exempt from the neighbours rule)
-                PairBeats.WalkTogether(ref pose, mateLead, time, d.stride, PairBeats.PairSeed(a.who.Key, d.mateKey));
-            }
+            else if (style == DollStyle.Walk && (WalkMates(d, a, time, dt) || d.mateHold > 0f))
+                PairBeats.WalkTogether(ref pose, d.mateLead, time, d.stride, PairBeats.PairSeed(a.who.Key, d.mateKey), Mathf.SmoothStep(0f, 1f, d.mateHold), d.mateLean);
+            else d.mateHold = 0f;
             // #676 (tester): no opaque HitFx puff at each stir any more (it read as a lid or a dumpling at close zoom): the pot's own soft steam rises all the time
             if (d.gaze > 0f && !pose.lying) pose.lean -= GazeHeadUp * d.gaze; // #494: the head tilts up a little more toward the camera
             d.pose = pose;
@@ -1036,16 +1076,38 @@ namespace AquariumCiv.View
 
         /// <summary>True when this walker and the one they last stood talking with leave together: both walking, near, the same way. <paramref name="lead"/>
         /// is the one whose right side faces the other (the other walks at their right hand).</summary>
-        bool Mates(Doll d, in PersonActivity a, float time, out bool lead, out Doll mate)
+        bool Mates(Doll d, in PersonActivity a, float time, out float side, out Doll mate)
         {
-            lead = false; mate = null;
+            side = 0f; mate = null;
             if (time - d.mateTime > 120f || !dolls.TryGetValue(d.mateKey, out mate) || mate.mateKey != a.who.Key || time - mate.mateTime > 120f) return false;
             if (!mate.placed || !mate.walking || (mate.pos - d.pos).sqrMagnitude > 0.45f * 0.45f) return false;
             if (d.velocity.sqrMagnitude < 0.0025f || mate.velocity.sqrMagnitude < 0.0025f) return false;
             var h = d.velocity.normalized;
             if (Vector2.Dot(h, mate.velocity.normalized) < 0.8f) return false;
-            lead = Vector2.Dot(mate.pos - d.pos, new Vector2(h.y, -h.x)) > 0f;
+            side = Vector2.Dot(mate.pos - d.pos, new Vector2(h.y, -h.x)); // > 0: the mate is at this one's right hand (this one leads)
             return true;
+        }
+
+        /// <summary>#791: how far a side has to be clear before the pair swaps it (one walking behind the other draws level every few frames).</summary>
+        const float MateSwapSide = 0.04f, MateHoldSeconds = 0.3f, MateLeanSeconds = 0.5f;
+
+        /// <summary>#363 walking together, eased (#791): the hold comes on and off over <see cref="MateHoldSeconds"/>, the side is kept until the
+        /// mate is clearly on the other one, the lean follows the side over <see cref="MateLeanSeconds"/>, and the later of the two falls into the
+        /// other's stride by catching up, not by a jump of the legs. True while they walk together.</summary>
+        bool WalkMates(Doll d, in PersonActivity a, float time, float dt)
+        {
+            bool on = Mates(d, a, time, out float side, out var mate);
+            if (on)
+            {
+                if (d.mateHold <= 0f) d.mateLead = side > 0f;
+                else if (d.mateLead ? side < -MateSwapSide : side > MateSwapSide) d.mateLead = !d.mateLead;
+                if (a.who.Key > d.mateKey) // strides in step (a pair is exempt from the neighbours rule): the later one catches up, a step at most
+                    d.stride = Mathf.Repeat(d.stride + Mathf.Clamp(Mathf.DeltaAngle(d.stride * Mathf.Rad2Deg, mate.stride * Mathf.Rad2Deg) * Mathf.Deg2Rad, -Mathf.PI * dt, Mathf.PI * dt), Mathf.PI * 2f);
+            }
+            if (d.mateHold <= 0f) d.mateLean = d.mateLead ? -1f : 1f;
+            d.mateHold = dt > 0f ? Mathf.MoveTowards(d.mateHold, on ? 1f : 0f, dt / MateHoldSeconds) : (on ? 1f : 0f);
+            d.mateLean = dt > 0f ? Mathf.MoveTowards(d.mateLean, d.mateLead ? -1f : 1f, 2f * dt / MateLeanSeconds) : (d.mateLead ? -1f : 1f);
+            return on;
         }
 
         /// <summary>A hunter takes the spear (the hunt's TakeSpear step): if a toolmaker is knapping near, they walk it over and hand it across.
@@ -1473,6 +1535,62 @@ namespace AquariumCiv.View
                 t = taken[near] + away * gap;
             }
             return t;
+        }
+
+        /// <summary>#791 (Village_NobodyStandsInsideAnybody: two drinkers stood on two others' tavern spots, the same pairs every run): a slot's
+        /// spot takes every push it will get this frame before it is claimed: out of a held scene's ring and out of the fire's ring (a tavern by the
+        /// fire has slots inside it), then a body's width from the spots taken. Claimed first and pushed after, it landed on a spot already taken.</summary>
+        Vector2 SettleSlot(Vector2 t, Vector2 from, int self, bool outOfFire)
+        {
+            var t0 = t;
+            for (int pass = 0; pass < 3; pass++)
+            {
+                var was = t;
+                if (heldSpots.Count > 0) t = ApartFromHeld(t, self);
+                if (outOfFire) t = OutOfFire(t, FireClear);
+                t = Apart(t, claimed, BodySpots.BodyW);
+                if ((t - was).sqrMagnitude < 1e-8f) break;
+            }
+            if (!Clear(from, t) && Clear(from, t0)) return FreeSpot(t0, from, self, outOfFire, null); // pushed behind a lot: one it can walk to
+            return FreeSpot(t, from, self, outOfFire, null);
+        }
+
+        /// <summary>#791: <paramref name="t"/> if it is clear (out of the fire's ring when <paramref name="outOfFire"/>, a body's width from every
+        /// spot claimed this frame but <paramref name="ignore"/>, out of every held scene's ring but its own), else the nearest clear spot round it
+        /// (rings a body's width apart). Between a fire's ring and a taken spot the pushes undo each other: one pushes in, the other out onto it.</summary>
+        Vector2 FreeSpot(Vector2 t, Vector2 from, int self, bool outOfFire, Vector2? ignore)
+        {
+            if (SpotClear(t, from, self, outOfFire, ignore, false)) return t; // where it already is: as the slot rules left it
+            for (int ring = 1; ring <= 4; ring++)
+            {
+                bool found = false; Vector2 best = t; float bd = float.MaxValue;
+                for (int k = 0; k < 12; k++)
+                {
+                    float ang = (k * 30f + ring * 15f) * Mathf.Deg2Rad;
+                    var q = t + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * (BodySpots.BodyW * ring);
+                    if (outOfFire) q = OutOfFire(q, FireClear);
+                    float dq = (q - t).sqrMagnitude;
+                    if (dq < bd && SpotClear(q, from, self, outOfFire, ignore, true)) { best = q; bd = dq; found = true; }
+                }
+                if (found) return best;
+            }
+            return t;
+        }
+
+        /// <summary>#791: also walkable and reached straight from the place's middle <paramref name="from"/> (a doll that can't reach its spot
+        /// waits at the middle, on whoever else waits there).</summary>
+        bool SpotClear(Vector2 q, Vector2 from, int self, bool outOfFire, Vector2? ignore, bool reach)
+        {
+            var st = plannerSim != null ? plannerSim.Settlement : null;
+            if (reach && st != null) { int cq = SiteMap.CellAt(q.x, q.y); if (cq >= 0 && st.WalkCost(cq) <= 0) return false; }
+            if (reach) foreach (var bk in blockers) if ((bk.c - q).sqrMagnitude < bk.r * bk.r) return false;
+            if (reach && !Clear(from, q)) return false;
+            if (outOfFire) foreach (var f in fireSolids) if ((q - new Vector2(f.x, f.z)).sqrMagnitude < (FireClear - 1e-3f) * (FireClear - 1e-3f)) return false;
+            float g2 = (BodySpots.BodyW - 1e-3f) * (BodySpots.BodyW - 1e-3f);
+            foreach (var c in claimed) if (!(ignore.HasValue && c == ignore.Value) && (c - q).sqrMagnitude < g2) return false;
+            float h2 = (HeldGap - 1e-3f) * (HeldGap - 1e-3f);
+            foreach (var h in heldSpots) if (h.key != self && (h.at - q).sqrMagnitude < h2) return false;
+            return true;
         }
 
         /// <summary>#779: <paramref name="t"/> pushed out of a body's width (<see cref="HeldGap"/>) of every held scene person's spot but its own.</summary>

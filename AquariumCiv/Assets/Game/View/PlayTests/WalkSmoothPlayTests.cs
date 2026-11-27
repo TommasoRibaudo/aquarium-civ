@@ -35,6 +35,8 @@ namespace AquariumCiv.View.PlayTests
         {
             public readonly List<float> turn = new(), yaw = new(), jerk = new(), stride = new();
             public int flips, frames, reversals;
+            /// <summary>#791: the frames whose stride roll jumped, with who and what, so a failure says where.</summary>
+            public readonly List<string> skips = new();
             /// <summary>The push and pull of jitter: the doll's acceleration turning back on itself from one frame to the next. A corner or a curve doesn't.</summary>
             public float ReversalsPerSecond(float dt) => frames == 0 ? 0f : reversals / (frames * dt);
             public float Seconds(float dt) => frames * dt;
@@ -44,7 +46,7 @@ namespace AquariumCiv.View.PlayTests
             public float JerkP95 => P(jerk, 0.95f);
             public float StrideMax => P(stride, 0.999f);
             public float YawP95 => P(yaw, 0.95f);
-            public string Say(float dt) => $"{frames} walker-frames, turn p95 {TurnP95:0} deg/s max {P(turn, 1f):0}, yaw rate p95 {YawP95:0} deg/s, yaw flips {FlipsPerSecond(dt):0.00}/s, push reversals {ReversalsPerSecond(dt):0.00}/s, speed change p95 {JerkP95:0.00} u/s2, stride roll jump p99.9 {StrideMax:0.0} deg/s";
+            public string Say(float dt) => $"{frames} walker-frames, turn p95 {TurnP95:0} deg/s max {P(turn, 1f):0}, yaw rate p95 {YawP95:0} deg/s, yaw flips {FlipsPerSecond(dt):0.00}/s, push reversals {ReversalsPerSecond(dt):0.00}/s, speed change p95 {JerkP95:0.00} u/s2, stride roll jump p99.9 {StrideMax:0.0} deg/s" + (skips.Count > 0 ? "\n  skips: " + string.Join("\n  ", skips) : "");
         }
 
         const float Close = 0.16f, Lone = 0.4f;
@@ -86,7 +88,9 @@ namespace AquariumCiv.View.PlayTests
                             float rate = Vector2.SignedAngle(t.facing, face) / dt;
                             into.yaw.Add(Mathf.Abs(rate));
                             if (t.hasRate && Mathf.Sign(rate) != Mathf.Sign(t.yawRate) && Mathf.Abs(rate) > 40f && Mathf.Abs(t.yawRate) > 40f) into.flips++;
-                            into.stride.Add(Mathf.Abs(pose.roll - t.roll) / dt);
+                            float jump = Mathf.Abs(pose.roll - t.roll) / dt;
+                            into.stride.Add(jump);
+                            if (jump > 60f && into.skips.Count < 12) into.skips.Add($"f{f} key {a.who.Key} {a.kind} to {a.place.kind} style {pv.StyleOf(a.who.Key)} roll {t.roll:0.0}->{pose.roll:0.0}");
                             t.yawRate = rate; t.hasRate = true;
                         }
                         t.step = step; t.hasStep = true;
@@ -214,7 +218,11 @@ namespace AquariumCiv.View.PlayTests
                         foreach (var o in where) if (o.key != a.who.Key && (o.at - p).magnitude < near) { near = (o.at - p).magnitude; nearKey = o.key; }
                         if (near < OverlapUnder) { c.overlap++; all.overlap++; }
                         float rate = Mathf.Abs(Vector2.SignedAngle(t.face, face)) / dt;
-                        if (v < 0.15f && rate > 280f) { c.spins++; all.spins++; }
+                        if (v < 0.15f && rate > 280f)
+                        {
+                            c.spins++; all.spins++;
+                            if (c.events.Count < 40) c.events.Add($"spin f{f} key {a.who.Key} v {v:0.00} rate {rate:0} walked {t.moved} frames, near {near:0.00} ({nearKey}) {a.kind} to {a.place.kind} style {pv.StyleOf(a.who.Key)}"); // #791
+                        }
                         int n = t.speed.Count;
                         if (n >= 7 && t.speed[n - 7] > 0.4f && t.speed[n - 1] < t.speed[n - 7] - 0.3f && f - t.lastBrake > 15)
                         {

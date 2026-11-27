@@ -380,7 +380,7 @@ namespace AquariumCiv.View
                         // The first well stands as the moment showed it, so the sim taking over changes nothing on screen.
                         P(PieceKind.Well, 0.3f, 0.3f).yaw = l.open ? 0f : l.yaw;
                         break;
-                    case LotKind.Outbuilding: P(PieceKind.Barn, l.w, l.d).variant = h < 0.6f ? 0 : 1; break;
+                    case LotKind.Outbuilding: P(PieceKind.Barn, l.w, l.d).variant = st.IsBarn(l) ? 0 : 1; break;
                     default: P(PieceFor(l.kind), l.w, l.d); break;
                 }
             }

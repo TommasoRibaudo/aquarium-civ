@@ -175,6 +175,8 @@ namespace AquariumCiv.Life.Tests
                             {
                                 var a = planner.Plan(who, t);
                                 var b = plain.Plan(who, t);
+                                // #791: a run-in with someone the reaction casts ends (or never starts) for both: the one who woke on their own walks on
+                                if (info != null && b.kind is ActivityKind.Chat or ActivityKind.Argue or ActivityKind.Wave && info.cast.Any(c => c.who == b.partner)) continue;
                                 Assert.AreEqual(b.kind, a.kind, $"{tag}: {who}");
                                 Assert.AreEqual(b.place, a.place, $"{tag}: {who}");
                                 watched++;

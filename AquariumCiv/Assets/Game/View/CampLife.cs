@@ -210,6 +210,9 @@ namespace AquariumCiv.View
         static bool FreeKind(ActivityKind k) => k is ActivityKind.SitOut or ActivityKind.Chat or ActivityKind.ListenStory or ActivityKind.Listen or ActivityKind.Sing
             or ActivityKind.SitTogether or ActivityKind.Visit or ActivityKind.Play;
 
+        /// <summary>#791: view hours ahead a run-in keeps someone from being borrowed (a use holds them about this long; BarnChores held a stopper through her beat).</summary>
+        const float RunInLookAhead = 1.5f;
+
         bool Free(in PersonActivity a, float time)
         {
             if (a.moving || a.enRoute || a.hunt != HuntPhase.None || a.tent != TentPhase.None || !FreeKind(a.kind)) return false;
@@ -217,6 +220,7 @@ namespace AquariumCiv.View
             if (PeopleView.StagedSpot != null && PeopleView.StagedSpot(a, now, out _, out _, out _)) return false;
             if (PeopleView.LifeSpot != null && PeopleView.LifeSpot(a, now, out _, out _, out _)) return false;
             if (PeopleView.StartHook != null && PeopleView.StartHook(a, out _)) return false; // a new-start scene has them
+            if (planner != null && planner.RunInBetween(a.who, now.day, now.hour, now.hour + RunInLookAhead)) return false; // #791: about to meet someone on the way
             return true;
         }
 

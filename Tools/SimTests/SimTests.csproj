@@ -34,6 +34,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CardsTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/RelicTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettleTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/BarnRuleTests.cs" /><!-- #791 every village has a barn -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettleFieldGroundTests.cs" /><!-- #768 fields on damp fertile ground -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TroddenGroundTests.cs" /><!-- #523 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettingTerrainTests.cs" /><!-- #115 -->
@@ -131,6 +132,7 @@
     <Compile Include="PacingLabTests.cs" /><!-- #569: the pacing lab on the real sim -->
     <Compile Include="AnimalCapsLabTests.cs" /><!-- #710: every kind under its cap; the census table -->
     <Compile Include="StoryCountLab.cs" /><!-- #715: the stories per kind, before and after the weeding -->
+    <Compile Include="BarnLab.cs" /><!-- #791: how often a village has no barn -->
     <Compile Include="CameraGlassTests.cs" /><!-- #273: the glass limits of the camera -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CampFrameTests.cs" /><!-- t1-camera: the camp frame -->
     <Compile Include="CrowdCardLifeTests.cs" /><!-- #148: the sim card from the real planner; here because Sim.Tests cannot see Life -->

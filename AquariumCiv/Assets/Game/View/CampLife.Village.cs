@@ -1406,12 +1406,13 @@ namespace AquariumCiv.View
             if (town && !sim.State.buildings.Exists(b => b.type == BuildingType.Bakery)) SimLayoutSource.DebugBuild(BuildingType.Bakery);
             sim.State.festivalUntilMonth = sim.State.month; // an ordinary year (tooling.md 2026-11-11: the era's festival evenings override the rest)
             if (kids > 0) sim.DebugAddKids(kids);
+            string barn = sim.Settlement != null && sim.Settlement.FirstOutbuilding() != 0 ? "a barn stands" : "no outbuilding yet"; // #791: every village has a barn (Settlement.IsBarn)
             var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
             if (box != null) box.Rebuild();
             ShowMeDirector.BubblesOn = false;
             PeopleView.DebugSetHour(hour);
             var c = Camp;
-            return r + $"{sim.State.era} at {hour:0.0} h, kids +{kids}; " + (c != null ? c.VillageStatus() : "");
+            return r + $"{sim.State.era} at {hour:0.0} h, kids +{kids}, {barn}; " + (c != null ? c.VillageStatus() : "");
         }
 
         /// <summary>AnimLab: the camera yaw (deg, AnimLabLive's convention) that looks at the front of the nearest standing <paramref name="kind"/>
