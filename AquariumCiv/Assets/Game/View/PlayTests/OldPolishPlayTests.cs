@@ -142,6 +142,11 @@ namespace AquariumCiv.View.PlayTests
         {
             UseLivingLand();
             yield return Village(30f);
+            // #651: no kindling is chopped before the land has a grown wild wood (the chore sits out), and the wild trees come only from the
+            // Keeper's seeds (decisions 2026-11-14, #677 and #724): this box has none after 30 years, so the panel's "Wild tree away" plants one.
+            StringAssert.Contains("away from the Keeper's tree", EcoDebug.WildTrees(false), "a grown wild tree for the kindling");
+            Assert.IsTrue(Sim.TreesGrow && Sim.WoodsExist, "the land has a wood now");
+            yield return Frames(3);
             var pv = People;
             pv.HandDriven = true;
             int seen = 0, under = 0;
