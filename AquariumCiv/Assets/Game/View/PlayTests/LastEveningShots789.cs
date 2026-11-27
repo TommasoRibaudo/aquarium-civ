@@ -30,7 +30,7 @@ namespace AquariumCiv.View.PlayTests
     public class LastEveningShots789 : PlayTestBase
     {
         const int W = 750, H = 1334;
-        const float FrameEvery = 0.1f, MinPersonPx = 56f;
+        const float FrameEvery = 0.1f, PersonPx = 90f;
         static readonly float[] Offsets = { 0f, -30f, 30f, -60f, 60f }, Pitches = { 46f, 58f };
 
         static SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : null;
@@ -90,8 +90,9 @@ namespace AquariumCiv.View.PlayTests
             return Mathf.Abs(cam.WorldToScreenPoint(top).y - cam.WorldToScreenPoint(feet).y);
         }
 
-        /// <summary>The camera on the cast: the target the middle of their bounds, the zoom that fits them in ~60 % of the width and ~38 % of the
-        /// height, closer still when a person would be under <see cref="MinPersonPx"/>. A snap lands at once, else it eases (no jitter).</summary>
+        /// <summary>The camera on the cast: the target the middle of their bounds; the zoom that makes the elder about <see cref="PersonPx"/> tall
+        /// (v2: v1 filled the screen with two dolls ~300 px tall, the fire and the tent out of the frame), wider when the cast would not fit in
+        /// ~75 % of the width and ~50 % of the height. A snap lands at once, else it eases (no jitter).</summary>
         void Frame(CampScene sc, bool snap)
         {
             var rig = Rig;
@@ -106,12 +107,11 @@ namespace AquariumCiv.View.PlayTests
             for (int i = 0; i < (snap ? 4 : 1); i++)
             {
                 var r = ScreenRect(CastPoints(sc, out _));
-                float ext = Mathf.Max(r.width / (0.6f * Screen.width), r.height / (0.38f * Screen.height));
-                float z = rig.zoom * Mathf.Max(ext, 0.05f);
+                float ext = Mathf.Max(r.width / (0.75f * Screen.width), r.height / (0.5f * Screen.height));
                 float px = ElderPx(sc);
-                if (px > 1f && px * rig.zoom / z < MinPersonPx) z = rig.zoom * px / MinPersonPx; // the person stays big enough
+                float z = Mathf.Max(rig.zoom * Mathf.Max(ext, 0.05f), px > 1f ? rig.zoom * px / PersonPx : 0f);
                 z = Mathf.Clamp(z, 0.03f, rig.maxZoom);
-                zoomNow = snap ? z : Mathf.Lerp(zoomNow, z, 0.08f);
+                zoomNow = snap ? z : Mathf.Lerp(zoomNow, z, 0.1f);
                 rig.zoom = zoomNow; rig.Apply(); rig.FitDepthNow();
             }
         }
@@ -207,7 +207,9 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSeconds(2f);
             var sim = Sim; var pv = Pv;
             sim.CleanAll(); // clean glass (the panel's "Clean all")
-            yield return new WaitForSeconds(3f);
+            Debug.Log("[789 shots] " + clip + ": family " + Family(sim));
+            yield return new WaitForSeconds(4f); // the kid is drawn
+
             GlassMotion.Instant = false; // real time
             string r = cheat();
             Debug.Log("[789 shots] " + clip + ": " + r);
@@ -268,6 +270,26 @@ namespace AquariumCiv.View.PlayTests
             Assert.Greater(n, 100, "frames of the scene");
             Assert.GreaterOrEqual(minPx, 45f, "a person about 50 px tall or more");
             CloseSlice();
+        }
+
+        /// <summary>v2: a new living land is five grown-ups with no kids, so the cheat's elder had only a partner (no kid at the knee, no second
+        /// helper). The clips need the whole cast: the oldest grown-up is made the eldest (62) with a partner, a grown child (another grown-up's
+        /// parent set to them) and a grandchild of 7 (the debug panel's "add kids", their parent set to the grown child).</summary>
+        static string Family(SimCore sim)
+        {
+            var grown = sim.State.notables.Where(x => x.alive && x.age >= SimCore.AdultAge).OrderByDescending(x => x.age).ThenBy(x => x.id).ToList();
+            if (grown.Count < 3) return "not enough grown-ups";
+            var e = grown[0];
+            e.age = Mathf.Max(62f, e.age);
+            var p = sim.FindNotable(e.partnerId) is Notable pp && pp.alive ? pp : grown.First(x => x != e && !(sim.FindNotable(x.partnerId) is Notable q && q.alive));
+            e.partnerId = p.id; p.partnerId = e.id;
+            var c = grown.First(x => x != e && x != p);
+            c.parentId = e.id;
+            int before = sim.State.notables.Count;
+            sim.DebugAddKids(1, 7f);
+            var k = sim.State.notables.Skip(before).FirstOrDefault();
+            if (k != null) k.parentId = c.id;
+            return $"{e.name} {e.age:0} (partner {p.name}, child {c.name}, grandchild {k?.name ?? "none"})";
         }
 
         /// <summary>The fire (box x, z): the seat is <see cref="LastEveningScenes.SeatR"/> from it; the elder's first sitting part faces it.</summary>

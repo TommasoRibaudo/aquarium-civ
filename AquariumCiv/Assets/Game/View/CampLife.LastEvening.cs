@@ -35,6 +35,10 @@ namespace AquariumCiv.View
         bool lastEveningSaid;
         /// <summary>A cheat's elder to play now (−1 none) and whether the rule is skipped (a cheat's "play now").</summary>
         int lastEveningCheat = -1; bool lastEveningForce;
+        /// <summary>When the cheat was pressed (the camp clock): "with a dog" gives the dog that frame, and it is drawn only after the camp's step.</summary>
+        float lastEveningCheatAt;
+        /// <summary>A cheat waits up to this long (real s) for the elder's own new dog to be drawn, so it is cast (the first "with a dog" clip had none).</summary>
+        const float LastEveningDogWait = 3f;
 
         void ResetLastEvening()
         {
@@ -89,7 +93,12 @@ namespace AquariumCiv.View
             string busy = LastEveningBusy();
             if (cheat && lastEveningForce) { if (busy != null) { LastEveningWhy = "waits: " + busy; return; } }
             Notable who;
-            if (cheat && lastEveningForce) who = sim.FindNotable(lastEveningCheat) is Notable ch && ch.alive ? ch : null;
+            if (cheat && lastEveningForce)
+            {
+                who = sim.FindNotable(lastEveningCheat) is Notable ch && ch.alive ? ch : null;
+                if (who != null && clock - lastEveningCheatAt < LastEveningDogWait && clock >= lastEveningCheatAt
+                    && sim.DogsOfKeeper(who.id).Any(d => sim.DogStageOf(d) != DogStage.Pup && !DogAt(d.id).HasValue)) { LastEveningWhy = "waits: their dog comes"; return; }
+            }
             else
             {
                 who = sim.ChooseLastEvening(k => LastEveningFree(acts, k), !sim.CatchingUp, busy != null, out string why);
@@ -159,7 +168,7 @@ namespace AquariumCiv.View
         /// (the visit and the spacing; the death set for tonight stays the sim's).</summary>
         public void DebugLastEvening(int elderId, bool force)
         {
-            lastEveningCheat = elderId; lastEveningForce = force; lastEveningDone = long.MinValue; lastEveningLook = float.MinValue;
+            lastEveningCheat = elderId; lastEveningForce = force; lastEveningDone = long.MinValue; lastEveningLook = float.MinValue; lastEveningCheatAt = clock;
         }
     }
 
