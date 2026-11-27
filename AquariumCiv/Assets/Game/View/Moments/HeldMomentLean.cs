@@ -148,34 +148,61 @@ namespace AquariumCiv.View
             try { st.Cast?.Invoke(cast); } catch (Exception exc) { Debug.LogException(exc); }
             Vector2? focus = null;
             try { focus = st.Focus?.Invoke(); } catch (Exception exc) { Debug.LogException(exc); }
+            Vector2? anchor = focus; // the spec's aim: the scene's thing pulled toward its lead (a story), else the cast's own middle (below)
             if (cast.Count > 0 && (focus == null || st.Cast != null && st.Focus != null))
             {   // the middle of the cast's box (a story: the thing and its people), so a lead walking in does not pull the aim off the scene
                 Vector2 lo = cast[0], hi = cast[0];
                 foreach (var q in cast) { lo = Vector2.Min(lo, q); hi = Vector2.Max(hi, q); }
                 focus = (lo + hi) * 0.5f;
+                if (anchor == null) anchor = Median(cast);
             }
             if (focus == null) return false;
-            var f = focus.Value;
-            if (cast.Count == 0) cast.Add(f);
+            if (cast.Count == 0) cast.Add(focus.Value);
             float h = CampFrame.DollHeight * CameraReach.DollScale(cam.zoom, PeopleView.DollScaleAmount);
             Vector3 At(Vector2 p, float up) => box.Root.TransformPoint(new Vector3(p.x, box.SurfaceHeight(p.x, p.y) + up, p.y));
+            if (!Extent(focus.Value, out var fv, out float ex, out float ey)) return false;
+            // the cast doesn't fit the view and the lean never zooms out to make it fit (a lead still walking in from far, somebody at the back
+            // of the box): the box's middle would be empty ground between them, so the lean frames the scene itself (its thing, else the
+            // middle of where most of its people are) and the straggler walks into the frame.
+            if (StoryLean.CastExtent(ex, ey) > 1f && anchor is Vector2 a && (a - focus.Value).sqrMagnitude > 1e-4f && Extent(a, out var av, out float ax, out float ay))
+            { focus = a; fv = av; ex = ax; ey = ay; }
+            var f = focus.Value;
             world = At(f, 0.06f);
-            var fv = c.WorldToViewportPoint(world);
-            if (fv.z <= 0f) return false;
             vx = fv.x; vy = fv.y;
             var foot = c.WorldToScreenPoint(At(f, 0f)); var head = c.WorldToScreenPoint(At(f, h));
             float dollPx = Mathf.Abs(head.y - foot.y);
-            float ex = 0f, ey = 0f;
-            foreach (var p in cast)
-                foreach (float up in new[] { 0f, h })
-                {
-                    var v = c.WorldToViewportPoint(At(p, up));
-                    if (v.z <= 0f) continue;
-                    ex = Mathf.Max(ex, Mathf.Abs(v.x - fv.x) * 2f); ey = Mathf.Max(ey, Mathf.Abs(v.y - fv.y) * 2f);
-                }
             LastDollPx = dollPx; LastExtX = ex; LastExtY = ey;
             zoomTo = StoryLean.ZoomFor(dollPx, c.pixelHeight, cam.zoom, StoryLean.CastExtent(ex, ey), cam.pitch, Mathf.Max(cam.pitch, BoxCamera.LeanPitch), cam.minZoom, PeopleView.DollScaleAmount);
             return true;
+
+            // the viewport point of an aim and the cast's spread round it (both ways, the whole height of a doll)
+            bool Extent(Vector2 at, out Vector3 v0, out float exOut, out float eyOut)
+            {
+                exOut = eyOut = 0f;
+                v0 = c.WorldToViewportPoint(At(at, 0.06f));
+                if (v0.z <= 0f) return false;
+                foreach (var p in cast)
+                    foreach (float up in new[] { 0f, h })
+                    {
+                        var v = c.WorldToViewportPoint(At(p, up));
+                        if (v.z <= 0f) continue;
+                        exOut = Mathf.Max(exOut, Mathf.Abs(v.x - v0.x) * 2f); eyOut = Mathf.Max(eyOut, Mathf.Abs(v.y - v0.y) * 2f);
+                    }
+                return true;
+            }
+        }
+
+        static readonly List<float> sortX = new List<float>(), sortZ = new List<float>();
+
+        /// <summary>Where most of the cast stands: the median of their x and of their z (one far straggler does not move it).</summary>
+        static Vector2 Median(List<Vector2> pts)
+        {
+            sortX.Clear(); sortZ.Clear();
+            foreach (var p in pts) { sortX.Add(p.x); sortZ.Add(p.y); }
+            sortX.Sort(); sortZ.Sort();
+            int n = pts.Count;
+            float Mid(List<float> l) => n % 2 == 1 ? l[n / 2] : (l[n / 2 - 1] + l[n / 2]) * 0.5f;
+            return new Vector2(Mid(sortX), Mid(sortZ));
         }
 
         // ---------------------------------------------------------------- debug (#783)

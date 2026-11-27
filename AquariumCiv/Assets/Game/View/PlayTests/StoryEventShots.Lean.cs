@@ -311,14 +311,17 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>Every held scene from the default view: the camera leans in (a person ~5 % of the screen's height, or the player's floor), the
         /// scene's middle sits in the middle of the view, most of its cast is on screen, yaw is never touched, and when the scene ends the camera
         /// glides back to the default view. Shots: 783/every_{size}_{scene}_before (the lean's first frame) and _after (landed).</summary>
-        IEnumerator EveryHeldSceneLeansIn(int w, int h, string tag)
+        IEnumerator EveryHeldSceneLeansIn(int w, int h, string tag, bool campFrame)
         {
             yield return LivedCamp(10f, pond: true, w: w, h: h);
             var rig = Rig;
-            // the game's own default view on a lived camp is the camp frame (a person ~2 % of the screen), not the whole box the tests open on
-            Debug.Log("[783] every " + tag + ": " + CampFrameView.DebugCampFrame());
-            yield return Until(() => !rig.IsFlying, 6f);
-            yield return Frames(5);
+            if (campFrame)
+            {   // the game's own default view on a lived camp: the camp frame (this compact camp's is at the player's zoom floor: the lean pans)
+                Debug.Log("[783] every " + tag + ": " + CampFrameView.DebugCampFrame());
+                yield return Until(() => !rig.IsFlying, 6f);
+                yield return Frames(5);
+            }
+            // else the whole box the tests open on: the player zoomed out wide, the one big move
             var home = PoseOf(rig);
             float want = StoryLean.ScenePx(Screen.height);
             var report = new System.Text.StringBuilder();
@@ -335,7 +338,8 @@ namespace AquariumCiv.View.PlayTests
                 string r = start();
                 Debug.Log($"[783] every {tag} {name}: {r}");
                 yield return Until(() => HeldMomentLean.Leans > leans || HeldMomentLean.Framed > framed, 10f);
-                if (HeldMomentLean.Leans == leans)
+                bool framedAlready = HeldMomentLean.Leans == leans && HeldMomentLean.Framed > framed; // the spec: a scene already framed moves nothing
+                if (HeldMomentLean.Leans == leans && !framedAlready)
                 {
                     failed.Add($"{name}: no lean ({r}; {HeldMomentLean.LastWhy})");
                     continue;
@@ -358,7 +362,9 @@ namespace AquariumCiv.View.PlayTests
                 Debug.Log($"[783] every {tag} {line}; aim {HeldMomentLean.LastAim} at ({aimV.x:0.00}, {aimV.y:0.00}), pivot {rig.target} (unclamped {want0}), why {HeldMomentLean.LastWhy}; stagings {HeldMomentStage.Instance.StagingCount}; last look {HeldMomentLean.LastLook}; cast {string.Join(" ", leanCast.Select(q => q.ToString("0.00")))}");
                 report.AppendLine(line);
                 bool atFloor = rig.zoom <= rig.minZoom + 0.015f;
-                if (rig.zoom > home.zoom - 0.02f) failed.Add(name + ": it did not lean in");
+                bool homeAtFloor = home.zoom <= rig.minZoom + 0.03f;
+                if (!homeAtFloor && rig.zoom > home.zoom - 0.02f) failed.Add(name + ": it did not lean in");
+                if (rig.zoom > home.zoom + 0.02f) failed.Add(name + ": it zoomed out");
                 if (Mathf.Abs(rig.yaw - home.yaw) > 0.5f) failed.Add(name + ": yaw moved");
                 if (after < want * (atFloor ? 0.55f : 0.7f)) failed.Add($"{name}: a person is {after:0} px, under {(atFloor ? 55 : 70)} % of the {want:0} px target");
                 // a walking scene is re-looked every second, so one frame can catch it between two looks: watch it for 3 s. A scene at the front glass
@@ -388,9 +394,12 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest, Timeout(1200000)]
-        public IEnumerator Lean783_EveryHeldScene_LeansIn_750x1334() => EveryHeldSceneLeansIn(750, 1334, "p750");
+        public IEnumerator Lean783_EveryHeldScene_LeansIn_750x1334() => EveryHeldSceneLeansIn(750, 1334, "p750", campFrame: true);
 
         [UnityTest, Timeout(1200000)]
-        public IEnumerator Lean783_EveryHeldScene_LeansIn_1179x2556() => EveryHeldSceneLeansIn(1179, 2556, "p1179");
+        public IEnumerator Lean783_EveryHeldScene_FromTheWholeBox_750x1334() => EveryHeldSceneLeansIn(750, 1334, "p750box", campFrame: false);
+
+        [UnityTest, Timeout(1200000)]
+        public IEnumerator Lean783_EveryHeldScene_LeansIn_1179x2556() => EveryHeldSceneLeansIn(1179, 2556, "p1179", campFrame: true);
     }
 }
