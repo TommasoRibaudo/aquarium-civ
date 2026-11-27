@@ -259,8 +259,8 @@ namespace AquariumCiv.View.PlayTests
                     Vector2 door = DoorOf(sc);
                     // v4: no search here (the search holds the scene's clock but the dolls' steps run on, so the walk was over before the first
                     // frame) and not from beyond the door (the tent stood in front of them): from the side, a little ahead of them
-                    // v5: from in front of them (the door's side, 20 degrees round so the tent is not in front of them): a helper each side, the arms linked
-                    Recut(sc, YawFrom(WorldDir((door - sc.focus).normalized)) + 20f, "the walk home");
+                    // v5: from in front of them (the door's side, 10 degrees round so the tent is not in front of them): a helper each side, the arms linked
+                    Recut(sc, YawFrom(WorldDir((door - sc.focus).normalized)) + 10f, "the walk home");
                 }
                 if (!doorAimed && st >= tDoor - 0.2f)
                 {

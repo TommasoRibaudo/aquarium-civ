@@ -375,7 +375,8 @@ namespace AquariumCiv.View
             {
                 int i = helpers[h];
                 var end = atDoor + (Vector2.Dot(stand[h] - seat, across) >= 0f ? across : -across) * Beside;
-                T.PacedWalk(ms[i], tStood, tDoor, stand[h], end, end + dir, DollStyle.Stand, PairWalk(LeftOf(end, end + dir, atDoor)), (end - stand[h]).magnitude / Mathf.Max(0.1f, walk - 0.25f));
+                var st0 = seat + (end - atDoor); // v2: abreast of the elder from the first step (from the help-up spot it was a diagonal the whole walk)
+                T.PacedWalk(ms[i], tStood, tDoor, st0, end, end + dir, DollStyle.Stand, PairWalk(LeftOf(end, end + dir, atDoor)), (end - st0).magnitude / Mathf.Max(0.1f, walk - 0.25f));
             }
             if (kneeKid >= 0)
             {
@@ -384,7 +385,8 @@ namespace AquariumCiv.View
                 var near = helpers.Count > 1 ? seat - toFire * 0.1f - side * 0.05f : seat - side * (Beside + 0.04f) - toFire * 0.03f; // v2: behind, clear of the helper there
                 T.Part(ms[i], tRise, tStood, near, seat, DollStyle.Stand, null, KidWalk);
                 var end = atDoor + kidSide;
-                T.PacedWalk(ms[i], tStood, tDoor, near, end, end + dir, DollStyle.Stand, HoldHand(LeftOf(end, end + dir, atDoor)), (end - near).magnitude / Mathf.Max(0.1f, walk - 0.25f));
+                var k0 = seat + kidSide; // v2: a step behind from the start (from the rise spot the kid walked ahead of them)
+                T.PacedWalk(ms[i], tStood, tDoor, k0, end, end + dir, DollStyle.Stand, HoldHand(LeftOf(end, end + dir, atDoor)), (end - k0).magnitude / Mathf.Max(0.1f, walk - 0.25f));
             }
             if (dog)
             {
