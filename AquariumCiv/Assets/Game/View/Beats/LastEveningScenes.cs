@@ -399,7 +399,7 @@ namespace AquariumCiv.View
             var dir = Unit((c.wave ?? c.door) - seat, toCam);
             var across = Across(dir);
             var atDoor = c.wave ?? c.door - dir * 0.05f;
-            var waveFace = atDoor + Unit(Unit(c.fire - atDoor, toCam) + toCam * 0.8f, toCam); // to the fire, turned to the camera
+            var waveFace = atDoor + Unit(Unit(c.fire - atDoor, toCam) + toCam * 1.3f, toCam); // to the fire, turned well round to the camera (a fire behind the tent: about 40 degrees off it)
             float walk = WalkTime(seat, atDoor, frail);
             s.d = tStood;
             float tDoor = tStood + walk;

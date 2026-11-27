@@ -703,7 +703,7 @@ namespace AquariumCiv.View
             {
                 playing = false;
                 if (campMoves) target = campPart.pos;
-                if (campPart.face != default) face = campPart.face;
+                if (campPart.face != default) face = campPart.face; // #789 tester: and it wins over the planner's chat partner (below)
             }
             // #363 B7: a pair moment has them (hand over, walk together, hug): the pair's shared clock says where they stand and what they face.
             if (hunting && a.hunt == HuntPhase.TakeSpear) HandSpear(d, a, time);
@@ -929,7 +929,8 @@ namespace AquariumCiv.View
             else if (walking && !((hunting || tenting) && huntFace.HasValue)) { if (d.velocity.sqrMagnitude > 0.05f * 0.05f) want = Yaw(Vector2.zero, d.velocity); }
             else
             {
-                if (!a.partner.IsNone && dolls.TryGetValue(a.partner.Key, out var p) && p.placed && (p.pos - d.pos).sqrMagnitude < 0.6f * 0.6f && p.pos != d.pos)
+                if (camping && campPart.face != default && face.HasValue) { if ((face.Value - d.pos).sqrMagnitude > 1e-5f) want = Yaw(d.pos, face.Value); } // #789 tester (2026-11-27): a camp scene says what each one faces; the planner's partner turned the seated elder and partner to each other, 89 degrees off the scene's facing
+                else if (!a.partner.IsNone && dolls.TryGetValue(a.partner.Key, out var p) && p.placed && (p.pos - d.pos).sqrMagnitude < 0.6f * 0.6f && p.pos != d.pos)
                 {
                     want = Yaw(d.pos, p.pos);
                     // #767: a fisher talking keeps the rod over the water: the shoulders turn a little toward the partner, no more (the head is part of the body mesh, so it cannot turn alone)

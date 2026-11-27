@@ -136,6 +136,7 @@ namespace AquariumCiv.View.PlayTests
                     string name = beats[nextBeat++].name;
                     Debug.Log($"[789 lean] shot {name} at t {t:0.0}: zoom {rig.zoom:0.00} pitch {rig.pitch:0} yaw {rig.yaw:0}; lean {HeldMomentLean.LastWhy}; look {HeldMomentLean.LastLook}");
                     if (pv.TryGetDollPosition(who, out var wp)) Debug.Log($"[789 lean] {name}: elder at {wp}, viewport {Viewport(wp)}, facing off {FacingOff(who):0}");
+                    if (pv.TryGetDollTop(who, out var wtop)) Debug.Log($"[789 lean] {name}: in front of the elder: {Occluders(wtop)}");
                     yield return Shot("789live/" + name);
                 }
                 yield return null;
@@ -153,6 +154,25 @@ namespace AquariumCiv.View.PlayTests
             Assert.GreaterOrEqual(elderFacing, seatedN * 0.8f, "(c) the elder faces the camera while seated: " + report);
             if (partner > 0) Assert.GreaterOrEqual(mateFacing, seatedN * 0.8f, "(c) the partner faces the camera while seated: " + report);
             AssertNoErrors("the last evening");
+        }
+
+        /// <summary>Diagnostics: the renderers drawn over a world point (their screen box holds it and they are nearer the camera).</summary>
+        static string Occluders(Vector3 world)
+        {
+            var cam = Camera.main; var sp = cam.WorldToScreenPoint(world); float dist = Vector3.Distance(cam.transform.position, world);
+            var sb = new StringBuilder();
+            foreach (var rr in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (!rr.enabled || !rr.gameObject.activeInHierarchy) continue;
+                var b = rr.bounds; if (b.Contains(world)) continue;
+                float near = Vector3.Distance(cam.transform.position, b.ClosestPoint(cam.transform.position));
+                if (near > dist - 0.05f) continue;
+                float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+                for (int i = 0; i < 8; i++) { var c = b.center + Vector3.Scale(b.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1)); var s = cam.WorldToScreenPoint(c); x0 = Mathf.Min(x0, s.x); x1 = Mathf.Max(x1, s.x); y0 = Mathf.Min(y0, s.y); y1 = Mathf.Max(y1, s.y); }
+                if (sp.x < x0 || sp.x > x1 || sp.y < y0 || sp.y > y1) continue;
+                sb.Append($"{rr.name}/{(rr.transform.parent != null ? rr.transform.parent.name : "-")} c{b.center} s{b.size}; ");
+            }
+            return sb.ToString();
         }
 
         /// <summary>Diagnostics: what stands round a spot (renderers whose bounds come within 0.6 u), and the camera.</summary>
