@@ -1480,8 +1480,8 @@ namespace AquariumCiv.View
             return v.shownCrowd.Count > 0 && v.OpenCrowd(v.shownCrowd[0].crowdIndex, true) ? "crowd card: " + v.Crowd.name : "nobody in the crowd on view";
         }
 
-        /// <summary>Shows a tab; Friends and Story stand on the tall card only (#674), so they expand it first.</summary>
-        public void ShowTab(CardTab tab) { if (!IsOpen) return; if (tab != CardTab.Family) SetExpanded(true); tabs.Select((int)tab); }
+        /// <summary>Shows a tab. The tabs stand on the tall card only (#674), so it expands first, Family included (#774).</summary>
+        public void ShowTab(CardTab tab) { if (!IsOpen) return; SetExpanded(true); tabs.Select((int)tab); }
 
         /// <summary>Debug: the open card's next tab (Family, Friends, Story).</summary>
         public static string DebugNextTab()
