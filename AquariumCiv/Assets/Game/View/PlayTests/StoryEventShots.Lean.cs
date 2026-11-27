@@ -312,6 +312,19 @@ namespace AquariumCiv.View.PlayTests
             return true;
         }
 
+        /// <summary>#796: a leaned scene's focus must sit within this share of the view (each way) of the middle, as a median over 3 s. The lean
+        /// re-aims once a second when the focus drifts past <see cref="StoryLean.FollowX"/> / <see cref="StoryLean.FollowY"/>, and a lead walking
+        /// between two looks moves it a few hundredths more; the old 0.22 / 0.2 re-aim band let a gathered cast settle 0.13 to 0.25 off.</summary>
+        const float CentreTol = 0.1f;
+
+        static float Median(System.Collections.Generic.List<float> l)
+        {
+            if (l.Count == 0) return 0f;
+            l.Sort();
+            int n = l.Count;
+            return n % 2 == 1 ? l[n / 2] : (l[n / 2 - 1] + l[n / 2]) * 0.5f;
+        }
+
         static int OnScreen()
         {
             int on = 0;
@@ -390,10 +403,23 @@ namespace AquariumCiv.View.PlayTests
                 // can't be centred (the pivot stays out of the pane, #273): there the pivot sits at its bound and only the cast on screen counts.
                 bool clamped = Vector3.Distance(rig.target, want0) > 0.05f;
                 int seen = 0, centred = 0;
+                // #796: where the lean's own focus sits (the way it reads it each second), and whether the pivot is held at the glass then
+                var offX = new System.Collections.Generic.List<float>(); var offY = new System.Collections.Generic.List<float>();
+                bool atBound = false;
                 for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 3f; )
                 {
                     if (SceneNow(out var mw)) { var vw = ViewportOf(mw); seen++; if (vw.z > 0f && vw.x >= 0.2f && vw.x <= 0.8f && vw.y >= 0.2f && vw.y <= 0.8f) centred++; }
+                    if (HeldMomentLean.DebugFocusViewport(out var fv)) { offX.Add(Mathf.Abs(fv.x - 0.5f)); offY.Add(Mathf.Abs(fv.y - 0.5f)); }
+                    if (!rig.IsFlying && Vector3.Distance(rig.target, BoxCameraMath.PivotOver(HeldMomentLean.LastAim, rig.target.y, rig.yaw, rig.pitch)) > 0.05f) atBound = true;
                     yield return null;
+                }
+                if (!framedAlready)
+                {
+                    float mx = Median(offX), my = Median(offY);
+                    Debug.Log($"[796] {tag} {name}: the lean's focus off the middle by {mx:0.000} across, {my:0.000} up (median of {offX.Count} frames){(atBound ? ", the pivot held at the glass" : "")}");
+                    report.AppendLine($"  {name}: focus off {mx:0.00} x {my:0.00}{(atBound ? " (glass)" : "")}");
+                    if (offX.Count == 0) failed.Add($"{name}: no held lean to read the focus from");
+                    else if (!atBound && (mx > CentreTol || my > CentreTol)) failed.Add($"{name}: the scene's focus sits off the middle ({mx:0.00} across, {my:0.00} up, over {CentreTol})");
                 }
                 Debug.Log($"[783] every {tag} {name}: middle in the middle 60 % for {centred}/{seen} frames of 3 s{(clamped ? " (the pivot at the glass bound)" : "")}");
                 report.AppendLine($"  {name}: centred {centred}/{seen} frames{(clamped ? ", pivot at the glass bound" : "")}");
