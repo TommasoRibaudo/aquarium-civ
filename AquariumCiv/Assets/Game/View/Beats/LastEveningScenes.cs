@@ -24,6 +24,8 @@ namespace AquariumCiv.View
         /// and the spot at the door the camera sees (the tent's shown side; null: just short of the door, as before).</summary>
         public readonly List<Vector2> clear = new();
         public Vector2? wave;
+        /// <summary>The camera sees a seat whole (in the box, the front glass's top edge not across the family); null: every seat is seen.</summary>
+        public System.Func<Vector2, bool> seen;
         /// <summary>The elder's walk as a share of the usual pace (#788's frail walk, about 0.4).</summary>
         public float pace = LastEveningScenes.FrailPace;
     }
@@ -40,8 +42,10 @@ namespace AquariumCiv.View
         /// <see cref="SeatTurns"/> that keeps the racks' legs (<see cref="LastEveningCast.clear"/>) from between the family and the camera.</summary>
         public const float SeatR = 0.28f;
         public static readonly float[] SeatTurns = { 0f, 20f, -20f, 40f, -40f, 60f, -60f, 80f, -80f };
+        /// <summary>How far beyond the fire the seat may go when nearer it the camera would not see them whole (the glass's top edge across them).</summary>
+        public static readonly float[] SeatRs = { SeatR, 0.36f, 0.45f };
         /// <summary>The family round the seat as the camera sees it: this far either side across the view, from this far behind the seat.</summary>
-        public const float FamilyHalf = 0.22f, FamilyBehind = 0.2f;
+        public const float FamilyHalf = 0.22f, FamilyBehind = 0.05f;
         /// <summary>The kin sit this close round the elder (0.12 to 0.2 u), on the camera's half; the partner right beside them, within an arm's reach
         /// (AnimBench: at 0.16 u the hand fell short of the shoulder). v2 (2026-11-27, the hand did not read): side by side with the elder, both
         /// facing the fire, 0.11 u apart (shoulder to shoulder, not inside each other), so the arm laid across the elder's shoulder shows from the front.</summary>
@@ -259,17 +263,20 @@ namespace AquariumCiv.View
 
         // ================================================================== B82.a the scene
         /// <summary>The elder's seat at the fire (box x, z): on the far side from the camera (see <see cref="SeatR"/>).</summary>
-        public static Vector2 SeatOf(Vector2 fire, Vector2 toCam, IReadOnlyList<Vector2> clear = null)
+        public static Vector2 SeatOf(Vector2 fire, Vector2 toCam, IReadOnlyList<Vector2> clear = null, System.Func<Vector2, bool> seen = null)
         {
+            // the tester 2026-11-27: every far seat round the fire (a turn, a little farther out), scored: a rack leg among the family or in front of
+            // them costs most, then a spot the camera does not see whole (<paramref name="seen"/>: the front glass's top edge across them, or out of
+            // the box), then the turn and the distance (straight beyond the fire at SeatR is best)
             var tc = Unit(toCam, Vector2.down);
-            Vector2 best = fire - tc * SeatR; int bestHid = int.MaxValue;
-            foreach (float a in SeatTurns)
-            {
-                var s = fire - Rot(tc, a) * SeatR;
-                int hid = Hidden(s, tc, clear);
-                if (hid < bestHid) { best = s; bestHid = hid; }
-                if (hid == 0) break;
-            }
+            Vector2 best = fire - tc * SeatR; float bestCost = float.MaxValue;
+            foreach (float r in SeatRs)
+                foreach (float a in SeatTurns)
+                {
+                    var s = fire - Rot(tc, a) * r;
+                    float cost = 10f * Hidden(s, tc, clear) + (seen != null && !seen(s) ? 5f : 0f) + Mathf.Abs(a) / 100f + (r - SeatR) * 4f;
+                    if (cost < bestCost - 1e-4f) { best = s; bestCost = cost; }
+                }
             return best;
         }
 
@@ -293,7 +300,7 @@ namespace AquariumCiv.View
         public static CampScene Evening(LastEveningCast c, float t0)
         {
             var toCam = Unit(c.toCam, Vector2.down);
-            var seat = SeatOf(c.fire, toCam, c.clear);
+            var seat = SeatOf(c.fire, toCam, c.clear, c.seen);
             // the tester 2026-11-27: they face between the fire and the camera (the fire itself when the seat is straight beyond it), so a seat turned
             // round the fire away from a rack still shows their fronts; everything "toward the fire" below is this way
             var toFire = Unit(Unit(c.fire - seat, toCam) + toCam, toCam);

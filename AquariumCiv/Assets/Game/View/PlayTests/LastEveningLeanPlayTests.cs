@@ -104,7 +104,7 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log($"[789 lean] beats: hand {tHand:0.0} stars {tStars:0.0} rise {tRise:0.0} stood {tStood:0.0} door {tDoor:0.0} wave {tWave:0.0} in {tIn:0.0} length {sc.Length:0.0}; seat {sc.focus}; yaw {rig.yaw:0} pitch {rig.pitch:0} zoom {rig.zoom:0.00} floor {rig.minZoom:0.00}");
             Debug.Log("[789 lean] geo: " + pv.Camp.LastEveningGeo);
             var frames = new StringBuilder();
-            int seen = 0, centred = 0, seatedN = 0, elderFacing = 0, mateFacing = 0;
+            int seen = 0, centred = 0, seatedN = 0, elderFacing = 0, mateFacing = 0, underRim = 0;
             var px = new List<float>();
             float started = Time.time;
             while (pv.Camp.Scenes.Contains(sc) && Time.time - started < 200f)
@@ -126,6 +126,7 @@ namespace AquariumCiv.View.PlayTests
                         seatedN++;
                         px.Add(StandingPx(lead));
                         float fe = FacingOff(who), fm = partner > 0 ? FacingOff(mate) : 0f;
+                        if (pv.TryGetDollFeet(who, out var feetW) && pv.TryGetDollTop(who, out var topW) && (RimAcross(feetW) || RimAcross(topW) || RimAcross((feetW + topW) * 0.5f))) underRim++;
                         if (fe >= 0f && fe <= FacingMax) elderFacing++;
                         if (fm >= 0f && fm <= FacingMax) mateFacing++;
                         if (seatedN % 30 == 1) frames.AppendLine($"t {t:0.0}: middle ({v.x:0.00}, {v.y:0.00}) elder px {px[px.Count - 1]:0} facing off: elder {fe:0} partner {fm:0}; zoom {rig.zoom:0.00} pitch {rig.pitch:0}");
@@ -145,7 +146,7 @@ namespace AquariumCiv.View.PlayTests
             px.Sort();
             float medPx = px.Count > 0 ? px[px.Count / 2] : 0f, want = StoryLean.ScenePx(Screen.height);
             bool atFloor = rig.minZoom > 0f && HeldMomentLean.LastZoomTo <= rig.minZoom + 0.015f;
-            string report = $"leans {HeldMomentLean.Leans - leans0} ({HeldMomentLean.LastWhy}); centred {centred}/{seen}; elder {medPx:0} px (goal {want:0}, at the floor {atFloor}, zoomTo {HeldMomentLean.LastZoomTo:0.00}); seated {seatedN}: elder facing {elderFacing}, partner facing {mateFacing}; yaw {yaw0:0} -> {rig.yaw:0}, zoom {zoom0:0.00}\n{frames}";
+            string report = $"leans {HeldMomentLean.Leans - leans0} ({HeldMomentLean.LastWhy}); centred {centred}/{seen}; under the glass's top edge {underRim}/{seatedN}; elder {medPx:0} px (goal {want:0}, at the floor {atFloor}, zoomTo {HeldMomentLean.LastZoomTo:0.00}); seated {seatedN}: elder facing {elderFacing}, partner facing {mateFacing}; yaw {yaw0:0} -> {rig.yaw:0}, zoom {zoom0:0.00}\n{frames}";
             Debug.Log("[789 lean] " + report);
             Assert.Greater(HeldMomentLean.Leans, leans0, "the last evening takes the lean: " + report);
             Assert.AreEqual(yaw0, rig.yaw, 0.5f, "yaw is never touched");
@@ -153,7 +154,20 @@ namespace AquariumCiv.View.PlayTests
             Assert.GreaterOrEqual(medPx, atFloor ? want * 0.55f : want * 0.7f, "(b) the elder is tall enough: " + report);
             Assert.GreaterOrEqual(elderFacing, seatedN * 0.8f, "(c) the elder faces the camera while seated: " + report);
             if (partner > 0) Assert.GreaterOrEqual(mateFacing, seatedN * 0.8f, "(c) the partner faces the camera while seated: " + report);
+            Assert.LessOrEqual(underRim, seatedN * 0.2f, "the front glass's top edge is not across the elder while they sit: " + report);
             AssertNoErrors("the last evening");
+        }
+
+        /// <summary>Is the front glass's top edge (a bright band, with the lid seen edge-on) drawn across this world point? Its screen row is within
+        /// a few px of the point's, and it is nearer the camera.</summary>
+        static bool RimAcross(Vector3 world)
+        {
+            var box = Box; var cam = Camera.main;
+            var local = box.Root.InverseTransformPoint(world);
+            var back = (box.Root.InverseTransformPoint(cam.transform.position) - local).normalized; // the real ray to the camera
+            if (back.z > -1e-3f) return false;
+            float t = (Land.CZ - (Land.HZ + 0.075f) - local.z) / back.z;
+            return Mathf.Abs(local.y + back.y * t - Land.GlassTop) < 0.06f;
         }
 
         /// <summary>Diagnostics: the renderers drawn over a world point (their screen box holds it and they are nearer the camera).</summary>

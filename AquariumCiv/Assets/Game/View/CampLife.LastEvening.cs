@@ -146,8 +146,9 @@ namespace AquariumCiv.View
                 c.clear.Add(m); c.clear.Add(m + al); c.clear.Add(m - al);
             }
             if (HideRackAt(out var hm, out var ha)) { ha *= CampSpots.RackHalfLength; c.clear.Add(hm); c.clear.Add(hm + ha); c.clear.Add(hm - ha); }
+            c.seen = SeenWhole;
             if (NearestTent(c.door, 0.5f, out var tent)) { c.door = tent.look; c.wave = tent.look + tent.lookOut * WaveOut; }
-            LastEveningGeo = $"fire {fire} toCam {c.toCam} door {c.door} wave {c.wave} clear [{string.Join(" ", c.clear)}] seat {LastEveningScenes.SeatOf(fire, c.toCam, c.clear)}";
+            LastEveningGeo = $"fire {fire} toCam {c.toCam} door {c.door} wave {c.wave} clear [{string.Join(" ", c.clear)}] seat {LastEveningScenes.SeatOf(fire, c.toCam, c.clear, c.seen)} (straight beyond seen whole: {SeenWhole(fire - c.toCam.normalized * LastEveningScenes.SeatR)})";
             // the dog: the elder's own, else a grown one, if one is drawn and free
             Dog dog = null;
             LastEveningDogNote = $"{Time.unscaledTime - lastEveningCheatAt:0.0} s after the cheat; own dogs:";
@@ -185,6 +186,30 @@ namespace AquariumCiv.View
         }
 
         Vector2 lastEveningDoor;
+        /// <summary>The front glass's top edge and the lid seen edge-on (a bright band): this far either side of its height, a doll is crossed by it.</summary>
+        const float RimBand = 0.09f;
+
+        /// <summary>#789 tester (2026-11-27): does the camera see the family round <paramref name="seat"/> whole? In the box, and the front glass's top
+        /// edge never across them: from the player's pitch (the #783 lean keeps it at the zoom floor) the ray from a doll's feet and head to the
+        /// camera crosses the front pane's plane well under or over its top. At 34 degrees in seed 4242 the edge ran through the far side of the fire.</summary>
+        bool SeenWhole(Vector2 seat)
+        {
+            var box = LandBox; var cam = Camera.main;
+            if (box == null || cam == null) return true;
+            var back = box.Root.InverseTransformDirection(-cam.transform.forward);
+            if (back.z > -1e-3f) return true; // the camera is not in front of the box
+            var across = new Vector2(-back.z, back.x).normalized;
+            float front = Land.CZ - (Land.HZ + 0.075f), head = CampFrame.DollHeight * 1.4f;
+            foreach (float side in new[] { -0.15f, 0f, 0.15f })
+            {
+                var q = seat + across * side;
+                if (!Terrain.InBox(q.x, q.y, Terrain.GlassMargin + 0.1f)) return false;
+                float t = (front - q.y) / back.z, ground = box.SurfaceHeight(q.x, q.y);
+                foreach (float up in new[] { 0f, head * 0.5f, head })
+                    if (Mathf.Abs(ground + up + back.y * t - Land.GlassTop) < RimBand) return false;
+            }
+            return true;
+        }
         /// <summary>The wave this far out from the tent's shown side (box units) [est].</summary>
         const float WaveOut = 0.07f;
         /// <summary>Tests: where the last cast put the fire, the door, the wave and the seat, and what it kept clear.</summary>
