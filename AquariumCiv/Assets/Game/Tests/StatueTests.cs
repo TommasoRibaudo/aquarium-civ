@@ -181,6 +181,55 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(StatueSpot.Find(null, null, out _, out _));
         }
 
+        /// <summary>#798: a fence whose corner sits 0.35 u from the first choice (outside the 0.2 u clear ring, so the old rule kept it there):
+        /// the statue moves until the fence and its corner are <see cref="StatueSpot.FenceRoom"/> away. Hemmed in on every side, the old rule stands.</summary>
+        [Test]
+        public void Spot_KeepsRoomForThePeopleRoundIt_FromAFenceAndItsCorner()
+        {
+            var m = Map();
+            Assert.IsTrue(StatueSpot.Find(m, null, out float x0, out float z0));
+            // a 0.6 u square field, its near corner 0.35 u out from the first choice, diagonally on the camera's side
+            float k = 0.35f / 1.4142f, half = 0.3f;
+            var fence = new StatueSpot.Fence { x = x0 + k + half, z = z0 - k - half, hw = half, hd = half, yaw = 0f };
+            Assert.AreEqual(0.35f, fence.DistanceTo(x0, z0), 0.01f, "the corner is 0.35 u from the first choice");
+            Assert.IsTrue(StatueSpot.Fits(m, x0, z0, null), "the old rule: no lot cell, so the first choice fits");
+            var fences = new List<StatueSpot.Fence> { fence };
+            Assert.IsFalse(StatueSpot.Fits(m, x0, z0, null, fences), "pressed against the fence's corner");
+            Assert.IsTrue(StatueSpot.Find(m, null, out float x, out float z, fences), "another spot on the ring");
+            Assert.GreaterOrEqual(fence.DistanceTo(x, z), StatueSpot.FenceRoom - 1e-3f, "room for the plinth and the family's half ring");
+            float d = Terrain.Dist(x, z, m.greenX, m.greenZ);
+            Assert.That(d, Is.InRange(StatueSpot.RingNear - 0.06f, StatueSpot.RingFar + 0.06f), "still on the green's ring");
+            // a rotated fence: the distance is to its sides and corners, not its bounding box
+            var turned = new StatueSpot.Fence { x = 0f, z = 0f, hw = 0.3f, hd = 0.3f, yaw = 45f };
+            Assert.AreEqual(1f - 0.3f * 1.4142f, turned.DistanceTo(1f, 0f), 0.01f, "to the corner of a fence turned 45 degrees");
+            Assert.AreEqual(0f, turned.DistanceTo(0.1f, 0.1f), 1e-4f, "inside the field");
+            // fences all round the green: no spot has the room, so the statue still stands where the old rule puts it
+            var all = new List<StatueSpot.Fence> { new StatueSpot.Fence { x = m.greenX, z = m.greenZ, hw = 3f, hd = 3f } };
+            Assert.IsTrue(StatueSpot.Find(m, null, out float fx, out float fz, all));
+            Assert.AreEqual(x0, fx); Assert.AreEqual(z0, fz);
+        }
+
+        /// <summary>#798 on a real village: a field laid with its fence corner 0.35 u from where the statue would stand (its cells not marked, as
+        /// a fence line can run just past the clear ring's cells). The site works out again away from it, with room for the people round the plinth.</summary>
+        [Test]
+        public void TheStatuesSite_OnARealVillage_KeepsRoomFromAFieldsFenceCorner()
+        {
+            var sim = Village(86);
+            Months(sim, 6 * SimConfig.MonthsPerYear);
+            Assert.IsTrue(sim.FindStatueSite(out float x0, out float z0, out _));
+            float k = 0.35f / 1.4142f, half = 0.3f;
+            var field = new Lot { id = 9001, kind = LotKind.Farm, x = x0 + k + half + StatueSpot.FenceInset, z = z0 - k - half - StatueSpot.FenceInset, w = 2f * half + 2f * StatueSpot.FenceInset, d = 2f * half + 2f * StatueSpot.FenceInset };
+            sim.Settlement.Lots.Add(field);
+            // a reload works the spot out again from the settlement
+            var loaded = new SimCore(sim.Config, JsonUtility.FromJson<SimState>(JsonUtility.ToJson(sim.State)));
+            Assert.IsTrue(loaded.Settlement.Lots.Exists(l => l.id == 9001), "the field is in the saved settlement");
+            Assert.IsTrue(loaded.FindStatueSite(out float x, out float z, out _), "the statue still stands");
+            // the distance to the fence (0.03 u inside the lot's edge) and its corners
+            float ox = System.Math.Max(0f, System.Math.Abs(x - field.x) - half), oz = System.Math.Max(0f, System.Math.Abs(z - field.z) - half);
+            float d = (float)System.Math.Sqrt(ox * ox + oz * oz);
+            Assert.GreaterOrEqual(d, StatueSpot.FenceRoom - 1e-3f, $"room round the plinth: the fence's corner is {d:0.00} u from the statue at ({x:0.00}, {z:0.00}), first ({x0:0.00}, {z0:0.00})");
+        }
+
         [Test]
         public void Face_TowardTheGreensCentre_ElseTurnedTo45DegreesSoItsFaceShows()
         {

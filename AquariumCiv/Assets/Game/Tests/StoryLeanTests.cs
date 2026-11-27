@@ -121,6 +121,10 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(StoryLean.NeedsFollow(0.5f, 0.5f));
             Assert.IsTrue(StoryLean.NeedsFollow(0.8f, 0.5f));
             Assert.IsTrue(StoryLean.NeedsFollow(0.5f, 0.75f));
+            // #796: a scene that settles a tenth of the screen off the middle is re-aimed (it sat at 0.68 across, never followed)
+            Assert.IsTrue(StoryLean.NeedsFollow(0.6f, 0.5f), "a tenth off across");
+            Assert.IsTrue(StoryLean.NeedsFollow(0.5f, 0.4f), "a tenth off up");
+            Assert.IsFalse(StoryLean.NeedsFollow(0.55f, 0.46f), "a few hundredths: left alone, no jitter");
             Assert.IsFalse(StoryLean.LeftTheFrame(0.8f, 0.5f), "following is not leaving");
             Assert.IsTrue(StoryLean.LeftTheFrame(0.98f, 0.5f));
             Assert.IsTrue(StoryLean.LeftTheFrame(0.5f, 0.02f));
