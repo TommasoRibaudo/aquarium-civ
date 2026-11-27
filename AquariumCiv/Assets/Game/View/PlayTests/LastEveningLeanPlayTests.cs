@@ -102,7 +102,7 @@ namespace AquariumCiv.View.PlayTests
             };
             int nextBeat = 0;
             Debug.Log($"[789 lean] beats: hand {tHand:0.0} stars {tStars:0.0} rise {tRise:0.0} stood {tStood:0.0} door {tDoor:0.0} wave {tWave:0.0} in {tIn:0.0} length {sc.Length:0.0}; seat {sc.focus}; yaw {rig.yaw:0} pitch {rig.pitch:0} zoom {rig.zoom:0.00} floor {rig.minZoom:0.00}");
-            LogNear(sc.focus, "the seat");
+            Debug.Log("[789 lean] geo: " + pv.Camp.LastEveningGeo);
             var frames = new StringBuilder();
             int seen = 0, centred = 0, seatedN = 0, elderFacing = 0, mateFacing = 0;
             var px = new List<float>();
@@ -135,7 +135,7 @@ namespace AquariumCiv.View.PlayTests
                 {
                     string name = beats[nextBeat++].name;
                     Debug.Log($"[789 lean] shot {name} at t {t:0.0}: zoom {rig.zoom:0.00} pitch {rig.pitch:0} yaw {rig.yaw:0}; lean {HeldMomentLean.LastWhy}; look {HeldMomentLean.LastLook}");
-                    if (name == "6_wave" && pv.TryGetDollPosition(who, out var wp)) LogNear(wp, "the wave");
+                    if (pv.TryGetDollPosition(who, out var wp)) Debug.Log($"[789 lean] {name}: elder at {wp}, viewport {Viewport(wp)}, facing off {FacingOff(who):0}");
                     yield return Shot("789live/" + name);
                 }
                 yield return null;

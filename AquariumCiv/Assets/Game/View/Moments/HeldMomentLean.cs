@@ -10,7 +10,8 @@ namespace AquariumCiv.View
     /// #783 (docs/design/783-story-camera.md, option A, user 2026-11-26: every held scene): the camera leans in at a held scene's start and
     /// eases back after. It reuses the arrivals' lean (<see cref="BoxCamera.LeanIn"/>: 1.4 s smoother-step, pitch to 52 at most, yaw untouched,
     /// the way home is the player's own pose saved at the start, <see cref="BoxCamera.ReleaseLean"/> then the glide back) and adds only the
-    /// scene's own aim: <see cref="CampLife.FocusNow"/> for a story, the cast's middle for the staged ceremonies.
+    /// scene's own aim: <see cref="CampLife.FocusNow"/> for a story, the cast's middle for the staged ceremonies. A held camp scene the stage does
+    /// not play (#789's last evening) takes it the same way through <see cref="BeginScene"/>.
     /// <list type="bullet">
     /// <item>Only when <see cref="GlassVoice.CameraFree"/> (no sheet, card, wipe, tool, photo mode, Show me), never while following or while a
     /// finger moves the camera, never for the box-wide festival (no focus) or a scene with no cast drawn. Hunts are not held moments (#426).</item>
@@ -37,8 +38,10 @@ namespace AquariumCiv.View
         /// <summary>A lean holds the camera for a scene now.</summary>
         public static bool Holding => cur != null;
 
-        sealed class Pending { public MomentStaging staging; public float until, next; public bool force; }
-        sealed class Active { public int id; public int cancelsSeen; public float nextLook; public bool dead; public MomentStaging staging; }
+        /// <summary>A scene the lean may hold: the stage's held moment (its id) or a camp scene the stage does not play (the last evening, #789:
+        /// its own id under zero), with whether it still plays.</summary>
+        sealed class Pending { public MomentStaging staging; public int id; public Func<bool> live; public float until, next; public bool force, noCooldown; }
+        sealed class Active { public int id; public Func<bool> live; public int cancelsSeen; public float nextLook; public bool dead; public MomentStaging staging; }
 
         static Pending pending;
         static Active cur;
@@ -57,13 +60,32 @@ namespace AquariumCiv.View
             if (st == null || st.Moment == null) return;
             if (!Enabled && !force) { LastWhy = "the lean is off"; return; }
             if (st.Moment.kind == MomentKind.Festival) { LastWhy = "a box-wide festival has no focus"; return; }
+            int id = st.Moment.id;
+            BeginOn(st, id, () => Playing(id), force, false);
+        }
+
+        /// <summary>#789 tester (2026-11-27): a held camp scene the stage does not play (the last evening) takes the lean as any held scene does:
+        /// <paramref name="st"/> carries its focus and cast, <paramref name="live"/> says it still plays, <paramref name="id"/> is its own (under
+        /// zero, never a moment's). <paramref name="noCooldown"/>: a cheat's "play now" (it ended what played, so the camera must not ease out to the
+        /// player's view in between); the player's own gates still hold.</summary>
+        public static void BeginScene(MomentStaging st, int id, Func<bool> live, bool noCooldown = false, bool force = false)
+        {
+            if (st == null || live == null) return;
+            if (!Enabled && !force) { LastWhy = "the lean is off"; return; }
+            BeginOn(st, id, live, force, noCooldown);
+        }
+
+        static void BeginOn(MomentStaging st, int id, Func<bool> live, bool force, bool noCooldown)
+        {
             if (st.Focus == null && st.Cast == null) { LastWhy = "no cast to frame"; return; }
             // #776 tester (polish 2): a scene that starts while another's lean holds the camera (a newborn's in a village, during the statue
             // raising) never takes it: the lean stayed on the newborn, slid off the plinth and went home when the newborn ended, 16 s into the raising
-            if (cur != null && cur.id != st.Moment.id && Playing(cur.id)) { Refused++; LastWhy = "another scene's lean holds the camera"; return; }
-            pending = new Pending { staging = st, until = Time.unscaledTime + WaitForCast, force = force };
+            if (cur != null && cur.id != id && Alive(cur.live)) { Refused++; LastWhy = "another scene's lean holds the camera"; return; }
+            pending = new Pending { staging = st, id = id, live = live, until = Time.unscaledTime + WaitForCast, force = force, noCooldown = noCooldown };
             TryPending();
         }
+
+        static bool Alive(Func<bool> live) { try { return live != null && live(); } catch (Exception exc) { Debug.LogException(exc); return false; } }
 
         /// <summary>Every frame (HeldMomentStage.Update).</summary>
         public static void Tick()
@@ -73,7 +95,7 @@ namespace AquariumCiv.View
             var cam = Cam;
             if (cam == null) { LastWhy = "no camera"; cur = null; return; }
             if (cam.LeanCancels != cur.cancelsSeen) { Cancelled++; LastWhy = "the player took the camera"; cur.dead = true; cur = null; return; } // nothing returns it
-            if (!Playing(cur.id)) { LastWhy = "the scene ended"; Release(cam); return; }
+            if (!Alive(cur.live)) { LastWhy = "the scene ended"; Release(cam); return; }
             if (Time.unscaledTime < cur.nextLook) return;
             cur.nextLook = Time.unscaledTime + LookEvery;
             if (!Look(cur.staging, cam, out var world, out float zoomTo, out float vx, out float vy)) return;
@@ -87,7 +109,7 @@ namespace AquariumCiv.View
             if ((follow || closer) && !cam.Touching)
             {
                 var c = cur;
-                if (cam.LeanIn(world, closer ? zoomTo : cam.zoom, () => !c.dead && Playing(c.id), 0.9f)) { c.cancelsSeen = cam.LeanCancels; LastAim = world; re = true; }
+                if (cam.LeanIn(world, closer ? zoomTo : cam.zoom, () => !c.dead && Alive(c.live), 0.9f)) { c.cancelsSeen = cam.LeanCancels; LastAim = world; re = true; }
             }
             LastLook = $"t {Time.unscaledTime:0.0}: at ({vx:0.00}, {vy:0.00}) follow {follow} closer {closer} touching {cam.Touching} re-aimed {re}";
         }
@@ -106,7 +128,7 @@ namespace AquariumCiv.View
         {
             var p = pending;
             if (p == null) return;
-            if (!Playing(p.staging.Moment.id)) { pending = null; return; }
+            if (!Alive(p.live)) { pending = null; return; }
             if (Time.unscaledTime < p.next) return;
             p.next = Time.unscaledTime + 0.25f;
             var cam = Cam;
@@ -125,13 +147,13 @@ namespace AquariumCiv.View
                 if (cam.IsFollowing) return "following a person";
                 if (cam.Leaning && cur == null) return "another lean holds the camera";
                 float? since = float.IsNegativeInfinity(lastRelease) ? (float?)null : Time.time - lastRelease;
-                if (cur == null && !StoryLean.MayLean(since)) { pending = null; Refused++; return "cooling down after the last lean"; }
+                if (cur == null && !p.noCooldown && !StoryLean.MayLean(since)) { pending = null; Refused++; return "cooling down after the last lean"; }
             }
             if (cam.Touching) return "a finger is on the camera";
             if (!Look(p.staging, cam, out var world, out float zoomTo, out float vx, out float vy)) return "no cast drawn yet";
             if (!StoryLean.NeedsMove(cam.zoom, zoomTo, vx, vy)) { Framed++; return "the scene is already framed"; }
-            var a = new Active { id = p.staging.Moment.id, staging = p.staging };
-            if (!cam.LeanIn(world, zoomTo, () => !a.dead && Playing(a.id))) return "the camera refused (a finger moving it)";
+            var a = new Active { id = p.id, live = p.live, staging = p.staging };
+            if (!cam.LeanIn(world, zoomTo, () => !a.dead && Alive(a.live))) return "the camera refused (a finger moving it)";
             a.cancelsSeen = cam.LeanCancels;
             a.nextLook = Time.unscaledTime + LookEvery;
             cur = a;
@@ -240,11 +262,12 @@ namespace AquariumCiv.View
         {
             var s = HeldMomentStage.Instance;
             var st = s == null ? null : s.AnyPlayingStaging();
-            if (st == null) return "no held scene is playing";
+            var camp = st == null ? PeopleView.Find()?.Camp : null; // #789 tester: the last evening is a camp scene the stage does not play
+            if (st == null && (camp == null || camp.LastEveningScene == null)) return "no held scene is playing";
             var cam = Cam;
             if (cur != null && cam != null) Release(cam);
             lastRelease = float.NegativeInfinity;
-            Begin(st, force: true);
+            if (st != null) Begin(st, force: true); else camp.LeanOnLastEvening(true, force: true);
             return LastWhy;
         }
 

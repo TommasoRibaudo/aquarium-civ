@@ -138,6 +138,16 @@ namespace AquariumCiv.View
             // the door: their own tent or house
             var home = planner.HomeOf(PersonRef.Notable(who.id));
             c.door = !home.IsNone && planner.Positions.TryGetPosition(home, out float hx, out float hz) ? new Vector2(hx, hz) : fire + c.toCam * 0.8f;
+            // #789 tester (2026-11-27): the racks' legs stay out from between the family and the camera (the seat turns round the fire away from
+            // them), and the wave is on the side of the tent the camera sees (the door facing away hid the elder behind the canvas)
+            if (planner.TryGetFishRack(now, out var rack))
+            {
+                var m = new Vector2(rack.x, rack.z); var al = new Vector2(rack.dirX, rack.dirZ) * FishRackSpot.HalfLength;
+                c.clear.Add(m); c.clear.Add(m + al); c.clear.Add(m - al);
+            }
+            if (HideRackAt(out var hm, out var ha)) { ha *= CampSpots.RackHalfLength; c.clear.Add(hm); c.clear.Add(hm + ha); c.clear.Add(hm - ha); }
+            if (NearestTent(c.door, 0.5f, out var tent)) { c.door = tent.look; c.wave = tent.look + tent.lookOut * WaveOut; }
+            LastEveningGeo = $"fire {fire} toCam {c.toCam} door {c.door} wave {c.wave} clear [{string.Join(" ", c.clear)}] seat {LastEveningScenes.SeatOf(fire, c.toCam, c.clear)}";
             // the dog: the elder's own, else a grown one, if one is drawn and free
             Dog dog = null;
             LastEveningDogNote = $"{Time.unscaledTime - lastEveningCheatAt:0.0} s after the cheat; own dogs:";
@@ -162,6 +172,9 @@ namespace AquariumCiv.View
             if (!scenes.Contains(sc)) return "not cast";
             storyHeld.Add(sc); // meals and bedtime don't take its people
             LastEveningScene = sc; LastEveningNow = true; lastEveningSaid = false; LastEveningsStarted++;
+            lastEveningDoor = c.door;
+            LeanOnLastEvening(lastEveningForce); // #789 tester: the #783 lean takes the camera, as at any held scene (a cheat's: no cooldown)
+            lastEveningForce = false;
             // the sim's stamp: the elder stays in from the moment they go in at the door; the History line (its own id, marked read)
             var t = LifeClock.Advance(now, sc.c * Mathf.Max(1f, pv.timeScale));
             float inAt = t.day > now.day ? 23.9f : t.hour;
@@ -169,6 +182,36 @@ namespace AquariumCiv.View
             LastEveningCaption = e?.text;
             planner.Invalidate(); // the elder's day after the door is the stay-in
             return null;
+        }
+
+        Vector2 lastEveningDoor;
+        /// <summary>The wave this far out from the tent's shown side (box units) [est].</summary>
+        const float WaveOut = 0.07f;
+        /// <summary>Tests: where the last cast put the fire, the door, the wave and the seat, and what it kept clear.</summary>
+        public string LastEveningGeo { get; private set; } = "";
+
+        /// <summary>#789 tester (2026-11-27): the #783 lean on the last evening (HeldMomentLean.BeginScene): its focus is the scene's
+        /// (<see cref="FocusNow(CampScene)"/>), its cast <see cref="LastEveningCastDrawn"/>, and it lets go when the scene ends.
+        /// <paramref name="noCooldown"/>: the cheat's "play now".</summary>
+        public void LeanOnLastEvening(bool noCooldown, bool force = false)
+        {
+            var sc = LastEveningScene;
+            if (sc == null) return;
+            var st = new MomentStaging { Focus = () => FocusNow(sc), Cast = into => LastEveningCastDrawn(sc, into) };
+            HeldMomentLean.BeginScene(st, -1 - LastEveningsStarted, () => scenes.Contains(sc), noCooldown, force);
+        }
+
+        /// <summary>The lean's cast of the last evening: at the fire, the seat and everyone in it; from the walk home on, the elder and those
+        /// with them (the ones who stayed at the fire are not the scene then); once the elder is in, the kin at the door.</summary>
+        void LastEveningCastDrawn(CampScene s, List<Vector2> into)
+        {
+            if (s == null || !scenes.Contains(s)) return;
+            if (clock - s.t0 < s.d) { CastDrawn(s, into); return; }
+            var lead = pv.DrawnAt(s.keys[0]);
+            var at = lead ?? lastEveningDoor;
+            if (lead is Vector2 l) into.Add(l);
+            for (int i = 1; i < s.Count; i++)
+                if (s.TryPart(s.keys[i], clock, out _, out _) && pv.DrawnAt(s.keys[i]) is Vector2 p && (p - at).sqrMagnitude < 0.5f * 0.5f) into.Add(p);
         }
 
         /// <summary>A cheat: play it for <paramref name="elderId"/> at the next look (now: it is dusk). <paramref name="force"/>: skip the rule
