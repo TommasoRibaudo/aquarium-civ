@@ -46,7 +46,7 @@ namespace AquariumCiv.Tests
             var eras = Of(pages, BookPageKind.Era).ToList();
             Assert.AreEqual(new[] { Era.Camp, Era.Village, Era.Town }, eras.Select(p => p.era).ToArray());
             Assert.That(Of(pages, BookPageKind.Legend).Count(), Is.InRange(1, SimCore.BookLegendCap));
-            Assert.That(Of(pages, BookPageKind.Family).Count(), Is.InRange(1, SimCore.BookFamilyCap));
+            Assert.That(Of(pages, BookPageKind.Family).Count(), Is.InRange(1, SimCore.BookTreeCap));
             Assert.That(pages.Count, Is.InRange(8, 22), string.Join(" | ", pages.Select(p => p.title)));
             Assert.AreEqual(pages.Count, pages.Select(p => p.key).Distinct().Count(), "a page's key is its own");
         }
@@ -55,9 +55,14 @@ namespace AquariumCiv.Tests
         public void TheFamilyTreeShowsBothParentsOfTheChildren()
         {
             var sim = Lived(120);
-            var f = Of(sim.BookPages(), BookPageKind.Family).Select(p => p.family).FirstOrDefault(x => x.children.Count > 0 && x.partner != null);
-            Assert.NotNull(f, "a couple with children");
-            foreach (var c in f.children) Assert.That(sim.PersonCardOf(c.id).family.Where(t => t.kind == TieKind.Parent).Select(t => t.otherId), Does.Contain(f.main.id));
+            var t = Of(sim.BookPages(), BookPageKind.Family).Select(p => p.tree).FirstOrDefault(x => x.couples.Count > 0 && x.branches.Count > 0);
+            Assert.NotNull(t, "a couple with children");
+            foreach (var b in t.branches)
+            {
+                var house = new[] { b.ownerId }.Concat(t.couples.Where(c => c.a == b.ownerId).Select(c => c.b)).ToList();
+                foreach (var n in t.nodes.Where(n => n.blood && n.gen == t.Node(b.ownerId).gen + 1 && b.childX.Contains(n.x)))
+                    Assert.That(sim.PersonCardOf(n.id).family.Where(x => x.kind == TieKind.Parent).Select(x => x.otherId), Has.Some.Matches<int>(house.Contains), "#774: a child hangs under a parent");
+            }
         }
 
         [Test]

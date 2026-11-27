@@ -29,6 +29,7 @@ namespace AquariumCiv.Sim
         public string label;            // "partner", "late friend", "mentor", "made up", "often in stories together" ...
         public bool otherAlive;
         public int sharedStories;       // chronicle entries naming both
+        public PersonStory story;       // #774: their one line together, the most told entry naming both (null = none; set on the card only)
     }
 
     /// <summary>A chronicle line on the person card.</summary>
@@ -42,6 +43,7 @@ namespace AquariumCiv.Sim
         public int otherId = -1;        // the other person in it (-1 = none)
         public string quote = "";
         public int speakerId = -1;
+        public bool toldMost;           // #774: one of their most told (what was the card's Best)
     }
 
     /// <summary>One term in an important role.</summary>
@@ -99,6 +101,7 @@ namespace AquariumCiv.Sim
         public List<PersonTie> mentors = new();         // mentor and apprentices
         public List<PersonStory> recentStories = new(); // newest first, at most SimCore.CardStories
         public List<PersonStory> bestStories = new();   // by salience, at most SimCore.CardStories
+        public List<PersonStory> timeline = new();      // #774: one story timeline, newest first, at most SimCore.CardTimeline; the best are in it, marked toldMost
         public List<PersonRelic> relics = new();
         public PeopleQuote quote;                       // a line in their voice for the belief stage now (the dead: their last words kept)
         public bool pinned, canPin;
@@ -134,6 +137,7 @@ namespace AquariumCiv.Sim
     public partial class SimCore
     {
         public const int CardStories = 3;       // stories on the card (first-session §5: "last 3 stories")
+        public const int CardTimeline = 8;      // #774: the Story tab's timeline at most (the best always among them)
         public const int SharedStoriesMin = 2;  // co-mentions for a "shared stories" tie [est]
         public const int LegendRoleYears = 10;  // "held any role ≥ 10 years" (chronicle-and-history §4.1)
         public const float LegendStorySalience = 0.7f;
@@ -469,6 +473,21 @@ namespace AquariumCiv.Sim
             c.recentStories = mine.AsEnumerable().Reverse().Take(CardStories).Select(e => StoryOf(e, n.id)).ToList();
             c.bestStories = forBest.OrderByDescending(e => e.salience).ThenByDescending(e => e.month).ThenByDescending(e => e.id)
                 .Take(CardStories).Select(e => StoryOf(e, n.id)).ToList();
+            // #774 (card B): Recent and Best fold into one timeline, newest first; the best are always in it, with a star
+            var best = new HashSet<int>(c.bestStories.Select(x => x.entryId));
+            var newest = mine.AsEnumerable().Reverse().Where(e => !best.Contains(e.id)).Take(Math.Max(0, CardTimeline - best.Count)).Select(e => e.id);
+            var kept = new HashSet<int>(best.Concat(newest));
+            c.timeline = mine.Where(e => kept.Contains(e.id)).Reverse().Select(e => { var st = StoryOf(e, n.id); st.toldMost = best.Contains(e.id); return st; }).ToList();
+            // #774: each relation's one line, the most told entry naming both (the chronicle's order breaks a tie, so it never flickers)
+            var together = new Dictionary<int, ChronicleEntry>();
+            foreach (var e in mine)
+            {
+                int other = e.notableId == n.id ? e.otherNotableId : e.notableId;
+                if (other < 0 || other == n.id) continue;
+                if (!together.TryGetValue(other, out var was) || e.salience > was.salience || (e.salience == was.salience && e.month >= was.month)) together[other] = e;
+            }
+            foreach (var t in c.family.Concat(c.friends).Concat(c.rivals).Concat(c.mentors))
+                if (together.TryGetValue(t.otherId, out var e)) t.story = StoryOf(e, n.id);
 
             // relics
             foreach (var r in FoundRelics)
