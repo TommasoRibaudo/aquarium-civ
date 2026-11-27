@@ -114,7 +114,23 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual(other.id, Book.TreeFocus);
                 cards.Close();
                 yield return Frames(4);
+
+                // #804: the book's X goes back to the card the link was on, on its Family tab
+                var x = Book.PageElement.panel.visualTree.Q("book-close");
+                Assert.NotNull(x, "the book's X");
+                yield return TapAt(GameUiPanel.ScreenCenter(x));
+                yield return Frames(8);
+                Assert.IsFalse(Book.IsOpen, "the X closes the book");
+                Assert.AreEqual(who, cards.OpenId, "back to the card it came from");
+                Assert.AreEqual(CardTab.Family, cards.Tab);
+                yield return Shot($"pc804-back-{w}");
+                cards.Close();
+                yield return Frames(4);
+                Assert.IsTrue(Book.OpenAtTree(root, who), "the tree again, opened without a card");
+                yield return Frames(4);
                 Book.Close();
+                yield return Frames(4);
+                Assert.IsFalse(cards.IsOpen, "with no card to go back to, the X lands on the box");
                 AssertNoErrors("the family tree");
             }
             finally { GameUiPanel.AcceptInputUnfocused(false); }
