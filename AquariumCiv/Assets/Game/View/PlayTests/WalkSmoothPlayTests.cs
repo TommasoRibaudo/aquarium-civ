@@ -90,7 +90,7 @@ namespace AquariumCiv.View.PlayTests
                             if (t.hasRate && Mathf.Sign(rate) != Mathf.Sign(t.yawRate) && Mathf.Abs(rate) > 40f && Mathf.Abs(t.yawRate) > 40f) into.flips++;
                             float jump = Mathf.Abs(pose.roll - t.roll) / dt;
                             into.stride.Add(jump);
-                            if (jump > 60f && into.skips.Count < 12) into.skips.Add($"f{f} key {a.who.Key} {a.kind} to {a.place.kind} style {pv.StyleOf(a.who.Key)} roll {t.roll:0.0}->{pose.roll:0.0}");
+                            if (jump > 60f && into.skips.Count < 12) into.skips.Add($"f{f} key {a.who.Key} {a.kind} to {a.place.kind} style {pv.StyleOf(a.who.Key)} hold {pv.DebugMateHold(a.who.Key):0.00} roll {t.roll:0.0}->{pose.roll:0.0}");
                             t.yawRate = rate; t.hasRate = true;
                         }
                         t.step = step; t.hasStep = true;
