@@ -297,7 +297,7 @@ namespace AquariumCiv.View
             // the tester 2026-11-27: they face between the fire and the camera (the fire itself when the seat is straight beyond it), so a seat turned
             // round the fire away from a rack still shows their fronts; everything "toward the fire" below is this way
             var toFire = Unit(Unit(c.fire - seat, toCam) + toCam, toCam);
-            var look = seat + toFire;
+            var faceAt = seat + toFire;
             var side = Across(toFire); // the elder's left, as they face the fire
             var s = new CampScene(CampUse.LastEvening, t0, seat) { holdFocus = false, followReach = 0.9f, dog = c.dog };
             var T = new Track(s);
@@ -341,9 +341,9 @@ namespace AquariumCiv.View
 
             // the elder, seated through beats 1 to 3: the hand over the shoulder's, the kid's head, the look up and the nod
             bool handLeft = helper >= 0 && Vector2.Dot(spots[helper] - seat, side) > 0f;
-            T.Part(me, wE, tRise, seat, look, DollStyle.Sit,
+            T.Part(me, wE, tRise, seat, faceAt, DollStyle.Sit,
                 ElderAtTheFire(helper >= 0 ? tHand + 1f - wE : -1f, handLeft, kneeKid >= 0 ? tHand + 1.5f - wE : -1f, tHand + 4f - wE, tStars - wE));
-            if (dog) T.Part(me, tRise, tUp, seat, look, DollStyle.Sit, PatDog);
+            if (dog) T.Part(me, tRise, tUp, seat, faceAt, DollStyle.Sit, PatDog);
 
             // the kin: sit in close facing the elder; the hand, the knee, the look up one after another
             for (int i = 0; i < n; i++)
@@ -388,11 +388,11 @@ namespace AquariumCiv.View
                 T.Part(ms[i], tUp, tUp + 0.6f, at, at + toFire, DollStyle.Stand, null, Walk);
                 T.Part(ms[i], tUp + 0.6f, tStood, at, at + toFire, DollStyle.Stand, HelpUp(LeftOf(at, at + toFire, seat)));
             }
-            T.Part(me, tUp, tUp + 0.6f, seat, look, DollStyle.Sit);
+            T.Part(me, tUp, tUp + 0.6f, seat, faceAt, DollStyle.Sit);
             // v2: the elder's arm on each helper's side goes out over that helper's shoulders (armR is the doll's left: LeftOf)
             bool upR = false, upL = false;
-            foreach (var at in stand) { if (LeftOf(seat, look, at)) upR = true; else upL = true; }
-            T.Part(me, tUp + 0.6f, tStood, seat, look, DollStyle.Stand, HelpedUpBy(upL, upR));
+            foreach (var at in stand) { if (LeftOf(seat, faceAt, at)) upR = true; else upL = true; }
+            T.Part(me, tUp + 0.6f, tStood, seat, faceAt, DollStyle.Stand, HelpedUpBy(upL, upR));
 
             // 5 home: at the elder's own slow pace, a helper each side, the kid at a hand a little behind, the dog a step behind
             // the tester 2026-11-27: the wave on the side of the tent the camera sees (c.wave), not behind the tent; else just short of the door
