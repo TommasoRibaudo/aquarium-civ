@@ -274,6 +274,17 @@ namespace AquariumCiv.View
         /// <summary>Cheat: the lean on or off for every held scene.</summary>
         public static string DebugToggle() { Enabled = !Enabled; return "held-scene lean " + (Enabled ? "on" : "off"); }
 
+        /// <summary>#796 tests: where the held lean's scene focus sits in the view now (viewport 0..1), read the way the lean reads it each
+        /// second. False when no lean holds or nothing of the scene is drawn.</summary>
+        public static bool DebugFocusViewport(out Vector2 viewport)
+        {
+            viewport = default;
+            var cam = Cam;
+            if (cur == null || cam == null || !Look(cur.staging, cam, out _, out _, out float vx, out float vy)) return false;
+            viewport = new Vector2(vx, vy);
+            return true;
+        }
+
         /// <summary>Tests: forget the cooldown and any lean held (the camera is left as it is).</summary>
         public static void DebugForget() { pending = null; cur = null; lastRelease = float.NegativeInfinity; }
     }
