@@ -153,7 +153,7 @@ namespace AquariumCiv.View.PlayTests
                 foreach (var a in pv.Activities)
                 {
                     if (a.moving || pv.IsWalking(a.who) || a.kind == ActivityKind.Sleep || pv.Planner.StageOf(a.who) == LifeStage.Baby) continue;
-                    if (pv.TryGetDollPosition(a.who, out var q)) pts.Add((a.who.Key, q, pv.Describe(a)));
+                    if (pv.TryGetDollPosition(a.who, out var q)) pts.Add((a.who.Key, q, pv.Describe(a) + $" [{a.who.Key} {a.kind} {pv.DebugSpotOf(a.who)}]")); // #791: where each spot came from
                 }
                 var seenNow = new HashSet<(int, int)>();
                 for (int i = 0; i < pts.Count; i++)

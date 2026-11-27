@@ -306,6 +306,7 @@ namespace AquariumCiv.Sim
                     n.diedMonth = s.month;
                     Chronicle("death", $"{n.FullName}, {n.trait}, died of old age at {Math.Floor(n.age)}.", 0.85f, n.id);
                 }
+                else NoteSlowing(n); // #790: the glance line, once, as an elder enters their last days
             }
             // Births: a notable's child is a notable from birth and grows up one (never back into the crowd). Families
             // with fewer children come first: parents try in order of children born (then id, so it stays deterministic),
@@ -491,11 +492,14 @@ namespace AquariumCiv.Sim
         public ChronicleEntry Chronicle(string kind, string text, float salience, int notableId = -1) => Record(kind, text, salience, notableId, -1);
 
         /// <summary>Adds an entry about one or two people (the second for a wedding, a feud...).</summary>
-        ChronicleEntry Record(string kind, string text, float salience, int notableId, int otherId)
+        ChronicleEntry Record(string kind, string text, float salience, int notableId, int otherId) => RecordAs(-1, kind, text, salience, notableId, otherId);
+
+        /// <summary>As <see cref="Record"/>, with the line's own id (<paramref name="ownId"/> 0 or more: a line with its own id range, #776 as #788's SlowLineIdBase).</summary>
+        ChronicleEntry RecordAs(int ownId, string kind, string text, float salience, int notableId, int otherId)
         {
             text = TermCoda(kind, text, notableId, otherId); // a role-holder's clause on a few story lines (SimCore.Office.cs)
             text = LandWords(text); // #656/#677: a living land's words (no stream, goats or huts; no wood before the wild trees)
-            var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = salience, notableId = notableId, otherNotableId = otherId };
+            var e = new ChronicleEntry { id = ownId >= 0 ? ownId : State.NextId(), month = State.month, kind = kind, text = text, salience = salience, notableId = notableId, otherNotableId = otherId };
             State.chronicle.Add(e);
             FeatherFromLine(e); // #692 (B31.a): a wedding, a birth, the village: a feather for the pole
             MomentFromLine(e); // #369: a wedding, a birth, a new leader, a callback or a festival queues its ceremony for the Keeper

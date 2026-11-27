@@ -398,6 +398,7 @@ namespace AquariumCiv.View.PlayTests
             try
             {
                 yield return OpenSlice(seed: Seed, skipFirstRun: false);
+                AquariumCiv.View.HeldMomentLean.Enabled = true; // #783: the smoke plays the real game, the lean on (PlayTestBase turns it off for the others)
                 t0 = Time.realtimeSinceStartup;
                 Assert.IsTrue(Sim.EcologyOn, "a barren box");
                 Assert.IsTrue(Sim.BeforeCamp);
@@ -474,6 +475,7 @@ namespace AquariumCiv.View.PlayTests
         {
             UseLivingLand(false); // #298: the old slice, whatever switch an earlier run left on
             yield return OpenSlice(seed: Seed, skipFirstRun: false);
+            AquariumCiv.View.HeldMomentLean.Enabled = true; // #783: the smoke plays the real game, the lean on (PlayTestBase turns it off for the others)
             Assert.IsFalse(GameClock.Instance.Sim.EcologyOn, "the old slice: the living land is off");
             t0 = Time.realtimeSinceStartup;
             Assert.GreaterOrEqual(bootstrapsRun, 12, "every bootstrap ran");

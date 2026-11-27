@@ -2711,7 +2711,7 @@ Every number is [est] until the clip.
 
 ## B81. A statue of the founder (#776, 2026-11-25)
 
-**Status: spec, waiting for the user's sign-off.** No Unity was run. Every number is [est] until the clip. Direction it serves:
+**Status: approved by the user 2026-11-26.** (The four answers are in B81.6.) Built in #776 (no Unity run yet: every number is [est] until the clip). Direction it serves:
 decisions.md 2026-11-25, "lean into watching people age and die" (what a person leaves behind, who carries it on). Source: the first
 outside playtest (private notes; paraphrased): the people could raise a statue of the founder, especially of the one the Keeper
 kept pinned for a long time.
@@ -2791,8 +2791,68 @@ the figure changing with the era. All could be later polish rows.
 - **Tests (when built):** pure: the rule (`StatueRules.Who`, `.Ready`: most-pinned over founder, a year after death, village and 12 people, never while alive), the spot finder (never on a path, 0.2 u clear ring, same spot every load); PlayMode: the raising scene plays in a village box and leaves the statue, each use plays (`Playing(use)` then free), the work minutes stay within 5 % over 10 view days (D); AnimLab: one clip per beat (`Tools/AnimBench/clips/776-statue-*.json`).
 - **Screenshot check:** a close shot at 750×1334 of the statue and the family at the raising, and of a kid on the base.
 
-### B81.6 Open questions for the user
-1. **Who is "the founder"** when nobody was pinned a day: the first notable of the box (★), or the first chief, or nobody (no statue)?
-2. **Wait after death:** one game year (★) or the same view day as the quiet visit?
-3. **The caption's wording:** the one above, or none (the scene alone, seen not read)?
-4. **A festival wreath** on the statue every year: add it as a follow-up row (★ later), or in this one?
+### B81.6 Open questions for the user (answered by the user 2026-11-26, all four as the starred option)
+1. **Who is "the founder"** when nobody was pinned a day: **the first notable of the box** (decided).
+2. **Wait after death:** **one game year** (decided).
+3. **The caption's wording:** **kept**: "{who} is made of stone now, on the green." (checked against docs/research/21: closed world, no outside place, no "monument").
+4. **A festival wreath** on the statue every year: **later**, as a follow-up row (not in #776).
+
+## B82. The last evening: a goodbye before an elder dies (#789, 2026-11-26)
+
+**Status: spec approved by the user 2026-11-26 (★ for all three questions: every elder with kin or a friend nearby, the dog at their feet, the one caption). The four new clips still need the user's sign-off before merge.** No Unity was run. Every number is [est] until the clip. Source:
+`docs/research/23-ageing-and-death.md` §3 B and §4 (chosen 2026-11-26). It pairs with #788 (last days: the elder walks slower and sits
+longer in the final ~2 years, family beside them): this beat is the last evening of that window. Writing rule: closed world, nobody
+says or hints at anything outside the box; no grim, no gore, no lying or fallen pose.
+
+### The one thing, in a sentence
+On the dusk before the night an elder dies, they sit at the fire with their people close round them (a hand on a shoulder, a kid
+against their knee, the dog at their feet), look up at the first stars, and are walked slowly home by the family; the dawn after is
+the existing quiet-visit and mourning chain (B32.h), unchanged.
+
+### B82.0 Rules (not a beat)
+| | |
+|---|---|
+| **Trigger** | **Never a timer and never a countdown.** The sim already decides an elder's death (the existing age roll). This beat only attaches to a death the sim has already set for that night: at dusk of that day `SimCore` stamps `lastEveningFor = notableId` (the death itself is not moved, no number shown). Needs: an elder (age ≥ `Config.elderAge`, 45 today), alive, and **at least one free person who is kin or a friend** (`PersonCardOf` ties: partner, child, grandchild, sibling, or a `friend` link). No such person: no scene, the death happens as today |
+| **How often** | **Only while the Keeper is watching, and at most once per visit.** It is a rare gift, not a rule every death gets: the sim never plays it unseen, and most elder deaths pass without it (the dawn death card and B32.h as today). When the Keeper is watching at dusk and one or more elders are in their last evening, **one** is chosen (the pinned one first, else the one with the most kin or friends free) and the others get nothing. After it has played, no other last evening plays for at least **two game years** [est], so it can never read as a scheduled die-off of the elders one night after another. Never while another held moment, ritual or choice is playing; if one is, it is skipped, not queued (user, 2026-11-26) |
+| **Who decides** | The people, by the rule: no Keeper choice (one choice per visit). The Keeper learns it only by seeing it: **nothing plays or is reported while the Keeper is away** (no return card for it) |
+| **Where: the fire** | **At the fire**, on the elder's own stool/log (the spot #788 gives them). Why: it is where the whole village is, it shows from the default home view with no fly-to, the light is warm and low at dusk, and the family can sit round in a ring (B50-style). Their own door is a hidden doorway in the home view; the Keeper's tree already carries the *after* (B32.h's visit at the next dusk) and must not be used twice. The **door** is only the exit (beat 5) |
+| **Who takes part** | the elder; up to **4 kin/friends** nearest the fire (partner first, then children, grandchildren, then friends; at most 2 kids, each only if a grown kin is also there); **the elder's own dog** if they have one (the dog code's keeper link; else any grown dog lying by the fire). Anyone else free at the fire carries on their evening and may turn to look (`Look`) |
+
+### B82.a The last evening (one held scene; staged by CampLife as a `CampScene`, as B78/B81; ~30 s of real time at scene speed, at dusk)
+| # | Beats | Props · reuse |
+|---|---|---|
+| 1 Gather (0–8 s) | the elder is already sitting on the stool (#788's longer sit; if not, they walk slowly to it, `Walk` x0.5). The kin come from where they are, one by one, 1–2 s apart, and sit on the ground or logs **close** to the elder (0.12–0.2 u, half ring on the camera's side), `SitWithOld` for each; the partner takes the place next to the elder. Nobody speaks; no caption yet. The dog gets up, comes at a walk and lies down across the elder's feet (head on paws, `Lie`) | stool, logs, fire. R `SitWithOld`, `Sit`, `Lie`, B50-style ring. N nothing |
+| 2 The hand (8–16 s) | the partner (or the nearest grown kin) puts a hand on the elder's shoulder (new `HandOnShoulder`: arm toward them, x 60 and z 20, held); the elder lifts their own hand and lays it over it (arm up 1 s, `hit` softly when they touch). A kid creeps in and leans a head on the elder's knee (new `LeanOnKnee`: kid sits, head tilted 25 degrees onto the knee); the elder's other hand rests on the kid's head, then strokes once (a slow x 20 wag, 1 s). The dog's tail thumps twice (1.5 Hz). Reads: a small ring of dolls leaning in to one old doll, the fire in the middle | R B7.d's hug family. N `HandOnShoulder`, `LeanOnKnee` |
+| 3 The stars (16–23 s) | the elder looks up at the sky over the fire (`LookUp`, 3 s, slow), a small slow nod (head x 10, 1 s); the kin look up too, one after the other (0.4 s apart); the fire's light dips 10 % for the scene (a view tint, like B32.h's glow). The first star comes out (the night sky's existing star pop). A hold (3 s): everyone still, the fire the only motion | R `LookUp`, the fire, the stars, B7.a's nod. N nothing |
+| 4 Rising (23–27 s) | the elder pats the dog (arm down, 0.6 s); the partner and one kin stand and help them up: one on each side, a near arm under the elder's elbow (new `HelpUp`: both dolls' near arm out, x 70; the elder pushes up from the stool with a small sway, 1.2 s). The kid takes the elder's other hand | N `HelpUp` (a pair pose) |
+| 5 Home (27–30 s + the walk) | the elder walks **at their own slow pace** to their door (tent in a camp, house in a village or town) with the kin on each side and the kid holding a hand, the dog a step behind (#788's frail walk, about x0.4 of normal). At the door the elder turns once (`Turn` 0.8 s), lifts a small wave to the fire (`Wave`, 1 s) and goes in. The kin stand at the door (1.5 s, `Look`), then walk back to the fire one by one and sit (`Sit`); the dog lies down at the door. The scene ends; the fire stays quiet for about 0.3 view h (no chatter plans), then the evening goes on | R `Walk` (frail), `Turn`, `Wave`, `Sit`. N the pair-walk pacing |
+
+### How it ends
+The elder goes in through their own door alive. **Nothing is shown of the death**: in the night the sim removes them (no lying pose, the tent is
+never entered by the camera). At the next dawn the existing chain runs unchanged: the death card, then B32.h's quiet visit at the
+Keeper's tree at the next dusk, and the stool left empty a day (research 23 C, a separate issue). The dog, if any, lies at the door in
+the morning.
+
+### What the player sees from the home view
+The fire at dusk: one old doll on a stool, three or four dolls sitting in close and a small one against the knee, a dog across their
+feet; they all look up; two stand and walk the old one slowly to a tent. On a phone the read is the ring closing in, the look up, and
+the slow walk with people on each side; the hand on the shoulder (a 3 px arm) and the kid on the knee are bonuses.
+
+### Caption
+**One line, only if watched**, at beat 3: *"{who} looks up at the stars with {partner/family}."* [est; the writing guide wins, docs/research/21]. It names no death and no ending.
+
+### Reuse and new
+- **Reused:** `SitWithOld`, `Sit`, `Lie`, `LookUp`, `Look`, `Turn`, `Wave`, `Walk` (the frail speed from #788), B7.a's nod, B7.d's hug family, B50-style rings, the stool, the dog code's keeper link, the night sky, B32.h (after).
+- **New clips (4, small poses):** `HandOnShoulder`, `LeanOnKnee`, `HelpUp` (the pair), the pair-walk pacing. Each gets a clip in AnimLab (`Tools/AnimBench/clips/789-*.json`) before merge; no new prop, no new mesh.
+
+### Debug cheats (one block "Last evening (#789)" in `View/SliceDebugPanel.cs`, tagged `// #789`)
+- **"Last evening: play now"**: picks the oldest elder with kin (else makes one: ages a person to 62 and sets a partner), clears busy moments (`HeldMomentStage.DebugEndPlaying`), jumps to dusk and plays B82.a. The result line names who.
+- **"Last evening: elder with no kin"** (the no-scene path: the elder just dies in the night), **"Last evening: with a dog"** (gives them a grown dog first), **"Last evening: two elders at once"** (two elders in their last evening: only one scene plays).
+
+### Tests (when built)
+Pure: the rule (`LastEveningRules.Ready`: stamped only on a death already set, needs elder + kin or friend, once per death, never two the same night, only while watched, once per visit, two game years apart, never moves the death). PlayMode: the scene plays at the fire and ends with the elder at their door and everyone back in their day; with the Keeper away nothing plays; with two elders ready only one plays; a second one within two game years never plays. AnimLab: one clip per new pose, asserting motion (the arm or head actually moves).
+
+### B82.9 Open questions for the user
+1. **Which elders get it?** Every elder death with kin or a friend nearby (★, it is rare and natural), or only the pinned one (fewer scenes, but unpinned deaths feel flatter)?
+2. **The dog:** include the elder's own dog at their feet (★, the strongest cheap image and it reuses the dog code), or leave dogs out of this beat?
+3. **Caption:** the one line at the stars (★, so the scene is felt even on a muted glance), or none (the scene alone, seen not read)?

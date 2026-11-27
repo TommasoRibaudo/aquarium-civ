@@ -507,8 +507,8 @@ namespace AquariumCiv.Life
                     else
                     {
                         Person old = null;
-                        foreach (var q in people) if (q.stage == LifeStage.Elder && q != p) { old = q; if (R(q.key, d.day, 90) < 0.5f) break; }
-                        if (old != null) Put(list, Mk(ActivityKind.SitWithOld, 9f, 10f, gather, Prop.None, src, old.who), d);
+                        foreach (var q in people) if (q.stage == LifeStage.Elder && q != p && q.frail <= 0f) { old = q; if (R(q.key, d.day, 90) < 0.5f) break; }
+                        if (old != null) Put(list, Mk(ActivityKind.SitWithOld, 9f, 10f, gather, Prop.None, src, old.who), d); // #788: a frail elder sits at their own door (their family comes there), not at the gather
                         if (d.season == Season.Autumn && farms.Count > 0)
                             Put(list, Mk(ActivityKind.Bless, 15f, 15.6f, PlaceOf(farms[(int)(H(p.key, d.day, 91) % (uint)farms.Count)]), Prop.None, src), d);
                         if (R(p.key, d.day, 92) < 1f / 6f + p.hints.hillChance)

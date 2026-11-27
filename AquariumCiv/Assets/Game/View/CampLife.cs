@@ -14,8 +14,6 @@ namespace AquariumCiv.View
 {
     public sealed partial class CampLife
     {
-        /// <summary>How often a use plays (D rules): <b>sometimes</b> about one view day in three; <b>often</b> most days.</summary>
-        public const float Sometimes = 0.35f, Often = 0.85f, RabbitSpit = 0.5f;
         /// <summary>B11: the same life use never twice within this many seconds.</summary>
         public const float SameUseGap = 30f, SniffGap = 20f;
         /// <summary>How far a free person may be from the thing to be borrowed for it (box units).</summary>
@@ -53,7 +51,16 @@ namespace AquariumCiv.View
             var s = Latest;
             if (s == null && RitualFocus() is Vector2 rf) return lastFocus = rf; // S-ritual, B76: the ritual's people, the telling at the fire
             if (s == null) return forced != null ? lastFocus : null; // the user's review: after a cheat's scene the camera stays where it was
-            if (s.holdFocus) return lastFocus = s.focus;
+            return lastFocus = FocusOf(s);
+        }
+
+        /// <summary>#783/#776 tester: where one scene is now (a held story's own, not the newest scene's: a village use that starts during the
+        /// raising must not pull the lean off the plinth). Null when it no longer plays.</summary>
+        public Vector2? FocusNow(CampScene sc) => sc != null && scenes.Contains(sc) ? FocusOf(sc) : (Vector2?)null;
+
+        Vector2 FocusOf(CampScene s)
+        {
+            if (s.holdFocus) return s.focus;
             var sum = Vector2.zero; int n = 0;
             for (int i = 0; i < s.Count; i++)
                 if (s.TryPart(s.keys[i], clock, out _, out _) && pv.DrawnAt(s.keys[i]) is Vector2 p) { sum += p; n++; }
@@ -61,7 +68,19 @@ namespace AquariumCiv.View
             var c = lead ?? (n == 0 ? s.focus : sum / n);
             var d = c - s.focus;
             if (d.magnitude > s.followReach) c = s.focus + d.normalized * s.followReach;
-            return lastFocus = Vector2.Lerp(s.focus, c, s.followReach > 0.6f ? 0.85f : 0.5f); // the thing, pulled toward the lead actor (a far-following scene: mostly the lead)
+            return Vector2.Lerp(s.focus, c, s.followReach > 0.6f ? 0.85f : 0.5f); // the thing, pulled toward the lead actor (a far-following scene: mostly the lead)
+        }
+        /// <summary>#783: where the newest scene's people are drawn now, and the scene's own thing (the camera frames both: a lead walking in
+        /// from far must not pull the lean off the fire).</summary>
+        public void CastDrawn(List<Vector2> into) => CastDrawn(Latest, into);
+
+        /// <summary>#783/#776 tester: one scene's thing and its people drawn now (nothing when it no longer plays).</summary>
+        public void CastDrawn(CampScene s, List<Vector2> into)
+        {
+            if (s == null || !scenes.Contains(s)) return;
+            into.Add(s.focus);
+            for (int i = 0; i < s.Count; i++)
+                if (s.TryPart(s.keys[i], clock, out _, out _) && pv.DrawnAt(s.keys[i]) is Vector2 p) into.Add(p);
         }
         public bool Playing(CampUse use) { foreach (var s in scenes) if (s.use == use) return true; return false; }
         /// <summary>Tests and the readout: how many times each use started this session.</summary>
@@ -200,6 +219,9 @@ namespace AquariumCiv.View
         static bool FreeKind(ActivityKind k) => k is ActivityKind.SitOut or ActivityKind.Chat or ActivityKind.ListenStory or ActivityKind.Listen or ActivityKind.Sing
             or ActivityKind.SitTogether or ActivityKind.Visit or ActivityKind.Play;
 
+        /// <summary>#791: view hours ahead a run-in keeps someone from being borrowed (a use holds them about this long; BarnChores held a stopper through her beat).</summary>
+        const float RunInLookAhead = 1.5f;
+
         bool Free(in PersonActivity a, float time)
         {
             if (a.moving || a.enRoute || a.hunt != HuntPhase.None || a.tent != TentPhase.None || !FreeKind(a.kind)) return false;
@@ -207,6 +229,7 @@ namespace AquariumCiv.View
             if (PeopleView.StagedSpot != null && PeopleView.StagedSpot(a, now, out _, out _, out _)) return false;
             if (PeopleView.LifeSpot != null && PeopleView.LifeSpot(a, now, out _, out _, out _)) return false;
             if (PeopleView.StartHook != null && PeopleView.StartHook(a, out _)) return false; // a new-start scene has them
+            if (planner != null && planner.RunInBetween(a.who, now.day, now.hour, now.hour + RunInLookAhead)) return false; // #791: about to meet someone on the way
             return true;
         }
 

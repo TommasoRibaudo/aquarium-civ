@@ -159,6 +159,31 @@ namespace AquariumCiv.View.Tests
             Assert.That(maxLead, Is.GreaterThanOrEqualTo(15f)); Assert.That(maxSide, Is.GreaterThanOrEqualTo(15f));
         }
 
+        /// <summary>#791 / #203: falling into step, swapping sides and letting go turn the body's roll under the walk test's 60 deg/s at 30 fps,
+        /// whatever the stride's phase, with the stride at its fastest and the catch-up on top (at a 0.3 s hold it reached ~70).</summary>
+        [Test]
+        public void WalkingTogether_EasesTheRollUnder60DegPerSecond()
+        {
+            const float dt = 1f / 30f;
+            float rate = (DollMotion.Cadence(DollStyle.Walk, 1f) + 1f) * Mathf.PI, worst = 0f; // the fastest cadence plus the catch-up's step
+            foreach (bool lead in new[] { true, false })
+                for (int phase = 0; phase < 24; phase++)
+                {
+                    float stride = phase * Mathf.PI / 12f, hold = 0f, lean = 0f, last = float.NaN;
+                    for (int f = 0; f < 120; f++)
+                    {
+                        bool on = f >= 10 && f < 90, side = f < 50 ? lead : !lead; // in, swap sides, out
+                        PeopleView.EaseMates(ref hold, ref lean, on, side, dt);
+                        stride = Mathf.Repeat(stride + rate * dt, Mathf.PI * 2f);
+                        var p = DollMotion.Evaluate(DollStyle.Walk, f * dt, 1f, 0, 1, PropSlot.Hand, false, 0.3f, stride: stride);
+                        if (hold > 0f) PairBeats.WalkTogether(ref p, side, f * dt, stride, 3, Mathf.SmoothStep(0f, 1f, hold), lean);
+                        if (!float.IsNaN(last)) worst = Mathf.Max(worst, Mathf.Abs(p.roll - last) / dt);
+                        last = p.roll;
+                    }
+                }
+            Assert.Less(worst, 60f, "the roll's fastest turn, deg/s");
+        }
+
         [Test]
         public void Hug_IsBehindTheFlag_AndClosesToHugGapThenStepsBack()
         {

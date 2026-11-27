@@ -557,6 +557,25 @@ namespace AquariumCiv.View
             if (Btn("Boat: kids play house")) last = CampCheats.BoatHouse(); // B77.b
             if (Btn("Boat: kids shelter in the rain")) last = CampCheats.BoatRain(); // B77.b in rain
             EndRow();
+            // #776 the founder's statue (B81): "Statue: raise now" first (it jumps to a village box if this one is a camp), the rest stand it by themselves
+            Row(); // #776 the rule and the raising
+            if (Btn("Statue: raise now")) last = CampCheats.StatueRaiseNow(); // #776 B81.a (the held scene; names the person)
+            if (Btn("Statue: stand it")) last = CampCheats.StatueStand(); // #776 no scene: the setup for the uses
+            if (Btn("Statue: raise (scene again)")) last = CampCheats.StatueRaiseAgain(); // #776 B81.a again, the people the box has
+            if (Btn("Statue: remove")) last = CampCheats.StatueRemove(); // #776 so the raising can be replayed
+            EndRow();
+            Row(); // #776 the people's uses (B81.b-f)
+            if (Btn("Statue: kids climb")) last = CampCheats.StatueClimb(); // #776 B81.b
+            if (Btn("Statue: flowers (anniversary)")) last = CampCheats.StatueFlowers(); // #776 B81.c
+            if (Btn("Statue: sit at its foot")) last = CampCheats.StatueSit(); // #776 B81.d
+            if (Btn("Statue: a nod in passing")) last = CampCheats.StatueNod(); // #776 B81.e
+            if (Btn("Statue: the sweep")) last = CampCheats.StatueSweep(); // #776 B81.f (work)
+            EndRow();
+            Row(); // #776 the rule's own steps
+            if (Btn("Founder: die now")) last = CampCheats.FounderDie(); // #776 the most pinned (else the first notable) dies this month
+            if (Btn("Statue: skip a year")) last = CampCheats.StatueSkipYear(); // #776 the wait after the death is over
+            if (Btn("Statue: skip to the anniversary")) last = CampCheats.StatueSkipToAnniversary(); // #776 today is the death day, a year on, morning
+            EndRow();
         }
 
         void OnGUI()

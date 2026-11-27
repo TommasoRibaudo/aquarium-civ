@@ -440,10 +440,12 @@ namespace AquariumCiv.Sim.Settle
         }
 
         // ---------------- outbuildings ----------------
+        /// <summary>#791: the first outbuilding's farther tries (<see cref="PlaceOutbuilding"/> with far): steps of this much past the yard.</summary>
+        const int FarSteps = 6; const float FarStep = 0.08f;
         /// <summary>A family's barn, byre or shed across the yard from its homes (the open point "families stop at
         /// ~2 homes": with the outbuilding each family reads as a farmstead of 3–5). No path: it opens onto the yard.
         /// False when nothing fits (the family just has no barn).</summary>
-        public bool PlaceOutbuilding(Yard k, Lot site)
+        public bool PlaceOutbuilding(Yard k, Lot site, bool far = false)
         {
             var map = w.Map;
             // Away from the homes: the mean direction from the yard to its homes, flipped.
@@ -453,6 +455,9 @@ namespace AquariumCiv.Sim.Settle
             float baseAng = hx * hx + hz * hz > 1e-6f ? MathF.Atan2(-hz, -hx) : Terrain.Hash3(w.Seed, k.id, 61) * MathF.PI * 2f;
             var spec = Encyclopedia.Of(LotKind.Outbuilding);
             cands.Clear();
+            // #791 (user call 2026-11-26: every village has a barn): when no yard found room and the box has no outbuilding,
+            // Settlement.Outbuildings asks again with far: the same fan farther out, a step at a time.
+            for (int step = far ? 1 : 0; step < (far ? FarSteps : 1) && cands.Count == 0; step++)
             for (int a = 0; a < 16; a++)
             {
                 // Fan out from straight across the yard, alternating sides.
@@ -461,7 +466,7 @@ namespace AquariumCiv.Sim.Settle
                 float setback = 0.02f + 0.05f * Terrain.Hash3(w.Seed, site.id, 200 + a);
                 float yaw = Placer.FacingYaw(k.x + ux, k.z + uz, k.x, k.z) + Jit(site, 7000 + a) * 0.5f;
                 float ext = Extent(yaw, site.w, site.d, ux, uz);
-                float x = k.x + ux * (k.r + ext + setback), z = k.z + uz * (k.r + ext + setback);
+                float off = k.r + ext + setback + step * FarStep, x = k.x + ux * off, z = k.z + uz * off;
                 var c = new Candidate { x = x, z = z, yaw = yaw, w = site.w, d = site.d, yard = k.id, source = 12 };
                 c.reject = OutbuildingCheck(k, c, spec);
                 if (c.reject != null) continue;

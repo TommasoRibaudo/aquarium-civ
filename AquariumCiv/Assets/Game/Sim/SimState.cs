@@ -258,6 +258,7 @@ namespace AquariumCiv.Sim
         public string trait;
         public float age;        // in years (advances at notableAgeFactor per game year)
         public float lifespan;
+        public bool slowingNoted; // #788/#790: the chronicle has said this elder is slowing down (once, in their last window)
         public bool alive = true;
         public int parentId = -1;
         public long bornMonth;
@@ -375,6 +376,7 @@ namespace AquariumCiv.Sim
         public List<Relic> relics = new();               // the slice relics, found and the Sandal still lost (SimCore.Relics.cs, #74)
         public bool dollDue;                  // the Keeper Doll's trigger fired while the player was away: made on the first live month
         public List<KeeperActionCount> keeperActions = new(); // what the Keeper did how often (the Keeper Doll's prop)
+        public int slowLineNextId = SimCore.SlowLineIdBase; // #788: the glance lines' own ids, so the shared ids never shift
         public int relicLineNextId = SimCore.RelicLineIdBase; // relic cards' own ids, so the shared ids never shift
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
         /// <summary>Where everything stands: lots, family yards, paths, the Keeper's marks on the land (Sim/Settle, #32).</summary>
@@ -422,6 +424,8 @@ namespace AquariumCiv.Sim
         /// it was picked and how they tell it (StoryManner: 0 slow, with all the voices; 1 short, for a laugh).</summary>
         public int storyTellerId = -1; public long storyTellerMonth = -1; public int storyTellerManner;
         public StoryMarks storyMarks = new(); // #722: what the story events left in the box (SimCore.StoryEvents.cs)
+        /// <summary>#776 (B81): the founder's statue: whose it is (-1: none stands) and the month the people raised it. Old saves: none. The spot is not saved (Sim/Settle/StatueSpot.cs).</summary>
+        public int statueFor = -1; public long statueMonth = -1;
         public List<ConsequenceProp> consequenceProps = new(); // #371: the things the Keeper's choices left in the box
         public bool featherPoleSet; public float featherPoleX, featherPoleZ; // fb4 #566: the one feather pole's spot (SimCore.FeatherPole.cs); an old save has none until asked
         public List<PoleFeather> poleFeathers = new(); // #692 (B31.a): the feathers tied on the pole after good events (SimCore.PoleFeathers.cs)

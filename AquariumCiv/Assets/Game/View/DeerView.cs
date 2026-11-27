@@ -63,16 +63,16 @@ namespace AquariumCiv.View
     /// </list>
     /// </summary>
     [DefaultExecutionOrder(6)]
-    public class DeerView : MonoBehaviour
+    public partial class DeerView : MonoBehaviour
     {
         public static bool AutoCreate = true;
         public static DeerView Instance { get; private set; }
 
         /// <summary>A person this near makes a deer look up; still this near after the look, it walks off; it comes back when nobody is
         /// within <see cref="ClearRadius"/> for <see cref="ClearSeconds"/>.</summary>
-        public const float AlertRadius = 0.6f, ShyRadius = 0.5f, ClearRadius = 0.8f, ClearSeconds = 3f, AlertSeconds = 1.0f, WalkOff = 0.4f;
+        public const float AlertRadius = 0.6f, ShyRadius = 0.5f, ClearRadius = 0.8f, ClearSeconds = 3f, WalkOff = 0.4f;
         /// <summary>Speeds (box units a second): the catch-up walk, the bolt; a knock's look before the bolt.</summary>
-        public const float WalkSpeed = 0.12f, BoltSpeed = QuadMotion.BoltSpeedDeer, KnockLook = 0.45f, BoltSeconds = 3f;
+        public const float WalkSpeed = 0.12f, BoltSpeed = QuadMotion.BoltSpeedDeer, BoltSeconds = 3f;
         /// <summary>The deer bed down from this hour to this one.</summary>
         public const float BedFrom = 21.5f, BedTo = 4.5f;
         /// <summary>Fawns shown at most (one per doe, the sim's spring count).</summary>

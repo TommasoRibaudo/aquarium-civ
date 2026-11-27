@@ -72,6 +72,8 @@ namespace AquariumCiv.Life
                 var order = new List<Person>(people);
                 order.Sort((a, b) =>
                 {
+                    int frail = (b.frail > 0f).CompareTo(a.frail > 0f); // #788: a frail elder's stool spells are their family's visits
+                    if (frail != 0) return frail;
                     int old = (b.stage == LifeStage.Elder).CompareTo(a.stage == LifeStage.Elder);
                     return old != 0 ? old : H(a.key, d.day, 777).CompareTo(H(b.key, d.day, 777));
                 });
@@ -287,8 +289,10 @@ namespace AquariumCiv.Life
             if (dayCache.TryGetValue(p.key, out var segs)) return segs;
             if (buildDepth > 3) return new[] { new Seg { start = 0f, end = 24f, kind = ActivityKind.SitOut, place = p.home, from = p.home, chronicleId = -1 } };
             buildDepth++;
+            float paceWas = walkPace;
+            walkPace = PaceFor(p); // #788: a frail elder's walks in their day take longer
             try { segs = BuildDay(p, dayInfo); }
-            finally { buildDepth--; }
+            finally { buildDepth--; walkPace = paceWas; }
             KeepDoorsQuiet(p, segs);
             segs = KeepSleepersIn(p, segs);
             dayCache[p.key] = segs;
@@ -367,6 +371,8 @@ namespace AquariumCiv.Life
 
             // Layers, lowest first: relationships and owls colour the schedule; role beats beat it; weather; scenes beat all.
             if (p.Grown) Relationships(p, d, list);
+            if (p.frail > 0f) FrailSeat(p, d, list); // #788: the elder's two spells at their door in their last days...
+            if (p.stage != LifeStage.Baby) FrailVisits(p, d, list); // ...and the family who sit beside them
             if (p.Adult) NightOwls(p, d, list);
             GlassLayer(p, d, list); // #92: the people at the glass, by belief stage
             if (p.n != null && p.role != null && p.Grown) RoleBeats(p, d, list);
@@ -375,7 +381,7 @@ namespace AquariumCiv.Life
             if (eraReady && p == leader && era == Era.Village) Put(list, Mk(ActivityKind.PacePlans, 18.3f, 19.1f, gather, Prop.Plans, ActivitySource.RoleBeat), d);
             WeatherLayer(p, d, list);
             foreach (var sc in d.scenes) SceneLayer(sc, p, d, list, false);
-            return Stitch(p, list);
+            return KeepVisitsToTheSeat(p, Stitch(p, list)); // #788: the family sits at the door only while the elder does
         }
 
         Seg Mk(ActivityKind k, float start, float end, Place place, Prop prop = Prop.None, ActivitySource src = ActivitySource.Schedule, PersonRef partner = default, Place from = default, int chronicle = -1)
@@ -810,21 +816,25 @@ namespace AquariumCiv.Life
             long day = d.day;
             At(ActivityKind.Sleep, 5.5f + R(k, day, 1) * 0.8f, p.home);
             At(ActivityKind.SitOut, 7f, p.home, Prop.Stool);
-            bool wander = farms.Count > 0 && R(k, day, 3) < 0.4f;
+            // #788 last days: the further in, the less they wander to the fields, the more they sit at their own door on the stool, the earlier they go home.
+            float fr = p.frail;
+            bool wander = farms.Count > 0 && R(k, day, 3) < 0.4f * (1f - fr);
             if (wander) At(ActivityKind.WatchWork, 9f, PlaceOf(farms[(int)(H(k, day, 4) % (uint)farms.Count)]), Prop.Stick);
-            else At(ActivityKind.SitOut, 9f, ElderSitPlace(p, d, 0), Prop.Stick); // tester run 1 #3: ElderSitPlace is the gather outside the camp
+            else { var at = FrailSit(p, d, 0, ElderSitPlace(p, d, 0)); At(ActivityKind.SitOut, 9f, at, FrailProp(p, at, Prop.Stick)); } // tester run 1 #3: ElderSitPlace is the gather outside the camp
             bool minds = R(k, day, 5) < 0.4f;
-            At(minds ? ActivityKind.MindBabies : ActivityKind.SitOut, 10f, minds ? p.home : ElderSitPlace(p, d, 1));
+            var mind = FrailSit(p, d, 1, ElderSitPlace(p, d, 1));
+            At(minds ? ActivityKind.MindBabies : ActivityKind.SitOut, 10f, minds ? p.home : mind, minds ? Prop.None : FrailProp(p, mind, Prop.None));
             if (d.teller == p && !d.tellerPicked) At(ActivityKind.StoryTell, 11f, gather);
-            else At(ActivityKind.SitOut, 11f, ElderSitPlace(p, d, 2), Prop.Stool);
-            if (p.hints.sitWithOldChance > 0f && R(k, day, 6) < p.hints.sitWithOldChance) At(ActivityKind.SitWithOld, 12f, gather);
-            else At(ActivityKind.SitOut, 12f, ElderSitPlace(p, d, 3));
+            else { var at = FrailSit(p, d, 2, ElderSitPlace(p, d, 2)); At(ActivityKind.SitOut, 11f, at, Prop.Stool); }
+            if (p.hints.sitWithOldChance > 0f && R(k, day, 6) < p.hints.sitWithOldChance && fr < 0.5f) At(ActivityKind.SitWithOld, 12f, gather);
+            else { var at = FrailSit(p, d, 3, ElderSitPlace(p, d, 3)); At(ActivityKind.SitOut, 12f, at, FrailProp(p, at, Prop.None)); }
             At(ActivityKind.Eat, 12.9f, MealPlace(p, d), Prop.None, Ref(p.partner));
-            At(minds ? ActivityKind.SitOut : ActivityKind.MindBabies, 15f, p.home);
-            if (farms.Count > 0 && R(k, day, 7) < 0.5f) At(ActivityKind.WatchWork, 17f, PlaceOf(farms[(int)(H(k, day, 8) % (uint)farms.Count)]), Prop.Stick);
-            else At(ActivityKind.SitOut, 17f, ElderSitPlace(p, d, 4), Prop.Stool);
-            float home = 19.4f + R(k, day, 2) * 0.4f - box.homeEarlyHours - p.hints.homeEarlyHours;
-            if (StyleOf(p, d) != EveningStyle.Gather) { At(d.supper == SupperPick.Baskets ? ActivityKind.Eat : ActivityKind.SitOut, home, p.home, d.supper == SupperPick.Baskets ? Prop.Basket : Prop.Stool, default, TripType.Home); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #197, #589
+            At(minds ? ActivityKind.SitOut : ActivityKind.MindBabies, 15f, p.home, minds ? FrailProp(p, p.home, Prop.None) : Prop.None);
+            if (farms.Count > 0 && R(k, day, 7) < 0.5f * (1f - fr)) At(ActivityKind.WatchWork, 17f, PlaceOf(farms[(int)(H(k, day, 8) % (uint)farms.Count)]), Prop.Stick);
+            else { var at = FrailSit(p, d, 4, ElderSitPlace(p, d, 4)); At(ActivityKind.SitOut, 17f, at, Prop.Stool); }
+            float home = 19.4f + R(k, day, 2) * 0.4f - box.homeEarlyHours - p.hints.homeEarlyHours - 0.6f * fr;
+            if (StyleOf(p, d) != EveningStyle.Gather || fr >= 0.5f && !d.tellerPicked && R(k, day, 215) < 0.65f) { // #788: most evenings they stay in, some they still come and sit at the edge
+             At(d.supper == SupperPick.Baskets ? ActivityKind.Eat : ActivityKind.SitOut, home, p.home, d.supper == SupperPick.Baskets ? Prop.Basket : Prop.Stool, default, TripType.Home); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #197, #589
             At(ActivityKind.SitOut, TellFrom, gather, Prop.Stool, default, TripType.HomeToGreen);
             if (d.tellerPicked && d.teller == p) { At(ActivityKind.StoryTell, TellerUntil(d), gather); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #717
             if (d.tellerPicked) ListenToTheTeller(d, Math.Max(home, TellEnd(d) + 0.05f));

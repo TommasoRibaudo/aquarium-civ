@@ -15,11 +15,13 @@ namespace AquariumCiv.Sim
         /// 3.2 the dry spell, 3.3 the first snow (its line keeps the old kind "snow": the weather reads it).</summary>
         public const string AntlersPassed = "antlers_passed", TinkererBucket = "tinkerer_bucket", GardenerFlowers = "gardener_flowers",
             JokerFace = "joker_face", DrySpell = "dry_spell", FirstSnow = "first_snow";
+        /// <summary>#776 (B81): the founder's statue, raised on the green a year after the pinned (else the first) person has died.</summary>
+        public const string FounderStatue = "founder_statue";
         public static readonly string[] All = { FirstFruit, TwoMarks, SecondStone, SingerSong, KeeperChildGrown,
-            AntlersPassed, TinkererBucket, GardenerFlowers, JokerFace, DrySpell, FirstSnow };
+            AntlersPassed, TinkererBucket, GardenerFlowers, JokerFace, DrySpell, FirstSnow, FounderStatue };
         /// <summary>The events told once a box: the ones the yearly pacing counts (a person's callback, 5.1, is not one).</summary>
         public static readonly string[] OncePerBox = { FirstFruit, TwoMarks, SecondStone, SingerSong,
-            AntlersPassed, TinkererBucket, GardenerFlowers, JokerFace, DrySpell, FirstSnow };
+            AntlersPassed, TinkererBucket, GardenerFlowers, JokerFace, DrySpell, FirstSnow, FounderStatue };
 
         /// <summary>The event has a staged scene of its own (a held <see cref="MomentKind.Story"/> moment). 2.2 rides the ritual's own held
         /// moment (B80.d: the singer's notes first, its line on the ritual's caption), so it is never a Story moment of its own.</summary>
@@ -127,16 +129,17 @@ namespace AquariumCiv.Sim
             if (StoryFirstThisYear()) return;
             if (TryFirstFruit(false) != null) return;
             if (TrySecondStone(false) != null) return;
+            if (TryFounderStatue(false) != null) return; // #776 (B81)
             StoryStep3(); // batch 3: the trait moments (2.1, 2.3, 2.4) and the dry spell (3.2); 1.4 follows the seat, 3.3 the snow
         }
 
         /// <summary>A first-time story line was written this game year.</summary>
         bool StoryFirstThisYear() => KindThisYear(StoryEvent.OncePerBox.Select(StoryEvent.Kind).ToArray());
 
-        ChronicleEntry StoryLine(string id, string text, float salience, int a, int b)
+        ChronicleEntry StoryLine(string id, string text, float salience, int a, int b, int ownId = -1)
         {
             State.storyFlags.Add(StoryFlag(id));
-            return Record(StoryEvent.Kind(id), text, salience, a, b);
+            return RecordAs(ownId, StoryEvent.Kind(id), text, salience, a, b);
         }
 
         bool Summer => CalendarMonth >= 5 && CalendarMonth <= 7;
@@ -301,6 +304,9 @@ namespace AquariumCiv.Sim
                 }
                 case StoryEvent.KeeperChildGrown: // #722 (5.1)
                     e = DebugKeeperChildGrown(out why);
+                    break;
+                case StoryEvent.FounderStatue: // #776 (B81)
+                    e = DebugFounderStatue(out why);
                     break;
                 case StoryEvent.AntlersPassed: case StoryEvent.TinkererBucket: case StoryEvent.GardenerFlowers:
                 case StoryEvent.JokerFace: case StoryEvent.DrySpell: case StoryEvent.FirstSnow:

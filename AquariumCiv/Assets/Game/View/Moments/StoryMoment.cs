@@ -65,7 +65,7 @@ namespace AquariumCiv.View
             }
             LastWhy = null;
             Started++;
-            return new MomentStaging { Done = () => !camp.StoryPlaying(scene), Stop = () => camp.StopStory(scene) };
+            return new MomentStaging { Done = () => !camp.StoryPlaying(scene), Stop = () => camp.StopStory(scene), Focus = () => camp.FocusNow(scene), Cast = into => camp.CastDrawn(scene, into) }; // #783: the camera leans on the scene's thing (this scene's: #776 tester, not the newest use's)
         }
 
         /// <summary>The second stone's spot comes the next frame; a moment waits for it at most <see cref="SpotWaitFor"/> s (real time),

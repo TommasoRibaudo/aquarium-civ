@@ -9,11 +9,10 @@ namespace AquariumCiv.View
     /// one stub-arm mesh used for both arms, and code-built props at 1.5–2× real size so they read at full-box zoom.
     /// No faces, no rigs: every move is a transform of these parts. Adults are ~0.22 u tall; kids are 0.68×.
     /// </summary>
-    public static class PegDoll
+    public static partial class PegDoll
     {
         /// <summary>#267: the brown, murky water of a bucket scooped while the pond is dry.</summary>
         static readonly Color MuddyWater = new Color(0.42f, 0.30f, 0.17f);
-        public const float KidScale = 0.68f;
 
         /// <summary>The proportions every part hangs from (adult; multiply by the doll's scale).</summary>
         public const float BodyH = 0.13f, ShoulderX = 0.046f, ArmLen = 0.075f, HeadR = 0.043f;
@@ -374,6 +373,7 @@ namespace AquariumCiv.View
                     mb.Box(new Vector3(0, -0.005f, 0), new Vector3(0.06f, 0.006f, 0.006f), Palette.Iron);
                     mb.Box(new Vector3(-0.012f, -0.013f, 0.036f), new Vector3(0.008f, 0.007f, 0.026f), Palette.Iron, Quaternion.Euler(-25f, -35f, 0f)); // the spout, bent
                     break;
+                case PropKind.FounderStatue: Statue(mb, Vector3.zero, 1f, null); break; // #776 (B81)
                 case PropKind.Block:
                     mb.Box(Vector3.zero, new Vector3(0.075f, 0.05f, 0.055f), Palette.Stone);
                     break;

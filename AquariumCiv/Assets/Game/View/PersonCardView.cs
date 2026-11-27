@@ -170,6 +170,7 @@ namespace AquariumCiv.View
             bool onMess = CareView.Instance != null && CareView.Instance.MessSaysSo(screenPos);
             if (!cardUp && onMess) { CareView.Instance.AnswerMessTap(); return true; }
             int building = PickBuilding(screenPos);
+            if (building < 0 && !onMess && !cardUp && PickStatue(screenPos) is int founder && founder >= 0) { Open(founder, true); return true; } // #776: the founder's statue opens their card
             if (building < 0 && !onMess && OpenWho(PickPerson(screenPos))) return true; // tester run 9: mess under the finger beats a doll merely near it
             if (IsOpen) { Close(); return true; }
             if (CrowdOpen) { CloseCrowd(); return true; }
@@ -481,7 +482,7 @@ namespace AquariumCiv.View
             var hud = GameHud.Instance;
             if (hud == null) return;
             var p = sim.Pinned;
-            string text = p == null ? null : p.alive ? p.name : p.name + " (remembered)";
+            string text = p == null ? null : p.alive ? p.name + PinSoftSign(sim, p) : p.name + " (remembered)"; // #790: " · slowing" in their last days
             int id = p?.id ?? -1;
             if (!force && text == chipText && id == chipId) return;
             chipText = text; chipId = id;
@@ -513,7 +514,7 @@ namespace AquariumCiv.View
             // the pin's gold tag over their head
             var pinned = hide ? null : sim.Pinned;
             bool pinOn = pinned != null && pinned.alive && Place(pinTag, pv, cam, PersonRef.Notable(pinned.id));
-            if (pinOn) pinTag.Word = IsOpen && OpenId == pinned.id ? TagWord(pinned.name) : pinned.name; // #653
+            if (pinOn) pinTag.Word = (IsOpen && OpenId == pinned.id ? TagWord(pinned.name) : pinned.name) + PinSoftSign(sim, pinned); // #653; #790: a soft sign when they are in their last days
             // #320: zoomed out, the pinned name fades away (the pin, the follow and the chip stay)
             var rig = pinOn ? cam.GetComponent<BoxCamera>() : null;
             float pinFade = rig != null ? BoxCameraMath.PinTagOpacity(rig.zoom) : 1f;
@@ -1035,7 +1036,7 @@ namespace AquariumCiv.View
         static string Signature(PersonCard c)
         {
             var sb = new StringBuilder();
-            sb.Append(c.id).Append('|').Append(c.fullName).Append('|').Append(c.age).Append('|').Append(c.alive).Append('|').Append(c.roleLine).Append('|').Append(c.keeperLine).Append('|').Append(c.pinned)
+            sb.Append(c.id).Append('|').Append(c.fullName).Append('|').Append(c.age).Append('|').Append(c.alive).Append('|').Append(c.roleLine).Append('|').Append(c.keeperLine).Append('|').Append(c.frailLine).Append('|').Append(c.pinned)
               .Append('|').Append(c.relics.Count).Append('|').Append(c.quote?.text);
             foreach (var t in c.family.Concat(c.friends).Concat(c.rivals).Concat(c.mentors)) sb.Append('|').Append(t.otherId).Append(t.otherName).Append(t.kind).Append(t.otherAlive);
             foreach (var st in c.recentStories) sb.Append('|').Append(st.entryId);
@@ -1074,6 +1075,9 @@ namespace AquariumCiv.View
             var words = phrase.Split(' ');
             return words.Length <= 3 ? phrase : string.Join(" ", words, 0, 3);
         }
+
+        /// <summary>#790: the pinned elder in their last days: " · slowing" after the name (soft, no number). Nothing otherwise.</summary>
+        public static string PinSoftSign(SimCore sim, Notable pinned) => sim.FrailTagWord(pinned) is { Length: > 0 } w ? " · " + w : "";
 
         string TagWord(string name) => string.IsNullOrEmpty(DoingNow) ? name : name + " · " + DoingNow;
 
@@ -1136,6 +1140,12 @@ namespace AquariumCiv.View
                 var k = Note(c.keeperLine);
                 k.name = "person-card-keeper";
                 body.Add(k);
+            }
+            if (!string.IsNullOrEmpty(c.frailLine)) // #790: an elder in their last days, said softly
+            {
+                var f = Note(c.frailLine);
+                f.name = "person-card-frail";
+                body.Add(f);
             }
             if (c.quote != null && !string.IsNullOrEmpty(c.quote.text))
             {

@@ -128,6 +128,12 @@ namespace AquariumCiv.Life
             w.KeepClear.Clear();
             if (!float.IsNaN(m.hide)) Add(w, fx, fz, m.hide, LifePlanner.HideFrameDistance, CampSpots.RackHalfDepth, CampSpots.RackHalfLength + 0.035f);
             if (!float.IsNaN(m.fish)) Add(w, fx, fz, m.fish, FishRackSpot.Distance, FishRackSpot.HalfDepth, FishRackSpot.HalfLength);
+            // #776 (B81.0): the founder's statue on the green: its footprint (0.14 u) and the 0.2 u kept clear all round, so nothing is built on those cells
+            if (sim.StatueStands && sim.FindStatueSite(out float sx, out float sz, out float syaw))
+            {
+                float side = StatueSpot.Footprint + 2f * StatueSpot.Clear;
+                w.KeepClear.Add(new Footprint(sx, sz, syaw, side, side));
+            }
         }
 
         static void Add(Settlement w, float fx, float fz, float angle, float dist, float halfDepth, float halfLength)

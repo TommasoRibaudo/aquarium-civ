@@ -17,7 +17,7 @@ namespace AquariumCiv.View
 {
     public sealed partial class CampLife
     {
-        static bool IsVillageUse(CampUse u) => u >= CampUse.FieldTag && u <= CampUse.HayJump;
+        static bool IsVillageUse(CampUse u) => u >= CampUse.FieldTag && u <= CampUse.HayJump || IsStatueLife(u); // #776: the statue's uses play in a village or a town
         const int ThingVillageBase = 70000, ThingWell = ThingVillageBase + 1, ThingMill = ThingVillageBase + 2, ThingPile = ThingVillageBase + 3,
             ThingLog = ThingVillageBase + 4, ThingBakery = ThingVillageBase + 5, ThingStreet = ThingVillageBase + 6, ThingBarn = ThingVillageBase + 7, ThingFieldBase = ThingVillageBase + 100,
             ThingHomeBase = ThingVillageBase + 300, ThingFenceBase = ThingVillageBase + 200;
@@ -1022,6 +1022,11 @@ namespace AquariumCiv.View
                 CampUse.FenceLean => TryFenceLean(acts, time, true),
                 CampUse.BarnChores => TryBarnChores(acts, time, true),
                 CampUse.HayJump => TryHayJump(acts, time, true),
+                CampUse.StatueClimb => TryStatueClimb(acts, time, true), // #776
+                CampUse.StatueFlowers => TryStatueFlowers(acts, time, true),
+                CampUse.StatueSit => TryStatueSit(acts, time, true),
+                CampUse.StatueNod => TryStatueNod(acts, time, true),
+                CampUse.StatueSweep => TryStatueSweep(acts, time, true),
                 _ => "not a village use: " + use,
             };
             return r ?? use + ": started (" + VillageCast() + ")";
@@ -1401,12 +1406,13 @@ namespace AquariumCiv.View
             if (town && !sim.State.buildings.Exists(b => b.type == BuildingType.Bakery)) SimLayoutSource.DebugBuild(BuildingType.Bakery);
             sim.State.festivalUntilMonth = sim.State.month; // an ordinary year (tooling.md 2026-11-11: the era's festival evenings override the rest)
             if (kids > 0) sim.DebugAddKids(kids);
+            string barn = sim.Settlement != null && sim.Settlement.FirstOutbuilding() != 0 ? "a barn stands" : "no outbuilding yet"; // #791: every village has a barn (Settlement.IsBarn)
             var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
             if (box != null) box.Rebuild();
             ShowMeDirector.BubblesOn = false;
             PeopleView.DebugSetHour(hour);
             var c = Camp;
-            return r + $"{sim.State.era} at {hour:0.0} h, kids +{kids}; " + (c != null ? c.VillageStatus() : "");
+            return r + $"{sim.State.era} at {hour:0.0} h, kids +{kids}, {barn}; " + (c != null ? c.VillageStatus() : "");
         }
 
         /// <summary>AnimLab: the camera yaw (deg, AnimLabLive's convention) that looks at the front of the nearest standing <paramref name="kind"/>

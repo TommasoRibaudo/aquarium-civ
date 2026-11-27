@@ -16,11 +16,12 @@ namespace AquariumCiv.Tests
         sealed class FakePhone : ILocalNotifications
         {
             public readonly List<string> log = new();
+            public readonly List<(int id, string title, string body)> sent = new(); // #790
             public TimeSpan after;
             public string title, body;
             public void Prepare() => log.Add("prepare");
             public IEnumerator Ask(Action<bool> answered) { answered(true); yield break; }
-            public void Schedule(int id, TimeSpan a, string t, string b) { lock (log) { log.Add("schedule"); after = a; title = t; body = b; } }
+            public void Schedule(int id, TimeSpan a, string t, string b) { lock (log) { log.Add("schedule"); after = a; title = t; body = b; sent.Add((id, t, b)); } }
             public void CancelAll() { lock (log) log.Add("cancel"); }
             public int Count(string what) { lock (log) return log.FindAll(l => l == what).Count; }
             public string Tail { get { lock (log) return log[log.Count - 1]; } }
@@ -47,6 +48,60 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(here.realHours, phone.after.TotalHours, 2.0 / 60, "at close + the real hours");
             Assert.IsNotNull(n.Last.Value.ToString());
             Debug.Log("[notifytest] " + n.Last.Value);
+        }
+
+        /// <summary>#790: a pinned elder in their last days, in a box with years to go before its era is ready.</summary>
+        static SimCore PinnedElderNearTheEnd(int seed)
+        {
+            var sim = NewSim(seed);
+            var n = sim.State.notables.Find(x => x.alive);
+            n.age = sim.Config.retireAge + 5f;
+            n.lifespan = n.age + 0.5f;
+            foreach (var o in sim.State.notables) if (o != n && o.alive) o.lifespan = o.age + 90f;
+            sim.Pin(n.id);
+            return sim;
+        }
+
+        [Test]
+        public void TheWordForAPinnedPersonIsOffByDefault()
+        {
+            PlayerPrefs.DeleteKey(EraNotifier.DeathNoticeKey);
+            Assert.IsFalse(EraNotifier.DeathNotice, "off until the Keeper turns it on");
+            var phone = new FakePhone();
+            var n = new EraNotifier(phone);
+            n.Close(PinnedElderNearTheEnd(1721), DateTime.UtcNow, true); // notifications on, the soft word not asked for
+            Assert.IsTrue(n.WaitForRun(30000));
+            Assert.IsTrue(n.Last.Value.result.pinnedGone, "the run saw them go");
+            Assert.IsFalse(n.Last.Value.deathScheduled);
+            Assert.AreEqual(0, phone.sent.FindAll(s => s.id == EraNotifier.DeathNotificationId).Count, "and said nothing");
+        }
+
+        [Test]
+        public void AskedForTheWordIsSoftAndSaysNeitherWhoNorWhen()
+        {
+            var sim = PinnedElderNearTheEnd(1722);
+            var phone = new FakePhone();
+            var n = new EraNotifier(phone);
+            n.Close(sim, DateTime.UtcNow, true, deathNotice: true);
+            Assert.IsTrue(n.WaitForRun(30000));
+            var word = phone.sent.FindAll(s => s.id == EraNotifier.DeathNotificationId);
+            Assert.AreEqual(1, word.Count, "one soft word");
+            Assert.IsTrue(n.Last.Value.deathScheduled);
+            var name = sim.Pinned.name;
+            StringAssert.DoesNotContain(name, word[0].title + word[0].body, "not who");
+            StringAssert.Contains("tree", word[0].body);
+            foreach (char c in word[0].title + word[0].body) Assert.IsFalse(char.IsDigit(c), "no count, no date");
+            foreach (var bad in new[] { "died", "dead", "death", "gone", "world", "sky" }) StringAssert.DoesNotContain(bad, word[0].body.ToLowerInvariant());
+            Debug.Log("[notifytest] " + n.Last.Value);
+        }
+
+        [Test]
+        public void NoWordWhenTheNotificationsAreOffEvenIfAskedFor()
+        {
+            var phone = new FakePhone();
+            var n = new EraNotifier(phone);
+            n.Close(PinnedElderNearTheEnd(1723), DateTime.UtcNow, false, deathNotice: true);
+            Assert.AreEqual(0, phone.Count("schedule"));
         }
 
         [Test]

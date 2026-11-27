@@ -312,6 +312,19 @@ namespace AquariumCiv.View
         TreeWater,
         /// <summary>B80.h (3.3): the first snow: a kid catches a flake on the tongue, the others copy, they roll a snow figure by the fire.</summary>
         FirstSnow,
+        // #776 the founder's statue (View/Beats/StatueScenes.cs, View/CampLife.Statue.cs). Appended: keep these last.
+        /// <summary>B81.a: the people raise the founder's statue on the green (the one held Story scene): a block rolled in, carved in three rounds, the first flowers.</summary>
+        StatueRaise,
+        /// <summary>B81.b: a kid climbs the statue's two-step base (a grown-up near), looks up, waves, hops down.</summary>
+        StatueClimb,
+        /// <summary>B81.c: on the anniversary of the death a family member lays flowers at its foot, others stand by.</summary>
+        StatueFlowers,
+        /// <summary>B81.d: an old one sits at its foot, back against the plinth, and looks up at it.</summary>
+        StatueSit,
+        /// <summary>B81.e: a grown-up crossing the green nods to it (and touches the plinth if they knew the founder).</summary>
+        StatueNod,
+        /// <summary>B81.f (work): the weekly sweep of the green brushes round its feet.</summary>
+        StatueSweep,
     }
 
     /// <summary>#694: what a dog or a visiting wolf does in a <see cref="QuadPart"/> (P0's moves; CampLife.Dogs poses them).</summary>

@@ -115,7 +115,15 @@ namespace AquariumCiv.View
             }
             if (!TryStart(live)) return null; // can't be cast: it waits (a card only after several tries)
             lives.Add(live);
-            return new MomentStaging { Done = () => Done(live), Stop = () => End(live, true) };
+            return new MomentStaging { Done = () => Done(live), Stop = () => End(live, true), Cast = into => CastDrawn(live, into) };
+        }
+
+        /// <summary>#783: where the scene's people are drawn now (the camera leans on their middle); nobody before the scene starts or after it ends.</summary>
+        static void CastDrawn(Live live, List<Vector2> into)
+        {
+            if (live.over || live.scene?.plan == null || live.pv == null) return;
+            foreach (var m in live.scene.plan.members)
+                if (live.pv.DrawnAt(m.key) is Vector2 at) into.Add(at);
         }
 
         /// <summary>S-ritual: a ritual is over before the evening's meal and bed (the work share run lost 7 % of sleep to one staged at dusk);

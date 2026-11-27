@@ -17,6 +17,11 @@ namespace AquariumCiv.View
         public Func<bool> Done;
         /// <summary>Optional: end it now (nothing else is promised).</summary>
         public Action Stop;
+        /// <summary>#783: the moment this staging plays (the stage sets it), the scene's own focus (box-local x, z; null = the cast's middle) and
+        /// the drawn spots of its cast (adds to the list). Both null = nothing to lean the camera on.</summary>
+        public HeldMoment Moment;
+        public Func<Vector2?> Focus;
+        public Action<List<Vector2>> Cast;
     }
 
     /// <summary>#369: stages one moment of a kind now, or returns null when it can't (nobody to play it, the place is gone): the
@@ -104,6 +109,7 @@ namespace AquariumCiv.View
 
         void Update()
         {
+            HeldMomentLean.Tick(); // #783: every frame, a lean follows its scene
             sinceCheck += Time.unscaledDeltaTime;
             if (sinceCheck < CheckSeconds) return;
             sinceCheck = 0f;
@@ -227,6 +233,10 @@ namespace AquariumCiv.View
 
         /// <summary>Stagings this stage still holds (tests: one at most outside a town's busy day).</summary>
         public int StagingCount => playing.Count;
+        /// <summary>#783: is this moment's staging still playing (a lean holds the camera while it is).</summary>
+        public bool IsPlaying(int momentId) => playing.ContainsKey(momentId);
+        /// <summary>#783: one staging playing now (the cheat's), null when none.</summary>
+        public MomentStaging AnyPlayingStaging() { foreach (var s in playing.Values) if (s != null) return s; return null; }
 
         List<HeldMoment> StartNow(SimCore sim)
         {
@@ -239,8 +249,10 @@ namespace AquariumCiv.View
                 catch (Exception ex) { Debug.LogException(ex); }
                 if (st == null) { if (sim.FindMoment(m.id)?.state == HeldMomentState.Playing) sim.DeferMoment(m.id); continue; } // t2-polish: can't be staged now (its people are out): it waits, a card only after several tries. t4-fixes: a stager that put it back to wait for the morning already did
                 if (playing.TryGetValue(m.id, out var old) && old != null && !ReferenceEquals(old, st)) { try { old.Stop?.Invoke(); } catch (Exception ex) { Debug.LogException(ex); } } // #10: never two stagings of one moment
+                st.Moment = m;
                 playing[m.id] = st;
                 lastStarted.Add(m);
+                HeldMomentLean.Begin(st); // #783: the camera leans in on the scene (or not: the lean's own gates)
             }
             return lastStarted;
         }
@@ -291,6 +303,7 @@ namespace AquariumCiv.View
             var list = new List<RelicMomentInfo>();
             return new MomentStaging
             {
+                Cast = into => { if (pv == null) return; foreach (var (who, _) in info.cast) if (pv.DrawnAt(who.Key) is Vector2 at) into.Add(at); },
                 Done = () =>
                 {
                     var now = pv != null ? pv.Now : default;

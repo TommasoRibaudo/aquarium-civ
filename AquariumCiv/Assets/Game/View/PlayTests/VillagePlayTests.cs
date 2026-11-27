@@ -4,6 +4,9 @@
 //   box": a bakery stands) for the crust at the bakery door.
 // - VillageWorkShare (category Village695Work, ~8 min): 5 view days of the village at x16, natural uses on: the village uses run by themselves,
 //   under 5 % of the work minutes go to them, no meal or sleep is lost.
+// - VillageLastDays (category LastDays788Play, ~3 min): #788 tester (polish 2): "Elder: last days" on the oldest in a village (seed 4242), natural
+//   uses on, x8 for 150 s real (about 4 view days): every frame a visitor sits with the frail elder, the elder is on their stool in that place
+//   and no camp use has taken their doll.
 using System;
 using System.Collections;
 using System.Linq;
@@ -125,6 +128,74 @@ namespace AquariumCiv.View.PlayTests
             Assert.Less(eat > 0f ? eatTaken / eat : 0f, 0.05f, "no meal lost");
             Assert.LessOrEqual(sleep > 0f ? sleepTaken / sleep : 0f, 0.02f, "no sleep lost (2 %: bedtime ends a use)");
             Assert.IsNotEmpty(uses, "the village uses ran by themselves");
+            CloseSlice();
+        }
+    }
+
+    [Category("LastDays788Play")]
+    public class VillageLastDays : PlayTestBase
+    {
+        [UnityTest, Timeout(900000)]
+        public IEnumerator AVisitorSitsWithTheFrailElder_OnlyWhileTheElderIsOnTheStool_InAVillage()
+        {
+            UseLivingLand(true);
+            GameUiPanel.AcceptInputUnfocused(true);
+            yield return OpenSlice(750, 1334, seed: 4242);
+            Debug.Log("[788 live] " + CampCheats.StageVillage(8f, false, 4, onlyCheats: false));
+            yield return new WaitForSeconds(3f);
+            var sim = AquariumCiv.Game.GameClock.Instance.Sim;
+            Assert.AreEqual(Era.Village, sim.State.era, "a village");
+            var pv = PeopleView.Find();
+            var oldest = sim.State.notables.Where(n => n.alive && sim.KinOf(n).Any()).OrderByDescending(n => n.age).First();
+            Debug.Log("[788 live] " + SimDebugPanel.LastDaysCheat(sim, oldest.id));
+            var elder = PersonRef.Notable(oldest.id);
+            // a view day is a sim month and is planned once: on to the next month, so the elder's day is planned with the last days in it
+            // (else the run can watch the day planned before the cheat, looping, with no stool spell in it)
+            AquariumCiv.Game.GameClock.DebugSkipHours(1.0 / 12.0 + 0.001);
+            yield return new WaitForSeconds(2f);
+            Assert.Greater(pv.Planner.FrailtyOf(elder), 0f, "the elder is in their last days");
+            var plan = new System.Collections.Generic.List<PersonActivity>();
+            pv.Planner.DaySchedule(elder, pv.Now.day, plan);
+            Debug.Log($"[788 live] {oldest.name} ({sim.RoleOf(oldest) ?? oldest.job}), day {pv.Now.day}: " + string.Join(" ", plan.Select(a => $"{a.start:0.00}-{a.end:0.00} {a.kind}{(a.moving ? ">" : "")}@{a.place}/{a.prop}")));
+            var seen = new System.Collections.Generic.Dictionary<string, int>();
+            pv.timeScale = 8f;
+            int frames = 0, visitFrames = 0, stoolFrames = 0, offStool = 0, heldByUse = 0;
+            var bad = new System.Collections.Generic.List<string>();
+            var hist = new System.Collections.Generic.Dictionary<string, int>();
+            float t0 = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - t0 < 150f && oldest.alive)
+            {
+                yield return null;
+                frames++;
+                PersonActivity ea = default; bool found = false;
+                foreach (var a in pv.Activities) if (a.who == elder) { ea = a; found = true; break; }
+                if (!found) continue;
+                bool onStool = ea.kind == ActivityKind.SitOut && !ea.moving && ea.prop == Prop.Stool;
+                string ek = $"{ea.kind}/{ea.prop}@{ea.place.kind}/{ea.source}";
+                seen[ek] = seen.TryGetValue(ek, out int e0) ? e0 + 1 : 1;
+                if (onStool) stoolFrames++;
+                foreach (var v in pv.Activities)
+                {
+                    if (v.kind != ActivityKind.SitWithOld || v.moving || v.partner != elder) continue;
+                    visitFrames++;
+                    string why = !onStool || ea.place != v.place ? $"elder {ea.kind}/{ea.prop} at {ea.place} (moving {ea.moving}, {ea.source}), visitor at {v.place} ({v.source})"
+                        : pv.Camp.Busy(elder.Key) ? "the elder's doll is in the camp use " + pv.Camp.UseOf(elder.Key) : null;
+                    if (why == null) continue;
+                    if (why.StartsWith("the elder's")) heldByUse++; else offStool++;
+                    string key = why.Split('(')[0];
+                    hist[key] = hist.TryGetValue(key, out int c) ? c + 1 : 1;
+                    if (bad.Count < 6) bad.Add($"day {pv.Now.day} {pv.Now.hour:0.00} h: {v.who.Key} beside the elder; {why}");
+                }
+            }
+            pv.timeScale = 1f;
+            Debug.Log("[788 live] the elder's frames: " + string.Join(" | ", seen.OrderByDescending(kv => kv.Value).Select(kv => kv.Key + " x" + kv.Value)));
+            Debug.Log($"[788 live] {frames} frames to day {pv.Now.day} {pv.Now.hour:0.0} h: elder on the stool {stoolFrames}, a visitor beside them {visitFrames}, off the stool {offStool}, held by a use {heldByUse}; " +
+                      string.Join(" | ", hist.Select(kv => kv.Key + " x" + kv.Value)) + "; " + string.Join("; ", bad));
+            Assert.IsTrue(oldest.alive, "the elder lived through the watch");
+            Assert.Greater(stoolFrames, 0, "the elder sat on their stool");
+            Assert.Greater(visitFrames, 0, "the family came to sit with them");
+            Assert.AreEqual(0, offStool + heldByUse, "nobody sits beside an empty stool: " + string.Join("; ", bad));
+            AssertNoErrors("788 live");
             CloseSlice();
         }
     }
