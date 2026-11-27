@@ -64,7 +64,7 @@ namespace AquariumCiv.View
         readonly Dictionary<int, VisualElement> treeFaces = new();
         ScrollView treeScroll;
         VisualElement treeView, treeGutter, mapView;
-        Vector2 treeKeep = new(-1f, -1f);
+        Vector2 restoreScroll = new(-1f, -1f); // a fold or an unfold redraws the page where it was
         int focusNext = -1;
         bool pressOnTree;
         public List<BookPage> Pages { get; private set; } = new();
@@ -168,7 +168,6 @@ namespace AquariumCiv.View
             TreeFocus = focusNext; // #774
             focusNext = -1;
             folded.Clear();
-            treeKeep = new Vector2(-1f, -1f);
             var person = PersonCardView.Instance;
             if (person != null) { person.Close(); person.CloseCrowd(); person.CloseBuilding(); } // #766: one sheet at a time
             var hud = GameHud.Instance;
@@ -236,7 +235,6 @@ namespace AquariumCiv.View
         void ShowPage(int index, int dir)
         {
             var old = current;
-            treeKeep = new Vector2(-1f, -1f); // #774: a fold keeps its view (FoldBranch sets it again); another page starts fresh
             treeView = null;
             At = index;
             var page = Pages[index];
@@ -598,6 +596,7 @@ namespace AquariumCiv.View
             var t = folded.Count > 0 ? sim.FamilyTreeOf(p.tree.rootId, folded) ?? p.tree : p.tree;
             Tree = t;
             treeFaces.Clear();
+            var keep = restoreScroll;
             Text(page, p.title, "type-title", "book-title");
             treeView = new VisualElement { name = "book-tree-view" };
             treeView.AddToClassList("book-tree-view");
@@ -687,7 +686,6 @@ namespace AquariumCiv.View
                 mapView.style.top = 8f + off.y * k;
                 mapView.style.width = Mathf.Min(w, vp.width) * k;
                 mapView.style.height = Mathf.Min(h, vp.height) * k;
-                treeKeep = off;
             }
             treeScroll.horizontalScroller.valueChanged += _ => Follow();
             treeScroll.verticalScroller.valueChanged += _ => Follow();
@@ -698,7 +696,7 @@ namespace AquariumCiv.View
                 {
                     placed = true;
                     var vp = treeScroll.contentViewport.layout;
-                    if (treeKeep.x >= 0f) treeScroll.scrollOffset = treeKeep; // a fold or an unfold keeps the view
+                    if (keep.x >= 0f) treeScroll.scrollOffset = keep; // a fold or an unfold keeps the view
                     else
                     {
                         var at = t.Node(TreeFocus) ?? t.Node(t.rootId);
@@ -769,9 +767,9 @@ namespace AquariumCiv.View
             if (!IsOpen || Page == null || Page.kind != BookPageKind.Family) return false;
             bool changed = fold ? folded.Add(ownerId) : folded.Remove(ownerId);
             if (!changed) return false;
-            var keep = treeKeep;
+            restoreScroll = treeScroll != null ? treeScroll.scrollOffset : new Vector2(-1f, -1f);
             ShowPage(At, 0);
-            treeKeep = keep;
+            restoreScroll = new Vector2(-1f, -1f);
             return true;
         }
 
