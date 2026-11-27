@@ -30,8 +30,10 @@ namespace AquariumCiv.View.PlayTests
     public class LastEveningShots789 : PlayTestBase
     {
         const int W = 750, H = 1334;
-        const float FrameEvery = 0.1f, PersonPx = 100f, ClosePx = 170f;
-        static readonly float[] Offsets = { 0f, -30f, 30f, -60f, 60f }, Pitches = { 46f, 58f };
+        const float FrameEvery = 0.1f, PersonPx = 120f, ClosePx = 170f; // v5: 120 (was 100) for the walk home and the wave
+        /// <summary>v5 (2026-11-27, the user: from the fire's side the camera saw mostly the tops of heads): from the family's front, low (24 to 32
+        /// degrees, was 46 to 58) and no more than 40 degrees round, so the faces, the arms and the lean back show.</summary>
+        static readonly float[] Offsets = { 0f, -20f, 20f, -40f, 40f }, Pitches = { 24f, 32f };
 
         static SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : null;
         static PeopleView Pv => PeopleView.Find();
@@ -184,7 +186,7 @@ namespace AquariumCiv.View.PlayTests
                         float frac = Mathf.Clamp01((Diff(bufs[0], bufs[1], r, w) - Diff(bufs[0], bufs[2], r, w)) / (0.30f * hPx * hPx));
                         worst = Mathf.Min(worst, frac);
                     }
-                    float score = worst - 0.12f * Mathf.Abs(off) / 60f;
+                    float score = worst - 0.12f * Mathf.Abs(off) / 40f;
                     log.Append($" y{aimYaw:0}/p{pitch:0} seen {worst:0.00}");
                     if (score > best) { best = score; bestYaw = aimYaw; bestPitch = pitch; }
                 }
@@ -257,7 +259,8 @@ namespace AquariumCiv.View.PlayTests
                     Vector2 door = DoorOf(sc);
                     // v4: no search here (the search holds the scene's clock but the dolls' steps run on, so the walk was over before the first
                     // frame) and not from beyond the door (the tent stood in front of them): from the side, a little ahead of them
-                    Recut(sc, YawFrom(WorldDir((door - sc.focus).normalized)) + 65f, "the walk home");
+                    // v5: from in front of them (the door's side, 35 degrees round so the tent is not in front of them): a helper each side, the arms linked
+                    Recut(sc, YawFrom(WorldDir((door - sc.focus).normalized)) + 35f, "the walk home");
                 }
                 if (!doorAimed && st >= tDoor - 0.2f)
                 {

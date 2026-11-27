@@ -34,18 +34,27 @@ namespace AquariumCiv.View
         /// <summary>The elder's seat: this far from the fire's middle, toward the camera and a little round.</summary>
         public const float SeatR = 0.28f, SeatTurn = 40f;
         /// <summary>The kin sit this close round the elder (0.12 to 0.2 u), on the camera's half; the partner right beside them, within an arm's reach
-        /// (AnimBench: at 0.16 u the hand fell short of the shoulder).</summary>
-        public const float RingR = 0.16f, PartnerR = 0.085f;
+        /// (AnimBench: at 0.16 u the hand fell short of the shoulder). v2 (2026-11-27, the hand did not read): side by side with the elder, both
+        /// facing the fire, 0.11 u apart (shoulder to shoulder, not inside each other), so the arm laid across the elder's shoulder shows from the front.</summary>
+        public const float RingR = 0.16f, PartnerR = 0.11f;
         /// <summary>The kid at the knee and the dog at the feet: this far in front of the elder (toward the fire); the dog also FeetSide to the elder's other side from the kid.</summary>
         public const float KneeAt = 0.07f, FeetAt = 0.04f, FeetSide = 0.075f;
         /// <summary>Beat 1 lasts at least this long; the kin come 1 to 2 s apart.</summary>
         public const float GatherMin = 8f, ComeEvery = 1.5f;
         /// <summary>Beat 2 (the hand), beat 3 (the stars: look up 3 s, the nod, a hold), beat 4 (rising).</summary>
         public const float HandFor = 8f, LookFor = 3f, NodFor = 1f, StillFor = 3f, KinLookEvery = 0.4f, PatFor = 0.6f, RiseFor = 1.2f;
-        /// <summary>The helpers walk this far either side of the elder; the kid holds the hand a little behind.</summary>
-        public const float Beside = 0.07f;
-        /// <summary>At the door: the turn, the small wave, the step in; the kin stand and look, then go back one by one.</summary>
-        public const float TurnFor = 0.8f, WaveFor = 1f, InFor = 0.5f, DoorLook = 1.5f;
+        /// <summary>The helpers walk this far either side of the elder (v2: 0.1, was 0.07: at 0.07 the three dolls' shoulders were inside each
+        /// other and the linked arms vanished); the kid holds the hand a little behind.</summary>
+        public const float Beside = 0.1f;
+        /// <summary>At the door: the turn, the wave (v2: big and slow, 2.4 s, was a small 1 s one), the step in; the kin stand and look, then go back one by one.</summary>
+        public const float TurnFor = 0.8f, WaveFor = 2.4f, InFor = 0.5f, DoorLook = 1.5f;
+        /// <summary>v2 targets (2026-11-27, the user: the hand, the helpers' arms, the wave and the look up did not read from the fire's side).
+        /// The hand on the shoulder: the arm out sideways at shoulder height, laid across the elder's near shoulder (z 95, x 12 forward).
+        /// The help up: the helper's near arm down and out under the elder's arm (z 60, x 15); the elder's arms out over both helpers' shoulders
+        /// (z 75). The wave: the arm high over the head (z 150) swung ±25 slowly (0.6 Hz). The stars: the elder leans back 32 (the head
+        /// goes back with the body: the doll's head is part of it), the hands back on the seat (x −40); the kin lean back 24.</summary>
+        public const float ShoulderArmZ = 95f, ShoulderArmX = 12f, UnderArmZ = 60f, UnderArmX = 15f, OverArmZ = 75f,
+            WaveArmZ = 150f, WaveSwing = 25f, WaveHz = 0.6f, ElderLookLean = -32f, KinLookLean = -24f, HandsBackX = -40f;
         /// <summary>A paced walk's step (s): the spot moves on this often (see Track.PacedWalk).</summary>
         public const float WalkStep = 0.3f;
 
@@ -97,11 +106,14 @@ namespace AquariumCiv.View
         /// <summary>B82.a beat 2: a hand on the elder's shoulder: the near arm toward them (x 60, z 20 out to their side), eased in 0.5 s and held.
         /// <paramref name="left"/>: the elder sits on this doll's left (the arm on that side reaches; the doll faces its local −z, so that is
         /// <c>armR</c>, as AnimBench's sheets showed).</summary>
+        /// <remarks>v2 (2026-11-27): side by side, both facing the fire; the near arm out sideways at shoulder height and laid across the elder's near
+        /// shoulder (z <see cref="ShoulderArmZ"/>, x <see cref="ShoulderArmX"/>: a level bar from one doll to the other, seen from the front),
+        /// eased in 0.8 s; the body leans in toward the elder (roll 10).</remarks>
         public static CampPoseFn HandOnShoulder(bool left) => (ref DollPose p, float t, float len) =>
         {
-            float u = In(t, 0f, 0.5f) * (1f - In(t, len - 0.4f, 0.4f));
-            if (left) p.armR = Lerp(p.armR, new Vector3(60f, 0f, 20f), u); else p.armL = Lerp(p.armL, new Vector3(60f, 0f, -20f), u);
-            p.lean += 6f * u; p.roll += (left ? -4f : 4f) * u;
+            float u = In(t, 0f, 0.8f) * (1f - In(t, len - 0.5f, 0.5f));
+            if (left) p.armR = Lerp(p.armR, new Vector3(ShoulderArmX, 0f, ShoulderArmZ), u); else p.armL = Lerp(p.armL, new Vector3(ShoulderArmX, 0f, -ShoulderArmZ), u);
+            p.lean += 3f * u; p.roll += (left ? -10f : 10f) * u; // a roll's top goes to local -x: toward armR's side is negative
         };
 
         /// <summary>B82.a beat 2: a kid sits and leans the head onto the elder's knee: the body tilted 25 degrees toward them (eased in 0.8 s),
@@ -116,33 +128,65 @@ namespace AquariumCiv.View
         /// <summary>B82.a beat 4, the helper's half of HelpUp: standing at the elder's side, facing the same way, the near arm out sideways under their
         /// elbow (x 25 forward, z 55 out toward them: AnimBench showed x 70 alone reached for the fire, not the elder), eased in 0.3 s;
         /// a small lift with the knees as the elder comes up (squash 0.94 to 1).</summary>
+        /// <remarks>v2 (2026-11-27, "a helper each side" was lost): the near arm down and out under the elder's arm (z <see cref="UnderArmZ"/>,
+        /// x <see cref="UnderArmX"/>), the elder's arm over it (<see cref="HelpedUp"/>), linked, seen from the front.</remarks>
         public static CampPoseFn HelpUp(bool left) => (ref DollPose p, float t, float len) =>
         {
             float u = In(t, 0f, 0.3f);
-            if (left) p.armR = Lerp(p.armR, new Vector3(25f, 0f, 55f), u); else p.armL = Lerp(p.armL, new Vector3(25f, 0f, -55f), u);
-            p.lean += 10f * u * (1f - In(t, 0.4f, len - 0.4f)) + 4f;
+            if (left) p.armR = Lerp(p.armR, new Vector3(UnderArmX, 0f, UnderArmZ), u); else p.armL = Lerp(p.armL, new Vector3(UnderArmX, 0f, -UnderArmZ), u);
+            p.roll += (left ? -5f : 5f) * u; // leaning in to take the weight
+            p.lean += 6f * u * (1f - In(t, 0.4f, len - 0.4f)) + 2f; // v2: less (a deep lean showed the top of the head from the front)
             p.squash *= Mathf.Lerp(0.94f, 1f, In(t, 0.3f, len - 0.3f));
         };
 
         /// <summary>B82.a beat 4, the elder's half of HelpUp: from the seat up to standing over <see cref="RiseFor"/> (the seat's drop and squash ease
         /// out), pushing off the stool with both hands, a small sway (roll ±5) on the way up.</summary>
-        public static void HelpedUp(ref DollPose p, float t, float len)
+        // v2 (2026-11-27): as they come up, the arm on each helper's side goes out over that helper's shoulders (z <see cref="OverArmZ"/>,
+        // eased in over the rise), linked with the helper's arm under it. <paramref name="overL"/>/<paramref name="overR"/>: a helper on
+        // the side of <c>armL</c>/<c>armR</c> (the other arm just eases down from the push).
+        public static void HelpedUp(ref DollPose p, float t, float len) => HelpedUpBy(true, true)(ref p, t, len);
+
+        public static CampPoseFn HelpedUpBy(bool overL, bool overR) => (ref DollPose p, float t, float len) =>
         {
             float k = In(t, 0f, len);
             p.offset.y = Mathf.Lerp(-0.03f, 0f, k); p.squash = Mathf.Lerp(0.78f, 1f, k);
             p.lean += Mathf.Lerp(18f, 4f, k);
             p.roll += 5f * Mathf.Sin(t * Mathf.PI * 2f / Mathf.Max(0.3f, len)) * (1f - k);
-            p.armL = Lerp(p.armL, new Vector3(30f, 0f, -24f), 1f - k); p.armR = Lerp(p.armR, new Vector3(30f, 0f, 24f), 1f - k);
-        }
+            var push = Mathf.Max(0f, 1f - 2f * k); float over = In(t, len * 0.25f, len * 0.6f);
+            p.armL = Lerp(p.armL, new Vector3(30f, 0f, -24f), push); p.armR = Lerp(p.armR, new Vector3(30f, 0f, 24f), push);
+            if (overL) p.armL = Lerp(p.armL, new Vector3(8f, 0f, -OverArmZ), over);
+            if (overR) p.armR = Lerp(p.armR, new Vector3(8f, 0f, OverArmZ), over);
+        };
+
+        /// <summary>v2: the elder's walk home held up between the helpers: the frail walk with the arm on each helper's side kept over their shoulders.</summary>
+        public static CampPoseFn HeldUpWalk(bool overL, bool overR) => (ref DollPose p, float t, float len) =>
+        {
+            FrailWalk(ref p, t, len);
+            if (overL) p.armL = new Vector3(8f, 0f, -OverArmZ);
+            if (overR) p.armR = new Vector3(8f, 0f, OverArmZ);
+        };
 
         /// <summary>B82.a beat 5 (the pair walk's pacing): a helper walking at the elder's side at the elder's own slow pace, the near arm under
         /// their elbow (x 30 forward, z 40 out toward them) the whole way and the body turned in a little toward them.</summary>
+        /// <remarks>v2 (2026-11-27): the near arm under the elder's (z <see cref="UnderArmZ"/>, x <see cref="UnderArmX"/>), not turned in (the turn hid the
+        /// linked arms from the front), leaning in a little.</remarks>
         public static CampPoseFn PairWalk(bool left) => (ref DollPose p, float t, float len) =>
         {
             float u = In(t, 0f, 0.4f);
-            if (left) p.armR = Lerp(p.armR, new Vector3(30f, 0f, 40f), u); else p.armL = Lerp(p.armL, new Vector3(30f, 0f, -40f), u);
-            p.yaw += (left ? -10f : 10f) * u; p.lean += 4f * u;
+            if (left) p.armR = Lerp(p.armR, new Vector3(UnderArmX, 0f, UnderArmZ), u); else p.armL = Lerp(p.armL, new Vector3(UnderArmX, 0f, -UnderArmZ), u);
+            p.lean += 4f * u; p.roll += (left ? -4f : 4f) * u;
         };
+
+        /// <summary>v2 (2026-11-27, the wave was too small): at the door, facing the fire, the arm goes up high over the head (z
+        /// <see cref="WaveArmZ"/>, 0.5 s) and swings slowly ±<see cref="WaveSwing"/> at <see cref="WaveHz"/>, then comes down (0.4 s); a little
+        /// lean back and the body swaying with it.</summary>
+        public static void BigWave(ref DollPose p, float t, float len)
+        {
+            float u = In(t, 0f, 0.5f) * (1f - In(t, len - 0.4f, 0.4f));
+            float sw = Mathf.Sin((t - 0.5f) * WaveHz * Mathf.PI * 2f) * In(t, 0.4f, 0.3f);
+            p.armR = Lerp(p.armR, new Vector3(-6f, 0f, WaveArmZ + WaveSwing * sw), u);
+            p.lean += -5f * u; p.roll += -4f * sw * u;
+        }
 
         /// <summary>The elder's frail walk: a little stoop (lean 8) and a short, slow sway.</summary>
         public static void FrailWalk(ref DollPose p, float t, float len) { p.lean += 8f; p.roll += 2f * Mathf.Sin(t * 2.4f); }
@@ -156,7 +200,7 @@ namespace AquariumCiv.View
 
         /// <summary>The elder through beats 2 and 3, seated: at <paramref name="handAt"/> the hand on the shoulder's side comes up over it (1 s, a soft
         /// hit when it touches); at <paramref name="kidAt"/> the other hand rests on the kid's head and at <paramref name="strokeAt"/> strokes once
-        /// (a slow x 20 wag, 1 s); at <paramref name="lookAt"/> the look up (lean −14, 1 s in, 3 s), the slow nod (x 10, 1 s) after it.</summary>
+        /// (a slow x 20 wag, 1 s); at <paramref name="lookAt"/> the look up (v2: lean <see cref="ElderLookLean"/>, the hands back; 1 s in, 3 s), the slow nod (x 10, 1 s) after it.</summary>
         public static CampPoseFn ElderAtTheFire(float handAt, bool handLeft, float kidAt, float strokeAt, float lookAt) => (ref DollPose p, float t, float len) =>
         {
             float hand = handAt >= 0f ? In(t, handAt, 1f) * (1f - In(t, len - 0.4f, 0.4f)) : 0f;
@@ -169,16 +213,23 @@ namespace AquariumCiv.View
             if (handLeft) p.armL = Lerp(p.armL, onHead, kid); else p.armR = Lerp(p.armR, new Vector3(onHead.x, 0f, 20f), kid);
             if (lookAt >= 0f)
             {
+                // v2 (2026-11-27, only a slight lean read): the whole doll leans well back (ElderLookLean; the head goes with it), the hands back on the seat
                 float look = In(t, lookAt, 1f) * (1f - In(t, lookAt + LookFor, 0.6f));
-                p.lean += -14f * look + 10f * Bump(t, lookAt + LookFor, NodFor);
+                p.lean += ElderLookLean * look + 10f * Bump(t, lookAt + LookFor, NodFor);
+                p.armL = Lerp(p.armL, new Vector3(HandsBackX, 0f, -18f), look); p.armR = Lerp(p.armR, new Vector3(HandsBackX, 0f, 18f), look);
             }
         };
 
-        /// <summary>A kin's look up at the stars, seated (lean −12, 1 s in, held for <see cref="LookFor"/>), over another pose.</summary>
+        /// <summary>A kin's look up at the stars, seated (v2: lean <see cref="KinLookLean"/>, was −12; 1 s in, held for <see cref="LookFor"/>), over another pose;
+        /// the free hands go back on the ground (a hand on the elder's shoulder stays).</summary>
         public static CampPoseFn LookUpAt(float at, CampPoseFn over = null) => (ref DollPose p, float t, float len) =>
         {
+            var arms0L = p.armL; var arms0R = p.armR;
             over?.Invoke(ref p, t, len);
-            p.lean += -12f * In(t, at, 1f) * (1f - In(t, at + LookFor, 0.6f));
+            float look = In(t, at, 1f) * (1f - In(t, at + LookFor, 0.6f));
+            p.lean += KinLookLean * look;
+            if (p.armL == arms0L) p.armL = Lerp(p.armL, new Vector3(HandsBackX * 0.75f, 0f, -18f), look);
+            if (p.armR == arms0R) p.armR = Lerp(p.armR, new Vector3(HandsBackX * 0.75f, 0f, 18f), look);
         };
 
         /// <summary>The elder's pat for the dog before rising: the near hand down to it (x 35, 0.6 s bump).</summary>
@@ -192,6 +243,7 @@ namespace AquariumCiv.View
             "HelpUpL" => HelpUp(true), "HelpUpR" => HelpUp(false), "HelpedUp" => HelpedUp,
             "PairWalkL" => PairWalk(true), "PairWalkR" => PairWalk(false), "FrailWalk" => FrailWalk,
             "HoldHandL" => HoldHand(true), "HoldHandR" => HoldHand(false), "PatDog" => PatDog,
+            "BigWave" => BigWave, "HeldUpWalk" => HeldUpWalk(true, true),
             "ElderAtTheFire" => ElderAtTheFire(1f, true, 2.5f, 4.5f, 7f), // the clips: the partner on the elder's left
             _ => null,
         };
@@ -266,7 +318,7 @@ namespace AquariumCiv.View
                 float arrive = T.EndOf(ms[i]);
                 float look = tStars + KinLookEvery * (i + 1);
                 // the partner sits turned to the elder, the hand reaching straight to the shoulder; the kid at the knee faces the fire, the knee beside them
-                var face = i == kneeKid ? c.fire : seat;
+                var face = i == kneeKid || i == helper ? c.fire : seat; // v2: the partner side by side with the elder, both facing the fire
                 CampPoseFn over = i == helper ? Window(HandOnShoulder(LeftOf(spots[i], face, seat)), tHand - arrive, tStars + LookFor - arrive)
                     : i == kneeKid ? Window(LeanOnKnee(LeftOf(spots[i], face, seat)), tHand + 1.5f - arrive, tRise - arrive) : null;
                 T.Part(ms[i], arrive, tRise, spots[i], face, DollStyle.Sit, LookUpAt(look - arrive, over));
@@ -304,7 +356,10 @@ namespace AquariumCiv.View
                 T.Part(ms[i], tUp + 0.6f, tStood, at, c.fire, DollStyle.Stand, HelpUp(LeftOf(at, at + toFire, seat)));
             }
             T.Part(me, tUp, tUp + 0.6f, seat, c.fire, DollStyle.Sit);
-            T.Part(me, tUp + 0.6f, tStood, seat, c.fire, DollStyle.Stand, HelpedUp);
+            // v2: the elder's arm on each helper's side goes out over that helper's shoulders (armR is the doll's left: LeftOf)
+            bool upR = false, upL = false;
+            foreach (var at in stand) { if (LeftOf(seat, c.fire, at)) upR = true; else upL = true; }
+            T.Part(me, tUp + 0.6f, tStood, seat, c.fire, DollStyle.Stand, HelpedUpBy(upL, upR));
 
             // 5 home: at the elder's own slow pace, a helper each side, the kid at a hand a little behind, the dog a step behind
             var dir = Unit(c.door - seat, toCam);
@@ -313,7 +368,9 @@ namespace AquariumCiv.View
             float walk = WalkTime(seat, atDoor, frail);
             s.d = tStood;
             float tDoor = tStood + walk;
-            T.PacedWalk(me, tStood, tDoor, seat, atDoor, c.door, DollStyle.Stand, FrailWalk, frail);
+            bool walkR = false, walkL = false;
+            for (int h = 0; h < helpers.Count; h++) { var end = atDoor + (Vector2.Dot(stand[h] - seat, across) >= 0f ? across : -across) * Beside; if (LeftOf(atDoor - dir, atDoor, end)) walkR = true; else walkL = true; }
+            T.PacedWalk(me, tStood, tDoor, seat, atDoor, c.door, DollStyle.Stand, helpers.Count > 0 ? HeldUpWalk(walkL, walkR) : FrailWalk, frail);
             for (int h = 0; h < helpers.Count; h++)
             {
                 int i = helpers[h];
@@ -323,8 +380,8 @@ namespace AquariumCiv.View
             if (kneeKid >= 0)
             {
                 int i = kneeKid;
-                var kidSide = helpers.Count > 1 ? -dir * 0.06f - across * (Beside + 0.03f) : -across * Beside;
-                var near = seat - side * (Beside + 0.04f) - toFire * 0.03f;
+                var kidSide = helpers.Count > 1 ? -dir * 0.09f - across * (Beside + 0.04f) : -across * Beside; // v2: clear of the wider helpers
+                var near = helpers.Count > 1 ? seat - toFire * 0.1f - side * 0.05f : seat - side * (Beside + 0.04f) - toFire * 0.03f; // v2: behind, clear of the helper there
                 T.Part(ms[i], tRise, tStood, near, seat, DollStyle.Stand, null, KidWalk);
                 var end = atDoor + kidSide;
                 T.PacedWalk(ms[i], tStood, tDoor, near, end, end + dir, DollStyle.Stand, HoldHand(LeftOf(end, end + dir, atDoor)), (end - near).magnitude / Mathf.Max(0.1f, walk - 0.25f));
@@ -338,7 +395,7 @@ namespace AquariumCiv.View
             // at the door: the turn back to the fire, a small wave, in
             float tTurn = tDoor + TurnFor, tWave = tTurn + WaveFor, tIn = tWave + InFor;
             T.Part(me, tDoor, tTurn, atDoor, c.fire, DollStyle.Stand);
-            T.Part(me, tTurn, tWave, atDoor, c.fire, DollStyle.WaveSmall);
+            T.Part(me, tTurn, tWave, atDoor, c.fire, DollStyle.Stand, BigWave); // v2: big and slow (was WaveSmall)
             T.Part(me, tWave, tIn, c.door, c.door + dir, DollStyle.Stand, null, Walk * 0.5f);
             T.Part(me, tIn, tIn + 0.3f, c.door, c.door + dir, DollStyle.Hidden);
             s.c = tIn;

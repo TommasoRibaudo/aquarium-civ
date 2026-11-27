@@ -145,7 +145,7 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void TheNewPoses_Move()
         {
-            foreach (var name in new[] { "HandOnShoulderL", "HandOnShoulderR", "LeanOnKneeL", "LeanOnKneeR", "HelpUpL", "HelpUpR", "HelpedUp", "PairWalkL", "PairWalkR", "HoldHandL", "HoldHandR", "FrailWalk", "PatDog", "ElderAtTheFire" })
+            foreach (var name in new[] { "HandOnShoulderL", "HandOnShoulderR", "LeanOnKneeL", "LeanOnKneeR", "HelpUpL", "HelpUpR", "HelpedUp", "PairWalkL", "PairWalkR", "HoldHandL", "HoldHandR", "FrailWalk", "PatDog", "ElderAtTheFire", "BigWave" })
             {
                 var f = LastEveningScenes.PoseOf(name);
                 Assert.IsNotNull(f, name);
@@ -157,6 +157,37 @@ namespace AquariumCiv.View.Tests
                 Assert.Greater(moved, 5f, name + " moves");
             }
             Assert.IsNull(LastEveningScenes.PoseOf("nope"));
+        }
+
+        /// <summary>v2 (2026-11-27, the user: the hand, the helpers' arms, the wave and the look up did not read): the scene's own parts reach the
+        /// bigger targets: the partner side by side facing the fire with the arm out across at shoulder height, the elder leaning well back at
+        /// the stars, the elder's arms over both helpers' shoulders on the walk home, and the wave high and slow at the door.</summary>
+        [Test]
+        public void V2_TheScenesPoses_ReachTheirTargets()
+        {
+            var s = LastEveningScenes.Evening(Cast(2, 1), 0f);
+            float Out(DollPose p) => Mathf.Max(p.armR.z, -p.armL.z);
+            DollPose PoseOf(int key, float u)
+            {
+                var part = PartAt(s, key, u);
+                var p = DollPose.Rest;
+                part.pose?.Invoke(ref p, u - (part.from - s.t0), part.Len);
+                return p;
+            }
+            var partner = PartAt(s, 10, s.a + 3f);
+            var seat = PartAt(s, 1, s.a + 3f).pos;
+            Assert.Less(Vector2.Angle(partner.face - partner.pos, Fire - partner.pos), 1f, "the partner faces the fire, side by side with the elder");
+            Assert.AreEqual(LastEveningScenes.ShoulderArmZ, Out(PoseOf(10, s.a + 3f)), 1.5f, "the arm out across to the elder's shoulder");
+            Assert.Less(PoseOf(1, s.b + 2.5f).lean, LastEveningScenes.ElderLookLean + 1.5f, "the elder leans well back at the stars");
+            Assert.Less(PoseOf(10, s.b + 2.5f).lean, LastEveningScenes.KinLookLean * 0.8f, "the partner looks up too");
+            var walk = PoseOf(1, s.d + 2f);
+            Assert.AreEqual(LastEveningScenes.OverArmZ, walk.armR.z, 1f, "the elder's arms over both helpers' shoulders on the walk home");
+            Assert.AreEqual(LastEveningScenes.OverArmZ, -walk.armL.z, 1f);
+            foreach (int k in new[] { 10, 11 }) Assert.AreEqual(LastEveningScenes.UnderArmZ, Out(PoseOf(k, s.d + 2f)), 1f, $"helper {k}'s arm under the elder's");
+            float tWave = s.c - LastEveningScenes.InFor - LastEveningScenes.WaveFor * 0.5f;
+            Assert.Greater(PoseOf(1, tWave).armR.z, LastEveningScenes.WaveArmZ - LastEveningScenes.WaveSwing - 1f, "the wave high over the head");
+            Assert.AreEqual(2.4f, LastEveningScenes.WaveFor, 1e-4f, "and slow");
+            Assert.Greater((seat - partner.pos).magnitude, 0.1f, "shoulder to shoulder, not inside each other");
         }
     }
 }

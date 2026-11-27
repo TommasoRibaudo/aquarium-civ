@@ -1,15 +1,15 @@
 {
   "name": "789-hand-on-shoulder",
-  "notes": "#789 B82.a beat 2 (new HandOnShoulder): the elder sits at the fire, the partner right beside them (on the elder's left, 0.085 u, turned to the elder). At 1 s the partner's near arm goes to the elder's shoulder (x 60, z 20, eased 0.5 s, held); the elder's left hand comes up over it (1 s, a soft hit as they meet); at 2.5 s the elder's other hand goes to a kid's head (not drawn here) and strokes once at 4.5 s; at 7 s the look up at the stars (lean -14) and the slow nod. Fire at the origin; the seat 0.28 u toward the camera. Every number [est] until the user signs off the clip.",
+  "notes": "#789 B82.a beat 2 (new HandOnShoulder), v2 2026-11-27 (the user: the hand did not read from the fire's side): the elder sits at the fire, the partner side by side on the elder's left (0.11 u, both facing the fire). At 1 s the partner's near arm goes out sideways at shoulder height and lies across the elder's near shoulder (z 95, x 12, eased 0.8 s, held), the body leaning in (roll 10); the elder's left hand comes up over it (1 s, a soft hit as they meet); at 2.5 s the elder's other hand goes to a kid's head (not drawn here) and strokes once at 4.5 s; at 7 s the look up at the stars: the elder leans well back (lean -32, the head with the body) with the hands back on the seat (x -40), then the slow nod. Filmed from the family's front (the camera beyond the fire). Fire at the origin; the seat 0.28 u toward the camera. Every number [est] until the user signs off the clip.",
   "duration": 11.0,
   "fps": 30,
   "warmup": 1,
-  "camera": { "view": "default", "focus": [0.06, 0.24], "span": 0.7 },
-  "sheet": { "from": 0.5, "to": 4.5, "frames": 24, "columns": 6 },
+  "camera": { "view": "default", "focus": [0.055, 0.26], "span": 0.6, "yaw": 28, "pitch": 24 },
+  "sheet": { "from": 0.5, "to": 10.5, "frames": 24, "columns": 6 },
   "objects": [ { "id": "fire", "kind": "fire", "pos": [0, 0] } ],
   "dolls": [
     { "id": "elder", "seed": 7891, "style": "Sit", "pos": [0, 0.28], "face": [0, 0], "pose": "ElderAtTheFire" },
-    { "id": "partner", "seed": 7892, "style": "Sit", "pos": [0.085, 0.28], "face": [0, 0.28],
+    { "id": "partner", "seed": 7892, "style": "Sit", "pos": [0.11, 0.28], "face": [0.11, 0],
       "timeline": [
         { "t": 0, "dur": 1 },
         { "t": 1, "dur": 7, "pose": "HandOnShoulderR", "label": "hand on the shoulder" },
