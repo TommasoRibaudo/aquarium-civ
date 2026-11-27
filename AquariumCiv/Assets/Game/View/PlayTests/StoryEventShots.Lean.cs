@@ -315,6 +315,10 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return LivedCamp(10f, pond: true, w: w, h: h);
             var rig = Rig;
+            // the game's own default view on a lived camp is the camp frame (a person ~2 % of the screen), not the whole box the tests open on
+            Debug.Log("[783] every " + tag + ": " + CampFrameView.DebugCampFrame());
+            yield return Until(() => !rig.IsFlying, 6f);
+            yield return Frames(5);
             var home = PoseOf(rig);
             float want = StoryLean.ScenePx(Screen.height);
             var report = new System.Text.StringBuilder();
@@ -357,7 +361,18 @@ namespace AquariumCiv.View.PlayTests
                 if (rig.zoom > home.zoom - 0.02f) failed.Add(name + ": it did not lean in");
                 if (Mathf.Abs(rig.yaw - home.yaw) > 0.5f) failed.Add(name + ": yaw moved");
                 if (after < want * (atFloor ? 0.55f : 0.7f)) failed.Add($"{name}: a person is {after:0} px, under {(atFloor ? 55 : 70)} % of the {want:0} px target");
-                if (v.z <= 0f || v.x < 0.2f || v.x > 0.8f || v.y < 0.2f || v.y > 0.8f) failed.Add($"{name}: the scene's middle is off centre ({v.x:0.00}, {v.y:0.00})");
+                // a walking scene is re-looked every second, so one frame can catch it between two looks: watch it for 3 s. A scene at the front glass
+                // can't be centred (the pivot stays out of the pane, #273): there the pivot sits at its bound and only the cast on screen counts.
+                bool clamped = Vector3.Distance(rig.target, want0) > 0.05f;
+                int seen = 0, centred = 0;
+                for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 3f; )
+                {
+                    if (SceneNow(out var mw)) { var vw = ViewportOf(mw); seen++; if (vw.z > 0f && vw.x >= 0.2f && vw.x <= 0.8f && vw.y >= 0.2f && vw.y <= 0.8f) centred++; }
+                    yield return null;
+                }
+                Debug.Log($"[783] every {tag} {name}: middle in the middle 60 % for {centred}/{seen} frames of 3 s{(clamped ? " (the pivot at the glass bound)" : "")}");
+                report.AppendLine($"  {name}: centred {centred}/{seen} frames{(clamped ? ", pivot at the glass bound" : "")}");
+                if (!clamped && centred < seen * 0.6f) failed.Add($"{name}: the scene's middle is off centre ({v.x:0.00}, {v.y:0.00}; centred {centred}/{seen} frames)");
                 if (on < Mathf.CeilToInt(leanCast.Count * 0.75f)) failed.Add($"{name}: only {on} of {leanCast.Count} of its cast on screen");
                 // the end: the camera glides back to the default view
                 HeldMomentStage.DebugEndPlaying();
