@@ -1455,7 +1455,7 @@ namespace AquariumCiv.View
             var book = BookView.Instance;
             if (sim == null || book == null) return false;
             int root = sim.FamilyTreeRootOf(notableId);
-            return root >= 0 && book.OpenAtTree(root, notableId);
+            return root >= 0 && book.OpenAtTree(root, notableId, null, notableId); // #804: the book's X comes back to this card
         }
 
         const string NoStories = "Nothing told about them yet.";

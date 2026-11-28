@@ -182,24 +182,37 @@ namespace AquariumCiv.View
             return true;
         }
 
-        /// <summary>#774: the card's "See the whole line": the family's tree page, <paramref name="focusId"/> ringed and in view.</summary>
-        public bool OpenAtTree(int rootId, int focusId, Action whenClosed = null)
+        /// <summary>#774: the card's "See the whole line": the family's tree page, <paramref name="focusId"/> ringed and in view.
+        /// #804 (the user, 2026-11-27: go back to the card it came from): the book's X opens <paramref name="backToCard"/> again, on its
+        /// Family tab. Leaving another way (Show me) goes where that goes.</summary>
+        public bool OpenAtTree(int rootId, int focusId, Action whenClosed = null, int backToCard = -1)
         {
             focusNext = focusId;
             bool ok = Open(null, SimCore.BookTreeKey(rootId), whenClosed);
             focusNext = -1;
+            if (ok) returnCard = backToCard;
             return ok;
         }
+
+        /// <summary>#804: the card the book's X goes back to (-1: none).</summary>
+        int returnCard = -1;
 
         /// <summary>Remember on a legend's card: their page, if they have one.</summary>
         public bool OpenAtLegend(int notableId, Action whenClosed = null) => Open(null, SimCore.BookLegendKey(notableId), whenClosed);
 
-        public void Close() => Shut(true);
+        public void Close()
+        {
+            int back = returnCard;
+            Shut(true);
+            var card = PersonCardView.Instance;
+            if (back >= 0 && card != null && card.Open(back, false, false)) card.ShowTab(CardTab.Family); // #804: back to the card it came from
+        }
 
         void Shut(bool sound)
         {
             if (!IsOpen) return;
             IsOpen = false;
+            returnCard = -1;
             root.style.display = DisplayStyle.None;
             current?.RemoveFromHierarchy();
             current = null;
