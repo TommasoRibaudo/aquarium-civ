@@ -142,6 +142,11 @@ namespace AquariumCiv.View.PlayTests
         {
             UseLivingLand();
             yield return Village(30f);
+            // #651: no kindling is chopped before the land has a grown wild wood (the chore sits out), and the wild trees come only from the
+            // Keeper's seeds (decisions 2026-11-14, #677 and #724): this box has none after 30 years, so the panel's "Wild tree away" plants one.
+            StringAssert.Contains("away from the Keeper's tree", EcoDebug.WildTrees(false), "a grown wild tree for the kindling");
+            Assert.IsTrue(Sim.TreesGrow && Sim.WoodsExist, "the land has a wood now");
+            yield return Frames(3);
             var pv = People;
             pv.HandDriven = true;
             int seen = 0, under = 0;
@@ -312,6 +317,7 @@ namespace AquariumCiv.View.PlayTests
                     var pts = new List<Vector2> { new(l.ax, l.ay) };
                     if (l.bends) pts.Add(new Vector2(l.vx, l.vy));
                     if (l.twice) pts.Add(new Vector2(l.wx, l.wy));
+                    if (l.thrice) pts.Add(new Vector2(l.ux, l.uy));
                     pts.Add(new Vector2(l.bx, l.by));
                     for (int i = 0; i + 1 < pts.Count; i++) legs.Add((pts[i], pts[i + 1]));
                     var start = pts[0];
@@ -331,7 +337,7 @@ namespace AquariumCiv.View.PlayTests
                     }
                 }
                 Debug.Log($"[209] {n.name} routes: {string.Join(" || ", routes.Take(4))} ; shown {string.Join(" ", shown.Select(r => $"[{r.center.x:0},{r.center.y:0} {r.width:0}x{r.height:0}]"))} ; leaders {string.Join(" ", leaders.Select(l => $"({l.ax:0},{l.ay:0})->({l.bx:0},{l.by:0})"))}");
-                Debug.Log($"[209] {n.name}: {shown.Count} labels, {leaders.Count} leaders, {string.Join("; ", leaders.Select(l => l.twice ? "3 legs" : l.bends ? "2 legs" : "straight"))}");
+                Debug.Log($"[209] {n.name}: {shown.Count} labels, {leaders.Count} leaders, {string.Join("; ", leaders.Select(l => l.thrice ? "4 legs" : l.twice ? "3 legs" : l.bends ? "2 legs" : "straight"))}");
                 if (leaders.Count > mostLeaders)
                 {
                     mostLeaders = leaders.Count;

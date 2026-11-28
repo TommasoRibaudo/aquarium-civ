@@ -398,12 +398,20 @@ namespace AquariumCiv.View.ShowMe.Tests
 
         // ---------------- tester run 8: leaders
 
-        static bool Behind(LeaderRoute r, LabelBox o)
+        /// <summary>The route's legs, in order (a leader bends at most three times).</summary>
+        static List<(float, float, float, float)> Legs(LeaderRoute r)
         {
-            if (!r.bends) return MarkerLayout.Crosses(r.ax, r.ay, r.bx, r.by, o);
-            if (!r.twice) return MarkerLayout.Crosses(r.ax, r.ay, r.vx, r.vy, o) || MarkerLayout.Crosses(r.vx, r.vy, r.bx, r.by, o);
-            return MarkerLayout.Crosses(r.ax, r.ay, r.vx, r.vy, o) || MarkerLayout.Crosses(r.vx, r.vy, r.wx, r.wy, o) || MarkerLayout.Crosses(r.wx, r.wy, r.bx, r.by, o);
+            var pts = new List<(float x, float y)> { (r.ax, r.ay) };
+            if (r.bends) pts.Add((r.vx, r.vy));
+            if (r.twice) pts.Add((r.wx, r.wy));
+            if (r.thrice) pts.Add((r.ux, r.uy));
+            pts.Add((r.bx, r.by));
+            var legs = new List<(float, float, float, float)>();
+            for (int i = 0; i + 1 < pts.Count; i++) legs.Add((pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y));
+            return legs;
         }
+
+        static bool Behind(LeaderRoute r, LabelBox o, float air = 0f) => Legs(r).Any(l => MarkerLayout.Crosses(l.Item1, l.Item2, l.Item3, l.Item4, o, air));
 
         [Test]
         public void ALeaderWithAClearWayGoesStraight()
@@ -465,10 +473,7 @@ namespace AquariumCiv.View.ShowMe.Tests
                         var r = MarkerLayout.RouteLeader(me, toX, toY, others);
                         cases++;
                         // Off its own label, every leg stays out of the stack's block (its own label included: no line back across it).
-                        var legs = new List<(float, float, float, float)>();
-                        if (!r.bends) legs.Add((r.ax, r.ay, r.bx, r.by));
-                        else if (!r.twice) { legs.Add((r.ax, r.ay, r.vx, r.vy)); legs.Add((r.vx, r.vy, r.bx, r.by)); }
-                        else { legs.Add((r.ax, r.ay, r.vx, r.vy)); legs.Add((r.vx, r.vy, r.wx, r.wy)); legs.Add((r.wx, r.wy, r.bx, r.by)); }
+                        var legs = Legs(r);
                         bool bad = false;
                         for (int l = 0; l < legs.Count; l++)
                         {
@@ -477,11 +482,26 @@ namespace AquariumCiv.View.ShowMe.Tests
                             foreach (var o in others) if (MarkerLayout.Crosses(ax, ay, bx, by, o, gap / 2f + 1f)) bad = true;
                             if (l > 0 && MarkerLayout.Crosses(ax, ay, bx, by, me, -1f)) bad = true;
                         }
-                        if (bad) { crossed++; first ??= $"shift {shift}, {count} labels, mine {mine}, person at ({toX:0}, {toY:0}): {r.ax:0},{r.ay:0} -> {(r.bends ? $"{r.vx:0},{r.vy:0} -> " : "")}{(r.twice ? $"{r.wx:0},{r.wy:0} -> " : "")}{r.bx:0},{r.by:0}"; }
+                        if (bad) { crossed++; first ??= $"shift {shift}, {count} labels, mine {mine}, person at ({toX:0}, {toY:0}): {r.ax:0},{r.ay:0} -> {(r.bends ? $"{r.vx:0},{r.vy:0} -> " : "")}{(r.twice ? $"{r.wx:0},{r.wy:0} -> " : "")}{(r.thrice ? $"{r.ux:0},{r.uy:0} -> " : "")}{r.bx:0},{r.by:0}"; }
                     }
                 }
             Assert.Greater(cases, 120);
             Assert.AreEqual(0, crossed, $"{crossed} of {cases} leaders cross the stack; first: {first}");
+        }
+
+        /// <summary>#209 (OldPolishPlayTests, 2026-11-27, Mabel's card): the person stands in a pocket, the open card's name tag above, the open
+        /// doll beside, another tie's label just below, open only on the far side. Round one corner or along one side there is no way in: the
+        /// leader goes round the label below over two of its sides, and no leg crosses a label.</summary>
+        [Test]
+        public void ALeaderReachesAPersonInAPocket()
+        {
+            var me = new LabelBox(886f, 1159f, 356f, 64f);
+            var others = new[] { new LabelBox(615f, 1034f, 587f, 71f), new LabelBox(615f, 1101f, 80f, 51f), new LabelBox(509f, 1167f, 291f, 64f), new LabelBox(520f, 938f, 298f, 64f) };
+            var r = MarkerLayout.RouteLeader(me, 502.35f, 1109.41f, others);
+            string route = string.Join(" -> ", Legs(r).Select(l => $"({l.Item1:0},{l.Item2:0})")) + $" -> ({r.bx:0},{r.by:0})";
+            foreach (var o in others) Assert.IsFalse(Behind(r, o, 1f), $"{route} crosses the label at {o.x},{o.y}");
+            Assert.IsTrue(r.thrice, "round two sides: " + route);
+            Assert.AreEqual(502.35f, r.bx, 0.01f);
         }
     }
 }
