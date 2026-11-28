@@ -338,7 +338,7 @@ namespace AquariumCiv.View
             {
                 var a = acts[i];
                 if (a.moving || a.place.kind != PlaceKind.Home || DollMotion.StyleOf(a.kind) == DollStyle.Hidden || !dolls.TryGetValue(a.who.Key, out var d)) continue;
-                var at = (a.place, SlotSpots.SpotFor(a.kind));
+                var at = (a.place, SlotSpots.SpotFor(a.kind, a.start));
                 homeRanks.TryGetValue(at, out int rank);
                 homeRanks[at] = rank + 1;
                 d.homeRank = rank;
@@ -1431,7 +1431,7 @@ namespace AquariumCiv.View
                 var centre = new Vector2(lot.x, lot.z);
                 var outDir = (spot - centre).sqrMagnitude > 1e-6f ? (spot - centre).normalized : Vector2.down;
                 float baseAng = Mathf.Atan2(outDir.y, outDir.x);
-                var (dx, dz) = a.place.kind == PlaceKind.Home ? SlotSpots.Home(SlotSpots.SpotFor(a.kind), d.homeRank, baseAng, BlockSide(lot, spot, baseAng)) // #200: at most two at the door, the rest in the yard
+                var (dx, dz) = a.place.kind == PlaceKind.Home ? SlotSpots.Home(SlotSpots.SpotFor(a.kind, a.start), d.homeRank, baseAng, BlockSide(lot, spot, baseAng)) // #200: at most two at the door, the rest in the yard
                     : SlotSpots.Door(a.slot, baseAng); // a fan outside the door, no two closer than SlotSpots.Gap
                 var at = spot + new Vector2(dx, dz);
                 // #200: at home they look out over the town. Facing their own wall, a sitter or a chopper looks as if they're building it.

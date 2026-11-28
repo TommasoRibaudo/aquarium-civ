@@ -22,13 +22,23 @@ namespace AquariumCiv.Life
 
         /// <summary>#200, tester run 9: where a home's people stand. A whole household knotted at the door read as a queue, and an axe against the wall as
         /// building the house: the door holds <see cref="AtDoor"/>, wood is split out to one side, washing hangs on the other, and the rest are out in front.</summary>
-        public enum HomeSpot { Door, Block, Line, Front }
+        public enum HomeSpot { Door, Block, Line, Front, DawnPlay }
+
+        /// <summary>#208 (the user, 2026-11-27: kids play a bit away): the kids' dawn play at home (it ends by 7) stands this far out in
+        /// front, past the door chores' half-ring and the front fan, so the doorway stays clear while the grown-ups take their turns.</summary>
+        public const float DawnOut = 0.6f;
+        /// <summary>The kids' dawn play: play at home that starts before this hour (the evening's play at the door stays there, #197).</summary>
+        public const float DawnEnds = 9f;
 
         public const int AtDoor = 2;
         /// <summary>Nearer than this to a door is standing at it.</summary>
         public const float AtDoorReach = 0.2f;
         /// <summary>The block and the line: along the wall from the door, and out from it. Then the front: how far out, and the fan's step (radians).</summary>
         public const float YardSide = 0.3f, YardOut = 0.1f, FrontOut = 0.36f, FrontStep = 0.75f;
+
+        /// <summary><see cref="SpotFor(ActivityKind)"/>, with the kids' dawn play (<paramref name="startHour"/> before <see cref="DawnEnds"/>) a bit away.</summary>
+        public static HomeSpot SpotFor(ActivityKind k, float startHour)
+            => k == ActivityKind.Play && startHour < DawnEnds ? HomeSpot.DawnPlay : SpotFor(k);
 
         public static HomeSpot SpotFor(ActivityKind k) => k switch
         {
@@ -56,7 +66,7 @@ namespace AquariumCiv.Life
                 }
             }
             if (spot == HomeSpot.Door) rank -= AtDoor;
-            float a = outAngle + ((rank + 1) / 2) * ((rank & 1) == 1 ? FrontStep : -FrontStep), r = FrontOut + (rank / 4) * Gap;
+            float a = outAngle + ((rank + 1) / 2) * ((rank & 1) == 1 ? FrontStep : -FrontStep), r = (spot == HomeSpot.DawnPlay ? DawnOut : FrontOut) + (rank / 4) * Gap;
             return ((float)Math.Cos(a) * r, (float)Math.Sin(a) * r);
         }
 

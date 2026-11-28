@@ -60,6 +60,25 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual(SlotSpots.HomeSpot.Door, SlotSpots.SpotFor(ActivityKind.SweepStep));
         }
 
+        /// <summary>#208 (the user, 2026-11-27): the kids' dawn play stands a bit away from the door, past the door's half-ring and the
+        /// front fan, so the doorway stays clear while the grown-ups take their chores in turn; the evening's play at the door stays (#197).</summary>
+        [Test]
+        public void TheKidsDawnPlay_StandsABitAwayFromTheDoor_TheEveningsStaysAtIt()
+        {
+            Assert.AreEqual(SlotSpots.HomeSpot.DawnPlay, SlotSpots.SpotFor(ActivityKind.Play, 6.3f));
+            Assert.AreEqual(SlotSpots.HomeSpot.Front, SlotSpots.SpotFor(ActivityKind.Play, 19.4f), "the evening's play at their own door (#197)");
+            Assert.AreEqual(SlotSpots.HomeSpot.Door, SlotSpots.SpotFor(ActivityKind.SweepStep, 6.3f), "only play moves");
+            for (float outAngle = 0f; outAngle < 6.2f; outAngle += 0.9f)
+                for (int rank = 0; rank < 6; rank++)
+                {
+                    var (dx, dz) = SlotSpots.Home(SlotSpots.HomeSpot.DawnPlay, rank, outAngle);
+                    var (fx, fz) = SlotSpots.Home(SlotSpots.HomeSpot.Front, rank, outAngle);
+                    double away = Math.Sqrt(dx * dx + dz * dz), front = Math.Sqrt(fx * fx + fz * fz);
+                    Assert.Greater(away, front + 0.2f, "farther out than the front fan");
+                    Assert.Greater(away, SlotSpots.AtDoorReach + 0.3f, "well clear of the door");
+                }
+        }
+
         [TestCase(3)]
         [TestCase(9)]
         [TestCase(30)]
